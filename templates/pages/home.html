@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}FF Tournament | Compete & Win{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-content">
+        <p class="eyebrow">THE BATTLE STARTS HERE</p>
+
+        <h1>
+            PLAY HARD.<br>
+            <span>RISE TO THE TOP.</span>
+        </h1>
+
+        <p class="hero-description">
+            Join tournaments, compete with players and prove your skills.
+            Your next victory starts here.
+        </p>
+
+        <div class="hero-actions">
+            <a href="#tournaments" class="button button-primary">
+                Explore Tournaments
+            </a>
+            <a href="/admin/" class="button button-outline">
+                Admin Panel
+            </a>
+        </div>
+    </div>
+
+    <div class="hero-card">
+        <div class="hero-card-top">
+            <span class="live-dot"></span>
+            TOURNAMENT ARENA
+        </div>
+
+        <div class="arena-emblem">FF</div>
+
+        <p class="arena-caption">YOUR SKILL. YOUR GLORY.</p>
+    </div>
+</section>
+
+<section class="stats" id="tournaments">
+    <article class="stat-card">
+        <span class="stat-label">Tournament Capacity</span>
+        <strong>49 Players</strong>
+        <span class="stat-note">Maximum per tournament</span>
+    </article>
+
+    <article class="stat-card">
+        <span class="stat-label">Minimum Deposit</span>
+        <strong>₹10</strong>
+        <span class="stat-note">Wallet rules apply</span>
+    </article>
+
+    <article class="stat-card">
+        <span class="stat-label">Kill Reward</span>
+        <strong>₹5</strong>
+        <span class="stat-note">Per approved kill</span>
+    </article>
+</section>
+
+<section class="section" id="leaderboard">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">YOUR NEXT CHALLENGE</p>
+            <h2>Enter the Arena</h2>
+        </div>
+        <span class="coming-soon">TOURNAMENTS COMING SOON</span>
+    </div>
+
+    <div class="empty-state">
+        <div class="empty-icon">⚔</div>
+        <h3>The battlefield is being prepared</h3>
+        <p>Upcoming tournaments will appear here once configured.</p>
+    </div>
+</section>
+{% endblock %}
