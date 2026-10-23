@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Player Login | FF Tournament{% endblock %}
+
+{% block content %}
+<section class="auth-section">
+    <div class="auth-card">
+
+        <div class="auth-header">
+            <span class="brand-icon">FF</span>
+            <h1>PLAYER LOGIN</h1>
+            <p>Welcome back, warrior!</p>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="message-box">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% if form.errors %}
+            <div class="error-box">
+                Username ya password galat hai. Dobara try karein.
+            </div>
+        {% endif %}
+
+        <form method="post" action="{% url 'login' %}">
+            {% csrf_token %}
+
+            <input
+                type="hidden"
+                name="next"
+                value="{{ next|default:'/' }}"
+            >
+
+            <div class="form-group">
+                <label for="id_username">Username</label>
+                <input
+                    type="text"
+                    name="username"
+                    id="id_username"
+                    autocomplete="username"
+                    placeholder="Apna username likhein"
+                    required
+                    autofocus
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="id_password">Password</label>
+                <input
+                    type="password"
+                    name="password"
+                    id="id_password"
+                    autocomplete="current-password"
+                    placeholder="Apna password likhein"
+                    required
+                >
+            </div>
+
+            <button type="submit" class="btn-primary">
+                LOGIN
+            </button>
+        </form>
+
+        <p class="auth-footer">
+            Account nahi hai?
+            <a href="{% url 'accounts:register' %}">
+                Register karo
+            </a>
+        </p>
+
+    </div>
+</section>
+{% endblock %}
