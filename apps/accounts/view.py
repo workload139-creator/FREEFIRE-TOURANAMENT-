@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
+from django.db import IntegrityError, transaction
 from django.shortcuts import redirect, render
 
 from .forms import PlayerRegistrationForm
@@ -14,22 +15,32 @@ def register_view(request):
         form = PlayerRegistrationForm(request.POST)
 
         if form.is_valid():
-            user = form.save(commit=False)
+            try:
+                with transaction.atomic():
+                    user = form.save(commit=False)
 
-            # Registration alone does not verify phone or UID.
-            user.phone_verified = False
-            user.uid_verified = False
+                    # Verification is pending until a real
+                    # verification process has been completed.
+                    user.phone_verified = False
+                    user.uid_verified = False
 
-            user.save()
+                    user.save()
 
-            messages.success(
-                request,
-                "Account ban gaya! Phone verification abhi pending hai.",
-            )
+                login(request, user)
 
-            login(request, user)
+                messages.success(
+                    request,
+                    "Account created successfully. "
+                    "Phone and Free Fire UID verification are pending.",
+                )
 
-            return redirect("accounts:profile")
+                return redirect("accounts:profile")
+
+            except IntegrityError:
+                form.add_error(
+                    None,
+                    "Account details already exist. Please check and try again.",
+                )
     else:
         form = PlayerRegistrationForm()
 
