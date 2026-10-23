@@ -5,7 +5,10 @@ from .models import User
 
 
 class PlayerRegistrationForm(UserCreationForm):
-    email = forms.EmailField(required=True)
+    email = forms.EmailField(
+        required=True,
+        label="Email Address",
+    )
 
     phone_number = forms.CharField(
         max_length=15,
@@ -29,6 +32,16 @@ class PlayerRegistrationForm(UserCreationForm):
             "password1",
             "password2",
         )
+
+    def clean_email(self):
+        email = self.cleaned_data["email"].strip().lower()
+
+        if User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError(
+                "Ye email pehle se registered hai."
+            )
+
+        return email
 
     def clean_phone_number(self):
         phone = self.cleaned_data["phone_number"].strip()
