@@ -2,5 +2,11 @@ from .base import *
 
 DEBUG = True
 
-if not SECRET_KEY:
-    raise RuntimeError("Set DJANGO_SECRET_KEY in your local .env file.")
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv(
+        "DJANGO_ALLOWED_HOSTS",
+        "127.0.0.1,localhost",
+    ).split(",")
+    if host.strip()
+]
