@@ -1,8 +1,10 @@
 from django.contrib import messages
-from django.contrib.auth import login
+from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import AuthenticationForm
 from django.db import IntegrityError, transaction
 from django.shortcuts import redirect, render
+from django.views.decorators.http import require_POST
 
 from .forms import PlayerRegistrationForm
 
@@ -18,19 +20,15 @@ def register_view(request):
             try:
                 with transaction.atomic():
                     user = form.save(commit=False)
-
-                    # Verification is pending until a real
-                    # verification process has been completed.
                     user.phone_verified = False
                     user.uid_verified = False
-
                     user.save()
 
                 login(request, user)
 
                 messages.success(
                     request,
-                    "Account created successfully. "
+                    "Account successfully created. "
                     "Phone and Free Fire UID verification are pending.",
                 )
 
@@ -39,7 +37,7 @@ def register_view(request):
             except IntegrityError:
                 form.add_error(
                     None,
-                    "Account details already exist. Please check and try again.",
+                    "These account details already exist. Please try again.",
                 )
     else:
         form = PlayerRegistrationForm()
@@ -51,6 +49,36 @@ def register_view(request):
     )
 
 
+def login_view(request):
+    if request.user.is_authenticated:
+        return redirect("accounts:profile")
+
+    if request.method == "POST":
+        form = AuthenticationForm(
+            request=request,
+            data=request.POST,
+        )
+
+        if form.is_valid():
+            user = form.get_user()
+            login(request, user)
+
+            messages.success(
+                request,
+                "Login successful!",
+            )
+
+            return redirect("accounts:profile")
+    else:
+        form = AuthenticationForm(request=request)
+
+    return render(
+        request,
+        "accounts/login.html",
+        {"form": form},
+    )
+
+
 @login_required
 def profile_view(request):
     return render(
@@ -58,3 +86,16 @@ def profile_view(request):
         "accounts/profile.html",
         {"player": request.user},
     )
+
+
+@require_POST
+@login_required
+def logout_view(request):
+    logout(request)
+
+    messages.success(
+        request,
+        "You have been logged out successfully.",
+    )
+
+    return redirect("home")
