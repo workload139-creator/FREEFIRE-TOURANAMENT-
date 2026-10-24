@@ -1,0 +1,41 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <h2>Tournament Room</h2>
+
+    {% if messages %}
+        {% for message in messages %}
+            <p>{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
+    {% if registration.status == "WAITING_READY" and registration.room_details_sent %}
+        <p>Room details mil gayi hain. 60 seconds ke andar confirm karo.</p>
+
+        <div class="card p-3">
+            <p>Room ID: <strong>{{ tournament.room_id }}</strong></p>
+            <p>Room Password: <strong>{{ tournament.room_password }}</strong></p>
+            <p>Confirmation deadline: {{ registration.ready_deadline }}</p>
+
+            <form method="post"
+                  action="{% url 'tournaments:confirm_playing' registration.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success">
+                    YES, I AM PLAYING
+                </button>
+            </form>
+        </div>
+
+    {% elif registration.status == "READY" %}
+        <p>Aapki participation confirm ho gayi hai.</p>
+
+    {% elif registration.status == "NOT_PLAYING" %}
+        <p>Confirmation time khatam ho gaya. Aap active players mein nahi hain.</p>
+
+    {% else %}
+        <p>Room details abhi available nahi hain.</p>
+    {% endif %}
+</div>
+{% endblock %}
