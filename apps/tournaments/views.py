@@ -9,7 +9,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from apps.accounts.models import Wallet, WalletTransaction, AdminWallet, AdminWalletTransaction
-from .forms import RegistrationForm
+from .forms import KillSubmissionForm, RegistrationForm
+from .ai_review import AIReviewError, analyze_kill_evidence
 from .registration_services import RegistrationError, create_pending_registration
 from .models import KillSubmission, Registration, Tournament
 
@@ -215,7 +216,6 @@ def kill_submission(request, registration_id):
         return redirect("tournaments:my_registrations")
 
     if request.method == "POST":
-        from .forms import KillSubmissionForm
         form = KillSubmissionForm(request.POST, request.FILES)
         if form.is_valid():
             submitted_uid = form.cleaned_data["free_fire_uid"]
@@ -229,10 +229,29 @@ def kill_submission(request, registration_id):
                 submission.registered_uid = registration.free_fire_uid
                 submission.proposed_reward = Decimal("0.00")
                 submission.save()
-                messages.success(request, "Evidence submit ho gaya. Abhi AI result ya payout confirm nahi hua; admin review karega.")
+                try:
+                    ai_result = analyze_kill_evidence(submission)
+                    submission.ai_proposed_kills = ai_result["proposed_kills"]
+                    submission.ai_confidence = ai_result["confidence"][:10]
+                    submission.ai_uid_matches = ai_result["uid_matches"]
+                    submission.ai_review_notes = ai_result["reason"]
+                    if ai_result["proposed_kills"] is not None:
+                        submission.proposed_reward = Decimal(ai_result["proposed_kills"]) * Decimal("5.00")
+                    submission.save(update_fields=[
+                        "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
+                        "ai_review_notes", "proposed_reward",
+                    ])
+                    messages.success(
+                        request,
+                        "Evidence submit ho gaya. AI ka result sirf proposal hai; admin final review karega.",
+                    )
+                except AIReviewError as exc:
+                    messages.warning(
+                        request,
+                        f"Evidence save ho gaya, lekin AI review available nahi tha: {exc} Admin manually review karega.",
+                    )
                 return redirect("tournaments:my_registrations")
     else:
-        from .forms import KillSubmissionForm
         form = KillSubmissionForm(initial={"free_fire_uid": registration.free_fire_uid})
 
     return render(request, "tournaments/kill_submission.html", {
