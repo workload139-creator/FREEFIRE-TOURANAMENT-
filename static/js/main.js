@@ -96,3 +96,36 @@ function initializeAlerts() {
             window.setTimeout(() => {
                 if (submitButton.isConnected) {
                     submitButton.disabled =
+
+
+
+"use strict";
+
+document.addEventListener("DOMContentLoaded", function () {
+    const menuToggle = document.getElementById("menuToggle");
+    const mainNav = document.getElementById("mainNav");
+
+    if (!menuToggle || !mainNav) {
+        return;
+    }
+
+    menuToggle.addEventListener("click", function () {
+        const isOpen = mainNav.classList.toggle("nav-open");
+
+        menuToggle.setAttribute(
+            "aria-expanded",
+            String(isOpen)
+        );
+
+        menuToggle.textContent = isOpen ? "✕" : "☰";
+    });
+
+    mainNav.querySelectorAll("a").forEach(function (link) {
+        link.addEventListener("click", function () {
+            mainNav.classList.remove("nav-open");
+            menuToggle.setAttribute("aria-expanded", "false");
+            menuToggle.textContent = "☰";
+        });
+    });
+});
+                        
