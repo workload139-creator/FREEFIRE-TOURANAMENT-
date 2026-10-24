@@ -53,8 +53,30 @@ def tournament_register(request, tournament_id):
         if form.is_valid():
             try:
                 with transaction.atomic():
+                    # Lock tournament to reduce simultaneous over-registration.
+                    locked_tournament = Tournament.objects.select_for_update().get(
+                        pk=tournament.pk
+                    )
+
+                    if locked_tournament.is_full:
+                        messages.error(
+                            request,
+                            "Tournament mein jagah full hai.",
+                        )
+                        return redirect("tournaments:list")
+
+                    if Registration.objects.filter(
+                        tournament=locked_tournament,
+                        player=request.user,
+                    ).exists():
+                        messages.info(
+                            request,
+                            "Aap pehle se registered hain.",
+                        )
+                        return redirect("tournaments:list")
+
                     registration = form.save(commit=False)
-                    registration.tournament = tournament
+                    registration.tournament = locked_tournament
                     registration.player = request.user
                     registration.entry_fee_paid = 0
                     registration.payment_verified = False
@@ -65,8 +87,8 @@ def tournament_register(request, tournament_id):
 
                 messages.success(
                     request,
-                    "Registration record ban gaya. Entry fee payment "
-                    "verify hone ke baad hi aage badh sakte hain.",
+                    "Registration record ban gaya. Payment verify hone ke baad "
+                    "hi registration confirm hogi.",
                 )
                 return redirect("tournaments:list")
 
@@ -148,7 +170,7 @@ def confirm_playing(request, registration_id):
         mark_not_playing_and_refund(registration_id)
         messages.error(
             request,
-            "Confirmation ka time khatam ho gaya. Registration aur refund status check karein.",
+            "Confirmation ka time khatam ho gaya. Refund status wallet mein check karein.",
         )
         return redirect("tournaments:list")
 
@@ -156,7 +178,7 @@ def confirm_playing(request, registration_id):
         request,
         "Tumhari participation confirm ho gayi!",
     )
-    return redirect("tournaments:list")
+    return redirect("tournaments:player_room", registration_id=registration_id)
 
 
 @login_required
@@ -170,7 +192,10 @@ def send_room_details(request, tournament_id):
 
     if not room_id or not room_password:
         messages.error(request, "Room ID aur password dono bharo.")
-        return redirect("tournaments:list")
+        return redirect(
+            "tournaments:admin_room_page",
+            tournament_id=tournament_id,
+        )
 
     with transaction.atomic():
         tournament = get_object_or_404(
@@ -183,7 +208,10 @@ def send_room_details(request, tournament_id):
                 request,
                 "Sirf upcoming tournament ke liye room details set kar sakte ho.",
             )
-            return redirect("tournaments:list")
+            return redirect(
+                "tournaments:admin_room_page",
+                tournament_id=tournament_id,
+            )
 
         tournament.room_id = room_id
         tournament.room_password = room_password
@@ -213,10 +241,13 @@ def send_room_details(request, tournament_id):
 
     messages.success(
         request,
-        "Room details set ho gayi hain. Eligible players ko "
-        "60 seconds mein confirmation dena hoga.",
+        "Room details set ho gayi hain. Eligible players ko 60 seconds "
+        "mein confirmation dena hoga.",
     )
-    return redirect("tournaments:list")
+    return redirect(
+        "tournaments:admin_room_page",
+        tournament_id=tournament_id,
+    )
 
 
 @login_required
@@ -245,7 +276,6 @@ def player_room(request, registration_id):
         and timezone.now() >= registration.ready_deadline
     ):
         mark_not_playing_and_refund(registration.id)
-
         registration.refresh_from_db()
 
         messages.warning(
@@ -253,7 +283,6 @@ def player_room(request, registration_id):
             "Confirmation ka time khatam ho gaya. Room access band kar diya gaya hai.",
         )
 
-    # Room details sirf eligible registration ko dikhayein.
     can_view_room = (
         registration.room_details_sent
         and registration.status
@@ -273,5 +302,45 @@ def player_room(request, registration_id):
             "tournament": registration.tournament,
             "can_view_room": can_view_room,
         },
+    )
+
+
+@login_required
+@user_passes_test(lambda user: user.is_staff)
+def admin_tournament_dashboard(request, tournament_id):
+    tournament = get_object_or_404(Tournament, pk=tournament_id)
+
+    registrations = (
+        Registration.objects
+        .filter(tournament=tournament)
+        .select_related("player")
+        .order_by("-registered_at")
+    )
+
+    context = {
+        "tournament": tournament,
+        "registrations": registrations,
+        "total_players": registrations.count(),
+        "verified_payments": registrations.filter(
+            payment_verified=True
+        ).count(),
+        "waiting_players": registrations.filter(
+            status=Registration.Status.WAITING_READY
+        ).count(),
+        "ready_players": registrations.filter(
+            status=Registration.Status.READY
+        ).count(),
+        "not_playing_players": registrations.filter(
+            status=Registration.Status.NOT_PLAYING
+        ).count(),
+        "refunded_players": registrations.filter(
+            refund_processed=True
+        ).count(),
+    }
+
+    return render(
+        request,
+        "tournaments/admin_dashboard.html",
+        context,
     )
 ```
