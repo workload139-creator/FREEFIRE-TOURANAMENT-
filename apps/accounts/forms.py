@@ -72,3 +72,43 @@ class PlayerRegistrationForm(UserCreationForm):
             )
 
         return uid
+
+
+
+from django import forms
+from decimal import Decimal
+
+from .models import DepositRequest
+
+
+class DepositRequestForm(forms.ModelForm):
+    class Meta:
+        model = DepositRequest
+        fields = ["amount", "payment_reference"]
+
+        widgets = {
+            "amount": forms.NumberInput(
+                attrs={
+                    "min": "10",
+                    "max": "5000",
+                    "step": "0.01",
+                    "placeholder": "Minimum ₹10",
+                }
+            ),
+            "payment_reference": forms.TextInput(
+                attrs={
+                    "placeholder": "Payment reference (if available)",
+                }
+            ),
+        }
+
+    def clean_amount(self):
+        amount = self.cleaned_data["amount"]
+
+        if amount < Decimal("10.00"):
+            raise forms.ValidationError("Minimum deposit ₹10 hai.")
+
+        if amount > Decimal("5000.00"):
+            raise forms.ValidationError("Ek deposit request ₹5000 se zyada nahi ho sakti.")
+
+        return amount
