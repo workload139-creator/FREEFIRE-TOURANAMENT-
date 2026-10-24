@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from django.db import IntegrityError, transaction
+from django.db import transaction
 from django.utils import timezone
 
 from apps.accounts.models import Wallet, WalletTransaction
@@ -25,8 +25,6 @@ def create_pending_registration(*, tournament_id, player, free_fire_uid):
     uid = str(free_fire_uid).strip()
     if not uid.isdigit() or not 5 <= len(uid) <= 30:
         raise RegistrationError("Free Fire UID 5 se 30 digits ka hona chahiye.")
-    if uid != (player.free_fire_uid or "").strip():
-        raise RegistrationError("Tournament UID account ke registered Free Fire UID se match honi chahiye.")
     if Registration.objects.filter(tournament=tournament, player=player).exists():
         raise RegistrationError("Aap is tournament mein pehle se registered hain.")
 

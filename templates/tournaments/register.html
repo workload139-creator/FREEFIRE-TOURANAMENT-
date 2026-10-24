@@ -3,33 +3,37 @@
 {% block title %}Join {{ tournament.title }} | FF Arena{% endblock %}
 
 {% block content %}
-<section class="registration-container" style="max-width:680px;margin:40px auto;padding:24px">
-    <a href="{% url 'tournaments:detail' tournament.id %}">← Tournament details</a>
-    <h1>Join Tournament</h1>
-    <div class="tournament-card" style="margin:20px 0;padding:22px;border-radius:16px">
-        <h2>{{ tournament.title }}</h2>
-        <p>Mode: {{ tournament.get_mode_display }}{% if tournament.mode == "VS" %} · {{ tournament.get_vs_format_display }}{% endif %}</p>
-        <p>Entry Fee: ₹{{ tournament.entry_fee }}</p>
-        <p>Prize Pool: ₹{{ tournament.prize_pool }}</p>
-        <p>Seats: {{ tournament.confirmed_players_count }}/{{ tournament.max_players }}</p>
-    </div>
-
-    {% if messages %}
-        {% for message in messages %}
-            <div class="message {{ message.tags }}">{{ message }}</div>
-        {% endfor %}
-    {% endif %}
-
-    <form method="post" action="{% url 'tournaments:register' tournament.id %}">
-        {% csrf_token %}
-        {{ form.non_field_errors }}
-        <div class="form-group">
-            <label for="{{ form.free_fire_uid.id_for_label }}">Free Fire UID</label>
-            {{ form.free_fire_uid }}
-            {{ form.free_fire_uid.errors }}
+<section class="auth-section">
+    <div class="auth-card tournament-register-card">
+        <a href="{% url 'tournaments:detail' tournament.id %}">← Tournament details</a>
+        <div class="auth-header">
+            <span class="brand-icon">FF</span>
+            <h1>JOIN TOURNAMENT</h1>
+            <p>Registration se pehle apni Free Fire UID check kar lo.</p>
         </div>
-        <p>Registration pehle pending rahegi. Entry fee wallet se verify/debit karne ka flow complete hone tak payment verified nahi maana jayega.</p>
-        <button type="submit">Continue Registration</button>
-    </form>
+
+        <div class="tournament-card" style="margin:20px 0;padding:22px;border-radius:16px">
+            <h2>{{ tournament.title }}</h2>
+            <p>Mode: {{ tournament.get_mode_display }}{% if tournament.mode == "VS" %} · {{ tournament.get_vs_format_display }}{% endif %}</p>
+            <div class="tournament-stats">
+                <div><small>Entry Fee</small><strong>₹{{ tournament.entry_fee }}</strong></div>
+                <div><small>Prize Pool</small><strong>₹{{ tournament.prize_pool }}</strong></div>
+                <div><small>Players</small><strong>{{ tournament.confirmed_players_count }}/{{ tournament.max_players }}</strong></div>
+            </div>
+        </div>
+
+        {% if form.non_field_errors %}<div class="error-box">{{ form.non_field_errors }}</div>{% endif %}
+        <form method="post" action="{% url 'tournaments:register' tournament.id %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="{{ form.free_fire_uid.id_for_label }}">Free Fire UID</label>
+                {{ form.free_fire_uid }}
+                {% for error in form.free_fire_uid.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                <small class="help-text">UID yahan enter karein. Isi tournament UID se leaderboard aur kill evidence match hoga.</small>
+            </div>
+            <div class="profile-notice"><p>Entry fee ₹{{ tournament.entry_fee }} aapke wallet se debit hogi. Wallet mein balance kam hua to pehle deposit karein. Payment ko admin verify karega.</p></div>
+            <button type="submit" class="btn-primary">CONTINUE REGISTRATION</button>
+        </form>
+    </div>
 </section>
 {% endblock %}

@@ -1,78 +1,47 @@
 "use strict";
 
-/**
- * FF Tournament
- * Main JavaScript
- */
-
 document.addEventListener("DOMContentLoaded", () => {
     initializeMobileMenu();
-    initializeAlerts();
+    initializeFormSubmission();
 });
 
-
-/**
- * Mobile navigation menu.
- */
 function initializeMobileMenu() {
-    const menuToggle = document.getElementById("menuToggle");
-    const navLinks = document.getElementById("navLinks");
+    const toggle = document.getElementById("menuToggle");
+    const nav = document.getElementById("mainNav");
+    if (!toggle || !nav) return;
 
-    if (!menuToggle || !navLinks) {
-        return;
-    }
+    const closeMenu = () => {
+        nav.classList.remove("nav-open");
+        toggle.setAttribute("aria-expanded", "false");
+        toggle.setAttribute("aria-label", "Open navigation");
+        toggle.textContent = "☰";
+    };
 
-    menuToggle.addEventListener("click", () => {
-        const isOpen = navLinks.classList.toggle("is-open");
-
-        menuToggle.setAttribute(
-            "aria-expanded",
-            String(isOpen)
-        );
-
-        menuToggle.setAttribute(
-            "aria-label",
-            isOpen ? "Close navigation" : "Open navigation"
-        );
-
-        menuToggle.textContent = isOpen ? "✕" : "☰";
+    toggle.addEventListener("click", () => {
+        const isOpen = nav.classList.toggle("nav-open");
+        toggle.setAttribute("aria-expanded", String(isOpen));
+        toggle.setAttribute("aria-label", isOpen ? "Close navigation" : "Open navigation");
+        toggle.textContent = isOpen ? "✕" : "☰";
     });
 
-    navLinks.querySelectorAll("a").forEach((link) => {
-        link.addEventListener("click", () => {
-            navLinks.classList.remove("is-open");
+    nav.querySelectorAll("a").forEach((link) => {
+        link.addEventListener("click", closeMenu);
+    });
 
-            menuToggle.setAttribute("aria-expanded", "false");
-            menuToggle.setAttribute(
-                "aria-label",
-                "Open navigation"
-            );
+    nav.querySelectorAll("form").forEach((form) => {
+        form.addEventListener("submit", closeMenu);
+    });
 
-            menuToggle.textContent = "☰";
-        });
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeMenu();
     });
 
     window.addEventListener("resize", () => {
-        if (window.innerWidth > 768) {
-            navLinks.classList.remove("is-open");
-
-            menuToggle.setAttribute("aria-expanded", "false");
-            menuToggle.setAttribute(
-                "aria-label",
-                "Open navigation"
-            );
-
-            menuToggle.textContent = "☰";
-        }
+        if (window.innerWidth > 850) closeMenu();
     });
 }
 
-
-/**
- * Prevent accidental double-clicks on forms.
- * The button is restored if browser validation fails.
- */
-function initializeAlerts() {
+function initializeFormSubmission() {
     document.querySelectorAll("form").forEach((form) => {
         form.addEventListener("submit", (event) => {
             if (!form.checkValidity()) {
@@ -81,51 +50,20 @@ function initializeAlerts() {
                 return;
             }
 
-            const submitButton = event.submitter;
+            const button = event.submitter;
+            if (!button || button.disabled || button.dataset.allowRepeat === "true") return;
 
-            if (!submitButton || submitButton.disabled) {
-                return;
-            }
+            button.dataset.originalText = button.textContent.trim();
+            button.disabled = true;
+            button.textContent = "Please wait…";
 
-            submitButton.dataset.originalText =
-                submitButton.textContent;
-
-            submitButton.disabled = true;
-            submitButton.textContent = "Please wait...";
-
+            // Re-enable on browser-side navigation failures or server validation rerenders.
             window.setTimeout(() => {
-                if (submitButton.isConnected) {
-                    submitButton.disabled =
-
-
-
-"use strict";
-
-document.addEventListener("DOMContentLoaded", function () {
-    const menuToggle = document.getElementById("menuToggle");
-    const mainNav = document.getElementById("mainNav");
-
-    if (!menuToggle || !mainNav) {
-        return;
-    }
-
-    menuToggle.addEventListener("click", function () {
-        const isOpen = mainNav.classList.toggle("nav-open");
-
-        menuToggle.setAttribute(
-            "aria-expanded",
-            String(isOpen)
-        );
-
-        menuToggle.textContent = isOpen ? "✕" : "☰";
-    });
-
-    mainNav.querySelectorAll("a").forEach(function (link) {
-        link.addEventListener("click", function () {
-            mainNav.classList.remove("nav-open");
-            menuToggle.setAttribute("aria-expanded", "false");
-            menuToggle.textContent = "☰";
+                if (button.isConnected) {
+                    button.disabled = false;
+                    button.textContent = button.dataset.originalText || "Submit";
+                }
+            }, 10000);
         });
     });
-});
-                        
+}

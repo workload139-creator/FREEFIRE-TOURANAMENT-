@@ -1,78 +1,35 @@
 {% extends "base.html" %}
 
-{% block title %}My Profile | FF Tournament{% endblock %}
+{% block title %}My Profile | FF Arena{% endblock %}
 
 {% block content %}
-
 <section class="auth-section">
-    <div class="auth-card">
-
+    <div class="auth-card profile-card">
         <div class="auth-header">
+            <span class="brand-icon">FF</span>
             <h1>PLAYER PROFILE</h1>
-            <p>Welcome to FF Tournament!</p>
+            <p>Welcome to FF Arena, {{ player.username }}!</p>
         </div>
 
         <div class="profile-details">
-
-            <div class="profile-item">
-                <span>Username</span>
-                <strong>{{ player.username }}</strong>
-            </div>
-
-            <div class="profile-item">
-                <span>Email Address</span>
-                <strong>{{ player.email|default:"Not added" }}</strong>
-            </div>
-
-            <div class="profile-item">
-                <span>Mobile Number</span>
-                <strong>
-                    {{ player.phone_number|default:"Not added" }}
-                </strong>
-            </div>
-
-            <div class="profile-item">
-                <span>Free Fire UID</span>
-                <strong>
-                    {{ player.free_fire_uid|default:"Not added" }}
-                </strong>
-            </div>
-
+            <div class="profile-item"><span>Username</span><strong>{{ player.username }}</strong></div>
+            <div class="profile-item"><span>Email Address</span><strong>{{ player.email|default:"Not added" }}</strong></div>
+            <div class="profile-item"><span>Mobile Number</span><strong>{{ player.phone_number|default:"Not added" }}</strong></div>
             <div class="profile-item">
                 <span>Phone Verification</span>
-
-                {% if player.phone_verified %}
-                    <strong class="status-verified">Verified</strong>
-                {% else %}
-                    <strong class="status-pending">Pending</strong>
-                {% endif %}
+                {% if player.phone_verified %}<strong class="status-verified">Verified</strong>{% else %}<strong class="status-pending">Pending</strong>{% endif %}
             </div>
-
-            <div class="profile-item">
-                <span>Free Fire UID Verification</span>
-
-                {% if player.uid_verified %}
-                    <strong class="status-verified">Verified</strong>
-                {% else %}
-                    <strong class="status-pending">Pending</strong>
-                {% endif %}
-            </div>
-
         </div>
 
         <div class="profile-notice">
-            <p>
-                Phone number aur Free Fire UID ki verification
-                abhi pending ho sakti hai. Tournament join karne
-                se pehle zaroori verification complete karni hogi.
-            </p>
+            <p><strong>Free Fire UID tournament join karte waqt maangi jayegi.</strong> Har tournament ki registration UID hi us tournament ke payment record, leaderboard aur kill-evidence check ke saath match hogi.</p>
         </div>
 
-        <a href="/" class="btn-primary profile-home-btn">
-            BACK TO HOME
-        </a>
-
+        <div class="hero-actions">
+            <a class="btn-primary" href="{% url 'tournaments:list' %}">BROWSE TOURNAMENTS</a>
+            <a class="btn-secondary" href="{% url 'accounts:wallet' %}">OPEN WALLET</a>
+            <a class="btn-secondary" href="{% url 'tournaments:my_registrations' %}">MY TOURNAMENTS</a>
+        </div>
     </div>
 </section>
-
 {% endblock %}
