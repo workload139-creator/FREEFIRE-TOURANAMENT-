@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+
+    <h2>🔥 Free Fire Admin Dashboard</h2>
+    <h4>{{ tournament.title }}</h4>
+
+    <div class="row g-3 my-3">
+        <div class="col-md-4">
+            <div class="card p-3">
+                <h6>Total Registrations</h6>
+                <h3>{{ total_players }}</h3>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card p-3">
+                <h6>Verified Payments</h6>
+                <h3>{{ verified_payments }}</h3>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card p-3">
+                <h6>Waiting for YES</h6>
+                <h3>{{ waiting_players }}</h3>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card p-3">
+                <h6>Confirmed Players</h6>
+                <h3>{{ ready_players }}</h3>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card p-3">
+                <h6>Not Playing</h6>
+                <h3>{{ not_playing_players }}</h3>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card p-3">
+                <h6>Refund Processed</h6>
+                <h3>{{ refunded_players }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="card p-3">
+        <h4>Player List</h4>
+
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>Player</th>
+                        <th>Free Fire UID</th>
+                        <th>Entry Fee</th>
+                        <th>Payment</th>
+                        <th>Status</th>
+                        <th>Refund</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for registration in registrations %}
+                    <tr>
+                        <td>{{ registration.player.username }}</td>
+                        <td>{{ registration.free_fire_uid }}</td>
+                        <td>₹{{ registration.entry_fee_paid }}</td>
+
+                        <td>
+                            {% if registration.payment_verified %}
+                                <span class="text-success">Verified</span>
+                            {% else %}
+                                <span class="text-danger">Not verified</span>
+                            {% endif %}
+                        </td>
+
+                        <td>{{ registration.get_status_display }}</td>
+
+                        <td>
+                            {% if registration.refund_processed %}
+                                <span class="text-success">Processed</span>
+                            {% else %}
+                                <span class="text-muted">No refund recorded</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6">Abhi koi registration nahi hai.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <a
+        href="{% url 'tournaments:admin_room_page' tournament.id %}"
+        class="btn btn-primary mt-3"
+    >
+        Manage Room Details
+    </a>
+
+</div>
+{% endblock %}
