@@ -3,7 +3,7 @@
 
 {% block content %}
 <section class="tournament-page">
-    <div class="tournament-heading">
+    <div class="tournament-heading">ong>
         <p>FREE FIRE ESPORTS</p>
         <h1>Choose Your Tournament</h1>
         <span>Apna mode chuno aur competition ke liye taiyar ho jao.</span>
@@ -24,7 +24,7 @@
                     <div class="tournament-stats">
                         <div>
                             <small>Entry Fee</small>
-                            <strong>₹{{ tournament.entry_fee }}</strong>
+                            <strong>₹{{ tournament.entry_fee }}</str
                         </div>
                         <div>
                             <small>Prize Pool</small>
@@ -147,3 +147,16 @@
 }
 </style>
 {% endblock %}
+
+
+
+
+{% if user.is_authenticated and tournament.status == "upcoming" and not tournament.is_full %}
+    <a href="{% url 'tournaments:register' tournament.id %}">
+        Register Now
+    </a>
+{% elif not user.is_authenticated %}
+    <a href="{% url 'login' %}">Login to Register</a>
+{% else %}
+    <p>Registration currently unavailable.</p>
+{% endif %}
