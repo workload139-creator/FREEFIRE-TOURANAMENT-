@@ -10,6 +10,7 @@ from django.views.decorators.http import require_POST
 
 from apps.accounts.models import Wallet, WalletTransaction, AdminWallet, AdminWalletTransaction
 from .forms import RegistrationForm
+from .registration_services import RegistrationError, create_pending_registration
 from .models import KillSubmission, Registration, Tournament
 
 
@@ -53,61 +54,26 @@ def tournament_register(request, tournament_id):
     if not form.is_valid():
         return render(request, "tournaments/register.html", {"tournament": tournament, "form": form})
 
-    uid = form.cleaned_data["free_fire_uid"]
-    registered_uid = (request.user.free_fire_uid or "").strip()
-    if not registered_uid or uid != registered_uid:
-        form.add_error(
-            "free_fire_uid",
-            "Tournament UID aapke account ke registered Free Fire UID se match honi chahiye.",
+    try:
+        create_pending_registration(
+            tournament_id=tournament_id,
+            player=request.user,
+            free_fire_uid=form.cleaned_data["free_fire_uid"],
         )
+    except RegistrationError as exc:
+        form.add_error(None, str(exc))
         return render(
             request,
             "tournaments/register.html",
             {"tournament": tournament, "form": form},
         )
-
-    try:
-        with transaction.atomic():
-            tournament = get_object_or_404(Tournament.objects.select_for_update(), pk=tournament_id)
-            if tournament.status != Tournament.Status.UPCOMING or tournament.start_time <= timezone.now():
-                messages.error(request, "Yeh tournament registration ke liye available nahi hai.")
-                return redirect("tournaments:list")
-            if tournament.is_full:
-                messages.error(request, "Tournament full hai.")
-                return redirect("tournaments:list")
-            if Registration.objects.filter(tournament=tournament, player=request.user).exists():
-                messages.info(request, "Aap pehle se registered hain.")
-                return redirect("tournaments:detail", tournament_id=tournament.pk)
-
-            wallet, _ = Wallet.objects.get_or_create(user=request.user)
-            wallet = Wallet.objects.select_for_update().get(pk=wallet.pk)
-            fee = tournament.entry_fee
-            if wallet.balance < fee:
-                messages.error(request, f"Wallet mein balance kam hai. Entry fee ₹{fee} hai; pehle wallet mein deposit request karein.")
-                return redirect("accounts:wallet")
-
-            registration = Registration.objects.create(
-                tournament=tournament,
-                player=request.user,
-                free_fire_uid=uid,
-                entry_fee_paid=fee,
-                payment_verified=False,
-                status=Registration.Status.PENDING_PAYMENT,
-            )
-            wallet.balance -= fee
-            wallet.save(update_fields=["balance", "updated_at"])
-            if fee > Decimal("0.00"):
-                WalletTransaction.objects.create(
-                    wallet=wallet,
-                    transaction_type=WalletTransaction.TransactionType.ENTRY_FEE,
-                    amount=fee,
-                    status=WalletTransaction.Status.COMPLETED,
-                    reference=f"TOURNEY-ENTRY-{registration.pk}",
-                    description=f"Entry fee for tournament {tournament.title}; awaiting admin payment review",
-                )
     except IntegrityError:
-        messages.error(request, "Registration nahi ho saki; aap pehle se registered ho sakte hain.")
-        return redirect("tournaments:list")
+        form.add_error(None, "Registration nahi ho saki; aap pehle se registered ho sakte hain.")
+        return render(
+            request,
+            "tournaments/register.html",
+            {"tournament": tournament, "form": form},
+        )
 
     messages.success(request, "Entry fee wallet se debit ho gayi. Admin verification ke baad registration confirm hogi.")
     return redirect("tournaments:list")
