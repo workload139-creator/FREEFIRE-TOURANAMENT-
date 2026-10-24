@@ -1,74 +1,149 @@
+
 {% extends "base.html" %}
 
-{% block title %}Tournaments | Free Fire Arena{% endblock %}
-
 {% block content %}
-<section class="tournament-section">
-    <div class="container">
-        <div class="section-heading">
-            <p class="eyebrow">COMPETE • WIN • REPEAT</p>
-            <h1>Free Fire Tournaments</h1>
-            <p>Apna tournament chuno aur battle ke liye taiyar ho jao.</p>
-        </div>
+<section class="tournament-page">
+    <div class="tournament-heading">
+        <p>FREE FIRE ESPORTS</p>
+        <h1>Choose Your Tournament</h1>
+        <span>Apna mode chuno aur competition ke liye taiyar ho jao.</span>
+    </div>
 
-        <div class="tournament-grid">
-            {% for tournament in tournaments %}
+    <div class="mode-heading">
+        <h2>Battle Royale</h2>
+    </div>
+
+    <div class="tournament-grid">
+        {% for tournament in tournaments %}
+            {% if tournament.mode == "BR" %}
                 <article class="tournament-card">
-                    <div class="tournament-card-content">
-                        <span class="tournament-status">
-                            {{ tournament.get_status_display }}
-                        </span>
+                    <span class="mode-label">BATTLE ROYALE</span>
+                    <h3>{{ tournament.title }}</h3>
+                    <p>{{ tournament.description|default:"Join the battle!" }}</p>
 
-                        <h2>{{ tournament.title }}</h2>
-
-                        {% if tournament.description %}
-                            <p>{{ tournament.description }}</p>
-                        {% endif %}
-
-                        <div class="tournament-details">
-                            <div>
-                                <span>Entry Fee</span>
-                                <strong>₹{{ tournament.entry_fee }}</strong>
-                            </div>
-
-                            <div>
-                                <span>Prize Pool</span>
-                                <strong>₹{{ tournament.prize_pool }}</strong>
-                            </div>
-
-                            <div>
-                                <span>Players</span>
-                                <strong>
-                                    {{ tournament.confirmed_players_count }}/{{ tournament.max_players }}
-                                </strong>
-                            </div>
-
-                            <div>
-                                <span>Start Time</span>
-                                <strong>{{ tournament.start_time|date:"d M, h:i A" }}</strong>
-                            </div>
+                    <div class="tournament-stats">
+                        <div>
+                            <small>Entry Fee</small>
+                            <strong>₹{{ tournament.entry_fee }}</strong>
                         </div>
-
-                        {% if tournament.is_full %}
-                            <button class="btn" disabled>Room Full</button>
-                        {% else %}
-                            {% if tournament.status == "upcoming" %}
-                                <button class="btn" disabled>Registration Flow Coming Next</button>
-                            {% else %}
-                                <button class="btn" disabled>
-                                    {{ tournament.get_status_display }}
-                                </button>
-                            {% endif %}
-                        {% endif %}
+                        <div>
+                            <small>Prize Pool</small>
+                            <strong>₹{{ tournament.prize_pool }}</strong>
+                        </div>
+                        <div>
+                            <small>Players</small>
+                            <strong>{{ tournament.confirmed_players_count }}/{{ tournament.max_players }}</strong>
+                        </div>
                     </div>
+
+                    <p>Status: {{ tournament.get_status_display }}</p>
+                    <p>Start: {{ tournament.start_time|date:"d M Y, h:i A" }}</p>
                 </article>
-            {% empty %}
-                <div class="empty-state">
-                    <h2>Abhi koi tournament nahi hai</h2>
-                    <p>Admin panel se tournament add karne ke baad yahan dikhega.</p>
-                </div>
-            {% endfor %}
-        </div>
+            {% endif %}
+        {% empty %}
+            <p>Abhi koi tournament available nahi hai.</p>
+        {% endfor %}
+    </div>
+
+    <div class="mode-heading">
+        <h2>VS Battles</h2>
+        <p>1v1 · 2v2 · 3v3 · 4v4</p>
+    </div>
+
+    <div class="tournament-grid">
+        {% for tournament in tournaments %}
+            {% if tournament.mode == "VS" %}
+                <article class="tournament-card">
+                    <span class="mode-label">VS BATTLE</span>
+                    <h3>{{ tournament.title }}</h3>
+                    <p>Format: {{ tournament.get_vs_format_display|default:"VS Match" }}</p>
+                    <p>{{ tournament.description|default:"Challenge your opponents!" }}</p>
+
+                    <div class="tournament-stats">
+                        <div>
+                            <small>Entry Fee</small>
+                            <strong>₹{{ tournament.entry_fee }}</strong>
+                        </div>
+                        <div>
+                            <small>Prize Pool</small>
+                            <strong>₹{{ tournament.prize_pool }}</strong>
+                        </div>
+                        <div>
+                            <small>Players</small>
+                            <strong>{{ tournament.confirmed_players_count }}/{{ tournament.max_players }}</strong>
+                        </div>
+                    </div>
+
+                    <p>Status: {{ tournament.get_status_display }}</p>
+                    <p>Start: {{ tournament.start_time|date:"d M Y, h:i A" }}</p>
+                </article>
+            {% endif %}
+        {% empty %}
+            <p>Abhi koi tournament available nahi hai.</p>
+        {% endfor %}
     </div>
 </section>
+
+<style>
+.tournament-page {
+    max-width: 1150px;
+    margin: 35px auto;
+    padding: 20px;
+}
+.tournament-heading {
+    text-align: center;
+    margin-bottom: 35px;
+}
+.tournament-heading > p {
+    color: #ff6b35;
+    font-weight: bold;
+    letter-spacing: 3px;
+}
+.tournament-heading h1 {
+    margin: 8px 0;
+    font-size: clamp(28px, 5vw, 44px);
+}
+.mode-heading {
+    margin: 30px 0 15px;
+}
+.tournament-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+.tournament-card {
+    padding: 22px;
+    border: 1px solid #444;
+    border-radius: 16px;
+    background: #171923;
+    color: #fff;
+}
+.mode-label {
+    color: #ff895e;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+.tournament-card h3 {
+    margin: 12px 0;
+}
+.tournament-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin: 20px 0;
+}
+.tournament-stats div {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+.tournament-stats small {
+    color: #bbb;
+    font-size: 11px;
+}
+.tournament-stats strong {
+    font-size: 14px;
+}
+</style>
 {% endblock %}
