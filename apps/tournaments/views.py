@@ -3,6 +3,10 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404, redirect, render
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.shortcuts import get_object_or_404, redirect
+from django.utils import timezone
 
 from .forms import RegistrationForm
 from .models import Registration, Tournament
@@ -77,3 +81,44 @@ def tournament_register(request, tournament_id):
             "tournament": tournament,
         },
     )
+
+
+
+
+@login_required
+def confirm_playing(request, registration_id):
+    if request.method != "POST":
+        return redirect("tournaments:list")
+
+    registration = get_object_or_404(
+        Registration,
+        pk=registration_id,
+        player=request.user,
+    )
+
+    if not registration.room_details_sent:
+        messages.error(request, "Room details abhi available nahi hain.")
+        return redirect("tournaments:list")
+
+    if not registration.ready_deadline:
+        messages.error(request, "Confirmation deadline set nahi hai.")
+        return redirect("tournaments:list")
+
+    if timezone.now() > registration.ready_deadline:
+        registration.status = Registration.Status.NOT_PLAYING
+        registration.save(update_fields=["status"])
+        messages.error(request, "Confirmation ka time khatam ho gaya.")
+        return redirect("tournaments:list")
+
+    if registration.status != Registration.Status.WAITING_READY:
+        messages.error(request, "Is registration ki confirmation available nahi hai.")
+        return redirect("tournaments:list")
+
+    registration.status = Registration.Status.READY
+    registration.ready_confirmed_at = timezone.now()
+    registration.save(
+        update_fields=["status", "ready_confirmed_at"]
+    )
+
+    messages.success(request, "Tumhari participation confirm ho gayi!")
+    return redirect("tournaments:list")
