@@ -57,3 +57,30 @@ class WalletAdmin(admin.ModelAdmin):
 
 
 
+from .models import WalletTransaction
+
+
+@admin.register(WalletTransaction)
+class WalletTransactionAdmin(admin.ModelAdmin):
+    list_display = (
+        "wallet",
+        "transaction_type",
+        "amount",
+        "status",
+        "reference",
+        "created_at",
+    )
+
+    list_filter = ("transaction_type", "status", "created_at")
+
+    search_fields = (
+        "wallet__user__username",
+        "reference",
+        "description",
+    )
+
+    readonly_fields = ("created_at",)
+
+
+
+
