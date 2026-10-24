@@ -9,7 +9,7 @@
         <p>Available Balance</p>
         <h2>₹{{ wallet.balance }}</h2>
         <p>Deposit minimum ₹10 hai. Maximum wallet balance ₹5000 hai.</p>
-        <a class="button button-primary" href="{% url 'accounts:deposit' %}">Request Deposit</a>
+        <div style="display:flex;gap:12px;flex-wrap:wrap"><a class="button button-primary" href="{% url 'accounts:deposit' %}">Request Deposit</a><a class="button button-outline" href="{% url 'accounts:withdraw' %}">Withdraw to UPI</a><a class="button button-outline" href="{% url 'tournaments:my_registrations' %}">My Tournaments</a></div>
     </div>
     <h2 style="margin-top:30px">Transaction History</h2>
     {% for transaction in transactions %}
