@@ -1,0 +1,50 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="tournament-card">
+        <h1>Match Confirmation</h1>
+
+        <h2>{{ registration.tournament.title }}</h2>
+
+        <p>
+            Free Fire UID:
+            <strong>{{ registration.free_fire_uid }}</strong>
+        </p>
+
+        <p>
+            <strong>Status:</strong>
+            {{ registration.get_status_display }}
+        </p>
+
+        {% if registration.status == "waiting_ready" %}
+            <p>
+                Admin ne tumhare match ke liye room details ready ki hain.
+                Khelne ke liye apni confirmation do.
+            </p>
+
+            <form method="post">
+                {% csrf_token %}
+
+                <button type="submit" name="ready" value="yes">
+                    Yes, I’m Ready
+                </button>
+
+                <button type="submit" name="ready" value="no">
+                    No, I Can’t Play
+                </button>
+            </form>
+
+        {% elif registration.status == "ready" %}
+            <p>You have confirmed that you are ready to play.</p>
+
+        {% elif registration.status == "not_playing" %}
+            <p>You are marked as not playing in this tournament.</p>
+
+        {% else %}
+            <p>Admin ki confirmation ka intezar karein.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
