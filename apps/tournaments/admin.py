@@ -20,13 +20,27 @@ class TournamentAdmin(admin.ModelAdmin):
         "max_players",
         "start_time",
         "status",
+        "player",
+    "tournament",
+    "free_fire_uid",
+    "payment_verified",
+    "status",
+    "ready_deadline",
+    "refund_processed",
+
     )
 
     list_filter = (
         "mode",
         "status",
         "start_time",
+       "status",
+    "payment_verified",
+    "refund_processed" ,
     )
+
+
+    
 
     search_fields = (
         "title",
