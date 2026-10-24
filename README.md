@@ -1,51 +1,87 @@
-# FF Tournament Website
+# FF Arena — Free Fire Tournament Website
 
-A modular Django-based Free Fire tournament management platform.
+Modular Django website for player accounts, tournament registrations, wallet ledgers, room confirmation, match-history evidence, leaderboards and admin review.
 
-## Project structure
+## Structure
 
-- `apps/accounts/`: player accounts, wallet, deposits and admin ledger.
-- `apps/tournaments/`: tournament models, registration, room confirmation, refunds and kill-reward calculation.
-- `apps/tournaments/management/commands/`: scheduled maintenance commands.
+- `config/`: Django settings and URL routing.
+- `apps/accounts/`: player accounts, wallet, deposits, withdrawal requests and accounting models.
+- `apps/tournaments/`: tournaments, registrations, room confirmation, refunds, evidence uploads, AI proposal adapter and leaderboards.
+- `apps/tournaments/management/commands/`: maintenance commands.
 - `templates/`: Django templates.
 - `static/`: CSS and JavaScript.
-- `config/settings/`: shared, development and production settings.
+- `main.py`: shared project-level constants and feature flags.
+- `.github/workflows/django-checks.yml`: automatic migration, system-check and test workflow.
 
-## Development setup
+## Local setup (Windows / PowerShell)
 
-1. Install Python 3.11 or later.
-2. Create and activate a virtual environment.
-3. Install dependencies: `pip install -r requirements.txt`.
-4. Copy `.env.example` to `.env` and set a unique local `DJANGO_SECRET_KEY`.
-5. Generate and apply migrations:
+1. Install Python 3.12 (or a supported Python version).
+2. Open this repository folder in VS Code.
+3. Create a virtual environment:
+
    ```powershell
-   python manage.py makemigrations accounts tournaments
-   python manage.py migrate
+   py -m venv .venv
+   .\.venv\Scripts\Activate.ps1
    ```
-6. Check configuration and run tests:
+
+4. Install dependencies:
+
    ```powershell
+   python -m pip install --upgrade pip
+   pip install -r requirements.txt
+   ```
+
+5. Copy `.env.example` to `.env`. Keep real API keys only in the ignored local `.env` file. Never commit secrets.
+6. Apply the committed migrations and run checks:
+
+   ```powershell
+   python manage.py migrate
    python manage.py check
    python manage.py test
    ```
-7. Start the development server: `python manage.py runserver`.
 
-## Expired room confirmations
+7. Create an admin account and start the site:
 
-A player who receives room details must press YES within 60 seconds. To process expired confirmations and record eligible wallet refunds, run:
+   ```powershell
+   python manage.py createsuperuser
+   python manage.py runserver
+   ```
+
+Open `http://127.0.0.1:8000/`; the admin site is at `http://127.0.0.1:8000/admin/`.
+
+## Room confirmation and refunds
+
+The admin sets room details for eligible registrations. Players can see them only after payment verification and must press YES within 60 seconds. To process expired confirmations, run:
 
 ```powershell
 python manage.py process_expired_confirmations
 ```
 
-This command must be scheduled to run regularly using Windows Task Scheduler or a server scheduler. It does not run automatically just because the website is open.
+This command is not a background scheduler. Configure Windows Task Scheduler or a server scheduler to run it regularly. Admin can also cancel a tournament using the tournament admin action; the service records wallet refunds for eligible paid registrations.
 
-## Important implementation limits
+## Wallet and payments — important
 
-- Tournament entry fees are debited from the player wallet and remain pending until an admin uses the payment-verification action. Only mark them verified after checking the matching ledger.
-- Deposits stay pending until an admin checks the real payment receipt/reference and uses the approval action. No payment provider is connected yet; a typed UPI reference alone is not proof of payment.
-- WhatsApp links are click-to-chat links; automatic delivery needs an approved WhatsApp API/provider.
-- Kill reward calculations are helper logic only. AI evidence analysis, evidence upload persistence and final payout orchestration still require implementation and tests.
-- Phone/UID verification flags exist, but a live OTP provider and automated verification flow are not connected.
-- Do not enable real-money payouts until provider verification, refund/payout ledger logic, security review and automated tests are complete.
+- Player deposit requests remain pending until an admin checks the actual receipt/reference and uses the approval action. A typed reference alone does not prove payment.
+- Tournament entry fees are debited from the player wallet. Admin payment review checks the corresponding wallet ledger before confirming a registration.
+- Withdrawals reserve/debit the requested amount and remain pending until the admin has actually transferred the money through UPI and records the payout reference in admin. The website does not send UPI payments by itself.
+- Kill rewards are credited to the player wallet only after an admin enters the approved kill count and the admin wallet has sufficient balance. This is internal/demo wallet accounting, not a bank transfer.
+- Do not use the demo wallet ledger for real-money operations until a trusted payment provider, verified webhooks, reconciliation, security review and automated tests are in place.
 
-Never commit `.env`, passwords, payment secrets, or production credentials.
+## AI match-history review
+
+The optional adapter in `apps/tournaments/ai_review.py` samples frames from the submitted video using FFmpeg and sends those frames plus two screenshots to the configured OpenAI Responses API. It requires:
+
+- `OPENAI_API_KEY` configured in the local/server environment (never commit it).
+- FFmpeg installed on the server and available on `PATH`, or set `FFMPEG_PATH`.
+- A model available to your API account, configured with `OPENAI_KILL_REVIEW_MODEL`.
+
+Players must consent to AI processing on the upload form. If AI is unavailable, the evidence is still saved for manual review. AI output is only a proposal; an admin must inspect the evidence and approve/correct the kill count before wallet reward accounting. The upload checks file extensions and size; verify the match video duration and evidence manually.
+
+## External services not yet integrated
+
+- Phone-number OTP verification provider.
+- Verified automatic UPI deposit and payout provider/webhooks.
+- Automatic WhatsApp message delivery via an approved WhatsApp Business API/provider. The existing notification helper only builds click-to-chat links.
+- Production-grade private media storage and access controls. Local media serving is enabled only in development.
+
+GitHub Actions is configured to check migration consistency, apply migrations, run `manage.py check`, and run tests on pushes and pull requests. Passing these checks is not a substitute for payment-provider and production security review.
