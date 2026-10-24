@@ -10,7 +10,7 @@ from django.views.decorators.http import require_POST
 
 from apps.accounts.models import Wallet, WalletTransaction, AdminWallet, AdminWalletTransaction
 from .forms import RegistrationForm
-from .models import Registration, Tournament
+from .models import KillSubmission, Registration, Tournament
 
 
 def tournament_list(request):
@@ -210,3 +210,168 @@ def admin_tournament_dashboard(request, tournament_id):
         "refunded_players": registrations.filter(refund_processed=True).count(),
     }
     return render(request, "tournaments/admin_dashboard.html", context)
+
+
+
+@login_required
+def my_registrations(request):
+    registrations = Registration.objects.filter(player=request.user).select_related("tournament")
+    return render(request, "tournaments/my_registrations.html", {"registrations": registrations})
+
+
+@login_required
+def kill_submission(request, registration_id):
+    registration = get_object_or_404(
+        Registration.objects.select_related("tournament", "player"),
+        pk=registration_id,
+        player=request.user,
+    )
+    if not registration.payment_verified or registration.status not in (
+        Registration.Status.READY,
+        Registration.Status.NOT_PLAYING,
+    ):
+        messages.error(request, "Kill evidence submit karne ke liye verified registration zaroori hai.")
+        return redirect("tournaments:my_registrations")
+
+    if KillSubmission.objects.filter(registration=registration, status=KillSubmission.Status.PENDING).exists():
+        messages.info(request, "Aapki ek submission pehle hi review ka intezar kar rahi hai.")
+        return redirect("tournaments:my_registrations")
+
+    if request.method == "POST":
+        from .forms import KillSubmissionForm
+        form = KillSubmissionForm(request.POST, request.FILES)
+        if form.is_valid():
+            submitted_uid = form.cleaned_data["free_fire_uid"]
+            if submitted_uid != registration.free_fire_uid:
+                form.add_error("free_fire_uid", "UID registration wali UID se match nahi karti.")
+            else:
+                submission = form.save(commit=False)
+                submission.registration = registration
+                submission.player = request.user
+                submission.tournament = registration.tournament
+                submission.registered_uid = registration.free_fire_uid
+                submission.proposed_reward = Decimal("0.00")
+                submission.save()
+                messages.success(request, "Evidence submit ho gaya. Abhi AI result ya payout confirm nahi hua; admin review karega.")
+                return redirect("tournaments:my_registrations")
+    else:
+        from .forms import KillSubmissionForm
+        form = KillSubmissionForm(initial={"free_fire_uid": registration.free_fire_uid})
+
+    return render(request, "tournaments/kill_submission.html", {
+        "form": form,
+        "registration": registration,
+        "tournament": registration.tournament,
+    })
+
+
+@login_required
+@user_passes_test(lambda user: user.is_staff)
+def admin_kill_review(request):
+    submissions = KillSubmission.objects.filter(
+        status=KillSubmission.Status.PENDING
+    ).select_related("player", "tournament", "registration")
+    return render(request, "tournaments/admin_kill_review.html", {"submissions": submissions})
+
+
+@login_required
+@user_passes_test(lambda user: user.is_staff)
+@require_POST
+def review_kill_submission(request, submission_id):
+    with transaction.atomic():
+        submission = get_object_or_404(
+            KillSubmission.objects.select_for_update().select_related("registration", "player", "tournament"),
+            pk=submission_id,
+        )
+        if submission.status != KillSubmission.Status.PENDING:
+            messages.error(request, "Yeh submission pehle hi review ho chuki hai.")
+            return redirect("tournaments:admin_kill_review")
+
+        decision = request.POST.get("decision", "").strip()
+        notes = request.POST.get("admin_notes", "").strip()[:4000]
+        if decision == "reject":
+            submission.status = KillSubmission.Status.REJECTED
+            submission.admin_notes = notes
+            submission.reviewed_at = timezone.now()
+            submission.save(update_fields=["status", "admin_notes", "reviewed_at"])
+            messages.success(request, "Submission reject kar di gayi.")
+            return redirect("tournaments:admin_kill_review")
+
+        if decision != "approve":
+            messages.error(request, "Valid review action select karo.")
+            return redirect("tournaments:admin_kill_review")
+
+        try:
+            approved_kills = int(request.POST.get("approved_kills", ""))
+        except (TypeError, ValueError):
+            messages.error(request, "Approved kills ek valid whole number hona chahiye.")
+            return redirect("tournaments:admin_kill_review")
+        if approved_kills < 0 or approved_kills > 99:
+            messages.error(request, "Approved kills 0 se 99 ke beech hone chahiye.")
+            return redirect("tournaments:admin_kill_review")
+        if submission.free_fire_uid != submission.registered_uid or submission.registered_uid != submission.registration.free_fire_uid:
+            messages.error(request, "UID mismatch hai; payout roka gaya.")
+            return redirect("tournaments:admin_kill_review")
+
+        reward = Decimal(approved_kills) * Decimal("5.00")
+        submission.approved_kills = approved_kills
+        submission.approved_reward = reward
+        submission.admin_notes = notes
+        submission.reviewed_at = timezone.now()
+
+        if reward > 0:
+            admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
+            admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
+            if admin_wallet.balance < reward:
+                messages.error(request, f"Admin wallet mein balance kam hai. ₹{reward} payout approve nahi hua.")
+                return redirect("tournaments:admin_kill_review")
+
+            player_wallet, _ = Wallet.objects.get_or_create(user=submission.player)
+            player_wallet = Wallet.objects.select_for_update().get(pk=player_wallet.pk)
+            reference = f"KILL-PRIZE-{submission.pk}"
+            if WalletTransaction.objects.filter(reference=reference).exists():
+                messages.error(request, "Is submission ka payout reference pehle se maujood hai.")
+                return redirect("tournaments:admin_kill_review")
+
+            admin_wallet.balance -= reward
+            admin_wallet.save(update_fields=["balance", "updated_at"])
+            player_wallet.balance += reward
+            player_wallet.save(update_fields=["balance", "updated_at"])
+            AdminWalletTransaction.objects.create(
+                admin_wallet=admin_wallet,
+                transaction_type=AdminWalletTransaction.TransactionType.PRIZE,
+                amount=reward,
+                status=AdminWalletTransaction.Status.COMPLETED,
+                reference=reference,
+                description=f"Admin-approved kill reward for submission {submission.pk}",
+            )
+            WalletTransaction.objects.create(
+                wallet=player_wallet,
+                transaction_type=WalletTransaction.TransactionType.PRIZE,
+                amount=reward,
+                status=WalletTransaction.Status.COMPLETED,
+                reference=reference,
+                description=f"Admin-approved reward: {approved_kills} kills at ₹5 each",
+            )
+            submission.payout_reference = reference
+
+        submission.status = KillSubmission.Status.APPROVED
+        submission.save(update_fields=[
+            "approved_kills", "approved_reward", "admin_notes", "reviewed_at",
+            "payout_reference", "status",
+        ])
+
+    messages.success(request, f"Admin review complete. Approved reward: ₹{reward}.")
+    return redirect("tournaments:admin_kill_review")
+
+
+def leaderboard(request, tournament_id):
+    tournament = get_object_or_404(Tournament, pk=tournament_id)
+    submissions = KillSubmission.objects.filter(
+        tournament=tournament,
+        status=KillSubmission.Status.APPROVED,
+    ).select_related("player", "registration").order_by("-approved_kills", "reviewed_at")
+    return render(request, "tournaments/leaderboard.html", {
+        "tournament": tournament,
+        "submissions": submissions,
+    })
