@@ -53,6 +53,11 @@ INSTALLED_APPS = [
 # Custom User Model
 AUTH_USER_MODEL = "accounts.User"
 
+# Protected pages must redirect to the real public login route.
+LOGIN_URL = "/login/"
+LOGIN_REDIRECT_URL = "/accounts/profile/"
+LOGOUT_REDIRECT_URL = "/"
+
 
 # Middleware
 MIDDLEWARE = [
