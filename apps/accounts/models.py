@@ -12,6 +12,7 @@ class User(AbstractUser):
         max_length=15, unique=True, null=True, blank=True
     )
     phone_verified = models.BooleanField(default=False)
+    profile_photo = models.ImageField(upload_to="player_profiles/", blank=True, null=True)
 
     free_fire_uid = models.CharField(
         max_length=32, unique=True, null=True, blank=True
