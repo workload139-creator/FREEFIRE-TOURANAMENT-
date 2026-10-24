@@ -40,5 +40,10 @@ urlpatterns = [
         views.player_room,
         name="player_room",
     ),
+    path(
+    "admin/tournament/<int:tournament_id>/dashboard/",
+    views.admin_tournament_dashboard,
+    name="admin_tournament_dashboard",
+),
 ]
 ```
