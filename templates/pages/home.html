@@ -1,77 +1,199 @@
 {% extends "base.html" %}
 
-{% block title %}FF Tournament | Compete & Win{% endblock %}
+{% block title %}Home | FF Arena{% endblock %}
 
 {% block content %}
+
+<!-- HERO SECTION -->
 <section class="hero">
     <div class="hero-content">
-        <p class="eyebrow">THE BATTLE STARTS HERE</p>
+        <span class="badge">🔥 FREE FIRE TOURNAMENT ARENA</span>
 
         <h1>
             PLAY HARD.<br>
-            <span>RISE TO THE TOP.</span>
+            <span>WIN BIG.</span>
         </h1>
 
-        <p class="hero-description">
-            Join tournaments, compete with players and prove your skills.
-            Your next victory starts here.
+        <p>
+            Apni squad banao, tournaments mein compete karo
+            aur leaderboard par apni jagah banao.
         </p>
 
         <div class="hero-actions">
-            <a href="#tournaments" class="button button-primary">
-                Explore Tournaments
+            <a href="#tournaments" class="btn-primary">
+                Explore Tournaments →
             </a>
-            <a href="/admin/" class="button button-outline">
-                Admin Panel
+
+            <a href="{% url 'login' %}" class="btn-secondary">
+                Player Login
             </a>
         </div>
     </div>
 
     <div class="hero-card">
-        <div class="hero-card-top">
-            <span class="live-dot"></span>
-            TOURNAMENT ARENA
-        </div>
-
-        <div class="arena-emblem">FF</div>
-
-        <p class="arena-caption">YOUR SKILL. YOUR GLORY.</p>
+        <div class="hero-icon">🏆</div>
+        <span class="section-label">YOUR BATTLE STARTS HERE</span>
+        <h2>READY TO<br>DOMINATE?</h2>
+        <div class="hero-line"></div>
+        <p>COMPETE · SURVIVE · WIN</p>
     </div>
 </section>
 
-<section class="stats" id="tournaments">
-    <article class="stat-card">
-        <span class="stat-label">Tournament Capacity</span>
-        <strong>49 Players</strong>
-        <span class="stat-note">Maximum per tournament</span>
-    </article>
 
-    <article class="stat-card">
-        <span class="stat-label">Minimum Deposit</span>
-        <strong>₹10</strong>
-        <span class="stat-note">Wallet rules apply</span>
-    </article>
+<!-- QUICK STATS -->
+<section class="stats">
+    <div class="stat-card">
+        <span>🎮</span>
+        <h3>BR MODE</h3>
+        <p>Battle Royale</p>
+    </div>
 
-    <article class="stat-card">
-        <span class="stat-label">Kill Reward</span>
-        <strong>₹5</strong>
-        <span class="stat-note">Per approved kill</span>
-    </article>
+    <div class="stat-card">
+        <span>⚔️</span>
+        <h3>VS MODE</h3>
+        <p>1v1 · 2v2 · 3v3 · 4v4</p>
+    </div>
+
+    <div class="stat-card">
+        <span>🏆</span>
+        <h3>LEADERBOARD</h3>
+        <p>Track your performance</p>
+    </div>
 </section>
 
-<section class="section" id="leaderboard">
+
+<!-- TOURNAMENT SECTION -->
+<section class="tournament-section" id="tournaments">
+
     <div class="section-heading">
         <div>
-            <p class="eyebrow">YOUR NEXT CHALLENGE</p>
-            <h2>Enter the Arena</h2>
+            <span class="section-label">CHOOSE YOUR BATTLE</span>
+            <h2>Featured <span>Tournaments</span></h2>
+            <p>Find a tournament and get ready to compete.</p>
         </div>
-        <span class="coming-soon">TOURNAMENTS COMING SOON</span>
     </div>
 
-    <div class="empty-state">
-        <div class="empty-icon">⚔</div>
-        <h3>The battlefield is being prepared</h3>
-        <p>Upcoming tournaments will appear here once configured.</p>
+    <div class="tournament-grid">
+
+        <!-- BR CARD -->
+        <article class="tournament-card">
+            <div class="tournament-banner br-banner">
+                <span class="game-tag">BATTLE ROYALE</span>
+                <span class="live-tag">BR</span>
+            </div>
+
+            <div class="tournament-body">
+                <h3>Battle Royale Tournament</h3>
+
+                <p class="card-description">
+                    Enter the arena and compete against other players.
+                </p>
+
+                <div class="tournament-info">
+                    <div>
+                        <small>ENTRY FEE</small>
+                        <strong>View Details</strong>
+                    </div>
+
+                    <div>
+                        <small>PRIZE POOL</small>
+                        <strong>View Details</strong>
+                    </div>
+                </div>
+
+                <div class="tournament-footer">
+                    <span>👥 Player Lobby</span>
+                    <span class="status">BR Mode</span>
+                </div>
+
+                <a href="{% url 'tournament-list' %}" class="btn-join">
+                    Explore BR →
+                </a>
+            </div>
+        </article>
+
+
+        <!-- VS CARD -->
+        <article class="tournament-card">
+            <div class="tournament-banner vs-banner">
+                <span class="game-tag">SQUAD BATTLE</span>
+                <span class="live-tag">VS</span>
+            </div>
+
+            <div class="tournament-body">
+                <h3>VS Tournament</h3>
+
+                <p class="card-description">
+                    Challenge your opponents in competitive matches.
+                </p>
+
+                <div class="tournament-info">
+                    <div>
+                        <small>FORMATS</small>
+                        <strong>1v1 · 2v2</strong>
+                    </div>
+
+                    <div>
+                        <small>SQUAD</small>
+                        <strong>3v3 · 4v4</strong>
+                    </div>
+                </div>
+
+                <div class="tournament-footer">
+                    <span>⚔️ Head-to-head</span>
+                    <span class="status">VS Mode</span>
+                </div>
+
+                <a href="{% url 'tournament-list' %}" class="btn-join">
+                    Explore VS →
+                </a>
+            </div>
+        </article>
+
     </div>
 </section>
+
+
+<!-- FEATURES -->
+<section class="features-section">
+    <div class="section-heading">
+        <div>
+            <span class="section-label">WHY FF ARENA?</span>
+            <h2>Built for <span>Gamers</span></h2>
+        </div>
+    </div>
+
+    <div class="features-grid">
+        <div class="feature-card">
+            <span>👤</span>
+            <h3>Player Profile</h3>
+            <p>Apni gaming identity aur profile manage karo.</p>
+        </div>
+
+        <div class="feature-card">
+            <span>💰</span>
+            <h3>Wallet</h3>
+            <p>Wallet balance aur transaction history dekho.</p>
+        </div>
+
+        <div class="feature-card">
+            <span>📊</span>
+            <h3>Results</h3>
+            <p>Matches aur leaderboard results track karo.</p>
+        </div>
+    </div>
+</section>
+
+
+<!-- FINAL CTA -->
+<section class="cta-section">
+    <span class="section-label">JOIN THE ARENA</span>
+    <h2>Your Next Match <span>Awaits.</span></h2>
+    <p>Apni gaming journey shuru karo.</p>
+
+    <a href="{% url 'login' %}" class="btn-primary">
+        Get Started →
+    </a>
+</section>
+
 {% endblock %}
