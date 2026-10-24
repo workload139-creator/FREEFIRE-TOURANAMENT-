@@ -18,4 +18,10 @@ urlpatterns = [
     views.confirm_playing,
     name="confirm_playing",
 ),
+path(
+    "admin/tournament/<int:tournament_id>/send-room/",
+    views.send_room_details,
+    name="send_room_details",
+),
+    
 ]
