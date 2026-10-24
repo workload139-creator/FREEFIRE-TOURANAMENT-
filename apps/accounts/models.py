@@ -64,3 +64,62 @@ class Wallet(models.Model):
     def __str__(self):
         return f"{self.user} - ₹{self.balance}"
 
+class WalletTransaction(models.Model):
+
+    class TransactionType(models.TextChoices):
+        DEPOSIT = "deposit", "Deposit"
+        WITHDRAWAL = "withdrawal", "Withdrawal"
+        ENTRY_FEE = "entry_fee", "Tournament Entry Fee"
+        REFUND = "refund", "Refund"
+        PRIZE = "prize", "Tournament Prize"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        COMPLETED = "completed", "Completed"
+        FAILED = "failed", "Failed"
+
+    wallet = models.ForeignKey(
+        Wallet,
+        on_delete=models.PROTECT,
+        related_name="transactions",
+    )
+
+    transaction_type = models.CharField(
+        max_length=20,
+        choices=TransactionType.choices,
+    )
+
+    amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+
+    status = models.CharField(
+        max_length=12,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+
+    reference = models.CharField(
+        max_length=100,
+        blank=True,
+        db_index=True,
+    )
+
+    description = models.CharField(
+        max_length=255,
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.wallet.user} - {self.transaction_type} - ₹{self.amount}"
+
+
+
+
