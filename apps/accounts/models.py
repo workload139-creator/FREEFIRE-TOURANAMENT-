@@ -1,32 +1,24 @@
+
+from decimal import Decimal
+
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
-from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db import models
 
 
 class User(AbstractUser):
     phone_number = models.CharField(
-        max_length=15,
-        unique=True,
-        null=True,
-        blank=True,
+        max_length=15, unique=True, null=True, blank=True
     )
-
     phone_verified = models.BooleanField(default=False)
 
     free_fire_uid = models.CharField(
-        max_length=32,
-        unique=True,
-        null=True,
-        blank=True,
+        max_length=32, unique=True, null=True, blank=True
     )
-
     uid_verified = models.BooleanField(default=False)
 
-    upi_id = models.CharField(
-        max_length=100,
-        blank=True,
-    )
-
+    upi_id = models.CharField(max_length=100, blank=True)
     upi_verified = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -36,37 +28,26 @@ class User(AbstractUser):
         return self.username
 
 
-from decimal import Decimal
-
-from django.conf import settings
-from django.core.validators import MinValueValidator
-from django.db import models
-
-
 class Wallet(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="wallet",
     )
-
     balance = models.DecimalField(
         max_digits=12,
         decimal_places=2,
         default=Decimal("0.00"),
-        validators=[
-            MinValueValidator(Decimal("0.00")),
-        ],
+        validators=[MinValueValidator(Decimal("0.00"))],
     )
-
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.user} - ₹{self.balance}"
 
-class WalletTransaction(models.Model):
 
+class WalletTransaction(models.Model):
     class TransactionType(models.TextChoices):
         DEPOSIT = "deposit", "Deposit"
         WITHDRAWAL = "withdrawal", "Withdrawal"
@@ -84,53 +65,40 @@ class WalletTransaction(models.Model):
         on_delete=models.PROTECT,
         related_name="transactions",
     )
-
     transaction_type = models.CharField(
         max_length=20,
         choices=TransactionType.choices,
     )
-
     amount = models.DecimalField(
         max_digits=12,
         decimal_places=2,
         validators=[MinValueValidator(Decimal("0.01"))],
     )
-
     status = models.CharField(
         max_length=12,
         choices=Status.choices,
         default=Status.PENDING,
     )
-
-
-    
-reference = models.CharField(
-    max_length=100,
-    blank=True,
-    null=True,
-    unique=True,
-)
-
-
-    description = models.CharField(
-        max_length=255,
+    reference = models.CharField(
+        max_length=100,
         blank=True,
+        null=True,
+        unique=True,
     )
-
+    description = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{self.wallet.user} - {self.transaction_type} - ₹{self.amount}"
-
-
-
+        return (
+            f"{self.wallet.user} - "
+            f"{self.transaction_type} - ₹{self.amount}"
+        )
 
 
 class DepositRequest(models.Model):
-
     class Status(models.TextChoices):
         PENDING = "pending", "Pending Verification"
         APPROVED = "approved", "Approved"
@@ -141,7 +109,6 @@ class DepositRequest(models.Model):
         on_delete=models.PROTECT,
         related_name="deposit_requests",
     )
-
     amount = models.DecimalField(
         max_digits=7,
         decimal_places=2,
@@ -150,18 +117,12 @@ class DepositRequest(models.Model):
             MaxValueValidator(Decimal("5000.00")),
         ],
     )
-
-    payment_reference = models.CharField(
-        max_length=100,
-        blank=True,
-    )
-
+    payment_reference = models.CharField(max_length=100, blank=True)
     status = models.CharField(
         max_length=12,
         choices=Status.choices,
         default=Status.PENDING,
     )
-
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -171,20 +132,17 @@ class DepositRequest(models.Model):
         return f"{self.wallet.user} - ₹{self.amount} - {self.status}"
 
 
-
-
-
 class AdminWallet(models.Model):
     name = models.CharField(
         max_length=50,
         unique=True,
-        default="Main Admin Wallet"
+        default="Main Admin Wallet",
     )
     balance = models.DecimalField(
         max_digits=12,
         decimal_places=2,
         default=Decimal("0.00"),
-        validators=[MinValueValidator(Decimal("0.00"))]
+        validators=[MinValueValidator(Decimal("0.00"))],
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -208,21 +166,21 @@ class AdminWalletTransaction(models.Model):
     admin_wallet = models.ForeignKey(
         AdminWallet,
         on_delete=models.PROTECT,
-        related_name="transactions"
+        related_name="transactions",
     )
     transaction_type = models.CharField(
         max_length=20,
-        choices=TransactionType.choices
+        choices=TransactionType.choices,
     )
     amount = models.DecimalField(
         max_digits=12,
         decimal_places=2,
-        validators=[MinValueValidator(Decimal("0.01"))]
+        validators=[MinValueValidator(Decimal("0.01"))],
     )
     status = models.CharField(
         max_length=12,
         choices=Status.choices,
-        default=Status.PENDING
+        default=Status.PENDING,
     )
     reference = models.CharField(max_length=100, blank=True)
     description = models.CharField(max_length=255, blank=True)
@@ -236,6 +194,3 @@ class AdminWalletTransaction(models.Model):
             f"{self.admin_wallet.name} - "
             f"{self.transaction_type} - ₹{self.amount}"
         )
-
-
-
