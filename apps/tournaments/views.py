@@ -226,14 +226,11 @@ def kill_submission(request, registration_id):
         pk=registration_id,
         player=request.user,
     )
-    if not registration.payment_verified or registration.status not in (
-        Registration.Status.READY,
-        Registration.Status.NOT_PLAYING,
-    ):
+    if not registration.payment_verified or registration.status != Registration.Status.READY:
         messages.error(request, "Kill evidence submit karne ke liye verified registration zaroori hai.")
         return redirect("tournaments:my_registrations")
 
-    if KillSubmission.objects.filter(registration=registration, status=KillSubmission.Status.PENDING).exists():
+    if KillSubmission.objects.filter(registration=registration).exists():
         messages.info(request, "Aapki ek submission pehle hi review ka intezar kar rahi hai.")
         return redirect("tournaments:my_registrations")
 
