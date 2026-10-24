@@ -99,3 +99,32 @@ def logout_view(request):
     )
 
     return redirect("home")
+
+
+
+
+
+
+
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+
+from .models import Wallet
+
+
+@login_required
+def wallet_view(request):
+    wallet, created = Wallet.objects.get_or_create(
+        user=request.user,
+    )
+
+    transactions = wallet.transactions.all()[:50]
+
+    return render(
+        request,
+        "accounts/wallet.html",
+        {
+            "wallet": wallet,
+            "transactions": transactions,
+        },
+    )
