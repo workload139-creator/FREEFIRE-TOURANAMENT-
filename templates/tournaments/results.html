@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Tournament Results | FF Arena{% endblock %}
+{% block content %}
+<section class="container" style="max-width:1100px;margin:38px auto;padding:0 18px">
+  <div class="section-heading">
+    <div><span class="section-label">MATCH HISTORY</span><h1>Tournament <span>Results</span></h1><p>Completed tournaments and admin-approved player results.</p></div>
+  </div>
+  <div class="tournament-grid">
+    {% for tournament in completed_tournaments %}
+      <article class="tournament-card">
+        <div class="tournament-banner {% if tournament.mode == 'BR' %}br-banner{% else %}vs-banner{% endif %}">
+          <span class="game-tag">{{ tournament.get_mode_display }}</span><span class="live-tag">COMPLETED</span>
+        </div>
+        <div class="tournament-body">
+          <h3>{{ tournament.title }}</h3>
+          <div class="tournament-info">
+            <div><small>PRIZE POOL</small><strong>₹{{ tournament.prize_pool }}</strong></div>
+            <div><small>MODE</small><strong>{{ tournament.mode }}</strong></div>
+          </div>
+          <p>Match date: {{ tournament.start_time|date:"d M Y, h:i A" }}</p>
+          <a class="btn-join" href="{% url 'tournaments:leaderboard' tournament.id %}">View leaderboard →</a>
+        </div>
+      </article>
+    {% empty %}
+      <div class="empty-state"><span>🏆</span><h3>Abhi results available nahi hain</h3><p>Admin jab tournament ko Completed mark karega, result yahan dikhega.</p><a class="btn-primary" href="{% url 'tournaments:list' %}">Browse tournaments</a></div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
