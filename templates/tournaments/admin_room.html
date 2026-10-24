@@ -1,0 +1,36 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <h2>Free Fire — Send Room Details</h2>
+    <p>Room ID aur password sirf eligible players ko confirmation ke liye bheje jayenge.</p>
+
+    {% if messages %}
+        {% for message in messages %}
+            <p>{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post"
+          action="{% url 'tournaments:send_room_details' tournament.id %}">
+        {% csrf_token %}
+
+        <div class="mb-3">
+            <label for="room_id">Room ID</label>
+            <input id="room_id" type="text" name="room_id"
+                   class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="room_password">Room Password</label>
+            <input id="room_password" type="password"
+                   name="room_password" class="form-control" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            Send Room Details
+        </button>
+    </form>
+</div>
+{% endblock %}
