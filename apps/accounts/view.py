@@ -7,7 +7,7 @@ from django.db import IntegrityError, transaction
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
-from .forms import PlayerRegistrationForm
+from .forms import PlayerRegistrationForm, WithdrawalRequestForm
 
 
 def register_view(request):
@@ -110,7 +110,7 @@ def logout_view(request):
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 
-from .models import Wallet
+from .models import Wallet, WalletTransaction, WithdrawalRequest
 
 
 @login_required
@@ -184,3 +184,41 @@ def deposit_view(request):
         "accounts/deposit.html",
         {"form": form, "wallet": wallet},
     )
+
+
+
+@login_required
+def withdrawal_view(request):
+    wallet, _ = Wallet.objects.get_or_create(user=request.user)
+    if request.method == "POST":
+        form = WithdrawalRequestForm(request.POST)
+        if form.is_valid():
+            amount = form.cleaned_data["amount"]
+            upi_id = form.cleaned_data["upi_id"]
+            with transaction.atomic():
+                wallet = Wallet.objects.select_for_update().get(pk=wallet.pk)
+                if amount < Decimal("10.00"):
+                    form.add_error("amount", "Minimum withdrawal ₹10 hai.")
+                elif amount > wallet.balance:
+                    form.add_error("amount", "Wallet mein itna available balance nahi hai.")
+                else:
+                    withdrawal = WithdrawalRequest.objects.create(
+                        wallet=wallet,
+                        amount=amount,
+                        upi_id=upi_id,
+                    )
+                    wallet.balance -= amount
+                    wallet.save(update_fields=["balance", "updated_at"])
+                    WalletTransaction.objects.create(
+                        wallet=wallet,
+                        transaction_type=WalletTransaction.TransactionType.WITHDRAWAL,
+                        amount=amount,
+                        status=WalletTransaction.Status.PENDING,
+                        reference=f"WITHDRAW-REQ-{withdrawal.pk}",
+                        description=f"Withdrawal request to {upi_id}; awaiting manual UPI payout",
+                    )
+                    messages.success(request, "Withdrawal request submit ho gayi. Admin UPI transfer verify karke status update karega.")
+                    return redirect("accounts:wallet")
+    else:
+        form = WithdrawalRequestForm(initial={"upi_id": request.user.upi_id})
+    return render(request, "accounts/withdrawal.html", {"form": form, "wallet": wallet})
