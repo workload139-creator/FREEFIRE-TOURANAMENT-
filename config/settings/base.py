@@ -40,7 +40,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
 
     "apps.core.apps.CoreConfig",
-    "apps.accounts.apps.AccountsConfig","apps.tournaments",
+    "apps.accounts.apps.AccountsConfig",
+    "apps.tournaments",
 ]
 
 
