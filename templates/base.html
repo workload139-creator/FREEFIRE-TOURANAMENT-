@@ -4,140 +4,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <meta name="description"
-          content="Compete in Free Fire tournaments and track your results.">
-
-    <title>{% block title %}FF Tournament{% endblock %}</title>
-
-    <link rel="stylesheet" href="{% static 'css/variables.css' %}">
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
-    <link rel="stylesheet" href="{% static 'css/variables.css' %}">
-<link rel="stylesheet" href="{% static 'css/components.css' %}">
-
-    {% block extra_css %}{% endblock %}
-</head>
-<body>
-    <header class="site-header">
-        <a class="brand" href="/">
-            <span class="brand-mark">FF</span>
-            <span>TOURNAMENT</span>
-        </a>
-
-        <nav class="main-nav">
-            <a href="/">Home</a>
-            <a href="#tournaments">Tournaments</a>
-            <a href="#leaderboard">Leaderboard</a>
-        </nav>
-
-        <a class="button button-outline" href="/admin/">Admin</a>
-    </header>
-
-    <main>
-        {% block content %}{% endblock %}
-    </main>
-
-    <footer class="site-footer">
-        <p>FF Tournament · Compete with skill. Play fair.</p>
-    </footer>
-
-    <script src="{% static 'js/main.js' %}" defer></script>
-    {% block extra_js %}{% endblock %}
-</body>
-</html>
-
-{% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <meta name="theme-color" content="#080b12">
-    <meta name="description" content="Join Free Fire tournaments, compete with players and track your results.">
-
-    <title>{% block title %}Free Fire Arena{% endblock %}</title>
-
+    <meta name="description" content="Join Free Fire tournaments, track your matches, and compete for rewards.">
+    <title>{% block title %}FF Arena{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/variables.css' %}">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
-
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <link rel="stylesheet" href="{% static 'css/tournaments.css' %}">
     {% block extra_css %}{% endblock %}
 </head>
-
 <body>
+<header class="site-header">
+    <div class="nav-container">
+        <a href="{% url 'home' %}" class="brand" aria-label="FF Arena home">
+            <span class="brand-icon">🔥</span>
+            <span>FF <strong>ARENA</strong></span>
+        </a>
+        <button class="menu-toggle" id="menuToggle" type="button" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+        <nav class="main-nav" id="mainNav">
+            <a href="{% url 'home' %}">Home</a>
+            <a href="{% url 'tournaments:list' %}">Tournaments</a>
+            {% if user.is_authenticated %}
+                <a href="{% url 'accounts:profile' %}">Profile</a>
+                <a href="{% url 'accounts:wallet' %}">Wallet</a>
+                {% if user.is_staff %}<a href="/admin/">Admin</a>{% endif %}
+                <form method="post" action="{% url 'logout' %}" class="nav-logout-form">
+                    {% csrf_token %}
+                    <button type="submit" class="button button-outline">Logout</button>
+                </form>
+            {% else %}
+                <a href="{% url 'login' %}">Login</a>
+                <a class="button button-primary" href="{% url 'accounts:register' %}">Join Now</a>
+            {% endif %}
+        </nav>
+    </div>
+</header>
 
-    <header class="site-header">
-        <div class="nav-container">
+{% if messages %}
+    <div class="site-messages" role="status">
+        {% for message in messages %}
+            <div class="message {{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+{% endif %}
 
-            <a href="/" class="brand">
-                <span class="brand-icon">🔥</span>
-                <span>FF <strong>ARENA</strong></span>
-            </a>
+<main id="main-content">
+    {% block content %}{% endblock %}
+</main>
 
-            <button
-                class="menu-toggle"
-                id="menuToggle"
-                type="button"
-                aria-label="Toggle navigation"
-                aria-expanded="false">
-                ☰
-            </button>
-
-            <nav class="main-nav" id="mainNav">
-                <a href="/">Home</a>
-                <a href="/#tournaments">Tournaments</a>
-                <a href="/#br-tournaments">Battle Royale</a>
-                <a href="/#vs-tournaments">VS Mode</a>
-
-                {% if user.is_authenticated %}
-                    <a href="/accounts/profile/">My Profile</a>
-
-                    <form method="post" action="{% url 'logout' %}" class="nav-logout">
-                        {% csrf_token %}
-                        <button type="submit" class="nav-login">Logout</button>
-                    </form>
-                {% else %}
-                    <a href="{% url 'login' %}" class="nav-login">Login</a>
-                {% endif %}
-            </nav>
-
-        </div>
-    </header>
-
-    <main class="page-content">
-        {% if messages %}
-            <div class="message-container">
-                {% for message in messages %}
-                    <div class="message {{ message.tags }}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            </div>
-        {% endif %}
-
-        {% block content %}{% endblock %}
-    </main>
-
-    <footer class="site-footer">
-        <div class="footer-inner">
-            <a href="/" class="brand">
-                <span class="brand-icon">🔥</span>
-                <span>FF <strong>ARENA</strong></span>
-            </a>
-
-            <p>
-                Compete fairly. Play responsibly.
-            </p>
-
-            <p class="copyright">
-                &copy; {% now "Y" %} FF Arena. All rights reserved.
-            </p>
-        </div>
-    </footer>
-
-    <script src="{% static 'js/main.js' %}" defer></script>
-    {% block extra_js %}{% endblock %}
-    
-<link rel="stylesheet" href="{% static 'css/tournaments.css' %}">
+<footer class="site-footer">
+    <p>FF Arena · Compete with skill. Play fair.</p>
+    <p class="footer-note">Wallet and prize features must be used only after payment verification and admin review.</p>
+</footer>
+<script src="{% static 'js/main.js' %}" defer></script>
+{% block extra_js %}{% endblock %}
 </body>
 </html>
-
