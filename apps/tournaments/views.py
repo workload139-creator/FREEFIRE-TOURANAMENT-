@@ -54,6 +54,18 @@ def tournament_register(request, tournament_id):
         return render(request, "tournaments/register.html", {"tournament": tournament, "form": form})
 
     uid = form.cleaned_data["free_fire_uid"]
+    registered_uid = (request.user.free_fire_uid or "").strip()
+    if not registered_uid or uid != registered_uid:
+        form.add_error(
+            "free_fire_uid",
+            "Tournament UID aapke account ke registered Free Fire UID se match honi chahiye.",
+        )
+        return render(
+            request,
+            "tournaments/register.html",
+            {"tournament": tournament, "form": form},
+        )
+
     try:
         with transaction.atomic():
             tournament = get_object_or_404(Tournament.objects.select_for_update(), pk=tournament_id)
@@ -231,7 +243,7 @@ def kill_submission(request, registration_id):
         return redirect("tournaments:my_registrations")
 
     if KillSubmission.objects.filter(registration=registration).exists():
-        messages.info(request, "Aapki ek submission pehle hi review ka intezar kar rahi hai.")
+        messages.info(request, "Is registration ki evidence submission pehle hi maujood hai.")
         return redirect("tournaments:my_registrations")
 
     if request.method == "POST":
