@@ -18,6 +18,14 @@ class PlayerRegistrationForm(UserCreationForm):
             "password1", "password2",
         )
 
+    def clean_username(self):
+        username = self.cleaned_data["username"].strip()
+        if User.objects.filter(username__iexact=username).exists():
+            raise forms.ValidationError(
+                "Ye username pehle se registered hai. Login karein ya doosra username chunein."
+            )
+        return username
+
     def clean_email(self):
         email = self.cleaned_data["email"].strip().lower()
         if User.objects.filter(email__iexact=email).exists():
