@@ -202,4 +202,37 @@ def admin_room_page(request, tournament_id):
 
 
 
+@login_required
+def player_room(request, registration_id):
+    registration = get_object_or_404(
+        Registration.objects.select_related("tournament"),
+        pk=registration_id,
+        player=request.user,
+    )
+
+    tournament = registration.tournament
+
+    # Deadline nikalne par room details dobara nahi dikhani.
+    if (
+        registration.status == Registration.Status.WAITING_READY
+        and registration.ready_deadline
+        and timezone.now() > registration.ready_deadline
+    ):
+        registration.status = Registration.Status.NOT_PLAYING
+        registration.save(update_fields=["status"])
+
+    return render(
+        request,
+        "tournaments/player_room.html",
+        {
+            "registration": registration,
+            "tournament": tournament,
+        },
+    )
+
+
+
+
+
+
 
