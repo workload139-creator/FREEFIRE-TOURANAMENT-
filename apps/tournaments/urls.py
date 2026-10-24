@@ -35,6 +35,16 @@ path(
     views.player_room,
     name="player_room",
 ),
+    path(
+    "registration/<int:registration_id>/confirm/",
+    views.confirm_playing,
+    name="confirm_playing",
+),
+path(
+    "registration/<int:registration_id>/process-timeout/",
+    views.process_expired_confirmation,
+    name="process_timeout",
+),
 
 
     
