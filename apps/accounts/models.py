@@ -1,10 +1,12 @@
 
 from decimal import Decimal
+from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
+from django.utils import timezone
 
 
 class User(AbstractUser):
@@ -24,6 +26,11 @@ class User(AbstractUser):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    last_seen = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    @property
+    def is_online(self):
+        return self.last_seen is not None and timezone.now() - self.last_seen <= timedelta(minutes=2)
 
     def __str__(self):
         return self.username

@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link rel="stylesheet" href="{% static 'css/components.css' %}">
     <link rel="stylesheet" href="{% static 'css/tournaments.css' %}">
+    <link rel="stylesheet" href="{% static 'css/community.css' %}">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -29,6 +30,8 @@
                 <a href="{% url 'accounts:profile' %}">Profile</a>
                 <a href="{% url 'accounts:wallet' %}">Wallet</a>
                 <a href="{% url 'tournaments:my_registrations' %}">My Tournaments</a>
+                <a href="{% url 'social:home' %}">Friends</a>
+                <a href="{% url 'chat:home' %}">Messages</a>
                 {% if user.is_staff %}<a href="{% url 'tournaments:admin_kill_review' %}">Kill Review</a>{% endif %}
                 {% if user.is_staff %}<a href="/admin/">Admin</a>{% endif %}
                 <form method="post" action="{% url 'logout' %}" class="nav-logout-form">

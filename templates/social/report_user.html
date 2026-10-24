@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Report Player | FF Arena{% endblock %}
+{% block content %}
+<section class="community-page narrow-page">
+  <div class="community-panel">
+    <span class="eyebrow">PLAYER SAFETY</span>
+    <h1>Report {{ target.username }}</h1>
+    <p class="muted">Report admin team ko review ke liye jayegi. Password ya payment PIN kabhi report mein na likhein.</p>
+    <form method="post" class="community-form">
+      {% csrf_token %}
+      <label for="reason">Reason</label>
+      <select id="reason" name="reason" required><option value="">Select reason</option>{% for value,label in reasons %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select>
+      <label for="details">Details (optional)</label>
+      <textarea id="details" name="details" rows="5" maxlength="1000" placeholder="Kya hua, short mein batayein"></textarea>
+      <button class="button button-primary" type="submit">Submit Report</button>
+      <a class="button button-outline" href="{% url 'social:home' %}">Cancel</a>
+    </form>
+  </div>
+</section>
+{% endblock %}

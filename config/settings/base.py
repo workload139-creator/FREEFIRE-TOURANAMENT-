@@ -29,13 +29,11 @@ ALLOWED_HOSTS = [
     if host.strip()
 ]
 
-# Render provides the service hostname automatically. Include it when available.
 render_host = os.getenv("RENDER_EXTERNAL_HOSTNAME", "").strip()
 if render_host and render_host not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(render_host)
 
 
-# Applications
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -47,19 +45,17 @@ INSTALLED_APPS = [
     "apps.core.apps.CoreConfig",
     "apps.accounts.apps.AccountsConfig",
     "apps.tournaments.apps.TournamentsConfig",
+    "apps.social.apps.SocialConfig",
+    "apps.chat.apps.ChatConfig",
 ]
 
 
-# Custom User Model
 AUTH_USER_MODEL = "accounts.User"
-
-# Protected pages must redirect to the real public login route.
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/accounts/profile/"
 LOGOUT_REDIRECT_URL = "/"
 
 
-# Middleware
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -67,16 +63,14 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.core.middleware.LastSeenMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
 
-# URLs
 ROOT_URLCONF = "config.urls"
 
-
-# Templates
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -93,12 +87,10 @@ TEMPLATES = [
 ]
 
 
-# Application servers
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 
-# Database
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
 if DATABASE_URL.startswith(("postgres://", "postgresql://")):
@@ -118,7 +110,6 @@ else:
     }
 
 
-# Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": (
@@ -148,30 +139,24 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# Language and timezone
 LANGUAGE_CODE = "en-in"
 TIME_ZONE = "Asia/Kolkata"
-
 USE_I18N = True
 USE_TZ = True
 
 
-# Static files
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
 
-# Uploaded files
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 
-# Default primary key
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
-# Browser security
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = True
 X_FRAME_OPTIONS = "DENY"
@@ -179,7 +164,6 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
 
-# Tournament configuration
 SITE_NAME = os.getenv("SITE_NAME", "FF Tournament")
 SITE_CURRENCY = os.getenv("SITE_CURRENCY", "INR")
 
@@ -195,7 +179,6 @@ REWARD_PER_APPROVED_KILL = 5
 MINIMUM_VERIFIED_KILLS = 2
 
 
-# Email configuration for password-reset links. Configure SMTP values in Render.
 EMAIL_BACKEND = os.getenv(
     "EMAIL_BACKEND",
     "django.core.mail.backends.console.EmailBackend" if DEBUG
