@@ -53,10 +53,15 @@ urlpatterns = [
         name="admin_room_page",
     ),
 
-    # Admin dashboard
+    # Admin dashboard and kill evidence review
     path(
         "admin/tournament/<int:tournament_id>/dashboard/",
         views.admin_tournament_dashboard,
         name="admin_tournament_dashboard",
     ),
+    path("my-registrations/", views.my_registrations, name="my_registrations"),
+    path("registration/<int:registration_id>/kill-evidence/", views.kill_submission, name="kill_submission"),
+    path("leaderboard/<int:tournament_id>/", views.leaderboard, name="leaderboard"),
+    path("admin/kill-review/", views.admin_kill_review, name="admin_kill_review"),
+    path("admin/kill-review/<int:submission_id>/", views.review_kill_submission, name="review_kill_submission"),
 ]
