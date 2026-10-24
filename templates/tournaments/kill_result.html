@@ -1,0 +1,63 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="tournament-card">
+        <h1>Kill Verification Result</h1>
+
+        <h2>{{ tournament.title }}</h2>
+
+        <p>
+            <strong>Free Fire UID:</strong>
+            {{ submission.free_fire_uid }}
+        </p>
+
+        <p>
+            <strong>Submission Status:</strong>
+            {{ submission.get_status_display }}
+        </p>
+
+        <hr>
+
+        <h2>Verification Details</h2>
+
+        <p>
+            <strong>AI Proposed Kills:</strong>
+            {{ submission.ai_proposed_kills|default:"Pending" }}
+        </p>
+
+        <p>
+            <strong>Admin Approved Kills:</strong>
+            {{ submission.approved_kills|default:"Pending" }}
+        </p>
+
+        <p>
+            <strong>Reward per Kill:</strong>
+            ₹5
+        </p>
+
+        <p>
+            <strong>Final Reward:</strong>
+            {% if submission.admin_approved %}
+                ₹{{ submission.final_reward|default:0 }}
+            {% else %}
+                Pending admin approval
+            {% endif %}
+        </p>
+
+        {% if submission.admin_approved %}
+            <p>Your result has been reviewed by the admin.</p>
+        {% else %}
+            <p>
+                Your submission is awaiting final admin review.
+                No reward has been finalized yet.
+            </p>
+        {% endif %}
+
+        <a href="{% url 'tournaments:list' %}">
+            Back to Tournaments
+        </a>
+    </div>
+</div>
+{% endblock %}
