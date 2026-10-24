@@ -110,3 +110,23 @@ def cancel_tournament_and_refund(tournament_id):
 
     prefix = "Tournament was already cancelled" if already_cancelled else "Tournament cancelled"
     return refunded, f"{prefix}; {refunded} registration(s) refunded."
+
+
+@transaction.atomic
+def process_expired_ready_registrations(limit=500):
+    """Refund and mark players who missed the 60-second room confirmation window."""
+    now = timezone.now()
+    registration_ids = list(
+        Registration.objects.filter(
+            status=Registration.Status.WAITING_READY,
+            ready_deadline__lte=now,
+            ready_confirmed_at__isnull=True,
+            refund_processed=False,
+        ).order_by("ready_deadline").values_list("pk", flat=True)[:limit]
+    )
+    processed = 0
+    for registration_id in registration_ids:
+        changed, _message = mark_not_playing_and_refund(registration_id)
+        if changed:
+            processed += 1
+    return processed
