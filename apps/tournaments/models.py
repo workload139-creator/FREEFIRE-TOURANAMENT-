@@ -178,3 +178,54 @@ class Registration(models.Model):
 
     def __str__(self):
         return f"{self.player.username} - {self.tournament.title}"
+
+class KillSubmission(models.Model):
+    """Evidence submitted by a player; a human admin must approve the final kill count."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending Admin Review"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+
+    registration = models.ForeignKey(
+        Registration,
+        on_delete=models.PROTECT,
+        related_name="kill_submissions",
+    )
+    player = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="kill_submissions",
+    )
+    tournament = models.ForeignKey(
+        Tournament,
+        on_delete=models.PROTECT,
+        related_name="kill_submissions",
+    )
+    registered_uid = models.CharField(max_length=32)
+    free_fire_uid = models.CharField(max_length=32)
+    history_video = models.FileField(upload_to="kill-evidence/videos/")
+    history_image_one = models.ImageField(upload_to="kill-evidence/images/")
+    history_image_two = models.ImageField(upload_to="kill-evidence/images/")
+    ai_proposed_kills = models.PositiveSmallIntegerField(null=True, blank=True)
+    approved_kills = models.PositiveSmallIntegerField(null=True, blank=True)
+    proposed_reward = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0.00")
+    )
+    approved_reward = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0.00")
+    )
+    status = models.CharField(
+        max_length=12, choices=Status.choices, default=Status.PENDING, db_index=True
+    )
+    admin_notes = models.TextField(blank=True)
+    payout_reference = models.CharField(max_length=100, blank=True, default="")
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-submitted_at"]
+
+    def __str__(self):
+        return f"{self.player} - {self.tournament} - {self.status}"
+
