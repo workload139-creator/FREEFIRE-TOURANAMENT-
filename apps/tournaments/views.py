@@ -218,8 +218,14 @@ def player_room(request, registration_id):
         and registration.ready_deadline
         and timezone.now() > registration.ready_deadline
     ):
-        registration.status = Registration.Status.NOT_PLAYING
-        registration.save(update_fields=["status"])
+
+        
+registration.status = Registration.Status.NOT_PLAYING
+registration.room_details_sent = False
+registration.save(
+    update_fields=["status", "room_details_sent"]
+)
+
 
     return render(
         request,
