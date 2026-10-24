@@ -12,4 +12,10 @@ urlpatterns = [
         views.tournament_register,
         name="register",
     ),
+
+    path(
+    "registration/<int:registration_id>/confirm/",
+    views.confirm_playing,
+    name="confirm_playing",
+),
 ]
