@@ -1,4 +1,5 @@
 from django.contrib import messages
+from decimal import Decimal
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
