@@ -75,7 +75,7 @@ def login_view(request):
 
     return render(
         request,
-        "accounts/login.html",
+        "registration/login.html",
         {"form": form},
     )
 
