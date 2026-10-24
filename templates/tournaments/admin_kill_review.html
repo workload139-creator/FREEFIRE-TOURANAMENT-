@@ -1,0 +1,76 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1>Admin — Kill Verification Review</h1>
+
+    <p>Players ki match-history submissions review karo.</p>
+
+    <div class="tournament-card">
+        <h2>Pending Reviews</h2>
+
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Player</th>
+                        <th>Tournament</th>
+                        <th>Registered UID</th>
+                        <th>Submitted UID</th>
+                        <th>AI Kills</th>
+                        <th>Admin Approved Kills</th>
+                        <th>Proposed Reward</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for submission in submissions %}
+                        <tr>
+                            <td>{{ submission.player.username }}</td>
+                            <td>{{ submission.tournament.title }}</td>
+                            <td>{{ submission.registered_uid }}</td>
+                            <td>{{ submission.free_fire_uid }}</td>
+                            <td>{{ submission.ai_proposed_kills|default:"Pending" }}</td>
+                            <td>
+                                {{ submission.approved_kills|default:"Not reviewed" }}
+                            </td>
+                            <td>
+                                {% if submission.ai_proposed_kills != None %}
+                                    ₹{{ submission.ai_proposed_kills|floatformat:0 }}
+                                    <small>kills × ₹5 calculation required</small>
+                                {% else %}
+                                    Pending
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ submission.review_url }}">
+                                    Review Submission
+                                </a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="8">
+                                Abhi koi pending submission nahi hai.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="tournament-card">
+        <h2>Admin Review Rules</h2>
+        <ul>
+            <li>Registered UID aur submitted UID match karo.</li>
+            <li>Video aur screenshots manually review karo.</li>
+            <li>AI ke proposed kills ko final result mat samjho.</li>
+            <li>Approved kills ko ₹5 se multiply karke reward calculate karo.</li>
+            <li>Final approval ke baad hi authorized payout process karo.</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
