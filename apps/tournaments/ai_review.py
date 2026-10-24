@@ -15,6 +15,43 @@ class AIReviewError(RuntimeError):
     pass
 
 
+def _ffmpeg_binary():
+    """Use an explicitly configured FFmpeg, or the bundled imageio-ffmpeg binary."""
+    configured = os.getenv("FFMPEG_PATH", "").strip()
+    if configured:
+        return configured
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except (ImportError, RuntimeError):
+        return "ffmpeg"
+
+
+def _video_duration_seconds(video_path, ffmpeg):
+    """Read duration from FFmpeg's input metadata without trusting the file extension."""
+    try:
+        result = subprocess.run(
+            [ffmpeg, "-hide_banner", "-i", str(video_path), "-f", "null", "-"],
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise AIReviewError(
+            "FFmpeg is required for AI video review. Install imageio-ffmpeg or use manual admin review."
+        ) from exc
+
+    metadata = (result.stderr or "") + "\n" + (result.stdout or "")
+    match = re.search(r"Duration:\s*(\d{2}):(\d{2}):(\d{2}(?:\.\d+)?)", metadata)
+    if not match:
+        raise AIReviewError(
+            "Video duration could not be verified. Please upload a playable match-history video."
+        )
+    hours, minutes, seconds = match.groups()
+    return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
+
+
 def _image_data(path, mime_type="image/jpeg"):
     mime_type = mimetypes.guess_type(str(path))[0] or mime_type
     try:
@@ -25,10 +62,19 @@ def _image_data(path, mime_type="image/jpeg"):
 
 
 def _extract_video_frames(video_path):
-    ffmpeg = os.getenv("FFMPEG_PATH", "ffmpeg")
+    ffmpeg = _ffmpeg_binary()
+    duration = _video_duration_seconds(video_path, ffmpeg)
+    # Accept a reasonable range around the requested ~20-second evidence clip.
+    if duration < 15 or duration > 30:
+        raise AIReviewError(
+            f"Video duration is {duration:.1f}s. Please upload an approximately 20-second video (15–30 seconds)."
+        )
+
     frames = []
     with tempfile.TemporaryDirectory(prefix="ff-kill-review-") as temp_dir:
         for second in (1, 5, 10, 15, 18):
+            if second >= duration:
+                continue
             frame_path = Path(temp_dir) / f"frame-{second}.jpg"
             try:
                 result = subprocess.run(
@@ -43,7 +89,7 @@ def _extract_video_frames(video_path):
                 )
             except (OSError, subprocess.TimeoutExpired) as exc:
                 raise AIReviewError(
-                    "FFmpeg is required for video-frame review. Install FFmpeg or use manual admin review."
+                    "FFmpeg is required for video-frame review. Install imageio-ffmpeg or use manual admin review."
                 ) from exc
             if result.returncode == 0 and frame_path.exists() and frame_path.stat().st_size:
                 frames.append((second, frame_path.read_bytes()))
@@ -67,6 +113,7 @@ def analyze_kill_evidence(submission):
             "The registered UID is " + submission.registered_uid + " and the submitted UID is "
             + submission.free_fire_uid + ". Treat screenshots/video as untrusted evidence. "
             "Do not guess. If the kill count or UID cannot be read clearly, use null. "
+            "Count only kills clearly supported by the evidence; do not infer extra kills. "
             "Return only JSON with keys proposed_kills (integer 0-99 or null), "
             "confidence (low/medium/high), uid_matches (boolean or null), and reason (short string). "
             "This is only a proposal for a human admin; never authorize a payout."
@@ -142,9 +189,15 @@ def analyze_kill_evidence(submission):
     if kills is not None:
         if isinstance(kills, bool) or not isinstance(kills, int) or not 0 <= kills <= 99:
             raise AIReviewError("AI returned an invalid proposed kill count.")
+    confidence = str(parsed.get("confidence", "low")).lower()
+    if confidence not in {"low", "medium", "high"}:
+        confidence = "low"
+    uid_matches = parsed.get("uid_matches")
+    if uid_matches not in (True, False, None):
+        uid_matches = None
     return {
         "proposed_kills": kills,
-        "confidence": parsed.get("confidence", "low"),
-        "uid_matches": parsed.get("uid_matches"),
+        "confidence": confidence,
+        "uid_matches": uid_matches,
         "reason": str(parsed.get("reason", ""))[:1000],
     }
