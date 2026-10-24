@@ -15,6 +15,7 @@
             <div class="form-group"><label for="{{ form.history_video.id_for_label }}">Match-history video (MP4/MOV/WEBM, max 50 MB)</label>{{ form.history_video }}{{ form.history_video.errors }}</div>
             <div class="form-group"><label for="{{ form.history_image_one.id_for_label }}">Screenshot 1</label>{{ form.history_image_one }}{{ form.history_image_one.errors }}</div>
             <div class="form-group"><label for="{{ form.history_image_two.id_for_label }}">Screenshot 2</label>{{ form.history_image_two }}{{ form.history_image_two.errors }}</div>
+            <div class="form-group">{{ form.consent_ai_review }} <label for="{{ form.consent_ai_review.id_for_label }}">{{ form.consent_ai_review.label }}</label>{{ form.consent_ai_review.errors }}</div>
             <button type="submit" class="button button-primary">Submit for Admin Review</button>
         </form>
     </div>
