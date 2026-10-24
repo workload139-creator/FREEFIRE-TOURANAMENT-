@@ -1,30 +1,15 @@
 from django.contrib import admin
-
-from .models import Registration, Tournament
+from .models import Tournament, Registration
 
 
 class RegistrationInline(admin.TabularInline):
     model = Registration
-
     extra = 0
-
-    fields = (
-        "player",
-        "free_fire_uid",
-        "entry_fee_paid",
-        "payment_verified",
-        "status",
-        "registered_at",
-    )
-
-    readonly_fields = ("registered_at",)
-
-    show_change_link = True
+    readonly_fields = ("registered_at", "updated_at")
 
 
 @admin.register(Tournament)
 class TournamentAdmin(admin.ModelAdmin):
-
     list_display = (
         "title",
         "entry_fee",
@@ -34,71 +19,14 @@ class TournamentAdmin(admin.ModelAdmin):
         "status",
     )
 
-    list_filter = (
-        "status",
-        "start_time",
-    )
-
-    search_fields = (
-        "title",
-        "description",
-    )
-
+    list_filter = ("status", "start_time")
+    search_fields = ("title", "description")
     ordering = ("start_time",)
-
     inlines = [RegistrationInline]
-
-    fieldsets = (
-        (
-            "Tournament Information",
-            {
-                "fields": (
-                    "title",
-                    "description",
-                    "status",
-                ),
-            },
-        ),
-        (
-            "Fees and Players",
-            {
-                "fields": (
-                    "entry_fee",
-                    "prize_pool",
-                    "max_players",
-                ),
-            },
-        ),
-        (
-            "Match Details",
-            {
-                "fields": (
-                    "start_time",
-                    "room_id",
-                    "room_password",
-                ),
-            },
-        ),
-        (
-            "Timestamps",
-            {
-                "fields": (
-                    "created_at",
-                    "updated_at",
-                ),
-            },
-        ),
-    )
-
-    readonly_fields = (
-        "created_at",
-        "updated_at",
-    )
 
 
 @admin.register(Registration)
 class RegistrationAdmin(admin.ModelAdmin):
-
     list_display = (
         "player",
         "tournament",
@@ -106,27 +34,11 @@ class RegistrationAdmin(admin.ModelAdmin):
         "entry_fee_paid",
         "payment_verified",
         "status",
-        "registered_at",
     )
 
-    list_filter = (
-        "status",
-        "payment_verified",
-        "registered_at",
-    )
-
+    list_filter = ("status", "payment_verified")
     search_fields = (
         "player__username",
         "free_fire_uid",
         "tournament__title",
-    )
-
-    readonly_fields = (
-        "registered_at",
-        "updated_at",
-    )
-
-    list_select_related = (
-        "player",
-        "tournament",
     )
