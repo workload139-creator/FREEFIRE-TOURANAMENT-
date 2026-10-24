@@ -1,65 +1,27 @@
-
 {% extends "base.html" %}
-
+{% block title %}{{ tournament.title }} Leaderboard | FF Arena{% endblock %}
 {% block content %}
-<div class="container">
-    <h1>🏆 Tournament Leaderboard</h1>
-
-    <div class="tournament-card">
-        <h2>{{ tournament.title }}</h2>
-
-        <p>
-            <strong>Entry Fee:</strong>
-            ₹{{ tournament.entry_fee }}
-        </p>
-
-        <p>
-            <strong>Prize Pool:</strong>
-            ₹{{ tournament.prize_pool }}
-        </p>
-
-        <p>
-            <strong>Players:</strong>
-            {{ tournament.confirmed_players_count }}/{{ tournament.max_players }}
-        </p>
+<section class="container" style="max-width:1000px;margin:35px auto;padding:20px">
+    <h1>🏆 {{ tournament.title }} — Leaderboard</h1>
+    <p>Only admin-approved kill submissions appear here.</p>
+    <div class="tournament-card" style="padding:20px;overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse">
+            <thead><tr><th>Rank</th><th>Player</th><th>Free Fire UID</th><th>Approved Kills</th><th>Reward</th></tr></thead>
+            <tbody>
+            {% for submission in submissions %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ submission.player.username }}</td>
+                    <td>{{ submission.registered_uid }}</td>
+                    <td>{{ submission.approved_kills }}</td>
+                    <td>₹{{ submission.approved_reward }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5">Abhi leaderboard ke liye approved result nahi hai.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
     </div>
-
-    <div class="tournament-card">
-        <h2>Player Rankings</h2>
-
-        <div style="overflow-x: auto;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Rank</th>
-                        <th>Player</th>
-                        <th>Free Fire UID</th>
-                        <th>Status</th>
-                        <th>Approved Kills</th>
-                        <th>Reward</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    {% for item in leaderboard %}
-                        <tr>
-                            <td>{{ forloop.counter }}</td>
-                            <td>{{ item.registration.player.username }}</td>
-                            <td>{{ item.registration.free_fire_uid }}</td>
-                            <td>{{ item.registration.get_status_display }}</td>
-                            <td>{{ item.approved_kills|default:0 }}</td>
-                            <td>₹{{ item.reward|default:0 }}</td>
-                        </tr>
-                    {% empty %}
-                        <tr>
-                            <td colspan="6">
-                                Abhi leaderboard data available nahi hai.
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
+    <a href="{% url 'tournaments:list' %}">← All tournaments</a>
+</section>
 {% endblock %}
