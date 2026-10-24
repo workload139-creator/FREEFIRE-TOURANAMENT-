@@ -21,10 +21,7 @@
     {% for result in search_results %}
       <article class="player-row">
         <div class="player-avatar">{{ result.user.username|first|upper }}</div>
-        <div class="player-info">
-          <strong>{{ result.user.username }}</strong>
-          <small>Player ID: FF-{{ result.user.pk|stringformat:"06d" }}</small>
-        </div>
+        <div class="player-info"><strong>{{ result.user.username }}</strong><small>Player ID: FF-{{ result.user.pk|stringformat:"06d" }}</small></div>
         <div class="player-actions">
           {% if result.is_friend %}
             <a class="button button-primary" href="{% url 'chat:open' result.user.pk %}">Message</a>
@@ -38,9 +35,7 @@
           <a class="text-link" href="{% url 'social:report_user' result.user.pk %}">Report</a>
         </div>
       </article>
-    {% empty %}
-      <p class="muted">Is ID ya username ka player nahi mila.</p>
-    {% endfor %}
+    {% empty %}<p class="muted">Is ID ya username ka player nahi mila.</p>{% endfor %}
   </section>
   {% endif %}
 
@@ -59,7 +54,9 @@
       {% empty %}<p class="muted">Koi pending request nahi hai.</p>{% endfor %}
       {% if outgoing_requests %}
         <h3>Sent requests</h3>
-        {% for item in outgoing_requests %}<p class="muted">{{ item.recipient.username }} · Pending</p>{% endfor %}
+        {% for item in outgoing_requests %}
+          <div class="player-row compact"><div class="player-info"><strong>{{ item.recipient.username }}</strong><small>Pending request</small></div><form method="post" action="{% url 'social:cancel_request' item.pk %}">{% csrf_token %}<button class="button button-outline" type="submit">Cancel</button></form></div>
+        {% endfor %}
       {% endif %}
     </section>
 
