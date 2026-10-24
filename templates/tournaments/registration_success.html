@@ -1,0 +1,37 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="tournament-card">
+        <h1>Registration Status</h1>
+
+        <p>
+            Tournament: <strong>{{ registration.tournament.title }}</strong>
+        </p>
+
+        <p>
+            Free Fire UID: <strong>{{ registration.free_fire_uid }}</strong>
+        </p>
+
+        <p>
+            Entry Fee: <strong>₹{{ registration.entry_fee_paid }}</strong>
+        </p>
+
+        <p>
+            Status:
+            <strong>{{ registration.get_status_display }}</strong>
+        </p>
+
+        {% if registration.payment_verified %}
+            <p>Payment verify ho chuki hai.</p>
+        {% else %}
+            <p>Payment abhi verify nahi hui hai. Confirmation ka intezar karein.</p>
+        {% endif %}
+
+        <a href="{% url 'tournaments:list' %}">
+            Back to Tournaments
+        </a>
+    </div>
+</div>
+{% endblock %}
