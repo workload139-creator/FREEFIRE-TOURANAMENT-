@@ -29,6 +29,13 @@ path(
     views.admin_room_page,
     name="admin_room_page",
 ),
+    
+path(
+    "registration/<int:registration_id>/room/",
+    views.player_room,
+    name="player_room",
+),
+
 
     
 ]
