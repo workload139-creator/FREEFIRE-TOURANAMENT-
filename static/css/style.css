@@ -104,6 +104,140 @@ img {
     color: var(--text-primary);
 }
 
+/* =========================
+   HOMEPAGE ADDITIONAL STYLES
+========================= */
+
+.hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+    margin-top: 25px;
+}
+
+.btn-secondary {
+    display: inline-block;
+    padding: 12px 20px;
+    color: var(--text);
+    background: var(--panel-light);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    font-weight: 800;
+    transition: 0.25s ease;
+}
+
+.btn-secondary:hover {
+    border-color: var(--red);
+    transform: translateY(-2px);
+}
+
+.card-description {
+    min-height: 48px;
+    margin: -8px 0 20px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.vs-banner {
+    background:
+        radial-gradient(circle at 80% 30%, #49304f, transparent 40%),
+        linear-gradient(120deg, #28203b, #101520);
+    border-bottom: 2px solid #a66bff;
+}
+
+.features-section {
+    max-width: 1200px;
+    margin: 65px auto;
+    padding: 0 20px;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+}
+
+.feature-card {
+    padding: 25px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 15px;
+    transition: 0.25s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(255, 53, 72, 0.5);
+}
+
+.feature-card > span {
+    display: inline-block;
+    margin-bottom: 10px;
+    font-size: 35px;
+}
+
+.feature-card h3 {
+    margin: 5px 0 8px;
+    font-size: 19px;
+}
+
+.feature-card p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.cta-section {
+    max-width: 1160px;
+    margin: 65px auto;
+    padding: 50px 25px;
+    text-align: center;
+    background:
+        radial-gradient(ellipse at top, #40202a, transparent 65%),
+        var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+}
+
+.cta-section h2 {
+    margin: 12px 0;
+    font-size: clamp(28px, 4vw, 42px);
+}
+
+.cta-section h2 span {
+    color: var(--red);
+}
+
+.cta-section p {
+    margin-bottom: 25px;
+    color: var(--muted);
+}
+
+@media (max-width: 700px) {
+    .features-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .hero-actions a {
+        text-align: center;
+    }
+
+    .cta-section {
+        margin: 40px 20px;
+        padding: 35px 20px;
+    }
+
+    .features-section {
+        margin: 40px auto;
+    }
+}
+
 .brand-icon {
     display: inline-grid;
     place-items: center;
