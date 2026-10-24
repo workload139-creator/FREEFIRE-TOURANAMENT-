@@ -194,3 +194,37 @@ class AdminWalletTransaction(models.Model):
             f"{self.admin_wallet.name} - "
             f"{self.transaction_type} - ₹{self.amount}"
         )
+
+class WithdrawalRequest(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending Manual Payout"
+        PAID = "paid", "Paid"
+        REJECTED = "rejected", "Rejected and Refunded"
+
+    wallet = models.ForeignKey(
+        Wallet,
+        on_delete=models.PROTECT,
+        related_name="withdrawal_requests",
+    )
+    amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("10.00"))],
+    )
+    upi_id = models.CharField(max_length=100)
+    status = models.CharField(
+        max_length=12,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
+    )
+    payout_reference = models.CharField(max_length=100, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.wallet.user} - ₹{self.amount} - {self.status}"
+
