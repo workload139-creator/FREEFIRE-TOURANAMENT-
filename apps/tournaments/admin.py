@@ -7,6 +7,7 @@ from apps.accounts.models import (
     WalletTransaction,
 )
 from .models import KillSubmission, Registration, Tournament
+from .services import cancel_tournament_and_refund
 
 
 class RegistrationInline(admin.TabularInline):
@@ -16,6 +17,22 @@ class RegistrationInline(admin.TabularInline):
     readonly_fields = (
         "registered_at", "updated_at", "ready_confirmed_at",
         "refund_processed_at",
+    )
+
+
+@admin.action(description="Cancel tournament and refund registered players")
+def cancel_and_refund_tournaments(modeladmin, request, queryset):
+    cancelled = 0
+    refunded = 0
+    for tournament in queryset:
+        count, message = cancel_tournament_and_refund(tournament.pk)
+        if "already cancelled" not in message.lower():
+            cancelled += 1
+        refunded += count
+    modeladmin.message_user(
+        request,
+        f"{cancelled} tournament(s) cancelled; {refunded} player refund(s) recorded.",
+        messages.SUCCESS,
     )
 
 
@@ -29,6 +46,7 @@ class TournamentAdmin(admin.ModelAdmin):
     search_fields = ("title", "description")
     ordering = ("start_time",)
     inlines = (RegistrationInline,)
+    actions = (cancel_and_refund_tournaments,)
     fieldsets = (
         ("Tournament Details", {"fields": ("title", "description", "mode", "vs_format")}),
         ("Fees & Players", {"fields": ("entry_fee", "prize_pool", "max_players")}),
