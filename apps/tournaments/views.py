@@ -15,7 +15,9 @@ from .models import KillSubmission, Registration, Tournament
 
 
 def tournament_list(request):
-    tournaments = Tournament.objects.all().order_by("start_time")
+    tournaments = Tournament.objects.filter(
+        status__in=[Tournament.Status.UPCOMING, Tournament.Status.LIVE, Tournament.Status.COMPLETED]
+    ).order_by("start_time")
     return render(
         request,
         "tournaments/list.html",
