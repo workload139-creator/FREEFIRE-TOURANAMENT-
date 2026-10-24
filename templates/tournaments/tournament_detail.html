@@ -1,0 +1,53 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <a href="{% url 'tournaments:list' %}">← All Tournaments</a>
+
+    <h1>{{ tournament.title }}</h1>
+
+    <p>{{ tournament.description|default:"Tournament ki details yahan dikhengi." }}</p>
+
+    <hr>
+
+    <p><strong>Entry Fee:</strong> ₹{{ tournament.entry_fee }}</p>
+    <p><strong>Prize Pool:</strong> ₹{{ tournament.prize_pool }}</p>
+
+    <p>
+        <strong>Players:</strong>
+        {{ tournament.confirmed_players_count }}/{{ tournament.max_players }}
+    </p>
+
+    <p>
+        <strong>Start Time:</strong>
+        {{ tournament.start_time|date:"d M Y, h:i A" }}
+    </p>
+
+    <p><strong>Status:</strong> {{ tournament.get_status_display }}</p>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="message">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    {% if user.is_authenticated %}
+        {% if tournament.status == "upcoming" and not tournament.is_full %}
+            <form method="post"
+                  action="{% url 'tournaments:join' tournament.id %}">
+                {% csrf_token %}
+                <button type="submit">Register for Tournament</button>
+            </form>
+        {% elif tournament.is_full %}
+            <p>Room full hai. Abhi registration available nahi hai.</p>
+        {% else %}
+            <p>Is tournament ki registration abhi available nahi hai.</p>
+        {% endif %}
+    {% else %}
+        <p>Registration karne ke liye pehle login karo.</p>
+        <a href="{% url 'login' %}?next={{ request.path }}">Login</a>
+    {% endif %}
+</div>
+{% endblock %}
+
