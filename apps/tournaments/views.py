@@ -186,3 +186,20 @@ def send_room_details(request, tournament_id):
     return redirect("tournaments:list")
     
     return redirect("tournaments:list")
+
+
+
+@login_required
+@user_passes_test(lambda user: user.is_staff)
+def admin_room_page(request, tournament_id):
+    tournament = get_object_or_404(Tournament, pk=tournament_id)
+
+    return render(
+        request,
+        "tournaments/admin_room.html",
+        {"tournament": tournament},
+    )
+
+
+
+
