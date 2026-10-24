@@ -1,6 +1,7 @@
 """Optional multimodal evidence review. AI output is a proposal only, never a payout authorization."""
 import base64
 import json
+import mimetypes
 import os
 import re
 import subprocess
@@ -14,7 +15,8 @@ class AIReviewError(RuntimeError):
     pass
 
 
-def _image_data(path, mime_type):
+def _image_data(path, mime_type="image/jpeg"):
+    mime_type = mimetypes.guess_type(str(path))[0] or mime_type
     try:
         data = Path(path).read_bytes()
     except OSError as exc:
@@ -76,7 +78,7 @@ def analyze_kill_evidence(submission):
     })
     content.append({
         "type": "input_image",
-        "image_url": _image_data(submission.history_image_one.path, "image/jpeg"),
+        "image_url": _image_data(submission.history_image_one.path),
     })
     content.append({
         "type": "input_text",
@@ -84,7 +86,7 @@ def analyze_kill_evidence(submission):
     })
     content.append({
         "type": "input_image",
-        "image_url": _image_data(submission.history_image_two.path, "image/jpeg"),
+        "image_url": _image_data(submission.history_image_two.path),
     })
     for second, frame_bytes in frames:
         content.append({
