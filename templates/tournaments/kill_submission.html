@@ -1,0 +1,68 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="tournament-card">
+        <h1>Kill Verification</h1>
+
+        <p>Apni match-history submit karo. AI verification ke baad admin final review karega.</p>
+
+        <form method="post"
+              enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label for="free_fire_uid">Free Fire UID</label>
+                <input
+                    type="text"
+                    id="free_fire_uid"
+                    name="free_fire_uid"
+                    maxlength="30"
+                    inputmode="numeric"
+                    pattern="[0-9]+"
+                    placeholder="Registered Free Fire UID"
+                    required
+                >
+                <small>Wahi UID daalo jo tournament registration mein use ki thi.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="history_video">Match History Video</label>
+                <input
+                    type="file"
+                    id="history_video"
+                    name="history_video"
+                    accept="video/mp4,video/webm,video/quicktime"
+                    required
+                >
+                <small>Lagbhag 20-second ki video submit karo.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="history_images">Match History Screenshots</label>
+                <input
+                    type="file"
+                    id="history_images"
+                    name="history_images"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    required
+                >
+                <small>Kam-se-kam 2 clear screenshots select karo.</small>
+            </div>
+
+            <button type="submit">
+                Submit for Verification
+            </button>
+        </form>
+
+        <hr>
+
+        <h2>Reward Rules</h2>
+        <p>Har approved kill ka reward: ₹5</p>
+        <p>AI result ke baad admin final verification karega.</p>
+        <p>Final approval se pehle reward ko payable nahi maana jayega.</p>
+    </div>
+</div>
+{% endblock %}
