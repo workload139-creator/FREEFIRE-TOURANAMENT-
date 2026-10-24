@@ -142,6 +142,17 @@ def handle_friend_request(request, request_id, action):
 
 @require_POST
 @login_required
+def cancel_friend_request(request, request_id):
+    friend_request = get_object_or_404(
+        FriendRequest, pk=request_id, requester=request.user, status=FriendRequest.Status.PENDING
+    )
+    friend_request.delete()
+    messages.success(request, "Sent friend request cancel kar di.")
+    return redirect("social:home")
+
+
+@require_POST
+@login_required
 def remove_friend(request, user_id):
     target = get_object_or_404(User, pk=user_id)
     FriendRequest.objects.filter(
