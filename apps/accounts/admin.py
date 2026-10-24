@@ -84,3 +84,33 @@ class WalletTransactionAdmin(admin.ModelAdmin):
 
 
 
+
+from .models import DepositRequest
+
+
+@admin.register(DepositRequest)
+class DepositRequestAdmin(admin.ModelAdmin):
+    list_display = (
+        "wallet",
+        "amount",
+        "payment_reference",
+        "status",
+        "created_at",
+    )
+
+    list_filter = ("status", "created_at")
+
+    search_fields = (
+        "wallet__user__username",
+        "payment_reference",
+    )
+
+    readonly_fields = ("created_at",)
+
+    fields = (
+        "wallet",
+        "amount",
+        "payment_reference",
+        "status",
+        "created_at",
+    )
