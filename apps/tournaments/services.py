@@ -1,4 +1,4 @@
-
+```python
 from decimal import Decimal
 
 from django.db import transaction
@@ -17,7 +17,6 @@ def mark_not_playing_and_refund(registration_id):
         .get(pk=registration_id)
     )
 
-    # Player already confirmed or refund already processed.
     if registration.ready_confirmed_at:
         return False, "Player has already confirmed."
 
@@ -36,27 +35,40 @@ def mark_not_playing_and_refund(registration_id):
     if timezone.now() < registration.ready_deadline:
         return False, "Confirmation deadline has not passed."
 
+    # Mark the player as not playing and hide room access.
     registration.status = Registration.Status.NOT_PLAYING
     registration.room_details_sent = False
 
     if registration.payment_verified:
-        amount = Decimal(registration.entry_fee_paid)
+        amount = Decimal(str(registration.entry_fee_paid))
 
         if amount > 0:
-            wallet = Wallet.objects.select_for_update().get(
-                user=registration.player,
-                is_admin_wallet=False,
-            )
-
-            # Stable reference prevents the same refund being recorded twice.
             reference = f"REG-REFUND-{registration.pk}"
 
+            # A stable reference must never create a second refund.
             existing = WalletTransaction.objects.filter(
-                reference=reference,
-                status=WalletTransaction.Status.COMPLETED,
+                reference=reference
             ).first()
 
-            if not existing:
+            if existing:
+                if existing.status != WalletTransaction.Status.COMPLETED:
+                    return False, "Existing refund transaction is not completed."
+
+                # A completed ledger entry means the refund was already recorded.
+                registration.refund_processed = True
+                registration.refund_processed_at = timezone.now()
+                registration.refund_reference = reference
+
+            else:
+                wallet = (
+                    Wallet.objects
+                    .select_for_update()
+                    .get(
+                        user=registration.player,
+                        is_admin_wallet=False,
+                    )
+                )
+
                 wallet.balance += amount
                 wallet.save(update_fields=["balance", "updated_at"])
 
@@ -67,16 +79,20 @@ def mark_not_playing_and_refund(registration_id):
                     status=WalletTransaction.Status.COMPLETED,
                     reference=reference,
                     description=(
-                        f"Refund for tournament "
+                        f"Entry fee refund for tournament "
                         f"{registration.tournament_id}"
                     ),
                 )
 
+                registration.refund_processed = True
+                registration.refund_processed_at = timezone.now()
+                registration.refund_reference = reference
+        else:
+            # Verified payment with no refundable amount.
             registration.refund_processed = True
             registration.refund_processed_at = timezone.now()
-            registration.refund_reference = reference
     else:
-        # No verified payment: there is nothing to refund.
+        # Payment was not verified, so no wallet credit is due.
         registration.refund_processed = True
         registration.refund_processed_at = timezone.now()
 
@@ -92,3 +108,4 @@ def mark_not_playing_and_refund(registration_id):
     )
 
     return True, "Player marked NOT_PLAYING."
+```
