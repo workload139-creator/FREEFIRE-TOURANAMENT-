@@ -1,7 +1,11 @@
 from django.contrib import admin, messages
 from django.db import transaction
 
-from apps.accounts.models import WalletTransaction
+from apps.accounts.models import (
+    AdminWallet,
+    AdminWalletTransaction,
+    WalletTransaction,
+)
 from .models import Registration, Tournament
 
 
@@ -64,6 +68,22 @@ def verify_entry_payments(modeladmin, request, queryset):
             registration.payment_verified = True
             registration.status = Registration.Status.CONFIRMED
             registration.save(update_fields=["payment_verified", "status", "updated_at"])
+
+            if fee > 0:
+                admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
+                admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
+                admin_reference = f"ADMIN-ENTRY-{registration.pk}"
+                if not AdminWalletTransaction.objects.filter(reference=admin_reference).exists():
+                    admin_wallet.balance += fee
+                    admin_wallet.save(update_fields=["balance", "updated_at"])
+                    AdminWalletTransaction.objects.create(
+                        admin_wallet=admin_wallet,
+                        transaction_type=AdminWalletTransaction.TransactionType.ENTRY_FEE,
+                        amount=fee,
+                        status=AdminWalletTransaction.Status.COMPLETED,
+                        reference=admin_reference,
+                        description=f"Verified entry fee for tournament {registration.tournament_id}",
+                    )
             verified_count += 1
 
     if verified_count:
