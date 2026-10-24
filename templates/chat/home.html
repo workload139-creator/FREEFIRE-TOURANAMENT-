@@ -12,7 +12,7 @@
     {% for row in chat_rows %}
       <a class="chat-list-row" href="{% url 'chat:conversation' row.conversation.pk %}">
         <div class="player-avatar">{{ row.other.username|first|upper }}</div>
-        <div class="player-info"><strong>{{ row.other.username }}</strong><small>{% if row.last_message %}{{ row.last_message.body|truncatechars:70 }}{% else %}Start chatting{% endif %}</small></div>
+        <div class="player-info"><strong>{{ row.other.username }} {% if row.other.is_online %}<span class="online-dot" aria-label="Online"></span>{% endif %}</strong><small>{% if row.last_message %}{{ row.last_message.body|truncatechars:70 }}{% else %}Start chatting{% endif %}</small></div>
         <div class="chat-meta">{% if row.unread_count %}<span class="count-pill">{{ row.unread_count }}</span>{% endif %}<small>FF-{{ row.other.pk|stringformat:"06d" }}</small></div>
       </a>
     {% empty %}
