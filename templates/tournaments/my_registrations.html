@@ -1,0 +1,63 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1>My Tournament Registrations</h1>
+    <p>Apni registrations, payment aur match status yahan check karo.</p>
+
+    <div class="tournament-grid">
+        {% for registration in registrations %}
+            <div class="tournament-card">
+                <h2>{{ registration.tournament.title }}</h2>
+
+                <p>
+                    <strong>Free Fire UID:</strong>
+                    {{ registration.free_fire_uid }}
+                </p>
+
+                <p>
+                    <strong>Entry Fee:</strong>
+                    ₹{{ registration.entry_fee_paid }}
+                </p>
+
+                <p>
+                    <strong>Payment:</strong>
+                    {% if registration.payment_verified %}
+                        Verified
+                    {% else %}
+                        Pending Verification
+                    {% endif %}
+                </p>
+
+                <p>
+                    <strong>Registration Status:</strong>
+                    {{ registration.get_status_display }}
+                </p>
+
+                <p>
+                    <strong>Tournament Start:</strong>
+                    {{ registration.tournament.start_time|date:"d M Y, h:i A" }}
+                </p>
+
+                {% if registration.status == "waiting_ready" %}
+                    <p>Admin ki match confirmation ka intezar karein.</p>
+                {% elif registration.status == "ready" %}
+                    <p>Aapne match ke liye confirmation de di hai.</p>
+                {% elif registration.status == "refunded" %}
+                    <p>Refund status: refunded. Wallet history check karein.</p>
+                {% endif %}
+
+                <a href="{% url 'tournaments:detail' registration.tournament.id %}">
+                    View Tournament
+                </a>
+            </div>
+        {% empty %}
+            <div class="tournament-card">
+                <p>Abhi aapki koi tournament registration nahi hai.</p>
+                <a href="{% url 'tournaments:list' %}">Browse Tournaments</a>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
