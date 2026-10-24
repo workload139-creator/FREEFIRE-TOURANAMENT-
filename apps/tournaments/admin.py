@@ -139,7 +139,8 @@ class KillSubmissionAdmin(admin.ModelAdmin):
     readonly_fields = (
         "registration", "player", "tournament", "registered_uid", "free_fire_uid",
         "history_video", "history_image_one", "history_image_two",
-        "ai_proposed_kills", "approved_kills", "proposed_reward", "approved_reward",
+        "ai_proposed_kills", "ai_confidence", "ai_uid_matches", "ai_review_notes",
+        "approved_kills", "proposed_reward", "approved_reward",
         "status", "admin_notes", "payout_reference", "submitted_at", "reviewed_at",
     )
 
