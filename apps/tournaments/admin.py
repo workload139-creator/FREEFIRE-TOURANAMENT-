@@ -21,7 +21,7 @@ class TournamentAdmin(admin.ModelAdmin):
         "status",
     )
 
-    list_filter = ("status", "start_time")
+    list_filter = ("mode","status", "start_time")
     search_fields = ("title", "description")
     ordering = ("start_time",)
     inlines = [RegistrationInline]
