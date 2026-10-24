@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Friends | FF Arena{% endblock %}
+{% block content %}
+<section class="community-page">
+  <div class="community-hero">
+    <span class="eyebrow">FF ARENA COMMUNITY</span>
+    <h1>Friends & Players</h1>
+    <p>Player ID se search karo, request bhejo aur apne friends ke saath private chat karo.</p>
+    <form method="get" class="player-search">
+      <label for="player-search">Player ID ya username</label>
+      <div class="search-row">
+        <input id="player-search" name="q" value="{{ search_query }}" placeholder="FF-000123 ya username" maxlength="150" required>
+        <button class="button button-primary" type="submit">Search</button>
+      </div>
+    </form>
+  </div>
+
+  {% if search_query %}
+  <section class="community-panel">
+    <h2>Search results</h2>
+    {% for result in search_results %}
+      <article class="player-row">
+        <div class="player-avatar">{{ result.user.username|first|upper }}</div>
+        <div class="player-info">
+          <strong>{{ result.user.username }}</strong>
+          <small>Player ID: FF-{{ result.user.pk|stringformat:"06d" }}</small>
+        </div>
+        <div class="player-actions">
+          {% if result.is_friend %}
+            <a class="button button-primary" href="{% url 'chat:open' result.user.pk %}">Message</a>
+          {% elif result.incoming %}
+            <span class="muted">Request aayi hui hai</span>
+          {% elif result.outgoing %}
+            <span class="muted">Request sent</span>
+          {% else %}
+            <form method="post" action="{% url 'social:send_request' result.user.pk %}">{% csrf_token %}<button class="button button-primary" type="submit">Add Friend</button></form>
+          {% endif %}
+          <a class="text-link" href="{% url 'social:report_user' result.user.pk %}">Report</a>
+        </div>
+      </article>
+    {% empty %}
+      <p class="muted">Is ID ya username ka player nahi mila.</p>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  <div class="community-columns">
+    <section class="community-panel">
+      <h2>Friend Requests <span class="count-pill">{{ incoming_requests|length }}</span></h2>
+      {% for item in incoming_requests %}
+      <article class="player-row compact">
+        <div class="player-avatar">{{ item.requester.username|first|upper }}</div>
+        <div class="player-info"><strong>{{ item.requester.username }}</strong><small>FF-{{ item.requester.pk|stringformat:"06d" }}</small></div>
+        <div class="player-actions">
+          <form method="post" action="{% url 'social:handle_request' item.pk 'accept' %}">{% csrf_token %}<button class="button button-primary" type="submit">Accept</button></form>
+          <form method="post" action="{% url 'social:handle_request' item.pk 'reject' %}">{% csrf_token %}<button class="button button-outline" type="submit">Reject</button></form>
+        </div>
+      </article>
+      {% empty %}<p class="muted">Koi pending request nahi hai.</p>{% endfor %}
+      {% if outgoing_requests %}
+        <h3>Sent requests</h3>
+        {% for item in outgoing_requests %}<p class="muted">{{ item.recipient.username }} · Pending</p>{% endfor %}
+      {% endif %}
+    </section>
+
+    <section class="community-panel">
+      <h2>My Friends <span class="count-pill">{{ friends|length }}</span></h2>
+      {% for friend in friends %}
+      <article class="player-row compact">
+        <div class="player-avatar">{{ friend.username|first|upper }}</div>
+        <div class="player-info"><strong>{{ friend.username }}</strong><small>FF-{{ friend.pk|stringformat:"06d" }}</small></div>
+        <div class="player-actions">
+          <a class="button button-primary" href="{% url 'chat:open' friend.pk %}">Chat</a>
+          <form method="post" action="{% url 'social:remove_friend' friend.pk %}">{% csrf_token %}<button class="button button-outline" type="submit">Remove</button></form>
+          <form method="post" action="{% url 'social:block_user' friend.pk %}">{% csrf_token %}<button class="text-link danger-link" type="submit">Block</button></form>
+        </div>
+      </article>
+      {% empty %}<p class="muted">Abhi friends nahi hain. Upar Player ID se search karo.</p>{% endfor %}
+    </section>
+  </div>
+
+  <section class="community-panel blocked-panel">
+    <h2>Blocked players</h2>
+    {% for item in blocked_users %}
+      <div class="player-row compact"><div class="player-info"><strong>{{ item.blocked.username }}</strong><small>FF-{{ item.blocked.pk|stringformat:"06d" }}</small></div><form method="post" action="{% url 'social:unblock_user' item.blocked.pk %}">{% csrf_token %}<button class="button button-outline" type="submit">Unblock</button></form></div>
+    {% empty %}<p class="muted">Koi blocked player nahi hai.</p>{% endfor %}
+  </section>
+  <p class="community-note">Privacy: private chat sirf accepted friends ke liye hai. Block karne par dono taraf ki chat band ho jayegi.</p>
+</section>
+{% endblock %}
