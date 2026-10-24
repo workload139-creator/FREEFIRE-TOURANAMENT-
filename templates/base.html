@@ -24,6 +24,7 @@
         <nav class="main-nav" id="mainNav">
             <a href="{% url 'home' %}">Home</a>
             <a href="{% url 'tournaments:list' %}">Tournaments</a>
+            <a href="{% url 'tournaments:results' %}">Results</a>
             {% if user.is_authenticated %}
                 <a href="{% url 'accounts:profile' %}">Profile</a>
                 <a href="{% url 'accounts:wallet' %}">Wallet</a>

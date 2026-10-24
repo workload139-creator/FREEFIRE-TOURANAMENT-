@@ -2,13 +2,13 @@ from django.contrib import messages
 from decimal import Decimal
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
 from django.db import IntegrityError, transaction
 from django.shortcuts import redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
-from .forms import PlayerRegistrationForm, WithdrawalRequestForm
+from .forms import PlayerRegistrationForm, ProfileUpdateForm, WithdrawalRequestForm
 
 
 def register_view(request):
@@ -82,11 +82,37 @@ def login_view(request):
 
 @login_required
 def profile_view(request):
+    if request.method == "POST":
+        form = ProfileUpdateForm(
+            request.POST, request.FILES, instance=request.user
+        )
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Player profile update ho gayi.")
+            return redirect("accounts:profile")
+    else:
+        form = ProfileUpdateForm(instance=request.user)
+
     return render(
         request,
         "accounts/profile.html",
-        {"player": request.user},
+        {"player": request.user, "form": form},
     )
+
+
+
+@login_required
+def password_change_view(request):
+    if request.method == "POST":
+        form = PasswordChangeForm(user=request.user, data=request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            messages.success(request, "Password successfully change ho gaya.")
+            return redirect("accounts:profile")
+    else:
+        form = PasswordChangeForm(user=request.user)
+    return render(request, "registration/password_change_form.html", {"form": form})
 
 
 @require_POST

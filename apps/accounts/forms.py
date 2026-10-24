@@ -82,3 +82,60 @@ class WithdrawalRequestForm(forms.Form):
         if "@" not in upi_id or any(char.isspace() for char in upi_id):
             raise forms.ValidationError("Valid UPI ID enter karein.")
         return upi_id
+
+
+class ProfileUpdateForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ("username", "email", "phone_number", "profile_photo")
+        widgets = {
+            "username": forms.TextInput(attrs={"autocomplete": "username"}),
+            "email": forms.EmailInput(attrs={"autocomplete": "email"}),
+            "phone_number": forms.TextInput(attrs={"autocomplete": "tel", "inputmode": "numeric"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.get("instance")
+        super().__init__(*args, **kwargs)
+        self.fields["username"].label = "Username / Player ID name"
+        self.fields["email"].label = "Email address"
+        self.fields["phone_number"].label = "Mobile number"
+        self.fields["profile_photo"].label = "Profile photo"
+        self.fields["profile_photo"].required = False
+
+    def clean_username(self):
+        username = self.cleaned_data["username"].strip()
+        existing = User.objects.filter(username__iexact=username)
+        if self.instance and self.instance.pk:
+            existing = existing.exclude(pk=self.instance.pk)
+        if existing.exists():
+            raise forms.ValidationError("Ye username kisi aur player ne le rakha hai.")
+        return username
+
+    def clean_email(self):
+        email = self.cleaned_data["email"].strip().lower()
+        existing = User.objects.filter(email__iexact=email)
+        if self.instance and self.instance.pk:
+            existing = existing.exclude(pk=self.instance.pk)
+        if existing.exists():
+            raise forms.ValidationError("Ye email kisi aur account se linked hai.")
+        return email
+
+    def clean_phone_number(self):
+        phone = self.cleaned_data["phone_number"].strip()
+        if not phone.isdigit() or not 10 <= len(phone) <= 15:
+            raise forms.ValidationError("10 se 15 digits ka valid mobile number enter karein.")
+        existing = User.objects.filter(phone_number=phone)
+        if self.instance and self.instance.pk:
+            existing = existing.exclude(pk=self.instance.pk)
+        if existing.exists():
+            raise forms.ValidationError("Ye mobile number kisi aur account se linked hai.")
+        return phone
+
+    def clean_profile_photo(self):
+        photo = self.cleaned_data.get("profile_photo")
+        if photo and photo.size > 2 * 1024 * 1024:
+            raise forms.ValidationError("Profile photo 2 MB se chhoti honi chahiye.")
+        if photo and hasattr(photo, "content_type") and photo.content_type not in ("image/jpeg", "image/png", "image/webp"):
+            raise forms.ValidationError("JPG, PNG ya WebP photo upload karein.")
+        return photo

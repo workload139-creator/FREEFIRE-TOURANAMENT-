@@ -13,6 +13,9 @@ urlpatterns = [
         name="list",
     ),
 
+    # Public results page
+    path("results/", views.results, name="results"),
+
     # Tournament details
     path(
         "<int:tournament_id>/",
