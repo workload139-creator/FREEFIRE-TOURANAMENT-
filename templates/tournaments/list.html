@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Tournaments | Free Fire Arena{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-content">
+        <span class="badge">🔥 INDIA'S GAMING ARENA</span>
+
+        <h1>PLAY HARD.<br><span>WIN BIG.</span></h1>
+
+        <p>
+            Join exciting Free Fire tournaments, compete with
+            skilled players and win rewards.
+        </p>
+
+        <a href="#tournaments" class="btn-primary">
+            Explore Tournaments →
+        </a>
+    </div>
+
+    <div class="hero-card">
+        <div class="hero-icon">🏆</div>
+        <p class="hero-small">COMPETE • DOMINATE • WIN</p>
+        <h2>YOUR NEXT<br>VICTORY STARTS HERE</h2>
+        <div class="hero-line"></div>
+        <p class="hero-small">FREE FIRE TOURNAMENT ARENA</p>
+    </div>
+</section>
+
+<section class="stats">
+    <div class="stat-card">
+        <span>🎮</span>
+        <h3>BR & VS</h3>
+        <p>Game Modes</p>
+    </div>
+
+    <div class="stat-card">
+        <span>🏆</span>
+        <h3>Live Events</h3>
+        <p>Compete & Win</p>
+    </div>
+
+    <div class="stat-card">
+        <span>⚡</span>
+        <h3>Fast Entry</h3>
+        <p>Easy Registration</p>
+    </div>
+</section>
+
+<section class="tournament-section" id="tournaments">
+    <div class="section-heading">
+        <div>
+            <span class="section-label">FIND YOUR BATTLE</span>
+            <h2>Featured <span>Tournaments</span></h2>
+            <p>Choose your mode and enter the arena.</p>
+        </div>
+    </div>
+
+    <div class="mode-tabs">
+        <a href="#br-tournaments" class="mode-tab active">BR MODE</a>
+        <a href="#vs-tournaments" class="mode-tab">VS MODE</a>
+    </div>
+
+    <h3 class="mode-heading" id="br-tournaments">🔥 Battle Royale</h3>
+
+    <div class="tournament-grid">
+        {% for tournament in tournaments %}
+            {% if tournament.mode == "BR" %}
+            <article class="tournament-card">
+                <div class="tournament-banner br-banner">
+                    <span class="game-tag">BATTLE ROYALE</span>
+                    <span class="live-tag">● TOURNAMENT</span>
+                </div>
+
+                <div class="tournament-body">
+                    <h3>{{ tournament.title }}</h3>
+
+                    <div class="tournament-info">
+                        <div>
+                            <small>ENTRY FEE</small>
+                            <strong>₹{{ tournament.entry_fee }}</strong>
+                        </div>
+
+                        <div>
+                            <small>PRIZE POOL</small>
+                            <strong>₹{{ tournament.prize_pool|default:"TBA" }}</strong>
+                        </div>
+                    </div>
+
+                    <div class="tournament-footer">
+                        <span>👥 {{ tournament.max_players }} Players</span>
+                        <span class="status">{{ tournament.status }}</span>
+                    </div>
+
+                    <a href="{% url 'tournament-list' %}"
+                       class="btn-join">
+                        View Tournament →
+                    </a>
+                </div>
+            </article>
+            {% endif %}
+        {% empty %}
+            <div class="empty-state">
+                <span>🎮</span>
+                <h3>No tournaments available</h3>
+                <p>New tournaments will appear here when available.</p>
+            </div>
+        {% endfor %}
+    </div>
+
+    <h3 class="mode-heading" id="vs-tournaments">⚔️ VS Mode</h3>
+
+    <div class="vs-info-card">
+        <div>
+            <span class="section-label">HEAD-TO-HEAD BATTLES</span>
+            <h3>Challenge Your Opponents</h3>
+            <p>1v1 · 2v2 · 3v3 · 4v4</p>
+        </div>
+
+        <div class="vs-icon">⚔️</div>
+    </div>
+
+    <p class="footer-note">
+        Tournament availability, entry fees and prizes are subject to
+        the official tournament rules.
+    </p>
+</section>
+{% endblock %}
