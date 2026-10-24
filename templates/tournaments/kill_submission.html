@@ -3,20 +3,21 @@
 {% block content %}
 <section class="container" style="max-width:760px;margin:40px auto;padding:20px">
     <div class="tournament-card" style="padding:24px;border-radius:16px">
-        <p class="section-label">MATCH REVIEW</p>
+        <p class="section-label">AI MATCH REVIEW</p>
         <h1>Submit Kill Evidence</h1>
         <h2>{{ tournament.title }}</h2>
         <p>Registered UID: <strong>{{ registration.free_fire_uid }}</strong></p>
-        <p>₹5 per kill is only a proposed rule. A real AI image/video analyzer is not connected yet; admin manually reviews your files before any demo wallet payout.</p>
+        <p>Upload an approximately 20-second match-history video and 2 screenshots. When the OpenAI API key is configured, AI will assess the submitted evidence and suggest a kill count and UID match. The result is only a proposal; an admin must inspect the files and approve/correct the final kill count before any demo wallet reward.</p>
+        <p><strong>Reward rule:</strong> ₹5 per admin-approved kill. AI review does not send money or authorize a payout.</p>
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             {{ form.non_field_errors }}
             <div class="form-group"><label for="{{ form.free_fire_uid.id_for_label }}">Free Fire UID</label>{{ form.free_fire_uid }}{{ form.free_fire_uid.errors }}</div>
-            <div class="form-group"><label for="{{ form.history_video.id_for_label }}">Match-history video (MP4/MOV/WEBM, max 50 MB)</label>{{ form.history_video }}{{ form.history_video.errors }}</div>
-            <div class="form-group"><label for="{{ form.history_image_one.id_for_label }}">Screenshot 1</label>{{ form.history_image_one }}{{ form.history_image_one.errors }}</div>
-            <div class="form-group"><label for="{{ form.history_image_two.id_for_label }}">Screenshot 2</label>{{ form.history_image_two }}{{ form.history_image_two.errors }}</div>
+            <div class="form-group"><label for="{{ form.history_video.id_for_label }}">Match-history video (MP4/MOV/WEBM, 15–30 seconds, max 50 MB)</label>{{ form.history_video }}{{ form.history_video.errors }}</div>
+            <div class="form-group"><label for="{{ form.history_image_one.id_for_label }}">Screenshot 1 (JPG/PNG/WEBP, max 5 MB)</label>{{ form.history_image_one }}{{ form.history_image_one.errors }}</div>
+            <div class="form-group"><label for="{{ form.history_image_two.id_for_label }}">Screenshot 2 (JPG/PNG/WEBP, max 5 MB)</label>{{ form.history_image_two }}{{ form.history_image_two.errors }}</div>
             <div class="form-group">{{ form.consent_ai_review }} <label for="{{ form.consent_ai_review.id_for_label }}">{{ form.consent_ai_review.label }}</label>{{ form.consent_ai_review.errors }}</div>
-            <button type="submit" class="button button-primary">Submit for Admin Review</button>
+            <button type="submit" class="button button-primary">Submit for AI + Admin Review</button>
         </form>
     </div>
 </section>
