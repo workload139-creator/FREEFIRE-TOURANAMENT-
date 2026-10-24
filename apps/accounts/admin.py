@@ -2,6 +2,7 @@ from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.utils import timezone
 
 from .models import (
     AdminWallet,
@@ -10,6 +11,7 @@ from .models import (
     User,
     Wallet,
     WalletTransaction,
+    WithdrawalRequest,
 )
 from .services import credit_verified_deposit
 
@@ -96,3 +98,87 @@ class AdminWalletTransactionAdmin(admin.ModelAdmin):
     list_filter = ("transaction_type", "status")
     search_fields = ("admin_wallet__name", "reference", "description")
     readonly_fields = ("created_at",)
+
+
+
+@admin.action(description="Mark selected withdrawals paid after completing UPI transfer")
+def mark_withdrawals_paid(modeladmin, request, queryset):
+    updated = 0
+    skipped = 0
+    for item in queryset:
+        with transaction.atomic():
+            withdrawal = WithdrawalRequest.objects.select_for_update().select_related("wallet").get(pk=item.pk)
+            if withdrawal.status != WithdrawalRequest.Status.PENDING or not withdrawal.payout_reference.strip():
+                skipped += 1
+                continue
+            ledger = WalletTransaction.objects.filter(
+                reference=f"WITHDRAW-REQ-{withdrawal.pk}",
+                wallet=withdrawal.wallet,
+                transaction_type=WalletTransaction.TransactionType.WITHDRAWAL,
+                status=WalletTransaction.Status.PENDING,
+            ).first()
+            if ledger is None:
+                skipped += 1
+                continue
+            ledger.status = WalletTransaction.Status.COMPLETED
+            ledger.description = f"Manual UPI payout completed to {withdrawal.upi_id}; provider ref {withdrawal.payout_reference}"
+            ledger.save(update_fields=["status", "description"])
+            withdrawal.status = WithdrawalRequest.Status.PAID
+            withdrawal.processed_at = timezone.now()
+            withdrawal.save(update_fields=["status", "processed_at"])
+            updated += 1
+    if updated:
+        modeladmin.message_user(request, f"{updated} withdrawal(s) marked paid.", messages.SUCCESS)
+    if skipped:
+        modeladmin.message_user(request, f"{skipped} request(s) skipped. Transfer first and enter payout reference.", messages.WARNING)
+
+
+@admin.action(description="Reject selected withdrawals and refund wallet balance")
+def reject_withdrawals_and_refund(modeladmin, request, queryset):
+    refunded = 0
+    skipped = 0
+    for item in queryset:
+        with transaction.atomic():
+            withdrawal = WithdrawalRequest.objects.select_for_update().select_related("wallet", "wallet__user").get(pk=item.pk)
+            if withdrawal.status != WithdrawalRequest.Status.PENDING:
+                skipped += 1
+                continue
+            wallet = Wallet.objects.select_for_update().get(pk=withdrawal.wallet_id)
+            refund_reference = f"WITHDRAW-REFUND-{withdrawal.pk}"
+            if WalletTransaction.objects.filter(reference=refund_reference).exists():
+                skipped += 1
+                continue
+            wallet.balance += withdrawal.amount
+            wallet.save(update_fields=["balance", "updated_at"])
+            WalletTransaction.objects.create(
+                wallet=wallet,
+                transaction_type=WalletTransaction.TransactionType.REFUND,
+                amount=withdrawal.amount,
+                status=WalletTransaction.Status.COMPLETED,
+                reference=refund_reference,
+                description=f"Refund for rejected withdrawal request {withdrawal.pk}",
+            )
+            request_ledger = WalletTransaction.objects.filter(
+                reference=f"WITHDRAW-REQ-{withdrawal.pk}"
+            ).first()
+            if request_ledger:
+                request_ledger.status = WalletTransaction.Status.FAILED
+                request_ledger.save(update_fields=["status"])
+            withdrawal.status = WithdrawalRequest.Status.REJECTED
+            withdrawal.processed_at = timezone.now()
+            withdrawal.save(update_fields=["status", "processed_at"])
+            refunded += 1
+    if refunded:
+        modeladmin.message_user(request, f"{refunded} withdrawal(s) rejected and refunded.", messages.SUCCESS)
+    if skipped:
+        modeladmin.message_user(request, f"{skipped} request(s) skipped because they are not pending or a refund already exists.", messages.WARNING)
+
+
+@admin.register(WithdrawalRequest)
+class WithdrawalRequestAdmin(admin.ModelAdmin):
+    list_display = ("wallet", "amount", "upi_id", "status", "payout_reference", "created_at", "processed_at")
+    list_filter = ("status", "created_at")
+    search_fields = ("wallet__user__username", "upi_id", "payout_reference")
+    readonly_fields = ("created_at", "processed_at")
+    fields = ("wallet", "amount", "upi_id", "status", "payout_reference", "created_at", "processed_at")
+    actions = (mark_withdrawals_paid, reject_withdrawals_and_refund)
