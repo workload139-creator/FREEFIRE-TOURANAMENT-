@@ -1,4 +1,4 @@
-```python
+
 from django.urls import path
 
 from . import views
@@ -13,19 +13,28 @@ urlpatterns = [
         name="list",
     ),
 
-    # Registration
+    # Tournament details
+    path(
+        "<int:tournament_id>/",
+        views.tournament_detail,
+        name="detail",
+    ),
+
+    # Player registration
     path(
         "<int:tournament_id>/register/",
         views.tournament_register,
         name="register",
     ),
 
-    # Player confirmation and room
+    # Player confirmation
     path(
         "registration/<int:registration_id>/confirm/",
         views.confirm_playing,
         name="confirm_playing",
     ),
+
+    # Player room
     path(
         "registration/<int:registration_id>/room/",
         views.player_room,
@@ -50,12 +59,4 @@ urlpatterns = [
         views.admin_tournament_dashboard,
         name="admin_tournament_dashboard",
     ),
-    path("", views.tournament_list, name="list"),
-    path("<int:tournament_id>/", views.tournament_detail, name="detail"),
-    path(
-        "<int:tournament_id>/join/",
-        views.join_tournament,
-        name="join",
-    ),
 ]
-```
