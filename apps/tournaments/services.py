@@ -66,8 +66,7 @@ def cancel_tournament_and_refund(tournament_id):
     from .models import Tournament
 
     tournament = Tournament.objects.select_for_update().get(pk=tournament_id)
-    if tournament.status == Tournament.Status.CANCELLED:
-        return 0, "Tournament already cancelled."
+    already_cancelled = tournament.status == Tournament.Status.CANCELLED
 
     tournament.status = Tournament.Status.CANCELLED
     tournament.room_id = ""
@@ -109,4 +108,5 @@ def cancel_tournament_and_refund(tournament_id):
         ])
         refunded += 1
 
-    return refunded, f"Tournament cancelled; {refunded} registration(s) refunded."
+    prefix = "Tournament was already cancelled" if already_cancelled else "Tournament cancelled"
+    return refunded, f"{prefix}; {refunded} registration(s) refunded."
