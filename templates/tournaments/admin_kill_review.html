@@ -9,6 +9,9 @@
         <h2>{{ submission.player.username }} — {{ submission.tournament.title }}</h2>
         <p>Registration UID: <strong>{{ submission.registered_uid }}</strong> · Submitted UID: <strong>{{ submission.free_fire_uid }}</strong></p>
         <p>Submitted: {{ submission.submitted_at|date:"d M Y, h:i A" }}</p>
+        <p><strong>AI proposed kills:</strong> {{ submission.ai_proposed_kills|default_if_none:"Not available" }} · <strong>Confidence:</strong> {{ submission.ai_confidence|default:"N/A" }} · <strong>AI UID match:</strong> {{ submission.ai_uid_matches|yesno:"Yes,No,Unknown" }}</p>
+        {% if submission.ai_review_notes %}<p><strong>AI notes:</strong> {{ submission.ai_review_notes }}</p>{% endif %}
+        {% if submission.ai_uid_matches == False %}<p class="message error">AI ko UID mismatch ka doubt hai. Files ko carefully verify karo.</p>{% endif %}
         <ul>
             <li><a href="{{ submission.history_video.url }}" target="_blank" rel="noopener">Open match-history video</a></li>
             <li><a href="{{ submission.history_image_one.url }}" target="_blank" rel="noopener">Open screenshot 1</a></li>
