@@ -1,68 +1,22 @@
-
 {% extends "base.html" %}
-
+{% block title %}Kill Evidence | FF Arena{% endblock %}
 {% block content %}
-<div class="container">
-    <div class="tournament-card">
-        <h1>Kill Verification</h1>
-
-        <p>Apni match-history submit karo. AI verification ke baad admin final review karega.</p>
-
-        <form method="post"
-              enctype="multipart/form-data">
+<section class="container" style="max-width:760px;margin:40px auto;padding:20px">
+    <div class="tournament-card" style="padding:24px;border-radius:16px">
+        <p class="section-label">MATCH REVIEW</p>
+        <h1>Submit Kill Evidence</h1>
+        <h2>{{ tournament.title }}</h2>
+        <p>Registered UID: <strong>{{ registration.free_fire_uid }}</strong></p>
+        <p>₹5 per kill is only a proposed rule. A real AI image/video analyzer is not connected yet; admin manually reviews your files before any demo wallet payout.</p>
+        <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
-
-            <div class="form-group">
-                <label for="free_fire_uid">Free Fire UID</label>
-                <input
-                    type="text"
-                    id="free_fire_uid"
-                    name="free_fire_uid"
-                    maxlength="30"
-                    inputmode="numeric"
-                    pattern="[0-9]+"
-                    placeholder="Registered Free Fire UID"
-                    required
-                >
-                <small>Wahi UID daalo jo tournament registration mein use ki thi.</small>
-            </div>
-
-            <div class="form-group">
-                <label for="history_video">Match History Video</label>
-                <input
-                    type="file"
-                    id="history_video"
-                    name="history_video"
-                    accept="video/mp4,video/webm,video/quicktime"
-                    required
-                >
-                <small>Lagbhag 20-second ki video submit karo.</small>
-            </div>
-
-            <div class="form-group">
-                <label for="history_images">Match History Screenshots</label>
-                <input
-                    type="file"
-                    id="history_images"
-                    name="history_images"
-                    accept="image/jpeg,image/png,image/webp"
-                    multiple
-                    required
-                >
-                <small>Kam-se-kam 2 clear screenshots select karo.</small>
-            </div>
-
-            <button type="submit">
-                Submit for Verification
-            </button>
+            {{ form.non_field_errors }}
+            <div class="form-group"><label for="{{ form.free_fire_uid.id_for_label }}">Free Fire UID</label>{{ form.free_fire_uid }}{{ form.free_fire_uid.errors }}</div>
+            <div class="form-group"><label for="{{ form.history_video.id_for_label }}">Match-history video (MP4/MOV/WEBM, max 50 MB)</label>{{ form.history_video }}{{ form.history_video.errors }}</div>
+            <div class="form-group"><label for="{{ form.history_image_one.id_for_label }}">Screenshot 1</label>{{ form.history_image_one }}{{ form.history_image_one.errors }}</div>
+            <div class="form-group"><label for="{{ form.history_image_two.id_for_label }}">Screenshot 2</label>{{ form.history_image_two }}{{ form.history_image_two.errors }}</div>
+            <button type="submit" class="button button-primary">Submit for Admin Review</button>
         </form>
-
-        <hr>
-
-        <h2>Reward Rules</h2>
-        <p>Har approved kill ka reward: ₹5</p>
-        <p>AI result ke baad admin final verification karega.</p>
-        <p>Final approval se pehle reward ko payable nahi maana jayega.</p>
     </div>
-</div>
+</section>
 {% endblock %}
