@@ -100,6 +100,21 @@ def profile_view(request):
     )
 
 
+
+@login_required
+def password_change_view(request):
+    if request.method == "POST":
+        form = PasswordChangeForm(user=request.user, data=request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            messages.success(request, "Password successfully change ho gaya.")
+            return redirect("accounts:profile")
+    else:
+        form = PasswordChangeForm(user=request.user)
+    return render(request, "registration/password_change_form.html", {"form": form})
+
+
 @require_POST
 @login_required
 def logout_view(request):
