@@ -10,6 +10,16 @@ from django.db.models import Q
 
 
 class Tournament(models.Model):
+        class Mode(models.TextChoices):
+        BR = "BR", "Battle Royale"
+        VS = "VS", "Clash Squad VS"
+
+    class VSFormat(models.TextChoices):
+        ONE_V_ONE = "1v1", "1 vs 1"
+        TWO_V_TWO = "2v2", "2 vs 2"
+        THREE_V_THREE = "3v3", "3 vs 3"
+        FOUR_V_FOUR = "4v4", "4 vs 4"
+    
 
     class Status(models.TextChoices):
         DRAFT = "draft", "Draft"
