@@ -5,7 +5,7 @@ from .models import Tournament, Registration
 class RegistrationInline(admin.TabularInline):
     model = Registration
     extra = 0
-    readonly_fields = ("registered_at", "updated_at")
+    show_change_link = True
 
 
 @admin.register(Tournament)
@@ -28,8 +28,8 @@ class TournamentAdmin(admin.ModelAdmin):
 @admin.register(Registration)
 class RegistrationAdmin(admin.ModelAdmin):
     list_display = (
-        "player",
         "tournament",
+        "player",
         "free_fire_uid",
         "entry_fee_paid",
         "payment_verified",
@@ -38,7 +38,7 @@ class RegistrationAdmin(admin.ModelAdmin):
 
     list_filter = ("status", "payment_verified")
     search_fields = (
-        "player__username",
         "free_fire_uid",
+        "player__username",
         "tournament__title",
     )
