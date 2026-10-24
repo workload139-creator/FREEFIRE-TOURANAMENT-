@@ -13,9 +13,11 @@ from .forms import KillSubmissionForm, RegistrationForm
 from .ai_review import AIReviewError, analyze_kill_evidence
 from .registration_services import RegistrationError, create_pending_registration
 from .models import KillSubmission, Registration, Tournament
+from .services import process_expired_ready_registrations
 
 
 def tournament_list(request):
+    process_expired_ready_registrations()
     tournaments = Tournament.objects.filter(
         status__in=[Tournament.Status.UPCOMING, Tournament.Status.LIVE, Tournament.Status.COMPLETED]
     ).order_by("start_time")
@@ -39,6 +41,7 @@ def tournament_detail(request, tournament_id):
 
 @login_required
 def tournament_register(request, tournament_id):
+    process_expired_ready_registrations()
     tournament = get_object_or_404(Tournament, pk=tournament_id)
 
     if request.method == "GET":
@@ -85,6 +88,7 @@ def tournament_register(request, tournament_id):
 @login_required
 @require_POST
 def confirm_playing(request, registration_id):
+    process_expired_ready_registrations()
     with transaction.atomic():
         registration = get_object_or_404(
             Registration.objects.select_for_update().select_related("tournament"),
@@ -154,6 +158,7 @@ def admin_room_page(request, tournament_id):
 
 @login_required
 def player_room(request, registration_id):
+    process_expired_ready_registrations()
     registration = get_object_or_404(
         Registration.objects.select_related("tournament"),
         pk=registration_id,
@@ -178,6 +183,7 @@ def player_room(request, registration_id):
 @login_required
 @user_passes_test(lambda user: user.is_staff)
 def admin_tournament_dashboard(request, tournament_id):
+    process_expired_ready_registrations()
     tournament = get_object_or_404(Tournament, pk=tournament_id)
     registrations = Registration.objects.filter(tournament=tournament).select_related("player").order_by("-registered_at")
     context = {
@@ -196,6 +202,7 @@ def admin_tournament_dashboard(request, tournament_id):
 
 @login_required
 def my_registrations(request):
+    process_expired_ready_registrations()
     registrations = Registration.objects.filter(player=request.user).select_related("tournament")
     return render(request, "tournaments/my_registrations.html", {"registrations": registrations})
 
