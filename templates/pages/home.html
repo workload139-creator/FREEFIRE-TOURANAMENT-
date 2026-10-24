@@ -118,23 +118,23 @@
     </div>
 
     <div class="features-grid">
-        <div class="feature-card">
+        <a class="feature-card" href="{% if user.is_authenticated %}{% url 'accounts:profile' %}{% else %}{% url 'login' %}{% endif %}">
             <span>👤</span>
             <h3>Player Profile</h3>
-            <p>Apni gaming identity aur profile manage karo.</p>
-        </div>
+            <p>Photo, username, email aur player ID manage karo.</p>
+        </a>
 
-        <div class="feature-card">
+        <a class="feature-card" href="{% if user.is_authenticated %}{% url 'accounts:wallet' %}{% else %}{% url 'login' %}{% endif %}">
             <span>💰</span>
             <h3>Wallet</h3>
             <p>Wallet balance aur transaction history dekho.</p>
-        </div>
+        </a>
 
-        <div class="feature-card">
+        <a class="feature-card" href="{% url 'tournaments:results' %}">
             <span>📊</span>
             <h3>Results</h3>
             <p>Matches aur leaderboard results track karo.</p>
-        </div>
+        </a>
     </div>
 </section>
 
