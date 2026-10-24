@@ -169,3 +169,73 @@ class DepositRequest(models.Model):
 
     def __str__(self):
         return f"{self.wallet.user} - ₹{self.amount} - {self.status}"
+
+
+
+
+
+class AdminWallet(models.Model):
+    name = models.CharField(
+        max_length=50,
+        unique=True,
+        default="Main Admin Wallet"
+    )
+    balance = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        validators=[MinValueValidator(Decimal("0.00"))]
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} - ₹{self.balance}"
+
+
+class AdminWalletTransaction(models.Model):
+    class TransactionType(models.TextChoices):
+        ENTRY_FEE = "entry_fee", "Demo Entry Fee"
+        PRIZE = "prize", "Demo Prize"
+        REFUND = "refund", "Demo Refund"
+        ADJUSTMENT = "adjustment", "Demo Adjustment"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        COMPLETED = "completed", "Completed"
+        FAILED = "failed", "Failed"
+
+    admin_wallet = models.ForeignKey(
+        AdminWallet,
+        on_delete=models.PROTECT,
+        related_name="transactions"
+    )
+    transaction_type = models.CharField(
+        max_length=20,
+        choices=TransactionType.choices
+    )
+    amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))]
+    )
+    status = models.CharField(
+        max_length=12,
+        choices=Status.choices,
+        default=Status.PENDING
+    )
+    reference = models.CharField(max_length=100, blank=True)
+    description = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return (
+            f"{self.admin_wallet.name} - "
+            f"{self.transaction_type} - ₹{self.amount}"
+        )
+
+
+
