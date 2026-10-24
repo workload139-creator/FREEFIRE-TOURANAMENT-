@@ -123,3 +123,44 @@ class WalletTransaction(models.Model):
 
 
 
+
+class DepositRequest(models.Model):
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending Verification"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+
+    wallet = models.ForeignKey(
+        Wallet,
+        on_delete=models.PROTECT,
+        related_name="deposit_requests",
+    )
+
+    amount = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        validators=[
+            MinValueValidator(Decimal("10.00")),
+            MaxValueValidator(Decimal("5000.00")),
+        ],
+    )
+
+    payment_reference = models.CharField(
+        max_length=100,
+        blank=True,
+    )
+
+    status = models.CharField(
+        max_length=12,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.wallet.user} - ₹{self.amount} - {self.status}"
