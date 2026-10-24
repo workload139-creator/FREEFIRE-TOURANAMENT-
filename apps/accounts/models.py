@@ -102,11 +102,15 @@ class WalletTransaction(models.Model):
         default=Status.PENDING,
     )
 
-    reference = models.CharField(
-        max_length=100,
-        blank=True,
-        db_index=True,
-    )
+
+    
+reference = models.CharField(
+    max_length=100,
+    blank=True,
+    null=True,
+    unique=True,
+)
+
 
     description = models.CharField(
         max_length=255,
