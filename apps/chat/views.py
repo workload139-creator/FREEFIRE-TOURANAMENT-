@@ -96,6 +96,7 @@ def conversation_detail(request, conversation_id):
         "conversation": conversation,
         "other": other,
         "chat_messages": chat_messages,
+        "last_message_id": chat_messages[-1].pk if chat_messages else 0,
     })
 
 
