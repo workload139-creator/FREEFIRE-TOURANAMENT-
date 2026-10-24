@@ -128,3 +128,58 @@ def wallet_view(request):
             "transactions": transactions,
         },
     )
+
+
+
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.db import transaction
+from django.shortcuts import redirect, render
+
+from .forms import DepositRequestForm
+from .models import DepositRequest, Wallet
+
+
+@login_required
+def deposit_view(request):
+    wallet, _ = Wallet.objects.get_or_create(user=request.user)
+
+    if request.method == "POST":
+        form = DepositRequestForm(request.POST)
+
+        if form.is_valid():
+            with transaction.atomic():
+                wallet = Wallet.objects.select_for_update().get(
+                    pk=wallet.pk
+                )
+                pending_total = sum(
+                    DepositRequest.objects.filter(
+                        wallet=wallet,
+                        status=DepositRequest.Status.PENDING,
+                    ).values_list("amount", flat=True),
+                    start=0,
+                )
+
+                if wallet.balance + pending_total + form.cleaned_data["amount"] > Decimal("5000.00"):
+                    form.add_error(
+                        "amount",
+                        "Wallet limit ₹5000 hai. Pending requests bhi limit mein count hongi.",
+                    )
+                else:
+                    deposit = form.save(commit=False)
+                    deposit.wallet = wallet
+                    deposit.save()
+
+                    messages.success(
+                        request,
+                        "Deposit request submit ho gayi. Verification ke baad hi balance update hoga.",
+                    )
+                    return redirect("accounts:wallet")
+    else:
+        form = DepositRequestForm()
+
+    return render(
+        request,
+        "accounts/deposit.html",
+        {"form": form, "wallet": wallet},
+    )
