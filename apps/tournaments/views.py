@@ -7,6 +7,15 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
+from datetime import timedelta
+from datetime import timedelta
+
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+
+from .models import Tournament, Registration
 
 from .forms import RegistrationForm
 from .models import Registration, Tournament
