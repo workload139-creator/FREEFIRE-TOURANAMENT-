@@ -12,6 +12,8 @@ class RegistrationInline(admin.TabularInline):
 class TournamentAdmin(admin.ModelAdmin):
     list_display = (
         "title",
+        "mode",
+        "vs_format",
         "entry_fee",
         "prize_pool",
         "max_players",
