@@ -29,6 +29,19 @@ class Tournament(models.Model):
         CANCELLED = "cancelled", "Cancelled"
 
     title = models.CharField(max_length=120)
+    mode = models.CharField(
+        max_length=2,
+        choices=Mode.choices,
+        default=Mode.BR,
+        db_index=True,
+    )
+
+    vs_format = models.CharField(
+        max_length=3,
+        choices=VSFormat.choices,
+        blank=True,
+        default="",
+    )
 
     description = models.TextField(blank=True)
 
