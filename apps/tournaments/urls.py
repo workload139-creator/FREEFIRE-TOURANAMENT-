@@ -50,5 +50,12 @@ urlpatterns = [
         views.admin_tournament_dashboard,
         name="admin_tournament_dashboard",
     ),
+    path("", views.tournament_list, name="list"),
+    path("<int:tournament_id>/", views.tournament_detail, name="detail"),
+    path(
+        "<int:tournament_id>/join/",
+        views.join_tournament,
+        name="join",
+    ),
 ]
 ```
