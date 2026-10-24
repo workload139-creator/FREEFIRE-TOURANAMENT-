@@ -1,56 +1,35 @@
-
 {% extends "base.html" %}
 
+{% block title %}Join {{ tournament.title }} | FF Arena{% endblock %}
+
 {% block content %}
-<section style="max-width:600px; margin:40px auto; padding:24px;">
+<section class="registration-container" style="max-width:680px;margin:40px auto;padding:24px">
+    <a href="{% url 'tournaments:detail' tournament.id %}">← Tournament details</a>
     <h1>Join Tournament</h1>
+    <div class="tournament-card" style="margin:20px 0;padding:22px;border-radius:16px">
+        <h2>{{ tournament.title }}</h2>
+        <p>Mode: {{ tournament.get_mode_display }}{% if tournament.mode == "VS" %} · {{ tournament.get_vs_format_display }}{% endif %}</p>
+        <p>Entry Fee: ₹{{ tournament.entry_fee }}</p>
+        <p>Prize Pool: ₹{{ tournament.prize_pool }}</p>
+        <p>Seats: {{ tournament.confirmed_players_count }}/{{ tournament.max_players }}</p>
+    </div>
 
-    <h2>{{ tournament.title }}</h2>
-    <p>Mode: {{ tournament.get_mode_display }}</p>
-    <p>Entry Fee: ₹{{ tournament.entry_fee }}</p>
-    <p>Prize Pool: ₹{{ tournament.prize_pool }}</p>
+    {% if messages %}
+        {% for message in messages %}
+            <div class="message {{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
 
-    <form method="post">
+    <form method="post" action="{% url 'tournaments:register' tournament.id %}">
         {% csrf_token %}
-
         {{ form.non_field_errors }}
-
-        <label for="{{ form.free_fire_uid.id_for_label }}">
-            Free Fire UID
-        </label>
-
-        {{ form.free_fire_uid }}
-        {{ form.free_fire_uid.errors }}
-
-        <p style="margin-top:16px;">
-            Payment verify hone tak aapki registration pending rahegi.
-        </p>
-
+        <div class="form-group">
+            <label for="{{ form.free_fire_uid.id_for_label }}">Free Fire UID</label>
+            {{ form.free_fire_uid }}
+            {{ form.free_fire_uid.errors }}
+        </div>
+        <p>Registration pehle pending rahegi. Entry fee wallet se verify/debit karne ka flow complete hone tak payment verified nahi maana jayega.</p>
         <button type="submit">Continue Registration</button>
     </form>
 </section>
-{% endblock %}
-
-
-
-
-
-
-
-
-
-
-{% extends "base.html" %}
-
-{% block content %}
-<div class="container py-4">
-    <h2>Free Fire Tournament Registration</h2>
-    <p>Apna registered Free Fire UID enter karo.</p>
-
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Register</button>
-    </form>
-</div>
 {% endblock %}
