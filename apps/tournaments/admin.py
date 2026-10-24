@@ -6,7 +6,7 @@ from apps.accounts.models import (
     AdminWalletTransaction,
     WalletTransaction,
 )
-from .models import Registration, Tournament
+from .models import KillSubmission, Registration, Tournament
 
 
 class RegistrationInline(admin.TabularInline):
@@ -106,3 +106,21 @@ class RegistrationAdmin(admin.ModelAdmin):
         "refund_processed_at",
     )
     actions = (verify_entry_payments,)
+
+
+
+@admin.register(KillSubmission)
+class KillSubmissionAdmin(admin.ModelAdmin):
+    list_display = (
+        "id", "player", "tournament", "registered_uid", "free_fire_uid",
+        "status", "ai_proposed_kills", "approved_kills", "approved_reward",
+        "submitted_at",
+    )
+    list_filter = ("status", "tournament", "submitted_at")
+    search_fields = ("player__username", "tournament__title", "registered_uid", "free_fire_uid")
+    readonly_fields = (
+        "registration", "player", "tournament", "registered_uid", "free_fire_uid",
+        "history_video", "history_image_one", "history_image_two",
+        "ai_proposed_kills", "proposed_reward", "approved_reward",
+        "payout_reference", "submitted_at", "reviewed_at",
+    )
