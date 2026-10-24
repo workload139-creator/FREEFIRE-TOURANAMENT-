@@ -64,92 +64,46 @@
 
 <!-- TOURNAMENT SECTION -->
 <section class="tournament-section" id="tournaments">
-
     <div class="section-heading">
         <div>
             <span class="section-label">CHOOSE YOUR BATTLE</span>
             <h2>Featured <span>Tournaments</span></h2>
-            <p>Find a tournament and get ready to compete.</p>
+            <p>Upcoming matches from the live tournament database.</p>
         </div>
+        <a href="{% url 'tournaments:list' %}" class="btn-secondary">View All →</a>
     </div>
 
     <div class="tournament-grid">
-
-        <!-- BR CARD -->
+        {% for tournament in featured_tournaments %}
         <article class="tournament-card">
-            <div class="tournament-banner br-banner">
-                <span class="game-tag">BATTLE ROYALE</span>
-                <span class="live-tag">BR</span>
+            <div class="tournament-banner {% if tournament.mode == 'BR' %}br-banner{% else %}vs-banner{% endif %}">
+                <span class="game-tag">{{ tournament.get_mode_display }}</span>
+                <span class="live-tag">{{ tournament.mode }}</span>
             </div>
-
             <div class="tournament-body">
-                <h3>Battle Royale Tournament</h3>
-
-                <p class="card-description">
-                    Enter the arena and compete against other players.
-                </p>
-
+                <h3>{{ tournament.title }}</h3>
+                <p class="card-description">{{ tournament.description|default:"Join the battle and compete for the prize pool." }}</p>
                 <div class="tournament-info">
-                    <div>
-                        <small>ENTRY FEE</small>
-                        <strong>View Details</strong>
-                    </div>
-
-                    <div>
-                        <small>PRIZE POOL</small>
-                        <strong>View Details</strong>
-                    </div>
+                    <div><small>ENTRY FEE</small><strong>₹{{ tournament.entry_fee }}</strong></div>
+                    <div><small>PRIZE POOL</small><strong>₹{{ tournament.prize_pool }}</strong></div>
                 </div>
-
                 <div class="tournament-footer">
-                    <span>👥 Player Lobby</span>
-                    <span class="status">BR Mode</span>
+                    <span>👥 {{ tournament.confirmed_players_count }}/{{ tournament.max_players }} players</span>
+                    <span class="status">{{ tournament.get_status_display }}</span>
                 </div>
-
-                <a href="{% url 'tournaments:list' %}" class="btn-join">
-                    Explore BR →
-                </a>
+                <p>Starts {{ tournament.start_time|date:"d M, h:i A" }}</p>
+                <a href="{% url 'tournaments:detail' tournament.id %}" class="btn-join">View Tournament →</a>
             </div>
         </article>
-
-
-        <!-- VS CARD -->
+        {% empty %}
         <article class="tournament-card">
-            <div class="tournament-banner vs-banner">
-                <span class="game-tag">SQUAD BATTLE</span>
-                <span class="live-tag">VS</span>
-            </div>
-
             <div class="tournament-body">
-                <h3>VS Tournament</h3>
-
-                <p class="card-description">
-                    Challenge your opponents in competitive matches.
-                </p>
-
-                <div class="tournament-info">
-                    <div>
-                        <small>FORMATS</small>
-                        <strong>1v1 · 2v2</strong>
-                    </div>
-
-                    <div>
-                        <small>SQUAD</small>
-                        <strong>3v3 · 4v4</strong>
-                    </div>
-                </div>
-
-                <div class="tournament-footer">
-                    <span>⚔️ Head-to-head</span>
-                    <span class="status">VS Mode</span>
-                </div>
-
-                <a href="{% url 'tournaments:list' %}" class="btn-join">
-                    Explore VS →
-                </a>
+                <h3>No upcoming tournaments yet</h3>
+                <p>Admin se upcoming tournament publish karwane ke baad yahan dikhega.</p>
+                <a href="{% url 'tournaments:list' %}" class="btn-join">Browse Tournaments →</a>
             </div>
         </article>
-
+        {% endfor %}
     </div>
 </section>
 
