@@ -92,13 +92,21 @@ class Tournament(models.Model):
 
     @property
     def confirmed_players_count(self):
+        from django.db.models import Q
+
         return self.registrations.filter(
-            status__in=[
-                Registration.Status.CONFIRMED,
-                Registration.Status.WAITING_READY,
-                Registration.Status.READY,
-            ],
-            payment_verified=True,
+            Q(
+                status=Registration.Status.PENDING_PAYMENT,
+                entry_fee_paid__gt=0,
+            )
+            | Q(
+                status__in=[
+                    Registration.Status.CONFIRMED,
+                    Registration.Status.WAITING_READY,
+                    Registration.Status.READY,
+                ],
+                payment_verified=True,
+            )
         ).count()
 
     @property
