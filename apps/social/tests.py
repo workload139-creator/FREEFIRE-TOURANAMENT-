@@ -33,4 +33,4 @@ class SocialFlowTests(TestCase):
     def test_blocked_user_is_not_in_search_results(self):
         UserBlock.objects.create(blocker=self.alice, blocked=self.bob)
         response = self.client.get(reverse("social:home"), {"q": "bob"})
-        self.assertNotContains(response, "bob")
+        self.assertEqual(response.context["search_results"], [])
