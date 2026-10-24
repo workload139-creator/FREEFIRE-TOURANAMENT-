@@ -25,7 +25,7 @@
     </div>
 
     <form method="post"
-          action="{% url 'tournaments:join' tournament.id %}">
+          action="{% url 'tournaments:register' tournament.id %}">
         {% csrf_token %}
 
         <div class="form-group">
