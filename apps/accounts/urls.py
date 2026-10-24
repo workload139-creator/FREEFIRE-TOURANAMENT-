@@ -9,4 +9,5 @@ urlpatterns = [
     path("profile/", views.profile_view, name="profile"),
     path("wallet/", views.wallet_view, name="wallet"),
     path("wallet/deposit/", views.deposit_view, name="deposit"),
+    path("wallet/withdraw/", views.withdrawal_view, name="withdraw"),
 ]
