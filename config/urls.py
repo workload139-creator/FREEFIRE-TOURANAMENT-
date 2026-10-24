@@ -2,12 +2,19 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
-from django.urls import include, path
+from django.urls import include, path, re_path
+from django.views.static import serve
 
 from apps.accounts.view import login_view, logout_view
 from apps.core.views import home
 
 urlpatterns = [
+    # Public profile avatars; use persistent or external media storage in production.
+    re_path(
+        r"^media/player_profiles/(?P<path>.*)$",
+        serve,
+        {"document_root": settings.MEDIA_ROOT / "player_profiles"},
+    ),
     path("admin/", admin.site.urls),
     path("accounts/", include("apps.accounts.urls")),
     path("login/", login_view, name="login"),
