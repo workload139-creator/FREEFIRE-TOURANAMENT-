@@ -93,7 +93,11 @@ class Tournament(models.Model):
     @property
     def confirmed_players_count(self):
         return self.registrations.filter(
-            status=Registration.Status.CONFIRMED,
+            status__in=[
+                Registration.Status.CONFIRMED,
+                Registration.Status.WAITING_READY,
+                Registration.Status.READY,
+            ],
             payment_verified=True,
         ).count()
 
@@ -144,8 +148,17 @@ class Registration(models.Model):
     )
 
     room_details_sent = models.BooleanField(default=False)
+
     ready_deadline = models.DateTimeField(null=True, blank=True)
     ready_confirmed_at = models.DateTimeField(null=True, blank=True)
+
+    refund_processed = models.BooleanField(default=False)
+    refund_processed_at = models.DateTimeField(null=True, blank=True)
+    refund_reference = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+    )
 
     registered_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
