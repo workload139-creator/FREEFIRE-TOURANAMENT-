@@ -1,35 +1,45 @@
 {% extends "base.html" %}
-
-{% block title %}My Profile | FF Arena{% endblock %}
-
+{% load static %}
+{% block title %}My Player Profile | FF Arena{% endblock %}
+{% block extra_css %}
+<style>
+.profile-page{max-width:1000px;margin:36px auto;padding:0 18px 30px}.profile-hero{display:flex;align-items:center;gap:22px;padding:28px;background:linear-gradient(135deg,#171f2d,#24151e);border:1px solid rgba(255,255,255,.1);border-radius:20px;margin-bottom:22px}.profile-avatar{width:112px;height:112px;flex:0 0 112px;display:grid;place-items:center;overflow:hidden;border-radius:50%;border:3px solid #ff3548;background:#111722;font-size:38px;font-weight:900}.profile-avatar img{width:100%;height:100%;object-fit:cover}.profile-hero h1{margin:0 0 5px;font-size:clamp(24px,4vw,36px)}.profile-hero p{margin:0;color:#9aa6b8}.player-id{display:inline-block;margin-top:10px;padding:6px 10px;border-radius:7px;background:#080b12;color:#ffc857;font-weight:800}.profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.profile-panel{padding:22px;background:#111722;border:1px solid rgba(255,255,255,.1);border-radius:16px;min-width:0}.profile-panel h2{margin-top:0}.profile-details{display:grid;gap:0}.profile-item{display:flex;justify-content:space-between;gap:14px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.08)}.profile-item span{color:#9aa6b8}.profile-item strong{overflow-wrap:anywhere;text-align:right}.profile-form p{display:grid;gap:7px;margin:0 0 14px}.profile-form label{font-weight:700;color:#dbe2ed}.profile-form input{width:100%;padding:12px;border-radius:8px;border:1px solid #354052;background:#080b12;color:#f5f7fb}.profile-form input[type=file]{padding:8px}.profile-form .helptext{font-size:12px;color:#9aa6b8}.profile-errors{color:#ff8793;font-size:13px}.profile-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}.profile-actions a{display:inline-block;padding:10px 13px;border:1px solid rgba(255,255,255,.13);border-radius:8px}.profile-actions a.primary{background:#ff3548;border-color:#ff3548;color:white;font-weight:800}@media(max-width:700px){.profile-grid{grid-template-columns:1fr}.profile-hero{align-items:flex-start;flex-direction:column}.profile-avatar{width:88px;height:88px;flex-basis:88px}.profile-item{flex-direction:column;gap:3px}.profile-item strong{text-align:left}}
+</style>
+{% endblock %}
 {% block content %}
-<section class="auth-section">
-    <div class="auth-card profile-card">
-        <div class="auth-header">
-            <span class="brand-icon">FF</span>
-            <h1>PLAYER PROFILE</h1>
-            <p>Welcome to FF Arena, {{ player.username }}!</p>
-        </div>
-
-        <div class="profile-details">
-            <div class="profile-item"><span>Username</span><strong>{{ player.username }}</strong></div>
-            <div class="profile-item"><span>Email Address</span><strong>{{ player.email|default:"Not added" }}</strong></div>
-            <div class="profile-item"><span>Mobile Number</span><strong>{{ player.phone_number|default:"Not added" }}</strong></div>
-            <div class="profile-item">
-                <span>Phone Verification</span>
-                {% if player.phone_verified %}<strong class="status-verified">Verified</strong>{% else %}<strong class="status-pending">Pending</strong>{% endif %}
-            </div>
-        </div>
-
-        <div class="profile-notice">
-            <p><strong>Free Fire UID tournament join karte waqt maangi jayegi.</strong> Har tournament ki registration UID hi us tournament ke payment record, leaderboard aur kill-evidence check ke saath match hogi.</p>
-        </div>
-
-        <div class="hero-actions">
-            <a class="btn-primary" href="{% url 'tournaments:list' %}">BROWSE TOURNAMENTS</a>
-            <a class="btn-secondary" href="{% url 'accounts:wallet' %}">OPEN WALLET</a>
-            <a class="btn-secondary" href="{% url 'tournaments:my_registrations' %}">MY TOURNAMENTS</a>
-        </div>
-    </div>
+<section class="profile-page">
+  <div class="profile-hero">
+    <div class="profile-avatar">{% if player.profile_photo %}<img src="{{ player.profile_photo.url }}" alt="{{ player.username }} profile photo">{% else %}{{ player.username|first|upper }}{% endif %}</div>
+    <div><span class="section-label">FF ARENA PLAYER</span><h1>{{ player.username }}</h1><p>Apni profile, wallet aur tournament journey yahan manage karo.</p><span class="player-id">PLAYER ID: FF-{{ player.pk|stringformat:"06d" }}</span></div>
+  </div>
+  <div class="profile-grid">
+    <section class="profile-panel">
+      <h2>Player Details</h2>
+      <div class="profile-details">
+        <div class="profile-item"><span>Username</span><strong>{{ player.username }}</strong></div>
+        <div class="profile-item"><span>Email</span><strong>{{ player.email|default:"Not added" }}</strong></div>
+        <div class="profile-item"><span>Mobile number</span><strong>{{ player.phone_number|default:"Not added" }}</strong></div>
+        <div class="profile-item"><span>Phone verification</span><strong>{% if player.phone_verified %}Verified{% else %}Pending{% endif %}</strong></div>
+        <div class="profile-item"><span>Account created</span><strong>{{ player.date_joined|date:"d M Y" }}</strong></div>
+      </div>
+      <div class="profile-actions">
+        <a class="primary" href="{% url 'tournaments:list' %}">Browse tournaments</a>
+        <a href="{% url 'accounts:wallet' %}">Open wallet</a>
+        <a href="{% url 'tournaments:my_registrations' %}">My tournaments</a>
+        <a href="{% url 'tournaments:results' %}">View results</a>
+        <a href="{% url 'accounts:password_change' %}">Change password</a>
+      </div>
+      <p class="footer-note">Free Fire UID tournament join karte waqt maangi jaati hai, account profile banate waqt nahi.</p>
+    </section>
+    <section class="profile-panel">
+      <h2>Edit Profile</h2><p style="color:#9aa6b8">Photo, username, email aur mobile number update karo.</p>
+      <form method="post" enctype="multipart/form-data" class="profile-form">
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="profile-errors">{{ form.non_field_errors }}</div>{% endif %}
+        {% for field in form %}<p><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}{% for error in field.errors %}<span class="profile-errors">{{ error }}</span>{% endfor %}</p>{% endfor %}
+        <button type="submit" class="btn-primary">Save Profile</button>
+      </form>
+    </section>
+  </div>
 </section>
 {% endblock %}
