@@ -84,14 +84,15 @@ def tournament_register(request, tournament_id):
             )
             wallet.balance -= fee
             wallet.save(update_fields=["balance", "updated_at"])
-            WalletTransaction.objects.create(
-                wallet=wallet,
-                transaction_type=WalletTransaction.TransactionType.ENTRY_FEE,
-                amount=fee,
-                status=WalletTransaction.Status.COMPLETED,
-                reference=f"TOURNEY-ENTRY-{registration.pk}",
-                description=f"Entry fee for tournament {tournament.title}; awaiting admin payment review",
-            )
+            if fee > Decimal("0.00"):
+                WalletTransaction.objects.create(
+                    wallet=wallet,
+                    transaction_type=WalletTransaction.TransactionType.ENTRY_FEE,
+                    amount=fee,
+                    status=WalletTransaction.Status.COMPLETED,
+                    reference=f"TOURNEY-ENTRY-{registration.pk}",
+                    description=f"Entry fee for tournament {tournament.title}; awaiting admin payment review",
+                )
     except IntegrityError:
         messages.error(request, "Registration nahi ho saki; aap pehle se registered ho sakte hain.")
         return redirect("tournaments:list")
