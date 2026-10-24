@@ -41,7 +41,7 @@ INSTALLED_APPS = [
 
     "apps.core.apps.CoreConfig",
     "apps.accounts.apps.AccountsConfig",
-    "apps.tournaments",
+    "apps.tournaments.apps.TournamentsConfig",
 ]
 
 
