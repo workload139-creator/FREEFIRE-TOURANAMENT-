@@ -57,3 +57,59 @@ def mark_not_playing_and_refund(registration_id):
         "refund_processed_at", "refund_reference", "updated_at",
     ])
     return True, "Player marked NOT_PLAYING and refund recorded."
+
+
+
+@transaction.atomic
+def cancel_tournament_and_refund(tournament_id):
+    """Cancel a tournament and refund every paid entry exactly once."""
+    from .models import Tournament
+
+    tournament = Tournament.objects.select_for_update().get(pk=tournament_id)
+    if tournament.status == Tournament.Status.CANCELLED:
+        return 0, "Tournament already cancelled."
+
+    tournament.status = Tournament.Status.CANCELLED
+    tournament.room_id = ""
+    tournament.room_password = ""
+    tournament.save(update_fields=["status", "room_id", "room_password", "updated_at"])
+
+    refunded = 0
+    registrations = Registration.objects.select_for_update().filter(tournament=tournament)
+    for registration in registrations:
+        if registration.refund_processed or registration.entry_fee_paid <= 0:
+            continue
+        if registration.status in (Registration.Status.CANCELLED, Registration.Status.REFUNDED):
+            continue
+
+        reference = f"TOURNEY-CANCEL-REFUND-{registration.pk}"
+        existing = WalletTransaction.objects.filter(reference=reference).first()
+        if existing:
+            if existing.status != WalletTransaction.Status.COMPLETED:
+                continue
+        else:
+            wallet, _ = Wallet.objects.get_or_create(user=registration.player)
+            wallet = Wallet.objects.select_for_update().get(pk=wallet.pk)
+            wallet.balance += registration.entry_fee_paid
+            wallet.save(update_fields=["balance", "updated_at"])
+            WalletTransaction.objects.create(
+                wallet=wallet,
+                transaction_type=WalletTransaction.TransactionType.REFUND,
+                amount=registration.entry_fee_paid,
+                status=WalletTransaction.Status.COMPLETED,
+                reference=reference,
+                description=f"Automatic wallet refund because tournament {tournament.title} was cancelled",
+            )
+
+        registration.status = Registration.Status.REFUNDED
+        registration.room_details_sent = False
+        registration.refund_processed = True
+        registration.refund_processed_at = timezone.now()
+        registration.refund_reference = reference
+        registration.save(update_fields=[
+            "status", "room_details_sent", "refund_processed",
+            "refund_processed_at", "refund_reference", "updated_at",
+        ])
+        refunded += 1
+
+    return refunded, f"Tournament cancelled; {refunded} registration(s) refunded."
