@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Chat with {{ other.username }} | FF Arena{% endblock %}
+{% block content %}
+<section class="community-page chat-page">
+  <div class="chat-topbar">
+    <a class="text-link" href="{% url 'chat:home' %}">← All chats</a>
+    <div class="chat-person"><div class="player-avatar">{{ other.username|first|upper }}</div><div><h1>{{ other.username }}</h1><small>Player ID: FF-{{ other.pk|stringformat:"06d" }}</small></div></div>
+    <button type="button" class="button button-outline" id="refreshChat">Refresh</button>
+  </div>
+  <section class="community-panel conversation-panel">
+    <div class="message-list" id="messageList" data-poll-url="{% url 'chat:poll' conversation.pk %}" data-last-id="{% if chat_messages %}{{ chat_messages|last.pk }}{% else %}0{% endif %}">
+      {% for item in chat_messages %}
+      <article class="chat-bubble {% if item.sender_id == user.pk %}mine{% else %}theirs{% endif %}" data-message-id="{{ item.pk }}">
+        <small>{% if item.sender_id == user.pk %}You{% else %}{{ item.sender.username }}{% endif %} · {{ item.created_at|date:"d M, h:i A" }}</small>
+        <p>{{ item.body }}</p>
+      </article>
+      {% empty %}<p class="muted empty-messages">Abhi chat khaali hai. Pehla message bhejo!</p>{% endfor %}
+    </div>
+    <form method="post" class="message-composer" id="messageForm">
+      {% csrf_token %}
+      <label class="sr-only" for="messageBody">Your message</label>
+      <textarea id="messageBody" name="body" rows="2" maxlength="2000" placeholder="Message likho..." required></textarea>
+      <button class="button button-primary" type="submit">Send</button>
+    </form>
+    <p class="community-note">Messages text-only hain. Respectful raho; harassment ko report kar sakte ho.</p>
+  </section>
+</section>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  const list = document.getElementById("messageList");
+  if (!list) return;
+  const pollUrl = list.dataset.pollUrl;
+  const form = document.getElementById("messageForm");
+  const input = document.getElementById("messageBody");
+  const refresh = document.getElementById("refreshChat");
+  let lastId = Number(list.dataset.lastId || 0);
+  let polling = false;
+  function addMessage(item) {
+    if (list.querySelector('[data-message-id="' + item.id + '"]')) return;
+    const empty = list.querySelector(".empty-messages");
+    if (empty) empty.remove();
+    const article = document.createElement("article");
+    article.className = "chat-bubble " + (item.mine ? "mine" : "theirs");
+    article.dataset.messageId = item.id;
+    const meta = document.createElement("small");
+    meta.textContent = (item.mine ? "You" : item.sender) + " · " + item.created_at;
+    const body = document.createElement("p");
+    body.textContent = item.body;
+    article.append(meta, body);
+    list.appendChild(article);
+    lastId = Math.max(lastId, item.id);
+    list.dataset.lastId = String(lastId);
+  }
+  async function poll() {
+    if (polling) return;
+    polling = true;
+    try {
+      const response = await fetch(pollUrl + "?after=" + lastId, {
+        headers: {"X-Requested-With": "XMLHttpRequest"},
+        credentials: "same-origin"
+      });
+      if (response.ok) {
+        const data = await response.json();
+        data.messages.forEach(addMessage);
+        if (data.messages.length) list.scrollTop = list.scrollHeight;
+      }
+    } catch (error) {
+      // Keep chat usable; the user can refresh manually if the network is unavailable.
+    } finally {
+      polling = false;
+    }
+  }
+  form.addEventListener("submit", function () {
+    const button = form.querySelector("button[type=submit]");
+    if (button) button.disabled = true;
+  });
+  form.addEventListener("submit", function () {
+    window.setTimeout(function () {
+      const button = form.querySelector("button[type=submit]");
+      if (button) button.disabled = false;
+    }, 1500);
+  });
+  refresh.addEventListener("click", poll);
+  list.scrollTop = list.scrollHeight;
+  window.setInterval(poll, 5000);
+})();
+</script>
+{% endblock %}
