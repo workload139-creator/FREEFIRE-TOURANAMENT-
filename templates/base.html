@@ -43,3 +43,98 @@
     {% block extra_js %}{% endblock %}
 </body>
 </html>
+
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="theme-color" content="#080b12">
+    <meta name="description" content="Join Free Fire tournaments, compete with players and track your results.">
+
+    <title>{% block title %}Free Fire Arena{% endblock %}</title>
+
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+
+    <header class="site-header">
+        <div class="nav-container">
+
+            <a href="/" class="brand">
+                <span class="brand-icon">🔥</span>
+                <span>FF <strong>ARENA</strong></span>
+            </a>
+
+            <button
+                class="menu-toggle"
+                id="menuToggle"
+                type="button"
+                aria-label="Toggle navigation"
+                aria-expanded="false">
+                ☰
+            </button>
+
+            <nav class="main-nav" id="mainNav">
+                <a href="/">Home</a>
+                <a href="/#tournaments">Tournaments</a>
+                <a href="/#br-tournaments">Battle Royale</a>
+                <a href="/#vs-tournaments">VS Mode</a>
+
+                {% if user.is_authenticated %}
+                    <a href="/accounts/profile/">My Profile</a>
+
+                    <form method="post" action="{% url 'logout' %}" class="nav-logout">
+                        {% csrf_token %}
+                        <button type="submit" class="nav-login">Logout</button>
+                    </form>
+                {% else %}
+                    <a href="{% url 'login' %}" class="nav-login">Login</a>
+                {% endif %}
+            </nav>
+
+        </div>
+    </header>
+
+    <main class="page-content">
+        {% if messages %}
+            <div class="message-container">
+                {% for message in messages %}
+                    <div class="message {{ message.tags }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <a href="/" class="brand">
+                <span class="brand-icon">🔥</span>
+                <span>FF <strong>ARENA</strong></span>
+            </a>
+
+            <p>
+                Compete fairly. Play responsibly.
+            </p>
+
+            <p class="copyright">
+                &copy; {% now "Y" %} FF Arena. All rights reserved.
+            </p>
+        </div>
+    </footer>
+
+    <script src="{% static 'js/main.js' %}" defer></script>
+    {% block extra_js %}{% endblock %}
+
+</body>
+</html>
+
