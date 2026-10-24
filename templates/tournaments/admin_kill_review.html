@@ -1,76 +1,33 @@
-
 {% extends "base.html" %}
-
+{% block title %}Kill Review | FF Arena{% endblock %}
 {% block content %}
-<div class="container">
-    <h1>Admin — Kill Verification Review</h1>
-
-    <p>Players ki match-history submissions review karo.</p>
-
-    <div class="tournament-card">
-        <h2>Pending Reviews</h2>
-
-        <div style="overflow-x: auto;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Player</th>
-                        <th>Tournament</th>
-                        <th>Registered UID</th>
-                        <th>Submitted UID</th>
-                        <th>AI Kills</th>
-                        <th>Admin Approved Kills</th>
-                        <th>Proposed Reward</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    {% for submission in submissions %}
-                        <tr>
-                            <td>{{ submission.player.username }}</td>
-                            <td>{{ submission.tournament.title }}</td>
-                            <td>{{ submission.registered_uid }}</td>
-                            <td>{{ submission.free_fire_uid }}</td>
-                            <td>{{ submission.ai_proposed_kills|default:"Pending" }}</td>
-                            <td>
-                                {{ submission.approved_kills|default:"Not reviewed" }}
-                            </td>
-                            <td>
-                                {% if submission.ai_proposed_kills != None %}
-                                    ₹{{ submission.ai_proposed_kills|floatformat:0 }}
-                                    <small>kills × ₹5 calculation required</small>
-                                {% else %}
-                                    Pending
-                                {% endif %}
-                            </td>
-                            <td>
-                                <a href="{{ submission.review_url }}">
-                                    Review Submission
-                                </a>
-                            </td>
-                        </tr>
-                    {% empty %}
-                        <tr>
-                            <td colspan="8">
-                                Abhi koi pending submission nahi hai.
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="tournament-card">
-        <h2>Admin Review Rules</h2>
+<section class="container" style="max-width:1200px;margin:35px auto;padding:20px">
+    <h1>Admin — Kill Evidence Review</h1>
+    <p>Har submission ki video aur dono screenshots manually check karo. Approved kills enter karne ke baad reward ₹5 per kill calculate hoga. Payout sirf admin wallet mein sufficient balance hone par record hoga.</p>
+    {% for submission in submissions %}
+    <article class="tournament-card" style="padding:22px;margin:18px 0;border-radius:14px">
+        <h2>{{ submission.player.username }} — {{ submission.tournament.title }}</h2>
+        <p>Registration UID: <strong>{{ submission.registered_uid }}</strong> · Submitted UID: <strong>{{ submission.free_fire_uid }}</strong></p>
+        <p>Submitted: {{ submission.submitted_at|date:"d M Y, h:i A" }}</p>
         <ul>
-            <li>Registered UID aur submitted UID match karo.</li>
-            <li>Video aur screenshots manually review karo.</li>
-            <li>AI ke proposed kills ko final result mat samjho.</li>
-            <li>Approved kills ko ₹5 se multiply karke reward calculate karo.</li>
-            <li>Final approval ke baad hi authorized payout process karo.</li>
+            <li><a href="{{ submission.history_video.url }}" target="_blank" rel="noopener">Open match-history video</a></li>
+            <li><a href="{{ submission.history_image_one.url }}" target="_blank" rel="noopener">Open screenshot 1</a></li>
+            <li><a href="{{ submission.history_image_two.url }}" target="_blank" rel="noopener">Open screenshot 2</a></li>
         </ul>
-    </div>
-</div>
+        <form method="post" action="{% url 'tournaments:review_kill_submission' submission.id %}">
+            {% csrf_token %}
+            <label for="approved-kills-{{ submission.id }}">Admin-approved kills</label>
+            <input id="approved-kills-{{ submission.id }}" type="number" name="approved_kills" min="0" max="99" value="{{ submission.ai_proposed_kills|default_if_none:'' }}">
+            <label for="notes-{{ submission.id }}">Admin notes</label>
+            <textarea id="notes-{{ submission.id }}" name="admin_notes" rows="2"></textarea>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px">
+                <button class="button button-primary" type="submit" name="decision" value="approve">Approve & Process Wallet Reward</button>
+                <button class="button button-outline" type="submit" name="decision" value="reject">Reject Submission</button>
+            </div>
+        </form>
+    </article>
+    {% empty %}
+    <div class="tournament-card" style="padding:24px"><p>Abhi koi pending submission nahi hai.</p></div>
+    {% endfor %}
+</section>
 {% endblock %}
