@@ -1,3 +1,4 @@
+from django import forms
 from django.contrib import admin, messages
 from django.db import transaction
 
@@ -8,6 +9,35 @@ from apps.accounts.models import (
 )
 from .models import KillSubmission, Registration, Tournament
 from .services import cancel_tournament_and_refund
+
+
+class TournamentAdminForm(forms.ModelForm):
+    """Make tournament creation easier and default new tournaments to public status."""
+
+    start_time = forms.DateTimeField(
+        input_formats=[
+            "%Y-%m-%dT%H:%M",
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d %H:%M",
+        ],
+        widget=forms.DateTimeInput(
+            format="%Y-%m-%dT%H:%M",
+            attrs={"type": "datetime-local"},
+        ),
+    )
+
+    class Meta:
+        model = Tournament
+        fields = "__all__"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.instance.pk:
+            self.initial["status"] = Tournament.Status.UPCOMING
+        self.fields["status"].help_text = (
+            "Website par dikhane aur registration kholne ke liye "
+            "'Upcoming' select karein. Draft tournaments public list mein nahi dikhte."
+        )
 
 
 class RegistrationInline(admin.TabularInline):
@@ -38,6 +68,7 @@ def cancel_and_refund_tournaments(modeladmin, request, queryset):
 
 @admin.register(Tournament)
 class TournamentAdmin(admin.ModelAdmin):
+    form = TournamentAdminForm
     list_display = (
         "title", "mode", "vs_format", "entry_fee", "prize_pool",
         "max_players", "start_time", "status",
@@ -124,7 +155,6 @@ class RegistrationAdmin(admin.ModelAdmin):
         "refund_processed_at",
     )
     actions = (verify_entry_payments,)
-
 
 
 @admin.register(KillSubmission)
