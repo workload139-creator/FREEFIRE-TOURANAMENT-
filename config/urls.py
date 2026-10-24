@@ -9,7 +9,6 @@ from apps.accounts.view import login_view, logout_view
 from apps.core.views import home
 
 urlpatterns = [
-    # Public profile avatars; use persistent or external media storage in production.
     re_path(
         r"^media/player_profiles/(?P<path>.*)$",
         serve,
@@ -52,6 +51,8 @@ urlpatterns = [
         name="password_reset_complete",
     ),
     path("tournaments/", include("apps.tournaments.urls")),
+    path("friends/", include("apps.social.urls")),
+    path("chat/", include("apps.chat.urls")),
     path("", home, name="home"),
 ]
 
