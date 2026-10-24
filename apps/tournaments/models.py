@@ -161,6 +161,9 @@ class Registration(models.Model):
         related_name="tournament_registrations",
     )
 
+    room_details_sent = models.BooleanField(default=False)
+ready_deadline = models.DateTimeField(null=True, blank=True)
+
     # UID ko registration ke samay record kiya jayega.
     # Actual UID verification alag process se hogi.
     free_fire_uid = models.CharField(
