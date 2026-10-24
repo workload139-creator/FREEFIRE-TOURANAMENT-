@@ -368,6 +368,17 @@ def review_kill_submission(request, submission_id):
     return redirect("tournaments:admin_kill_review")
 
 
+def results(request):
+    completed_tournaments = Tournament.objects.filter(
+        status=Tournament.Status.COMPLETED
+    ).order_by("-start_time")
+    return render(
+        request,
+        "tournaments/results.html",
+        {"completed_tournaments": completed_tournaments},
+    )
+
+
 def leaderboard(request, tournament_id):
     tournament = get_object_or_404(Tournament, pk=tournament_id)
     submissions = KillSubmission.objects.filter(
