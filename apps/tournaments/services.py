@@ -79,9 +79,6 @@ def cancel_tournament_and_refund(tournament_id):
     for registration in registrations:
         if registration.refund_processed or registration.entry_fee_paid <= 0:
             continue
-        if registration.status in (Registration.Status.CANCELLED, Registration.Status.REFUNDED):
-            continue
-
         reference = f"TOURNEY-CANCEL-REFUND-{registration.pk}"
         existing = WalletTransaction.objects.filter(reference=reference).first()
         if existing:
