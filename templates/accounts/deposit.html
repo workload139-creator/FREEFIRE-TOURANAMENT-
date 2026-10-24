@@ -1,0 +1,18 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<section style="max-width:600px; margin:40px auto; padding:20px;">
+    <h1>Wallet Deposit</h1>
+    <p>Current balance: ₹{{ wallet.balance }}</p>
+    <p>Minimum deposit: ₹10 · Maximum wallet balance: ₹5000</p>
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Submit Deposit Request</button>
+    </form>
+
+    <p>Request submit karne se wallet balance turant nahi badhega.</p>
+</section>
+{% endblock %}
