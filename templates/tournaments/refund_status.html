@@ -1,0 +1,52 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="tournament-card">
+        <h1>Registration & Refund Status</h1>
+
+        <h2>{{ registration.tournament.title }}</h2>
+
+        <p>
+            <strong>Player:</strong>
+            {{ registration.player.username }}
+        </p>
+
+        <p>
+            <strong>Free Fire UID:</strong>
+            {{ registration.free_fire_uid }}
+        </p>
+
+        <p>
+            <strong>Entry Fee:</strong>
+            ₹{{ registration.entry_fee_paid }}
+        </p>
+
+        <p>
+            <strong>Registration Status:</strong>
+            {{ registration.get_status_display }}
+        </p>
+
+        <hr>
+
+        {% if registration.status == "refunded" %}
+            <h2>Refund Status</h2>
+            <p>Your registration has been marked as refunded.</p>
+            <p>Please check your wallet transaction history to confirm the credit.</p>
+
+        {% elif registration.status == "cancelled" %}
+            <h2>Registration Cancelled</h2>
+            <p>Your registration is cancelled.</p>
+            <p>If payment was made, check with the tournament administrator about the refund.</p>
+
+        {% else %}
+            <p>Your registration is not marked as refunded.</p>
+        {% endif %}
+
+        <a href="{% url 'tournaments:list' %}">
+            Back to Tournaments
+        </a>
+    </div>
+</div>
+{% endblock %}
