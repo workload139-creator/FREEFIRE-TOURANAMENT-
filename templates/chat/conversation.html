@@ -8,7 +8,7 @@
     <button type="button" class="button button-outline" id="refreshChat">Refresh</button>
   </div>
   <section class="community-panel conversation-panel">
-    <div class="message-list" id="messageList" data-poll-url="{% url 'chat:poll' conversation.pk %}" data-last-id="{% if chat_messages %}{{ chat_messages|last.pk }}{% else %}0{% endif %}">
+    <div class="message-list" id="messageList" data-poll-url="{% url 'chat:poll' conversation.pk %}" data-last-id="{{ last_message_id|default:0 }}">
       {% for item in chat_messages %}
       <article class="chat-bubble {% if item.sender_id == user.pk %}mine{% else %}theirs{% endif %}" data-message-id="{{ item.pk }}">
         <small>{% if item.sender_id == user.pk %}You{% else %}{{ item.sender.username }}{% endif %} · {{ item.created_at|date:"d M, h:i A" }}</small>
