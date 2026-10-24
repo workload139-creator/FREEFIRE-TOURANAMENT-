@@ -24,4 +24,14 @@ path(
     name="send_room_details",
 ),
     
+path(
+    "admin/tournament/<int:tournament_id>/room-form/",
+    views.admin_room_page,
+    name="admin_room_page",
+),
+
+    
 ]
+
+
+
