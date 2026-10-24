@@ -129,5 +129,60 @@ def confirm_playing(request, registration_id):
         update_fields=["status", "ready_confirmed_at"]
     )
 
-    messages.success(request, "Tumhari participation confirm ho gayi!")
+    messages.success(request, "Tumhari participation confirm ho gayi!"
+                    
+                    
+                    
+                    )
+
+
+@login_required
+@user_passes_test(lambda user: user.is_staff)
+def send_room_details(request, tournament_id):
+    tournament = get_object_or_404(Tournament, pk=tournament_id)
+
+    if request.method != "POST":
+        return redirect("tournaments:list")
+
+    room_id = request.POST.get("room_id", "").strip()
+    room_password = request.POST.get("room_password", "").strip()
+
+    if not room_id or not room_password:
+        messages.error(request, "Room ID aur password dono bharo.")
+        return redirect("tournaments:list")
+
+    if tournament.status != Tournament.Status.UPCOMING:
+        messages.error(request, "Sirf upcoming tournament ke liye room details bhej sakte ho.")
+        return redirect("tournaments:list")
+
+    tournament.room_id = room_id
+    tournament.room_password = room_password
+    tournament.save(update_fields=["room_id", "room_password"])
+
+    deadline = timezone.now() + timedelta(seconds=60)
+
+    registrations = Registration.objects.filter(
+        tournament=tournament,
+        status=Registration.Status.CONFIRMED,
+        payment_verified=True,
+    )
+
+    for registration in registrations:
+        registration.room_details_sent = True
+        registration.ready_deadline = deadline
+        registration.status = Registration.Status.WAITING_READY
+        registration.save(
+            update_fields=[
+                "room_details_sent",
+                "ready_deadline",
+                "status",
+            ]
+        )
+
+    messages.success(
+        request,
+        "Room details set ho gayi hain. Eligible players ko 60-second confirmation milega.",
+    )
+    return redirect("tournaments:list")
+    
     return redirect("tournaments:list")
