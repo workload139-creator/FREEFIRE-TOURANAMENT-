@@ -119,3 +119,35 @@ body {
         transition-duration: 0.01ms !important;
     }
 }
+
+:root {
+    /* Main colors */
+    --bg: #080b12;
+    --bg-secondary: #0e1420;
+    --panel: #111722;
+    --panel-light: #171f2d;
+
+    /* Text colors */
+    --text: #f5f7fb;
+    --muted: #9aa6b8;
+
+    /* Accent colors */
+    --red: #ff3548;
+    --red-dark: #d91f35;
+    --gold: #ffc857;
+    --green: #70e7a2;
+    --blue: #5aa9ff;
+
+    /* Borders and shadows */
+    --border: rgba(255, 255, 255, 0.09);
+    --shadow: 0 12px 35px rgba(0, 0, 0, 0.25);
+
+    /* Layout */
+    --container-width: 1200px;
+    --radius-small: 8px;
+    --radius-medium: 15px;
+    --radius-large: 24px;
+
+    /* Animation */
+    --transition: 0.25s ease;
+}
