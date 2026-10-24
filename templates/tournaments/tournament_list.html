@@ -1,0 +1,56 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1>Free Fire Tournaments</h1>
+    <p>Apna tournament chuno aur details dekho.</p>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="message">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="tournament-grid">
+        {% for tournament in tournaments %}
+            <div class="tournament-card">
+                <h2>{{ tournament.title }}</h2>
+
+                <p>{{ tournament.description|default:"Tournament details jald hi." }}</p>
+
+                <p>
+                    <strong>Entry Fee:</strong>
+                    ₹{{ tournament.entry_fee }}
+                </p>
+
+                <p>
+                    <strong>Prize Pool:</strong>
+                    ₹{{ tournament.prize_pool }}
+                </p>
+
+                <p>
+                    <strong>Players:</strong>
+                    {{ tournament.confirmed_players_count }}/{{ tournament.max_players }}
+                </p>
+
+                <p>
+                    <strong>Start:</strong>
+                    {{ tournament.start_time|date:"d M Y, h:i A" }}
+                </p>
+
+                <p>
+                    <strong>Status:</strong>
+                    {{ tournament.get_status_display }}
+                </p>
+
+                <a href="{% url 'tournaments:detail' tournament.id %}">
+                    View Tournament
+                </a>
+            </div>
+        {% empty %}
+            <p>Abhi koi upcoming tournament available nahi hai.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
