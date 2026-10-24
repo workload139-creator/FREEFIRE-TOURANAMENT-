@@ -33,7 +33,7 @@ class CustomUserAdmin(UserAdmin):
 class WalletAdmin(admin.ModelAdmin):
     list_display = ("user", "balance", "updated_at")
     search_fields = ("user__username", "user__email")
-    readonly_fields = ("created_at", "updated_at")
+    readonly_fields = ("balance", "created_at", "updated_at")
 
 
 @admin.register(WalletTransaction)
@@ -81,7 +81,7 @@ class DepositRequestAdmin(admin.ModelAdmin):
     list_display = ("wallet", "amount", "payment_reference", "status", "created_at")
     list_filter = ("status", "created_at")
     search_fields = ("wallet__user__username", "payment_reference")
-    readonly_fields = ("created_at",)
+    readonly_fields = ("status", "created_at")
     fields = ("wallet", "amount", "payment_reference", "status", "created_at")
     actions = (approve_verified_deposits,)
 
@@ -89,7 +89,7 @@ class DepositRequestAdmin(admin.ModelAdmin):
 @admin.register(AdminWallet)
 class AdminWalletAdmin(admin.ModelAdmin):
     list_display = ("name", "balance", "updated_at")
-    readonly_fields = ("created_at", "updated_at")
+    readonly_fields = ("balance", "created_at", "updated_at")
 
 
 @admin.register(AdminWalletTransaction)
@@ -179,6 +179,6 @@ class WithdrawalRequestAdmin(admin.ModelAdmin):
     list_display = ("wallet", "amount", "upi_id", "status", "payout_reference", "created_at", "processed_at")
     list_filter = ("status", "created_at")
     search_fields = ("wallet__user__username", "upi_id", "payout_reference")
-    readonly_fields = ("created_at", "processed_at")
+    readonly_fields = ("status", "created_at", "processed_at")
     fields = ("wallet", "amount", "upi_id", "status", "payout_reference", "created_at", "processed_at")
     actions = (mark_withdrawals_paid, reject_withdrawals_and_refund)
