@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Messages | FF Arena{% endblock %}
+{% block content %}
+<section class="community-page">
+  <div class="community-hero">
+    <span class="eyebrow">PRIVATE MESSAGES</span>
+    <h1>Your Chats</h1>
+    <p>Sirf accepted friends ke saath private conversation.</p>
+    <a class="button button-primary" href="{% url 'social:home' %}">Find Friends</a>
+  </div>
+  <section class="community-panel chat-list-panel">
+    {% for row in chat_rows %}
+      <a class="chat-list-row" href="{% url 'chat:conversation' row.conversation.pk %}">
+        <div class="player-avatar">{{ row.other.username|first|upper }}</div>
+        <div class="player-info"><strong>{{ row.other.username }}</strong><small>{% if row.last_message %}{{ row.last_message.body|truncatechars:70 }}{% else %}Start chatting{% endif %}</small></div>
+        <div class="chat-meta">{% if row.unread_count %}<span class="count-pill">{{ row.unread_count }}</span>{% endif %}<small>FF-{{ row.other.pk|stringformat:"06d" }}</small></div>
+      </a>
+    {% empty %}
+      <div class="empty-state"><h2>No chats yet</h2><p>Player ID search karke friend request bhejo. Accept hone ke baad Chat button dikh jayega.</p><a class="button button-primary" href="{% url 'social:home' %}">Find Players</a></div>
+    {% endfor %}
+  </section>
+</section>
+{% endblock %}
