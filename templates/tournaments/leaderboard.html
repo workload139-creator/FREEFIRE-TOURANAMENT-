@@ -1,0 +1,65 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1>🏆 Tournament Leaderboard</h1>
+
+    <div class="tournament-card">
+        <h2>{{ tournament.title }}</h2>
+
+        <p>
+            <strong>Entry Fee:</strong>
+            ₹{{ tournament.entry_fee }}
+        </p>
+
+        <p>
+            <strong>Prize Pool:</strong>
+            ₹{{ tournament.prize_pool }}
+        </p>
+
+        <p>
+            <strong>Players:</strong>
+            {{ tournament.confirmed_players_count }}/{{ tournament.max_players }}
+        </p>
+    </div>
+
+    <div class="tournament-card">
+        <h2>Player Rankings</h2>
+
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Player</th>
+                        <th>Free Fire UID</th>
+                        <th>Status</th>
+                        <th>Approved Kills</th>
+                        <th>Reward</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for item in leaderboard %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ item.registration.player.username }}</td>
+                            <td>{{ item.registration.free_fire_uid }}</td>
+                            <td>{{ item.registration.get_status_display }}</td>
+                            <td>{{ item.approved_kills|default:0 }}</td>
+                            <td>₹{{ item.reward|default:0 }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6">
+                                Abhi leaderboard data available nahi hai.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
