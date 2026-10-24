@@ -1,0 +1,45 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="tournament-card">
+        <h1>🎮 Tournament Room Details</h1>
+
+        <h2>{{ registration.tournament.title }}</h2>
+
+        <p>
+            <strong>Free Fire UID:</strong>
+            {{ registration.free_fire_uid }}
+        </p>
+
+        {% if registration.status == "ready" and registration.payment_verified %}
+            <hr>
+
+            <h2>Room Information</h2>
+
+            <p>
+                <strong>Room ID:</strong>
+                {{ registration.tournament.room_id }}
+            </p>
+
+            <p>
+                <strong>Room Password:</strong>
+                {{ registration.tournament.room_password }}
+            </p>
+
+            <p>Room details kisi doosre player ke saath share na karein.</p>
+
+        {% else %}
+            <p>
+                Room details abhi available nahi hain.
+                Payment verification aur player confirmation complete karein.
+            </p>
+        {% endif %}
+
+        <a href="{% url 'tournaments:list' %}">
+            Back to Tournaments
+        </a>
+    </div>
+</div>
+{% endblock %}
