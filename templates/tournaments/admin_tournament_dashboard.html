@@ -1,0 +1,92 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1>Admin Tournament Dashboard</h1>
+    <p>Free Fire tournaments ka management panel.</p>
+
+    <div class="tournament-grid">
+        <div class="tournament-card">
+            <h2>Total Tournaments</h2>
+            <p>{{ total_tournaments|default:0 }}</p>
+        </div>
+
+        <div class="tournament-card">
+            <h2>Total Registrations</h2>
+            <p>{{ total_registrations|default:0 }}</p>
+        </div>
+
+        <div class="tournament-card">
+            <h2>Pending Payments</h2>
+            <p>{{ pending_payments|default:0 }}</p>
+        </div>
+
+        <div class="tournament-card">
+            <h2>Ready Players</h2>
+            <p>{{ ready_players|default:0 }}</p>
+        </div>
+    </div>
+
+    <div class="tournament-card">
+        <h2>Manage Tournaments</h2>
+
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tournament</th>
+                        <th>Entry Fee</th>
+                        <th>Prize Pool</th>
+                        <th>Players</th>
+                        <th>Start Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for tournament in tournaments %}
+                        <tr>
+                            <td>{{ tournament.title }}</td>
+                            <td>₹{{ tournament.entry_fee }}</td>
+                            <td>₹{{ tournament.prize_pool }}</td>
+                            <td>
+                                {{ tournament.confirmed_players_count }}/{{ tournament.max_players }}
+                            </td>
+                            <td>
+                                {{ tournament.start_time|date:"d M Y, h:i A" }}
+                            </td>
+                            <td>{{ tournament.get_status_display }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6">
+                                Abhi koi tournament available nahi hai.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="tournament-grid">
+        <div class="tournament-card">
+            <h2>Payment Management</h2>
+            <p>Payments verify karne aur refunds review karne ke liye.</p>
+            <a href="/admin/">Open Admin Panel</a>
+        </div>
+
+        <div class="tournament-card">
+            <h2>Kill Verification</h2>
+            <p>Match-history evidence review aur approved kills ke liye.</p>
+            <p>Final approval ke bina reward release nahi hona chahiye.</p>
+        </div>
+
+        <div class="tournament-card">
+            <h2>Room Management</h2>
+            <p>Eligible players ko room details release karne ke liye.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
