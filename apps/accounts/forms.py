@@ -136,6 +136,6 @@ class ProfileUpdateForm(forms.ModelForm):
         photo = self.cleaned_data.get("profile_photo")
         if photo and photo.size > 2 * 1024 * 1024:
             raise forms.ValidationError("Profile photo 2 MB se chhoti honi chahiye.")
-        if photo and getattr(photo, "content_type", "") not in ("image/jpeg", "image/png", "image/webp"):
+        if photo and hasattr(photo, "content_type") and photo.content_type not in ("image/jpeg", "image/png", "image/webp"):
             raise forms.ValidationError("JPG, PNG ya WebP photo upload karein.")
         return photo
