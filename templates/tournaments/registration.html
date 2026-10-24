@@ -1,0 +1,51 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container registration-container">
+    <h1>Join Tournament</h1>
+
+    <div class="tournament-card">
+        <h2>{{ tournament.title }}</h2>
+
+        <p>
+            <strong>Entry Fee:</strong>
+            ₹{{ tournament.entry_fee }}
+        </p>
+
+        <p>
+            <strong>Prize Pool:</strong>
+            ₹{{ tournament.prize_pool }}
+        </p>
+
+        <p>
+            <strong>Available Seats:</strong>
+            {{ tournament.max_players|add:"-0" }}
+        </p>
+    </div>
+
+    <form method="post"
+          action="{% url 'tournaments:join' tournament.id %}">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label for="id_free_fire_uid">Free Fire UID</label>
+            {{ form.free_fire_uid }}
+
+            {% if form.free_fire_uid.errors %}
+                <p class="form-error">
+                    {{ form.free_fire_uid.errors }}
+                </p>
+            {% endif %}
+        </div>
+
+        {% if form.non_field_errors %}
+            <div class="form-error">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        <button type="submit">Continue Registration</button>
+    </form>
+</div>
+{% endblock %}
