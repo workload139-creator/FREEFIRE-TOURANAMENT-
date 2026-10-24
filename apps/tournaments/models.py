@@ -216,6 +216,9 @@ class KillSubmission(models.Model):
     history_image_one = models.ImageField(upload_to="kill-evidence/images/")
     history_image_two = models.ImageField(upload_to="kill-evidence/images/")
     ai_proposed_kills = models.PositiveSmallIntegerField(null=True, blank=True)
+    ai_confidence = models.CharField(max_length=10, blank=True, default="")
+    ai_uid_matches = models.BooleanField(null=True, blank=True)
+    ai_review_notes = models.TextField(blank=True)
     approved_kills = models.PositiveSmallIntegerField(null=True, blank=True)
     proposed_reward = models.DecimalField(
         max_digits=10, decimal_places=2, default=Decimal("0.00")
