@@ -117,7 +117,10 @@ def send_friend_request(request, user_id):
         if reverse_request and reverse_request.status == FriendRequest.Status.PENDING:
             reverse_request.status = FriendRequest.Status.ACCEPTED
             reverse_request.save(update_fields=["status", "updated_at"])
-            messages.success(request, f"{target.username} ke saath friendship accept ho gayi.")
+            # Accepted friendship must create the mutual follows required by chat.
+            Follow.objects.get_or_create(follower=request.user, following=target)
+            Follow.objects.get_or_create(follower=target, following=request.user)
+            messages.success(request, f"{target.username} ke saath friendship accept ho gayi. Ab aap chat kar sakte hain.")
             return redirect("social:home")
         existing = FriendRequest.objects.filter(requester=request.user, recipient=target).first()
         if existing and existing.status == FriendRequest.Status.PENDING:
@@ -146,9 +149,13 @@ def handle_friend_request(request, request_id, action):
         friend_request.save(update_fields=["status", "updated_at"])
         messages.error(request, "Blocked player ki request accept nahi ho sakti.")
     elif action == "accept":
-        friend_request.status = FriendRequest.Status.ACCEPTED
-        friend_request.save(update_fields=["status", "updated_at"])
-        messages.success(request, f"{friend_request.requester.username} ab aapka friend hai.")
+        with transaction.atomic():
+            friend_request.status = FriendRequest.Status.ACCEPTED
+            friend_request.save(update_fields=["status", "updated_at"])
+            # Chat access is based on mutual follows; create both directions on accept.
+            Follow.objects.get_or_create(follower=request.user, following=friend_request.requester)
+            Follow.objects.get_or_create(follower=friend_request.requester, following=request.user)
+        messages.success(request, f"{friend_request.requester.username} ab aapka friend hai. Ab aap chat kar sakte hain.")
     elif action == "reject":
         friend_request.status = FriendRequest.Status.REJECTED
         friend_request.save(update_fields=["status", "updated_at"])
