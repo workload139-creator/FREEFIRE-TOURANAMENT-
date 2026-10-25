@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import logging
 import secrets
 import time
 
@@ -9,6 +10,8 @@ from django.core.mail import send_mail
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
+
+logger = logging.getLogger(__name__)
 
 OTP_TTL_SECONDS = 600
 OTP_RESEND_SECONDS = 60
@@ -37,9 +40,12 @@ def email_otp_view(request):
         if not email or "@" not in email or "." not in email.rsplit("@", 1)[-1]:
             error = "Sahi email address enter karein."
         elif User.objects.filter(email__iexact=email).exists():
-            error = "Is email se account pehle se hai. Login karein."
+            error = "Is email se account pehle se hai. Login ya Forgot Password use karein."
         elif now - int(request.session.get("email_otp_last_sent", 0)) < OTP_RESEND_SECONDS:
             error = "Naya code bhejne se pehle 60 seconds wait karein."
+        elif not settings.EMAIL_HOST or not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
+            logger.error("Email OTP is not configured: EMAIL_HOST/EMAIL_HOST_USER/EMAIL_HOST_PASSWORD missing")
+            error = "Email service abhi configured nahi hai. Admin ko SMTP settings check karni hongi."
         else:
             code = f"{secrets.randbelow(1_000_000):06d}"
             try:
@@ -64,7 +70,8 @@ def email_otp_view(request):
                     return render(request, "accounts/email_otp.html", {"email": email, "code_sent": True})
                 error = "Email nahi bhej paye. SMTP settings check karke dobara try karein."
             except Exception:
-                error = "Email send nahi ho saka. Render ki SMTP environment settings check karein."
+                logger.exception("Email OTP send failed")
+                error = "Email send nahi ho saka. Admin Render Logs mein SMTP error check karein."
 
     elif request.method == "POST" and action == "verify":
         stored_email = request.session.get("email_otp_email", "")
