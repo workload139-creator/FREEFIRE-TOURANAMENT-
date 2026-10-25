@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
 from django.db import IntegrityError, transaction
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
@@ -243,6 +244,105 @@ def deposit_view(request):
         "upi_id": upi_id,
         "upi_uri": upi_uri,
     })
+
+
+@login_required
+def cashfree_deposit_view(request):
+    """Start a server-created Cashfree order; never credit on browser redirect alone."""
+    import os
+    import uuid
+
+    from .cashfree import CashfreeError, _config, create_order
+
+    wallet, _ = Wallet.objects.get_or_create(user=request.user)
+    form = DepositRequestForm(request.POST or None)
+    if request.method == "POST":
+        try:
+            _app_id, _secret, mode, _base = _config()
+        except CashfreeError as exc:
+            form.add_error(
+                None,
+                "Automatic payment abhi setup nahi hai. Admin ko Cashfree sandbox keys Render Environment mein add karni hongi.",
+            )
+            return render(request, "accounts/deposit.html", {
+                "form": form,
+                "wallet": wallet,
+                "gateway_only": True,
+                "gateway_configured": False,
+            })
+
+        if form.is_valid():
+            amount = form.cleaned_data["amount"]
+            with transaction.atomic():
+                wallet = Wallet.objects.select_for_update().get(pk=wallet.pk)
+                pending_total = sum(
+                    DepositRequest.objects.filter(
+                        wallet=wallet,
+                        status=DepositRequest.Status.PENDING,
+                    ).values_list("amount", flat=True),
+                    start=Decimal("0.00"),
+                )
+                if wallet.balance + pending_total + amount > Decimal("5000.00"):
+                    form.add_error(
+                        "amount",
+                        "Wallet limit ₹5000 hai. Pending requests bhi limit mein count hongi.",
+                    )
+                    return render(request, "accounts/deposit.html", {
+                        "form": form,
+                        "wallet": wallet,
+                        "gateway_only": True,
+                        "gateway_configured": True,
+                    })
+                order_id = f"ffw_{request.user.pk}_{uuid.uuid4().hex[:24]}"
+                deposit = DepositRequest.objects.create(
+                    wallet=wallet,
+                    amount=amount,
+                    payment_reference=order_id,
+                )
+
+            try:
+                order = create_order(
+                    order_id=order_id,
+                    amount=amount,
+                    user=request.user,
+                    return_url=request.build_absolute_uri(
+                        reverse("accounts:cashfree_return")
+                    ),
+                    notify_url=request.build_absolute_uri(
+                        reverse("accounts:cashfree_webhook")
+                    ),
+                )
+                payment_session_id = order.get("payment_session_id", "")
+                if not payment_session_id:
+                    raise CashfreeError("Cashfree ne payment session return nahi kiya.")
+            except CashfreeError:
+                deposit.status = DepositRequest.Status.REJECTED
+                deposit.save(update_fields=["status"])
+                form.add_error(
+                    None,
+                    "Cashfree order nahi ban saka. Keys, sender account aur sandbox setup check karein; wallet se paisa nahi kata.",
+                )
+                return render(request, "accounts/deposit.html", {
+                    "form": form,
+                    "wallet": wallet,
+                    "gateway_only": True,
+                    "gateway_configured": True,
+                })
+
+            return render(request, "accounts/cashfree_checkout.html", {
+                "amount": amount,
+                "order_id": order_id,
+                "payment_session_id": payment_session_id,
+                "cashfree_mode": "production" if mode == "production" else "sandbox",
+            })
+
+    return render(request, "accounts/deposit.html", {
+        "form": form,
+        "wallet": wallet,
+        "gateway_only": True,
+        "gateway_configured": True,
+    })
+
 
 def _finalize_cashfree_deposit(order_id):
     from django.core.exceptions import ValidationError
