@@ -9,7 +9,7 @@
 
     <form method="post">
         {% csrf_token %}
-        {{ form.as_p }}
+        <p><label for="{{ form.amount.id_for_label }}">Deposit amount (₹)</label><br>{{ form.amount }}{{ form.amount.errors }}</p>
         <button type="submit">Continue to Cashfree Payment</button>
     </form>
 
