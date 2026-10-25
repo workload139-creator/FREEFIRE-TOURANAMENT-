@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from apps.social.models import FriendRequest
+from apps.social.models import Follow, FriendRequest
 from .models import Conversation, Message
 
 User = get_user_model()
@@ -20,9 +20,8 @@ class PrivateChatTests(TestCase):
         self.assertFalse(Conversation.objects.exists())
 
     def test_accepted_friends_can_exchange_messages(self):
-        FriendRequest.objects.create(
-            requester=self.alice, recipient=self.bob, status=FriendRequest.Status.ACCEPTED
-        )
+        Follow.objects.create(follower=self.alice, following=self.bob)
+        Follow.objects.create(follower=self.bob, following=self.alice)
         response = self.client.get(reverse("chat:open", args=[self.bob.pk]))
         self.assertEqual(response.status_code, 302)
         conversation = Conversation.objects.get()
@@ -34,9 +33,8 @@ class PrivateChatTests(TestCase):
         self.assertIsNotNone(Message.objects.get().read_at)
 
     def test_unrelated_user_cannot_read_conversation(self):
-        FriendRequest.objects.create(
-            requester=self.alice, recipient=self.bob, status=FriendRequest.Status.ACCEPTED
-        )
+        Follow.objects.create(follower=self.alice, following=self.bob)
+        Follow.objects.create(follower=self.bob, following=self.alice)
         conversation = Conversation.objects.create(user_one=self.alice, user_two=self.bob)
         charlie = User.objects.create_user(username="charlie", password="test-password-12345")
         self.client.force_login(charlie)
