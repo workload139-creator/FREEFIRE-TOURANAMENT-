@@ -28,6 +28,8 @@ def register_view(request):
             form.add_error("email", "Wahi email use karein jise abhi OTP se verify kiya hai.")
         if form.is_valid():
             try:
+                requested_username = request.POST.get("username", "").strip()
+                final_username = form.cleaned_data["username"]
                 with transaction.atomic():
                     user = form.save(commit=False)
                     user.phone_verified = False
@@ -38,9 +40,14 @@ def register_view(request):
                 request.session.pop("email_otp_verified_at", None)
                 login(request, user)
 
+                if requested_username.lower() != final_username.lower():
+                    messages.info(
+                        request,
+                        f"Username pehle se use ho raha tha, isliye aapka unique username {final_username} rakha gaya. Ise login ke liye note kar lein.",
+                    )
                 messages.success(
                     request,
-                    "Account successfully created. Email verified hai; phone aur Free Fire UID verification abhi pending hain.",
+                    f"Account successfully created! Aapka username: {final_username}. Email verified hai; phone aur Free Fire UID verification abhi pending hain.",
                 )
                 return redirect("accounts:profile")
             except IntegrityError:
