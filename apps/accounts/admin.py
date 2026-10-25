@@ -12,6 +12,7 @@ from .models import (
     Wallet,
     WalletTransaction,
     WithdrawalRequest,
+    RedeemCode,
 )
 from .services import credit_verified_deposit
 
@@ -182,3 +183,13 @@ class WithdrawalRequestAdmin(admin.ModelAdmin):
     readonly_fields = ("status", "created_at", "processed_at")
     fields = ("wallet", "amount", "upi_id", "status", "payout_reference", "created_at", "processed_at")
     actions = (mark_withdrawals_paid, reject_withdrawals_and_refund)
+
+
+@admin.register(RedeemCode)
+class RedeemCodeAdmin(admin.ModelAdmin):
+    list_display = ("title", "price", "is_active", "claimed_by", "claimed_at", "created_at")
+    list_filter = ("is_active", "claimed_at", "created_at")
+    search_fields = ("title", "code", "claimed_by__username")
+    list_select_related = ("claimed_by",)
+    readonly_fields = ("claimed_by", "claimed_at", "created_at")
+    fields = ("title", "code", "price", "description", "is_active", "claimed_by", "claimed_at", "created_at")
