@@ -88,7 +88,7 @@ TEMPLATES = [
 
 
 WSGI_APPLICATION = "config.wsgi.application"
-ASGI_APPLICATION = "config.asgi.application"
+ASGI_APPLICATION = "config.asgi.application
 
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
@@ -179,6 +179,9 @@ REWARD_PER_APPROVED_KILL = 5
 MINIMUM_VERIFIED_KILLS = 2
 
 
+# Email: Brevo API uses HTTPS and works on Render Free where outbound SMTP
+# ports are restricted. Keep SMTP as a local/legacy fallback.
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", "").strip()
 EMAIL_BACKEND = os.getenv(
     "EMAIL_BACKEND",
     "django.core.mail.backends.console.EmailBackend" if DEBUG
