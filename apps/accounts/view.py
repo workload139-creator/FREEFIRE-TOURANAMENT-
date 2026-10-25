@@ -201,6 +201,18 @@ def deposit_view(request):
         form = DepositRequestForm(request.POST)
         if not upi_id:
             form.add_error(None, "UPI deposit abhi configure nahi hai. Admin se FF_ARENA_UPI_ID set karwayein.")
+        if mode == "production" and not request.user.phone_verified:
+            form.add_error(
+                None,
+                "Live payment se pehle phone OTP verification zaroori hai. Phone verification provider abhi configure nahi hai.",
+            )
+            return render(request, "accounts/deposit.html", {
+                "form": form,
+                "wallet": wallet,
+                "gateway_only": True,
+                "gateway_configured": True,
+            })
+
         if form.is_valid():
             amount = form.cleaned_data["amount"]
             with transaction.atomic():
