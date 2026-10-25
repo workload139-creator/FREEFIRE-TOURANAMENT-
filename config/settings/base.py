@@ -149,20 +149,16 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
-
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
 
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = True
 X_FRAME_OPTIONS = "DENY"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
-
 
 SITE_NAME = os.getenv("SITE_NAME", "FF Tournament")
 SITE_CURRENCY = os.getenv("SITE_CURRENCY", "INR")
@@ -178,14 +174,16 @@ MINIMUM_WITHDRAWAL = 10
 REWARD_PER_APPROVED_KILL = 5
 MINIMUM_VERIFIED_KILLS = 2
 
-
-# Email: Brevo API uses HTTPS and works on Render Free where outbound SMTP
-# ports are restricted. Keep SMTP as a local/legacy fallback.
+# Brevo API sends mail over HTTPS, including Django password-reset emails.
 BREVO_API_KEY = os.getenv("BREVO_API_KEY", "").strip()
 EMAIL_BACKEND = os.getenv(
     "EMAIL_BACKEND",
     "django.core.mail.backends.console.EmailBackend" if DEBUG
-    else "django.core.mail.backends.smtp.EmailBackend",
+    else (
+        "apps.accounts.email_backend.BrevoEmailBackend"
+        if BREVO_API_KEY
+        else "django.core.mail.backends.smtp.EmailBackend"
+    ),
 )
 EMAIL_HOST = os.getenv("EMAIL_HOST", "")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
