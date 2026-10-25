@@ -62,6 +62,7 @@ class WalletTransaction(models.Model):
         ENTRY_FEE = "entry_fee", "Tournament Entry Fee"
         REFUND = "refund", "Refund"
         PRIZE = "prize", "Tournament Prize"
+        REDEEM_CODE = "redeem_code", "Redeem Code Purchase"
 
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
@@ -236,3 +237,37 @@ class WithdrawalRequest(models.Model):
     def __str__(self):
         return f"{self.wallet.user} - ₹{self.amount} - {self.status}"
 
+
+
+class RedeemCode(models.Model):
+    """One-time redeem-code inventory item sold from the player's internal wallet."""
+
+    title = models.CharField(max_length=120)
+    code = models.CharField(max_length=160, unique=True)
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    description = models.CharField(max_length=255, blank=True)
+    is_active = models.BooleanField(default=True)
+    claimed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="purchased_redeem_codes",
+    )
+    claimed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["price", "created_at"]
+
+    @property
+    def is_available(self):
+        return self.is_active and self.claimed_by_id is None
+
+    def __str__(self):
+        state = "available" if self.claimed_by_id is None else "claimed"
+        return f"{self.title} - ₹{self.price} ({state})"
