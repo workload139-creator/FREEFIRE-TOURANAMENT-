@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Secure UPI Payment | FF Arena{% endblock %}
+{% block content %}
+<section style="max-width:620px;margin:40px auto;padding:24px;">
+  <h1>Secure wallet deposit</h1>
+  <p>Deposit amount: <strong>₹{{ amount }}</strong></p>
+  <p>Order ID: <code>{{ order_id }}</code></p>
+  <p>Cashfree secure checkout open hoga. Payment successful hone ke baad server status verify karega.</p>
+  <button id="pay-button" type="button">Pay ₹{{ amount }} with Cashfree</button>
+  <p id="payment-message" role="status"></p>
+</section>
+<script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+<script>
+  const cashfree = Cashfree({ mode: "{{ cashfree_mode|escapejs }}" });
+  document.getElementById("pay-button").addEventListener("click", async function () {
+    this.disabled = true;
+    try {
+      await cashfree.checkout({ paymentSessionId: "{{ payment_session_id|escapejs }}", redirectTarget: "_self" });
+    } catch (error) {
+      document.getElementById("payment-message").textContent = "Checkout open nahi hua. Wallet page par status dobara check karein.";
+      this.disabled = false;
+    }
+  });
+</script>
+{% endblock %}
