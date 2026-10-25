@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
-from apps.social.models import FriendRequest, UserBlock
+from apps.social.models import Follow, UserBlock
 from .models import Conversation, Message
 
 User = get_user_model()
@@ -21,9 +21,9 @@ def _blocked_either_way(first, second):
 
 
 def _are_friends(first, second):
-    return FriendRequest.objects.filter(
-        Q(requester=first, recipient=second) | Q(requester=second, recipient=first),
-        status=FriendRequest.Status.ACCEPTED,
+    # Private chat is allowed only for mutual followers.
+    return Follow.objects.filter(follower=first, following=second).exists() and Follow.objects.filter(
+        follower=second, following=first
     ).exists()
 
 
@@ -54,7 +54,7 @@ def chat_home(request):
 def open_chat(request, user_id):
     other = get_object_or_404(User, pk=user_id)
     if other.pk == request.user.pk or _blocked_either_way(request.user, other) or not _are_friends(request.user, other):
-        messages.error(request, "Chat ke liye pehle friend request accept honi chahiye. Blocked players chat nahi kar sakte.")
+        messages.error(request, "Private chat ke liye pehle ek-doosre ko follow karein. Blocked players chat nahi kar sakte.")
         return redirect("social:home")
 
     first, second = sorted((request.user, other), key=lambda user: user.pk)
