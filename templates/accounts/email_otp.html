@@ -6,6 +6,13 @@
     <h1>Verify your email</h1>
     <p>Account registration se pehle apne Gmail par aaya 6-digit code verify karein.</p>
     {% if error %}<div class="message error" role="alert">{{ error }}</div>{% endif %}
+    {% if account_exists %}
+      <p class="auth-footer">
+        <a href="{% url 'login' %}">Purane account mein login karein</a>
+        &nbsp;|&nbsp;
+        <a href="{% url 'password_reset' %}">Password bhool gaye? Reset karein</a>
+      </p>
+    {% endif %}
     <form method="post">
       {% csrf_token %}
       <label for="email">Gmail / Email address</label>
