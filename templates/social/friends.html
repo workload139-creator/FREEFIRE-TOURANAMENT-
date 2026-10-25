@@ -5,7 +5,7 @@
   <div class="community-hero">
     <span class="eyebrow">FF ARENA COMMUNITY</span>
     <h1>Friends & Players</h1>
-    <p>Player ID se search karo, request bhejo aur apne friends ke saath private chat karo.</p>
+    <p>Player ID se players search karo. Dono ek-doosre ko follow karenge tab friend banoge; private chat alag section mein hai.</p>
     <form method="get" class="player-search">
       <label for="player-search">Player ID ya username</label>
       <div class="search-row">
@@ -25,13 +25,12 @@
         <div class="player-actions">
           <form method="post" action="{% url 'social:toggle_follow' result.user.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{% url 'social:home' %}?q={{ search_query|urlencode }}"><button class="button button-outline" type="submit">{% if result.is_following %}Unfollow{% else %}Follow{% endif %}</button></form>
           {% if result.is_friend %}
+            <span class="muted">Mutual follow · Friend</span>
             <a class="button button-primary" href="{% url 'chat:open' result.user.pk %}">Message</a>
-          {% elif result.incoming %}
-            <span class="muted">Request aayi hui hai</span>
-          {% elif result.outgoing %}
-            <span class="muted">Request sent</span>
+          {% elif result.is_following %}
+            <span class="muted">Following · Follow back karne par friend banoge</span>
           {% else %}
-            <form method="post" action="{% url 'social:send_request' result.user.pk %}">{% csrf_token %}<button class="button button-primary" type="submit">Add Friend</button></form>
+            <span class="muted">Follow karke connect karo</span>
           {% endif %}
           <a class="text-link" href="{% url 'social:report_user' result.user.pk %}">Report</a>
         </div>
@@ -42,7 +41,7 @@
 
   <div class="community-columns">
     <section class="community-panel">
-      <h2>Friend Requests <span class="count-pill">{{ incoming_requests|length }}</span></h2>
+      <h2>Friend Requests (purana system) <span class="count-pill">{{ incoming_requests|length }}</span></h2>
       {% for item in incoming_requests %}
       <article class="player-row compact">
         <div class="player-avatar">{{ item.requester.username|first|upper }}</div>
@@ -83,6 +82,6 @@
       <div class="player-row compact"><div class="player-info"><strong>{{ item.blocked.username }}</strong><small>FF-{{ item.blocked.pk|stringformat:"06d" }}</small></div><form method="post" action="{% url 'social:unblock_user' item.blocked.pk %}">{% csrf_token %}<button class="button button-outline" type="submit">Unblock</button></form></div>
     {% empty %}<p class="muted">Koi blocked player nahi hai.</p>{% endfor %}
   </section>
-  <p class="community-note">Privacy: private chat sirf accepted friends ke liye hai. Block karne par dono taraf ki chat band ho jayegi.</p>
+  <p class="community-note">Privacy: friend tab bante hain jab dono ek-doosre ko follow karein. Private chat alag hai aur sirf mutual-follow friends ke liye hai. Block karne par chat band ho jayegi.</p>
 </section>
 {% endblock %}
