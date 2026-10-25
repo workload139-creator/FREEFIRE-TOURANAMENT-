@@ -5,7 +5,7 @@ Modular Django website for player accounts, tournament registrations, wallet led
 ## Structure
 
 - `config/`: Django settings and URL routing.
-- `apps/accounts/`: player accounts, wallet, deposits, withdrawal requests and accounting models.
+- `apps/accounts/`: player accounts, wallet ledger, deposits, withdrawal requests, admin wallet and redeem-code inventory.
 - `apps/tournaments/`: tournaments, registrations, room confirmation, refunds, evidence uploads, AI proposal adapter and leaderboards.
 - `apps/tournaments/management/commands/`: maintenance commands.
 - `templates/`: Django templates.
@@ -64,6 +64,7 @@ This command is not a background scheduler. Configure Windows Task Scheduler or 
 - Player deposit requests remain pending until an admin checks the actual receipt/reference and uses the approval action. A typed reference alone does not prove payment.
 - Tournament entry fees are debited from the player wallet. Admin payment review checks the corresponding wallet ledger before confirming a registration.
 - Withdrawals reserve/debit the requested amount and remain pending until the admin has actually transferred the money through UPI and records the payout reference in admin. The website does not send UPI payments by itself.
+- Redeem-code inventory can be managed in Django admin. Players can purchase an available one-time code using wallet balance; the wallet debit and code claim are atomic, and the code is shown only to the purchasing player. Add actual redeem codes only when you are authorized to distribute them.
 - Kill rewards are credited to the player wallet only after an admin enters the approved kill count and the admin wallet has sufficient balance. This is internal/demo wallet accounting, not a bank transfer.
 - Do not use the demo wallet ledger for real-money operations until a trusted payment provider, verified webhooks, reconciliation, security review and automated tests are in place.
 
