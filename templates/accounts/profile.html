@@ -20,10 +20,15 @@
         <div class="profile-item"><span>Email</span><strong>{{ player.email|default:"Not added" }}</strong></div>
         <div class="profile-item"><span>Mobile number</span><strong>{{ player.phone_number|default:"Not added" }}</strong></div>
         <div class="profile-item"><span>Phone verification</span><strong>{% if player.phone_verified %}Verified{% else %}Pending{% endif %}</strong></div>
+        <div class="profile-item"><span>Followers</span><strong>{{ followers_count }}</strong></div>
+        <div class="profile-item"><span>Following</span><strong>{{ following_count }}</strong></div>
         <div class="profile-item"><span>Account created</span><strong>{{ player.date_joined|date:"d M Y" }}</strong></div>
       </div>
       <div class="profile-actions">
-        <a class="primary" href="{% url 'tournaments:list' %}">Browse tournaments</a>
+        <a class="primary" href="{% url 'accounts:profile_edit' %}">Edit Profile</a>
+        <a href="{% url 'social:followers' %}">Followers</a><a href="{% url 'social:following' %}">Following</a>
+        <a href="{% url 'social:home' %}">Add Friends</a><a href="{% url 'chat:home' %}">Private Chat</a>
+        <a href="{% url 'tournaments:list' %}">Browse tournaments</a>
         <a href="{% url 'accounts:wallet' %}">Open wallet</a>
         <a href="{% url 'tournaments:my_registrations' %}">My tournaments</a>
         <a href="{% url 'tournaments:results' %}">View results</a>
@@ -31,15 +36,7 @@
       </div>
       <p class="footer-note">Free Fire UID tournament join karte waqt maangi jaati hai, account profile banate waqt nahi.</p>
     </section>
-    <section class="profile-panel">
-      <h2>Edit Profile</h2><p style="color:#9aa6b8">Photo, username, email aur mobile number update karo.</p>
-      <form method="post" enctype="multipart/form-data" class="profile-form">
-        {% csrf_token %}
-        {% if form.non_field_errors %}<div class="profile-errors">{{ form.non_field_errors }}</div>{% endif %}
-        {% for field in form %}<p><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}{% for error in field.errors %}<span class="profile-errors">{{ error }}</span>{% endfor %}</p>{% endfor %}
-        <button type="submit" class="btn-primary">Save Profile</button>
-      </form>
-    </section>
+ion>
   </div>
 </section>
 {% endblock %}

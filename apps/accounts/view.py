@@ -15,9 +15,15 @@ def register_view(request):
     if request.user.is_authenticated:
         return redirect("accounts:profile")
 
+    verified_email = request.session.get("email_otp_verified")
+    if not verified_email:
+        messages.info(request, "Account banane se pehle email OTP verify karein.")
+        return redirect("accounts:email_otp")
+
     if request.method == "POST":
         form = PlayerRegistrationForm(request.POST)
-
+        if form.is_valid() and form.cleaned_data["email"].lower() != verified_email.lower():
+            form.add_error("email", "Wahi email use karein jise abhi OTP se verify kiya hai.")
         if form.is_valid():
             try:
                 with transaction.atomic():
@@ -26,29 +32,21 @@ def register_view(request):
                     user.uid_verified = False
                     user.save()
 
+                request.session.pop("email_otp_verified", None)
+                request.session.pop("email_otp_verified_at", None)
                 login(request, user)
 
                 messages.success(
                     request,
-                    "Account successfully created. "
-                    "Phone and Free Fire UID verification are pending.",
+                    "Account successfully created. Email verified hai; phone aur Free Fire UID verification abhi pending hain.",
                 )
-
                 return redirect("accounts:profile")
-
             except IntegrityError:
-                form.add_error(
-                    None,
-                    "These account details already exist. Please try again.",
-                )
+                form.add_error(None, "These account details already exist. Please try again.")
     else:
-        form = PlayerRegistrationForm()
+        form = PlayerRegistrationForm(initial={"email": verified_email})
 
-    return render(
-        request,
-        "accounts/register.html",
-        {"form": form},
-    )
+    return render(request, "accounts/register.html", {"form": form, "verified_email": verified_email})
 
 
 def login_view(request):
@@ -82,22 +80,26 @@ def login_view(request):
 
 @login_required
 def profile_view(request):
+    from apps.social.models import Follow
+
+    return render(request, "accounts/profile.html", {
+        "player": request.user,
+        "followers_count": Follow.objects.filter(following=request.user).count(),
+        "following_count": Follow.objects.filter(follower=request.user).count(),
+    })
+
+
+@login_required
+def profile_edit_view(request):
     if request.method == "POST":
-        form = ProfileUpdateForm(
-            request.POST, request.FILES, instance=request.user
-        )
+        form = ProfileUpdateForm(request.POST, request.FILES, instance=request.user)
         if form.is_valid():
             form.save()
             messages.success(request, "Player profile update ho gayi.")
             return redirect("accounts:profile")
     else:
         form = ProfileUpdateForm(instance=request.user)
-
-    return render(
-        request,
-        "accounts/profile.html",
-        {"player": request.user, "form": form},
-    )
+    return render(request, "accounts/profile_edit.html", {"form": form, "player": request.user})
 
 
 

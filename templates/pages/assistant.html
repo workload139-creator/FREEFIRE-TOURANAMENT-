@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}FF Arena Assistant{% endblock %}
+{% block content %}
+<section style="max-width:850px;margin:36px auto;padding:20px">
+  <div style="padding:28px;border:1px solid #343b49;border-radius:18px;background:#111722">
+    <p style="color:#ff895e;font-weight:800;letter-spacing:2px">FF ARENA HELP</p>
+    <h1>🎮 Tournament Assistant</h1>
+    <p style="color:#aab3c2">BR/VS tournaments, email OTP, wallet, friends aur rewards ke baare mein poochho.</p>
+    <form method="post" style="display:grid;gap:12px;margin-top:24px">
+      {% csrf_token %}
+      <label for="question">Tumhara sawaal</label>
+      <textarea id="question" name="question" rows="3" maxlength="500" required placeholder="Example: BR tournament kaise join karu?">{{ question }}</textarea>
+      <button class="btn-primary" type="submit">Ask Assistant</button>
+    </form>
+    {% if answer %}<div style="margin-top:22px;padding:18px;border-radius:12px;background:#080b12;border-left:4px solid #ff3548"><strong>Assistant</strong><p>{{ answer }}</p></div>{% endif %}
+    <p class="footer-note">Yeh pehla FAQ-based assistant version hai, full generative AI nahi. Payment aur prize decisions ke liye admin workflow follow karein.</p>
+  </div>
+</section>
+{% endblock %}

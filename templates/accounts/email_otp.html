@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Verify Email | FF Arena{% endblock %}
+{% block content %}
+<section class="auth-section">
+  <div class="auth-card">
+    <h1>Verify your email</h1>
+    <p>Account registration se pehle apne Gmail par aaya 6-digit code verify karein.</p>
+    {% if error %}<div class="message error" role="alert">{{ error }}</div>{% endif %}
+    <form method="post">
+      {% csrf_token %}
+      <label for="email">Gmail / Email address</label>
+      <input id="email" name="email" type="email" required maxlength="254" autocomplete="email" value="{{ email }}" placeholder="you@gmail.com">
+      <button class="btn-primary" type="submit" name="action" value="send">Send Email OTP</button>
+    </form>
+    {% if code_sent %}
+    <hr>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="email" value="{{ email }}">
+      <label for="code">6-digit OTP</label>
+      <input id="code" name="code" type="text" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="one-time-code" required placeholder="Enter 6-digit code">
+      <button class="btn-primary" type="submit" name="action" value="verify">Verify Email</button>
+    </form>
+    <p class="footer-note">Code 10 minutes tak valid hai. Email na mile to Spam/Junk folder check karein.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

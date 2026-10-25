@@ -26,10 +26,8 @@ def tournament_list(request):
         "tournaments/list.html",
         {
             "tournaments": tournaments,
-            "mode_groups": [
-                ("BR", "Battle Royale"),
-                ("VS", "VS Battles"),
-            ],
+            "br_tournaments": tournaments.filter(mode=Tournament.Mode.BR),
+            "vs_tournaments": tournaments.filter(mode=Tournament.Mode.VS),
         },
     )
 

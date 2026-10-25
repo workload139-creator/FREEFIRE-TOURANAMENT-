@@ -2,50 +2,30 @@
 {% block title %}Tournaments | FF Arena{% endblock %}
 {% block content %}
 <section class="tournament-page" id="tournaments">
-    <div class="tournament-heading">
-        <p>FREE FIRE ESPORTS</p>
-        <h1>Choose Your Tournament</h1>
-        <span>Apna mode chuno aur competition ke liye taiyar ho jao.</span>
-    </div>
+  <div class="tournament-heading">
+    <p>FREE FIRE ESPORTS</p><h1>Choose Your Tournament</h1>
+    <span>BR aur VS tournaments alag sections mein.</span>
+  </div>
+  {% for section_title, section_note, section_tournaments in sections %}
+  {% endfor %}
+  <section class="mode-section">
+    <div class="mode-heading"><span class="mode-label">BATTLE ROYALE</span><h2>BR Tournaments</h2><p>Battle Royale matches aur leaderboard.</p></div>
     <div class="tournament-grid">
-    {% for tournament in tournaments %}
-        <article class="tournament-card">
-            <span class="mode-label">{{ tournament.get_mode_display }}</span>
-            <h3>{{ tournament.title }}</h3>
-            <p>{{ tournament.description|default:"Join the battle!" }}</p>
-            {% if tournament.mode == "VS" %}<p>Format: {{ tournament.get_vs_format_display|default:"VS Match" }}</p>{% endif %}
-            <div class="tournament-stats">
-                <div><small>Entry Fee</small><strong>₹{{ tournament.entry_fee }}</strong></div>
-                <div><small>Prize Pool</small><strong>₹{{ tournament.prize_pool }}</strong></div>
-                <div><small>Players</small><strong>{{ tournament.confirmed_players_count }}/{{ tournament.max_players }}</strong></div>
-            </div>
-            <p>Status: {{ tournament.get_status_display }}</p>
-            <p>Start: {{ tournament.start_time|date:"d M Y, h:i A" }}</p>
-            <div style="display:flex;gap:10px;flex-wrap:wrap">
-                <a class="button button-primary" href="{% url 'tournaments:detail' tournament.id %}">View / Register</a>
-                <a class="button button-outline" href="{% url 'tournaments:leaderboard' tournament.id %}">Leaderboard</a>
-            </div>
-        </article>
-    {% empty %}
-        <article class="tournament-card">
-            <h3>No tournaments available</h3>
-            <p>Abhi koi public tournament nahi hai. Baad mein dobara check karein.</p>
-        </article>
-    {% endfor %}
+    {% for tournament in br_tournaments %}
+      {% include "tournaments/_tournament_card.html" with tournament=tournament %}
+    {% empty %}<article class="tournament-card"><h3>Abhi BR tournament nahi hai</h3><p>Naye BR tournaments yahan dikhai denge.</p></article>{% endfor %}
     </div>
+  </section>
+  <section class="mode-section">
+    <div class="mode-heading"><span class="mode-label">CLASH SQUAD</span><h2>VS Tournaments</h2><p>1v1, 2v2, 3v3 aur 4v4 matches alag list mein.</p></div>
+    <div class="tournament-grid">
+    {% for tournament in vs_tournaments %}
+      {% include "tournaments/_tournament_card.html" with tournament=tournament %}
+    {% empty %}<article class="tournament-card"><h3>Abhi VS tournament nahi hai</h3><p>Naye VS tournaments yahan dikhai denge.</p></article>{% endfor %}
+    </div>
+  </section>
 </section>
 <style>
-.tournament-page{max-width:1150px;margin:35px auto;padding:20px}
-.tournament-heading{text-align:center;margin-bottom:35px}
-.tournament-heading>p{color:#ff6b35;font-weight:bold;letter-spacing:3px}
-.tournament-heading h1{margin:8px 0;font-size:clamp(28px,5vw,44px)}
-.tournament-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
-.tournament-card{padding:22px;border:1px solid #444;border-radius:16px;background:#171923;color:#fff}
-.mode-label{color:#ff895e;font-size:12px;font-weight:bold;letter-spacing:1px}
-.tournament-card h3{margin:12px 0}
-.tournament-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:20px 0}
-.tournament-stats div{display:flex;flex-direction:column;gap:7px;min-width:0}
-.tournament-stats small{color:#bbb;font-size:11px}
-.tournament-stats strong{font-size:14px;overflow-wrap:anywhere}
+.tournament-page{max-width:1150px;margin:35px auto;padding:20px}.tournament-heading{text-align:center;margin-bottom:35px}.tournament-heading>p{color:#ff6b35;font-weight:bold;letter-spacing:3px}.tournament-heading h1{margin:8px 0;font-size:clamp(28px,5vw,44px)}.mode-section{margin:34px 0}.mode-heading{margin-bottom:18px}.mode-heading h2{margin:7px 0}.mode-heading p{color:#aab3c2}.tournament-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}.tournament-card{padding:22px;border:1px solid #444;border-radius:16px;background:#171923;color:#fff}.mode-label{color:#ff895e;font-size:12px;font-weight:bold;letter-spacing:1px}.tournament-card h3{margin:12px 0}.tournament-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0}.tournament-stats div{padding:10px;background:#0e1119;border-radius:8px}.tournament-stats small,.tournament-stats strong{display:block}.tournament-stats small{color:#aab3c2;font-size:11px}.tournament-stats strong{margin-top:5px}
 </style>
 {% endblock %}
