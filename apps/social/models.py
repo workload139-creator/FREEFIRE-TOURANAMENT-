@@ -94,3 +94,27 @@ class UserReport(models.Model):
 
     def __str__(self):
         return f"Report #{self.pk}: {self.reporter} → {self.reported_user}"
+
+
+class Follow(models.Model):
+    follower = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="following_links",
+    )
+    following = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="follower_links",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        constraints = [
+            models.UniqueConstraint(fields=("follower", "following"), name="social_unique_follow"),
+            models.CheckConstraint(condition=~Q(follower=models.F("following")), name="social_no_self_follow"),
+        ]
+
+    def __str__(self):
+        return f"{self.follower} follows {self.following}"
