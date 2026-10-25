@@ -388,7 +388,18 @@ def leaderboard(request, tournament_id):
         status=KillSubmission.Status.APPROVED,
     ).select_related("player", "registration").order_by("-approved_kills", "reviewed_at")
     submissions = list(submissions)
+    winner_registration = None
+    winner_submission = None
     if tournament.winner_uid:
+        winner_registration = Registration.objects.filter(
+            tournament=tournament,
+            free_fire_uid=tournament.winner_uid,
+            payment_verified=True,
+        ).select_related("player").first()
+        winner_submission = next(
+            (item for item in submissions if item.registered_uid == tournament.winner_uid),
+            None,
+        )
         submissions.sort(key=lambda item: (
             0 if item.registered_uid == tournament.winner_uid else 1,
             -(item.approved_kills or 0),
@@ -397,4 +408,6 @@ def leaderboard(request, tournament_id):
     return render(request, "tournaments/leaderboard.html", {
         "tournament": tournament,
         "submissions": submissions,
+        "winner_registration": winner_registration,
+        "winner_submission": winner_submission,
     })

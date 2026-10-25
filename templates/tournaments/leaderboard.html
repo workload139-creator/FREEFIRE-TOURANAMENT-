@@ -15,16 +15,27 @@
         <table style="width:100%;border-collapse:collapse">
             <thead><tr><th>Rank</th><th>Player</th><th>Free Fire UID</th><th>Approved Kills</th><th>Reward</th></tr></thead>
             <tbody>
-            {% for submission in submissions %}
+            {% if tournament.winner_uid and winner_registration %}
                 <tr>
-                    <td>{% if tournament.winner_uid and submission.registered_uid == tournament.winner_uid %}1 🏆{% else %}{{ forloop.counter }}{% endif %}</td>
-                    <td>{{ submission.player.username }}</td>
-                    <td>{{ submission.registered_uid }}</td>
-                    <td>{{ submission.approved_kills }}</td>
-                    <td>₹{{ submission.approved_reward }}</td>
+                    <td>1 🏆</td>
+                    <td>{{ winner_registration.player.username }}</td>
+                    <td>{{ tournament.winner_uid }}</td>
+                    <td>{% if winner_submission %}{{ winner_submission.approved_kills }}{% else %}—{% endif %}</td>
+                    <td>₹50 first-place{% if winner_submission %} + ₹{{ winner_submission.approved_reward }} kills{% endif %}</td>
                 </tr>
+            {% endif %}
+            {% for submission in submissions %}
+                {% if not winner_registration or submission.registered_uid != tournament.winner_uid %}
+                    <tr>
+                        <td>{% if winner_registration %}{{ forloop.counter|add:1 }}{% else %}{{ forloop.counter }}{% endif %}</td>
+                        <td>{{ submission.player.username }}</td>
+                        <td>{{ submission.registered_uid }}</td>
+                        <td>{{ submission.approved_kills }}</td>
+                        <td>₹{{ submission.approved_reward }}</td>
+                    </tr>
+                {% endif %}
             {% empty %}
-                <tr><td colspan="5">Abhi leaderboard ke liye approved result nahi hai.</td></tr>
+                {% if not winner_registration %}<tr><td colspan="5">Abhi leaderboard ke liye approved result nahi hai.</td></tr>{% endif %}
             {% endfor %}
             </tbody>
         </table>
