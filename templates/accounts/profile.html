@@ -24,16 +24,25 @@
         <div class="profile-item"><span>Following</span><strong>{{ following_count }}</strong></div>
         <div class="profile-item"><span>Account created</span><strong>{{ player.date_joined|date:"d M Y" }}</strong></div>
       </div>
+      <h3>Profile & Community</h3>
       <div class="profile-actions">
         <a class="primary" href="{% url 'accounts:profile_edit' %}">Edit Profile</a>
-        <a href="{% url 'social:followers' %}">Followers</a><a href="{% url 'social:following' %}">Following</a>
-        <a href="{% url 'social:home' %}">Add Friends</a><a href="{% url 'chat:home' %}">Private Chat</a>
+        <a href="{% url 'social:home' %}">Find Players</a>
+        <a href="{% url 'social:followers' %}">My Followers</a>
+        <a href="{% url 'social:following' %}">My Following</a>
+      </div>
+      <h3>Private Chat</h3>
+      <p class="footer-note">Chat alag section mein hai. Sirf mutual-follow friends se private chat kar sakte ho.</p>
+      <div class="profile-actions"><a class="primary" href="{% url 'chat:home' %}">Open Private Chat</a></div>
+      <h3>Tournaments & Wallet</h3>
+      <div class="profile-actions">
         <a href="{% url 'tournaments:list' %}">Browse tournaments</a>
         <a href="{% url 'accounts:wallet' %}">Open wallet</a>
         <a href="{% url 'tournaments:my_registrations' %}">My tournaments</a>
         <a href="{% url 'tournaments:results' %}">View results</a>
-        <a href="{% url 'accounts:password_change' %}">Change password</a>
       </div>
+      <h3>Account Security</h3>
+      <div class="profile-actions"><a href="{% url 'accounts:password_change' %}">Change password</a></div>
       <p class="footer-note">Free Fire UID tournament join karte waqt maangi jaati hai, account profile banate waqt nahi.</p>
     </section>
 ion>
