@@ -50,14 +50,11 @@ class PlayerRegistrationForm(UserCreationForm):
 class DepositRequestForm(forms.ModelForm):
     class Meta:
         model = DepositRequest
-        fields = ["amount", "payment_reference"]
+        fields = ["amount"]
         widgets = {
             "amount": forms.NumberInput(attrs={
                 "min": "10", "max": "5000", "step": "0.01",
                 "placeholder": "Minimum ₹10",
-            }),
-            "payment_reference": forms.TextInput(attrs={
-                "placeholder": "UPI/payment reference (admin receipt check karega)",
             }),
         }
 
