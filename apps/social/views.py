@@ -207,3 +207,38 @@ def report_user(request, user_id):
             messages.success(request, "Report admin team ko bhej di gayi.")
             return redirect("social:home")
     return render(request, "social/report_user.html", {"target": target, "reasons": UserReport.Reason.choices})
+
+
+from .models import Follow
+
+
+@login_required
+@require_POST
+def toggle_follow(request, user_id):
+    target = get_object_or_404(User, pk=user_id)
+    if target.pk == request.user.pk:
+        messages.error(request, "Aap khud ko follow nahi kar sakte.")
+    elif _blocked_either_way(request.user, target):
+        messages.error(request, "Block hone ki wajah se follow nahi kar sakte.")
+    else:
+        relation = Follow.objects.filter(follower=request.user, following=target).first()
+        if relation:
+            relation.delete()
+            messages.success(request, f"Ab aap {target.username} ko follow nahi karte.")
+        else:
+            Follow.objects.create(follower=request.user, following=target)
+            messages.success(request, f"Aap ab {target.username} ko follow kar rahe hain.")
+    return redirect(request.POST.get("next") or "social:home")
+
+
+@login_required
+def follow_lists(request, list_type="followers"):
+    if list_type == "following":
+        links = Follow.objects.filter(follower=request.user).select_related("following")
+        people = [link.following for link in links]
+        title = "Following"
+    else:
+        links = Follow.objects.filter(following=request.user).select_related("follower")
+        people = [link.follower for link in links]
+        title = "Followers"
+    return render(request, "social/follows.html", {"people": people, "title": title, "list_type": list_type})
