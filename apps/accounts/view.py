@@ -394,3 +394,66 @@ def withdrawal_view(request):
     return render(request, "accounts/withdrawal.html", {
         "form": form, "wallet": wallet, "withdrawal_requests": withdrawal_requests,
     })
+
+
+@login_required
+def redeem_codes_view(request):
+    """Buy a one-time redeem code using the authenticated player's wallet."""
+    from django.core.exceptions import ValidationError
+    from django.utils import timezone
+    from .models import RedeemCode
+
+    wallet, _ = Wallet.objects.get_or_create(user=request.user)
+
+    if request.method == "POST":
+        code_id = request.POST.get("code_id", "").strip()
+        if not code_id.isdigit():
+            messages.error(request, "Valid redeem code item select karein.")
+            return redirect("accounts:redeem_codes")
+
+        try:
+            with transaction.atomic():
+                wallet = Wallet.objects.select_for_update().get(user=request.user)
+                item = RedeemCode.objects.select_for_update().get(
+                    pk=int(code_id), is_active=True, claimed_by__isnull=True
+                )
+                if item.price <= Decimal("0.00"):
+                    raise ValidationError("Is code ki price valid nahi hai.")
+                if wallet.balance < item.price:
+                    raise ValidationError("Wallet balance kam hai. Pehle wallet mein deposit karein.")
+                reference = f"redeem-code-{item.pk}-{request.user.pk}"
+                if WalletTransaction.objects.filter(reference=reference).exists():
+                    raise ValidationError("Is redeem code ki purchase pehle record ho chuki hai.")
+
+                wallet.balance -= item.price
+                wallet.save(update_fields=["balance", "updated_at"])
+                item.claimed_by = request.user
+                item.claimed_at = timezone.now()
+                item.save(update_fields=["claimed_by", "claimed_at"])
+
+                WalletTransaction.objects.create(
+                    wallet=wallet,
+                    transaction_type=WalletTransaction.TransactionType.REDEEM_CODE,
+                    amount=item.price,
+                    status=WalletTransaction.Status.COMPLETED,
+                    reference=reference,
+                    description=f"Redeem code purchased: {item.title}",
+                )
+            messages.success(request, "Redeem code purchase ho gaya. My purchased codes mein dekhein.")
+        except RedeemCode.DoesNotExist:
+            messages.error(request, "Ye code ab available nahi hai. Page refresh karke doosra code choose karein.")
+        except ValidationError as exc:
+            messages.error(request, str(exc))
+        return redirect("accounts:redeem_codes")
+
+    available_codes = RedeemCode.objects.filter(
+        is_active=True, claimed_by__isnull=True
+    ).only("id", "title", "price", "description", "created_at")
+    purchased_codes = RedeemCode.objects.filter(
+        claimed_by=request.user
+    ).only("id", "title", "code", "price", "description", "claimed_at")
+    return render(request, "accounts/redeem_codes.html", {
+        "wallet": wallet,
+        "available_codes": available_codes,
+        "purchased_codes": purchased_codes,
+    })
