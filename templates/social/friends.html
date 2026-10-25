@@ -39,6 +39,22 @@
   </section>
   {% endif %}
 
+  <section class="community-panel">
+    <h2>Players you may know</h2>
+    <p class="muted">Yahan naye aur active registered players dikhte hain. Player account banane ke baad yahan suggestion mein aa sakta hai.</p>
+    <div class="player-suggestions">
+      {% for person in suggestions %}
+      <article class="player-row compact">
+        <div class="player-avatar">{% if person.profile_photo %}<img src="{{ person.profile_photo.url }}" alt="{{ person.username }}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">{% else %}{{ person.username|first|upper }}{% endif %}</div>
+        <div class="player-info"><strong>{{ person.username }}</strong><small>Player ID: FF-{{ person.pk|stringformat:"06d" }} · {% if person.is_online %}<span class="online-label">Online</span>{% else %}Offline{% endif %}</small></div>
+        <div class="player-actions">
+          <form method="post" action="{% url 'social:toggle_follow' person.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{% url 'social:home' %}"><button class="button button-primary" type="submit">Follow / Add</button></form>
+        </div>
+      </article>
+      {% empty %}<p class="muted">Abhi naye players nahi mile. Baad mein dobara check karo ya search use karo.</p>{% endfor %}
+    </div>
+  </section>
+
   <div class="community-columns">
     <section class="community-panel">
       <h2>Friend kaise banein?</h2>
