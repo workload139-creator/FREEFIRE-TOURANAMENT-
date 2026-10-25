@@ -88,6 +88,7 @@ def friends_home(request):
     return render(request, "social/friends.html", {
         "search_query": search_query,
         "search_results": search_results,
+        "suggestions": suggestions,
         "incoming_requests": incoming,
         "outgoing_requests": outgoing,
         "friends": friends,
