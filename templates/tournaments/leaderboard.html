@@ -25,15 +25,13 @@
                 </tr>
             {% endif %}
             {% for submission in submissions %}
-                {% if not winner_registration or submission.registered_uid != tournament.winner_uid %}
-                    <tr>
-                        <td>{% if winner_registration %}{{ forloop.counter|add:1 }}{% else %}{{ forloop.counter }}{% endif %}</td>
-                        <td>{{ submission.player.username }}</td>
-                        <td>{{ submission.registered_uid }}</td>
-                        <td>{{ submission.approved_kills }}</td>
-                        <td>₹{{ submission.approved_reward }}</td>
-                    </tr>
-                {% endif %}
+                <tr>
+                    <td>{% if winner_registration %}{{ forloop.counter|add:1 }}{% else %}{{ forloop.counter }}{% endif %}</td>
+                    <td>{{ submission.player.username }}</td>
+                    <td>{{ submission.registered_uid }}</td>
+                    <td>{{ submission.approved_kills }}</td>
+                    <td>₹{{ submission.approved_reward }}</td>
+                </tr>
             {% empty %}
                 {% if not winner_registration %}<tr><td colspan="5">Abhi leaderboard ke liye approved result nahi hai.</td></tr>{% endif %}
             {% endfor %}

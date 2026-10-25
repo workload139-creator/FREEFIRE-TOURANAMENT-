@@ -395,16 +395,16 @@ def leaderboard(request, tournament_id):
             tournament=tournament,
             free_fire_uid=tournament.winner_uid,
             payment_verified=True,
+            refund_processed=False,
+            status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
         ).select_related("player").first()
-        winner_submission = next(
-            (item for item in submissions if item.registered_uid == tournament.winner_uid),
-            None,
-        )
-        submissions.sort(key=lambda item: (
-            0 if item.registered_uid == tournament.winner_uid else 1,
-            -(item.approved_kills or 0),
-            item.reviewed_at or timezone.now(),
-        ))
+        if winner_registration:
+            winner_submission = next(
+                (item for item in submissions if item.player_id == winner_registration.player_id),
+                None,
+            )
+            submissions = [item for item in submissions if item.player_id != winner_registration.player_id]
+    submissions.sort(key=lambda item: (-(item.approved_kills or 0), item.reviewed_at or timezone.now()))
     return render(request, "tournaments/leaderboard.html", {
         "tournament": tournament,
         "submissions": submissions,
