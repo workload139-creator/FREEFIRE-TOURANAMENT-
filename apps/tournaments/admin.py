@@ -8,7 +8,7 @@ from apps.accounts.models import (
     WalletTransaction,
 )
 from .models import KillSubmission, Registration, Tournament
-from .services import cancel_tournament_and_refund
+from .services import award_tournament_winner, cancel_tournament_and_refund
 
 
 class TournamentAdminForm(forms.ModelForm):
@@ -38,6 +38,21 @@ class TournamentAdminForm(forms.ModelForm):
             "Website par dikhane aur registration kholne ke liye "
             "'Upcoming' select karein. Draft tournaments public list mein nahi dikhte."
         )
+        self.fields["auto_reopen"].help_text = (
+            "Unlimited BR ke root tournament par ON/OFF karein: ON se 49-player round ke baad next round khulega."
+        )
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("is_unlimited_br"):
+            if cleaned.get("mode") != Tournament.Mode.BR:
+                self.add_error("mode", "Unlimited series sirf Battle Royale (BR) mode mein ho sakti hai.")
+            if cleaned.get("max_players") != 49:
+                self.add_error("max_players", "Unlimited BR round mein exactly 49 players hone chahiye.")
+            cleaned["auto_start_at_capacity"] = True
+        elif cleaned.get("auto_reopen"):
+            self.add_error("auto_reopen", "Auto reopen sirf Unlimited BR series ke liye hai.")
+        return cleaned
 
 
 class RegistrationInline(admin.TabularInline):
@@ -71,18 +86,38 @@ class TournamentAdmin(admin.ModelAdmin):
     form = TournamentAdminForm
     list_display = (
         "title", "mode", "vs_format", "entry_fee", "prize_pool",
-        "max_players", "start_time", "status",
+        "max_players", "start_time", "status", "is_unlimited_br",
+        "auto_reopen", "winner_prize_paid",
     )
     list_filter = ("mode", "status", "start_time")
     search_fields = ("title", "description")
     ordering = ("start_time",)
     inlines = (RegistrationInline,)
     actions = (cancel_and_refund_tournaments,)
+    readonly_fields = ("series_root", "winner_prize_paid", "winner_prize_reference")
+
+    def get_readonly_fields(self, request, obj=None):
+        fields = list(super().get_readonly_fields(request, obj))
+        if obj and obj.winner_prize_paid:
+            fields.append("winner_uid")
+        return tuple(fields)
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        if obj.winner_uid and not obj.winner_prize_paid:
+            paid, message = award_tournament_winner(obj.pk)
+            if paid:
+                self.message_user(request, message, messages.SUCCESS)
+            elif "Winner UID enter" not in message:
+                self.message_user(request, message, messages.WARNING)
+
     fieldsets = (
         ("Tournament Details", {"fields": ("title", "description", "mode", "vs_format")}),
         ("Fees & Players", {"fields": ("entry_fee", "prize_pool", "max_players")}),
+        ("Unlimited BR Series", {"fields": ("is_unlimited_br", "auto_start_at_capacity", "auto_reopen", "series_root")}),
         ("Schedule & Status", {"fields": ("start_time", "status")}),
         ("Room Details", {"fields": ("room_id", "room_password")}),
+        ("First Place Winner", {"fields": ("winner_uid", "winner_prize_paid", "winner_prize_reference")}),
     )
 
 

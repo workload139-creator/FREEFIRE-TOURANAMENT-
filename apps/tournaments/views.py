@@ -43,7 +43,8 @@ def tournament_register(request, tournament_id):
     tournament = get_object_or_404(Tournament, pk=tournament_id)
 
     if request.method == "GET":
-        if tournament.status != Tournament.Status.UPCOMING or tournament.start_time <= timezone.now() or tournament.is_full:
+        time_closed = tournament.start_time <= timezone.now() and not tournament.is_unlimited_br
+        if tournament.status != Tournament.Status.UPCOMING or time_closed or tournament.is_full:
             messages.error(request, "Yeh tournament abhi registration ke liye available nahi hai.")
             return redirect("tournaments:list")
         if Registration.objects.filter(tournament=tournament, player=request.user).exists():
@@ -123,8 +124,11 @@ def send_room_details(request, tournament_id):
 
     with transaction.atomic():
         tournament = get_object_or_404(Tournament.objects.select_for_update(), pk=tournament_id)
-        if tournament.status != Tournament.Status.UPCOMING:
-            messages.error(request, "Sirf upcoming tournament ke liye room details set kar sakte ho.")
+        allowed_statuses = [Tournament.Status.UPCOMING]
+        if tournament.is_unlimited_br:
+            allowed_statuses.append(Tournament.Status.LIVE)
+        if tournament.status not in allowed_statuses:
+            messages.error(request, "Is tournament status mein room details set nahi kar sakte.")
             return redirect("tournaments:admin_room_page", tournament_id=tournament_id)
 
         tournament.room_id = room_id
@@ -383,6 +387,13 @@ def leaderboard(request, tournament_id):
         tournament=tournament,
         status=KillSubmission.Status.APPROVED,
     ).select_related("player", "registration").order_by("-approved_kills", "reviewed_at")
+    submissions = list(submissions)
+    if tournament.winner_uid:
+        submissions.sort(key=lambda item: (
+            0 if item.registered_uid == tournament.winner_uid else 1,
+            -(item.approved_kills or 0),
+            item.reviewed_at or timezone.now(),
+        ))
     return render(request, "tournaments/leaderboard.html", {
         "tournament": tournament,
         "submissions": submissions,

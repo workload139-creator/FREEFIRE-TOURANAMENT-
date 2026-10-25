@@ -150,6 +150,7 @@ def wallet_view(request):
     )
 
     transactions = wallet.transactions.all()[:50]
+    withdrawal_requests = WithdrawalRequest.objects.filter(wallet=wallet)[:10]
 
     return render(
         request,
@@ -157,6 +158,7 @@ def wallet_view(request):
         {
             "wallet": wallet,
             "transactions": transactions,
+            "withdrawal_requests": withdrawal_requests,
         },
     )
 
@@ -357,6 +359,10 @@ def withdrawal_view(request):
                     form.add_error("amount", "Minimum withdrawal ₹10 hai.")
                 elif amount > wallet.balance:
                     form.add_error("amount", "Wallet mein itna available balance nahi hai.")
+                elif WithdrawalRequest.objects.filter(
+                    wallet=wallet, status=WithdrawalRequest.Status.PENDING,
+                ).exists():
+                    form.add_error(None, "Aapki ek redeem/withdrawal request pehle se pending hai. Uske complete hone ka wait karein.")
                 else:
                     withdrawal = WithdrawalRequest.objects.create(
                         wallet=wallet,
@@ -377,4 +383,7 @@ def withdrawal_view(request):
                     return redirect("accounts:wallet")
     else:
         form = WithdrawalRequestForm(initial={"upi_id": request.user.upi_id})
-    return render(request, "accounts/withdrawal.html", {"form": form, "wallet": wallet})
+    withdrawal_requests = WithdrawalRequest.objects.filter(wallet=wallet)[:10]
+    return render(request, "accounts/withdrawal.html", {
+        "form": form, "wallet": wallet, "withdrawal_requests": withdrawal_requests,
+    })

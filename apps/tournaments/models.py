@@ -81,6 +81,20 @@ class Tournament(models.Model):
     room_id = models.CharField(max_length=100, blank=True)
     room_password = models.CharField(max_length=100, blank=True)
 
+    # Unlimited BR series: each 49-player round gets its own leaderboard.
+    is_unlimited_br = models.BooleanField(default=False)
+    auto_start_at_capacity = models.BooleanField(default=False)
+    auto_reopen = models.BooleanField(default=False)
+    series_root = models.ForeignKey(
+        "self", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="series_rounds",
+    )
+
+    # Admin-selected winner receives a ₹50 internal-wallet prize once.
+    winner_uid = models.CharField(max_length=30, blank=True, default="")
+    winner_prize_paid = models.BooleanField(default=False)
+    winner_prize_reference = models.CharField(max_length=100, blank=True, default="")
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

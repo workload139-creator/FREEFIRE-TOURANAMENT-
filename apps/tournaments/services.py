@@ -3,8 +3,57 @@ from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
 
-from apps.accounts.models import Wallet, WalletTransaction
-from .models import Registration
+from apps.accounts.models import AdminWallet, AdminWalletTransaction, Wallet, WalletTransaction
+from .models import Registration, Tournament
+
+
+@transaction.atomic
+def award_tournament_winner(tournament_id):
+    """Pay the admin-selected, registered UID a ₹50 prize into their wallet once."""
+    tournament = Tournament.objects.select_for_update().get(pk=tournament_id)
+    winner_uid = str(tournament.winner_uid or "").strip()
+    if not winner_uid:
+        return False, "Winner UID enter nahi ki gayi."
+    if tournament.winner_prize_paid:
+        return False, "Winner prize pehle hi pay ho chuka hai."
+    if not winner_uid.isdigit():
+        return False, "Winner UID sirf digits ki honi chahiye."
+    eligible = Registration.objects.select_for_update().filter(
+        tournament=tournament, free_fire_uid=winner_uid, payment_verified=True,
+        refund_processed=False,
+        status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
+    ).select_related("player")
+    if eligible.count() != 1:
+        return False, "Is tournament mein is UID ka exactly ek verified player hona chahiye."
+    registration = eligible.first()
+    prize = Decimal("50.00")
+    reference = f"WIN-PRIZE-{tournament.pk}-{registration.pk}"
+    if WalletTransaction.objects.filter(reference=reference).exists():
+        return False, "Winner prize ka transaction reference pehle se maujood hai."
+    admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
+    admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
+    if admin_wallet.balance < prize:
+        return False, "Admin wallet mein ₹50 se kam balance hai; prize pay nahi hua."
+    player_wallet, _ = Wallet.objects.get_or_create(user=registration.player)
+    player_wallet = Wallet.objects.select_for_update().get(pk=player_wallet.pk)
+    admin_wallet.balance -= prize
+    admin_wallet.save(update_fields=["balance", "updated_at"])
+    player_wallet.balance += prize
+    player_wallet.save(update_fields=["balance", "updated_at"])
+    AdminWalletTransaction.objects.create(
+        admin_wallet=admin_wallet, transaction_type=AdminWalletTransaction.TransactionType.PRIZE,
+        amount=prize, status=AdminWalletTransaction.Status.COMPLETED, reference=reference,
+        description=f"₹50 first-place prize for tournament {tournament.pk}, UID {winner_uid}",
+    )
+    WalletTransaction.objects.create(
+        wallet=player_wallet, transaction_type=WalletTransaction.TransactionType.PRIZE,
+        amount=prize, status=WalletTransaction.Status.COMPLETED, reference=reference,
+        description=f"₹50 first-place prize for tournament {tournament.title}",
+    )
+    tournament.winner_prize_paid = True
+    tournament.winner_prize_reference = reference
+    tournament.save(update_fields=["winner_prize_paid", "winner_prize_reference", "updated_at"])
+    return True, f"₹50 winner prize UID {winner_uid} ke wallet mein credit ho gaya."
 
 
 @transaction.atomic

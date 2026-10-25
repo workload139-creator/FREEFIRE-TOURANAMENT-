@@ -1,3 +1,4 @@
+from datetime import timedelta
 from decimal import Decimal
 
 from django.db import transaction
@@ -17,7 +18,7 @@ def create_pending_registration(*, tournament_id, player, free_fire_uid):
 
     if tournament.status != Tournament.Status.UPCOMING:
         raise RegistrationError("Yeh tournament abhi registration ke liye available nahi hai.")
-    if tournament.start_time <= timezone.now():
+    if tournament.start_time <= timezone.now() and not tournament.is_unlimited_br:
         raise RegistrationError("Tournament ka start time nikal chuka hai.")
     if tournament.is_full:
         raise RegistrationError("Tournament ki seats full ho chuki hain.")
@@ -55,4 +56,24 @@ def create_pending_registration(*, tournament_id, player, free_fire_uid):
             reference=f"TOURNEY-ENTRY-{registration.pk}",
             description=f"Entry fee for tournament {tournament.title}; awaiting admin review",
         )
+    # Start a BR round at 49 registrations, then optionally open a fresh round.
+    if tournament.is_unlimited_br and tournament.auto_start_at_capacity:
+        active_count = Registration.objects.filter(tournament=tournament).exclude(
+            status__in=[Registration.Status.CANCELLED, Registration.Status.REFUNDED, Registration.Status.NOT_PLAYING]
+        ).count()
+        if active_count >= tournament.max_players:
+            tournament.status = Tournament.Status.LIVE
+            tournament.save(update_fields=["status", "updated_at"])
+            root_id = tournament.series_root_id or tournament.pk
+            root = Tournament.objects.select_for_update().get(pk=root_id)
+            if root.auto_reopen:
+                next_round_number = root.series_rounds.count() + 2
+                Tournament.objects.create(
+                    title=f"{root.title} - Round {next_round_number}"[:120],
+                    mode=Tournament.Mode.BR, vs_format="", description=root.description,
+                    entry_fee=root.entry_fee, prize_pool=root.prize_pool, max_players=49,
+                    start_time=timezone.now() + timedelta(minutes=10),
+                    status=Tournament.Status.UPCOMING, is_unlimited_br=True,
+                    auto_start_at_capacity=True, auto_reopen=root.auto_reopen, series_root=root,
+                )
     return registration

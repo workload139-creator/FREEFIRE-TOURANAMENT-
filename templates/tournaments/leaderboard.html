@@ -3,14 +3,21 @@
 {% block content %}
 <section class="container" style="max-width:1000px;margin:35px auto;padding:20px">
     <h1>🏆 {{ tournament.title }} — Leaderboard</h1>
-    <p>Only admin-approved kill submissions appear here.</p>
+    <p>Only admin-approved kill submissions appear here. Har tournament ka leaderboard alag hai.</p>
+    {% if tournament.winner_uid %}
+        <div class="tournament-card" style="padding:16px;margin:16px 0;border:2px solid #eab308">
+            <strong>🏆 Admin-confirmed First Place</strong>
+            <p>Free Fire UID: {{ tournament.winner_uid }} — Prize: ₹50</p>
+            <p>Status: {% if tournament.winner_prize_paid %}Prize player wallet mein credit ho gaya{% else %}Prize pending — admin wallet balance ya UID verification check karein{% endif %}</p>
+        </div>
+    {% endif %}
     <div class="tournament-card" style="padding:20px;overflow-x:auto">
         <table style="width:100%;border-collapse:collapse">
             <thead><tr><th>Rank</th><th>Player</th><th>Free Fire UID</th><th>Approved Kills</th><th>Reward</th></tr></thead>
             <tbody>
             {% for submission in submissions %}
                 <tr>
-                    <td>{{ forloop.counter }}</td>
+                    <td>{% if tournament.winner_uid and submission.registered_uid == tournament.winner_uid %}1 🏆{% else %}{{ forloop.counter }}{% endif %}</td>
                     <td>{{ submission.player.username }}</td>
                     <td>{{ submission.registered_uid }}</td>
                     <td>{{ submission.approved_kills }}</td>
