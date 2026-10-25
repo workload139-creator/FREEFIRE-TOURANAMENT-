@@ -91,12 +91,10 @@ def email_otp_view(request):
 
         if not email or "@" not in email or "." not in email.rsplit("@", 1)[-1]:
             error = "Sahi email address enter karein."
-        elif User.objects.filter(email__iexact=email).exists():
-            account_exists = True
-            error = "Is Gmail se account pehle se bana hua hai. Naya account banane ke bajay purane account mein login karein ya password reset karein."
         elif now - int(request.session.get("email_otp_last_sent", 0)) < OTP_RESEND_SECONDS:
             error = "Naya code bhejne se pehle 60 seconds wait karein."
         else:
+            account_exists = User.objects.filter(email__iexact=email).exists()
             code = f"{secrets.randbelow(1_000_000):06d}"
             try:
                 sent = _send_otp_email(email, code)
@@ -106,9 +104,23 @@ def email_otp_view(request):
                     request.session["email_otp_expires"] = now + OTP_TTL_SECONDS
                     request.session["email_otp_last_sent"] = now
                     request.session["email_otp_attempts"] = 0
+                    request.session["email_otp_existing_account"] = account_exists
                     request.session.modified = True
-                    messages.success(request, "Email par OTP bhej diya hai. Spam/Junk folder bhi check karein.")
-                    return render(request, "accounts/email_otp.html", {"email": email, "code_sent": True})
+                    if account_exists:
+                        messages.info(
+                            request,
+                            "Is Gmail ka account pehle se hai. Code verify karne ke baad purane account mein login karein ya password reset karein.",
+                        )
+                    else:
+                        messages.success(
+                            request,
+                            "Email par OTP bhej diya hai. Spam/Junk folder bhi check karein.",
+                        )
+                    return render(request, "accounts/email_otp.html", {
+                        "email": email,
+                        "code_sent": True,
+                        "account_exists": account_exists,
+                    })
                 error = "Email nahi bhej paye. Brevo API settings check karke dobara try karein."
             except Exception:
                 error = "Email send nahi ho saka. Render Environment mein BREVO_API_KEY aur verified DEFAULT_FROM_EMAIL check karein."
@@ -130,13 +142,18 @@ def email_otp_view(request):
             request.session["email_otp_attempts"] = attempts + 1
             error = "OTP galat hai. Dobara check karein."
         else:
-            request.session["email_otp_verified"] = stored_email
-            request.session["email_otp_verified_at"] = now
+            existing_account = request.session.pop("email_otp_existing_account", False)
             for key in ("email_otp_email", "email_otp_digest", "email_otp_expires", "email_otp_attempts"):
                 request.session.pop(key, None)
             request.session.modified = True
-            messages.success(request, "Email verify ho gaya. Ab account registration complete karein.")
-            return redirect("accounts:register")
+            if existing_account:
+                account_exists = True
+                error = "Email verify ho gaya. Is Gmail ka account pehle se hai—ab purane account mein login karein ya password reset karein."
+            else:
+                request.session["email_otp_verified"] = stored_email
+                request.session["email_otp_verified_at"] = now
+                messages.success(request, "Email verify ho gaya. Ab account registration complete karein.")
+                return redirect("accounts:register")
 
     return render(request, "accounts/email_otp.html", {
         "email": email or request.session.get("email_otp_email", ""),
