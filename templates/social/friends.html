@@ -23,6 +23,7 @@
         <div class="player-avatar">{{ result.user.username|first|upper }}</div>
         <div class="player-info"><strong>{{ result.user.username }}</strong><small>Player ID: FF-{{ result.user.pk|stringformat:"06d" }} · {% if result.user.is_online %}<span class="online-label">Online</span>{% else %}Offline{% endif %}</small></div>
         <div class="player-actions">
+          <form method="post" action="{% url 'social:toggle_follow' result.user.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{% url 'social:home' %}?q={{ search_query|urlencode }}"><button class="button button-outline" type="submit">{% if result.is_following %}Unfollow{% else %}Follow{% endif %}</button></form>
           {% if result.is_friend %}
             <a class="button button-primary" href="{% url 'chat:open' result.user.pk %}">Message</a>
           {% elif result.incoming %}
