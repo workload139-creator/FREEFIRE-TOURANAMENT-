@@ -81,6 +81,7 @@ def email_otp_view(request):
 
     now = int(time.time())
     error = ""
+    account_exists = False
     email = request.POST.get("email", "").strip().lower() if request.method == "POST" else ""
     action = request.POST.get("action", "send") if request.method == "POST" else ""
 
@@ -91,7 +92,8 @@ def email_otp_view(request):
         if not email or "@" not in email or "." not in email.rsplit("@", 1)[-1]:
             error = "Sahi email address enter karein."
         elif User.objects.filter(email__iexact=email).exists():
-            error = "Is email se account pehle se hai. Login karein."
+            account_exists = True
+            error = "Is Gmail se account pehle se bana hua hai. Naya account banane ke bajay purane account mein login karein ya password reset karein."
         elif now - int(request.session.get("email_otp_last_sent", 0)) < OTP_RESEND_SECONDS:
             error = "Naya code bhejne se pehle 60 seconds wait karein."
         else:
@@ -140,4 +142,5 @@ def email_otp_view(request):
         "email": email or request.session.get("email_otp_email", ""),
         "code_sent": bool(request.session.get("email_otp_digest")),
         "error": error,
+        "account_exists": account_exists,
     })
