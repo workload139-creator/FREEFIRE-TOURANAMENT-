@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Redeem Codes | FF Arena{% endblock %}
+
+{% block content %}
+<section class="container" style="max-width:900px;margin:40px auto;padding:20px">
+    <h1>Redeem Codes</h1>
+    <div class="tournament-card" style="padding:22px;border-radius:16px;margin:18px 0">
+        <p>Wallet balance</p>
+        <h2>₹{{ wallet.balance }}</h2>
+        <p>Available codes ko wallet balance se purchase kar sakte hain. Code purchase ke baad sirf aapke account mein dikhai dega.</p>
+        <a class="button button-outline" href="{% url 'accounts:wallet' %}">Back to Wallet</a>
+    </div>
+
+    <h2>Available Codes</h2>
+    {% for item in available_codes %}
+        <div class="tournament-card" style="padding:18px;margin:12px 0;border-radius:12px">
+            <div style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center">
+                <div>
+                    <strong>{{ item.title }}</strong>
+                    <p>{{ item.description|default:"Redeem code" }}</p>
+                    <strong>Price: ₹{{ item.price }}</strong>
+                </div>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="code_id" value="{{ item.id }}">
+                    <button class="button button-primary" type="submit">Buy with Wallet</button>
+                </form>
+            </div>
+        </div>
+    {% empty %}
+        <p>Abhi koi redeem code available nahi hai. Baad mein check karein.</p>
+    {% endfor %}
+
+    <h2 style="margin-top:30px">My Purchased Codes</h2>
+    {% for item in purchased_codes %}
+        <div class="tournament-card" style="padding:18px;margin:12px 0;border-radius:12px">
+            <strong>{{ item.title }}</strong>
+            <p>Paid: ₹{{ item.price }}</p>
+            <p>Code: <code>{{ item.code }}</code></p>
+            {% if item.description %}<p>{{ item.description }}</p>{% endif %}
+            <small>Purchased {{ item.claimed_at|date:"d M Y, h:i A" }}</small>
+        </div>
+    {% empty %}
+        <p>Aapne abhi koi redeem code purchase nahi kiya hai.</p>
+    {% endfor %}
+</section>
+{% endblock %}
