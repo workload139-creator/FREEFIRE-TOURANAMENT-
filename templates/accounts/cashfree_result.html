@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Payment Status | FF Arena{% endblock %}
+{% block content %}
+<section style="max-width:620px;margin:40px auto;padding:24px;">
+  <h1>Wallet payment status</h1>
+  <p>{{ status_message }}</p>
+  {% if order_id %}<p>Order ID: <code>{{ order_id }}</code></p>{% endif %}
+  <a href="{% url 'accounts:wallet' %}">Back to wallet</a>
+</section>
+{% endblock %}
