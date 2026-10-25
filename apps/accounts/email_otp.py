@@ -84,6 +84,10 @@ def email_otp_view(request):
     account_exists = False
     email = request.POST.get("email", "").strip().lower() if request.method == "POST" else ""
     action = request.POST.get("action", "send") if request.method == "POST" else ""
+    # Some browsers/extensions may omit the clicked submit button name.
+    # A submitted six-digit code always means the player is trying to verify it.
+    if request.method == "POST" and request.POST.get("code", "").strip():
+        action = "verify"
 
     if request.method == "POST" and action == "send":
         from django.contrib.auth import get_user_model
@@ -147,8 +151,11 @@ def email_otp_view(request):
                 request.session.pop(key, None)
             request.session.modified = True
             if existing_account:
-                account_exists = True
-                error = "Email verify ho gaya. Is Gmail ka account pehle se hai—ab purane account mein login karein ya password reset karein."
+                messages.info(
+                    request,
+                    "Email verify ho gaya. Is Gmail ka account pehle se hai. Purane account mein login karein ya password reset karein.",
+                )
+                return redirect("login")
             else:
                 request.session["email_otp_verified"] = stored_email
                 request.session["email_otp_verified_at"] = now
