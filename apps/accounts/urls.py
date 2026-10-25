@@ -15,6 +15,4 @@ urlpatterns = [
     path("wallet/", views.wallet_view, name="wallet"),
     path("wallet/deposit/", views.deposit_view, name="deposit"),
     path("wallet/withdraw/", views.withdrawal_view, name="withdraw"),
-    path("wallet/cashfree/return/", views.cashfree_return_view, name="cashfree_return"),
-    path("wallet/cashfree/webhook/", views.cashfree_webhook_view, name="cashfree_webhook"),
 ]

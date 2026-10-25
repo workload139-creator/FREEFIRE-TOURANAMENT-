@@ -31,7 +31,7 @@ class CustomUserAdmin(UserAdmin):
 
 @admin.register(Wallet)
 class WalletAdmin(admin.ModelAdmin):
-    list_display = ("user", "balance", "updated_at")
+    list_display = ("wallet_id", "user", "balance", "updated_at")
     search_fields = ("user__username", "user__email")
     readonly_fields = ("balance", "created_at", "updated_at")
 
@@ -88,7 +88,7 @@ class DepositRequestAdmin(admin.ModelAdmin):
 
 @admin.register(AdminWallet)
 class AdminWalletAdmin(admin.ModelAdmin):
-    list_display = ("name", "balance", "updated_at")
+    list_display = ("wallet_id", "name", "balance", "updated_at")
     readonly_fields = ("balance", "created_at", "updated_at")
 
 

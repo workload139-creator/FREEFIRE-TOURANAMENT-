@@ -166,6 +166,7 @@ def wallet_view(request):
             "wallet": wallet,
             "transactions": transactions,
             "withdrawal_requests": withdrawal_requests,
+            "deposit_requests": wallet.deposit_requests.all()[:10],
         },
     )
 
@@ -182,15 +183,23 @@ from .models import DepositRequest, Wallet, WalletTransaction
 
 @login_required
 def deposit_view(request):
+    """Create a pending wallet deposit and open the player's UPI app.
+
+    This does not claim to verify UPI payment. An admin must reconcile the
+    incoming bank/UPI statement and record the bank reference before crediting.
+    """
     import os
-    import uuid
-    from django.urls import reverse
-    from .cashfree import CashfreeError, create_order
+    from urllib.parse import urlencode
 
     wallet, _ = Wallet.objects.get_or_create(user=request.user)
+    upi_id = os.getenv("FF_ARENA_UPI_ID", "").strip()
+    deposit = None
+    upi_uri = ""
 
     if request.method == "POST":
         form = DepositRequestForm(request.POST)
+        if not upi_id:
+            form.add_error(None, "UPI deposit abhi configure nahi hai. Admin se FF_ARENA_UPI_ID set karwayein.")
         if form.is_valid():
             amount = form.cleaned_data["amount"]
             with transaction.atomic():
@@ -207,44 +216,33 @@ def deposit_view(request):
                         "amount",
                         "Wallet limit ₹5000 hai. Pending requests bhi limit mein count hongi.",
                     )
-                    return render(request, "accounts/deposit.html", {"form": form, "wallet": wallet})
-
-                order_id = "ffdep_" + uuid.uuid4().hex
-                deposit = form.save(commit=False)
-                deposit.wallet = wallet
-                deposit.payment_reference = order_id
-                deposit.save()
-
-            return_url = request.build_absolute_uri(reverse("accounts:cashfree_return")) + "?order_id={order_id}"
-            notify_url = request.build_absolute_uri(reverse("accounts:cashfree_webhook"))
-            try:
-                order = create_order(
-                    order_id=order_id,
-                    amount=amount,
-                    user=request.user,
-                    return_url=return_url,
-                    notify_url=notify_url,
-                )
-                session_id = order.get("payment_session_id")
-                if not session_id:
-                    raise CashfreeError("Cashfree ne payment session nahi diya.")
-            except CashfreeError as exc:
-                deposit.status = DepositRequest.Status.REJECTED
-                deposit.save(update_fields=["status"])
-                messages.error(request, str(exc))
-                return redirect("accounts:deposit")
-
-            return render(request, "accounts/cashfree_checkout.html", {
-                "amount": amount,
-                "order_id": order_id,
-                "payment_session_id": session_id,
-                "cashfree_mode": os.getenv("CASHFREE_MODE", "sandbox").strip().lower(),
-            })
+                else:
+                    deposit = DepositRequest.objects.create(
+                        wallet=wallet,
+                        amount=amount,
+                        payment_reference="",
+                    )
+                    upi_uri = "upi://pay?" + urlencode({
+                        "pa": upi_id,
+                        "pn": "FF Arena",
+                        "am": f"{amount:.2f}",
+                        "cu": "INR",
+                        "tn": f"FF Arena wallet deposit {deposit.pk}",
+                    })
+                    messages.info(
+                        request,
+                        "UPI payment karein. Wallet mein paisa tabhi aayega jab admin actual bank receipt verify karega.",
+                    )
     else:
         form = DepositRequestForm()
 
-    return render(request, "accounts/deposit.html", {"form": form, "wallet": wallet})
-
+    return render(request, "accounts/deposit.html", {
+        "form": form,
+        "wallet": wallet,
+        "deposit": deposit,
+        "upi_id": upi_id,
+        "upi_uri": upi_uri,
+    })
 
 def _finalize_cashfree_deposit(order_id):
     from django.core.exceptions import ValidationError

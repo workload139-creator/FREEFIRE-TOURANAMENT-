@@ -6,11 +6,23 @@
 <section class="container" style="max-width:900px;margin:40px auto;padding:20px">
     <h1>My Wallet</h1>
     <div class="tournament-card" style="padding:24px;border-radius:16px">
+        <p>Wallet ID: <strong>{{ wallet.wallet_id }}</strong></p>
         <p>Available Balance</p>
         <h2>₹{{ wallet.balance }}</h2>
         <p>Deposit minimum ₹10 hai. Maximum wallet balance ₹5000 hai.</p>
         <div style="display:flex;gap:12px;flex-wrap:wrap"><a class="button button-primary" href="{% url 'accounts:deposit' %}">Deposit to Wallet</a><a class="button button-outline" href="{% url 'accounts:withdraw' %}">Redeem / Withdraw to UPI</a><a class="button button-outline" href="{% url 'tournaments:my_registrations' %}">My Tournaments</a></div>
     </div>
+    <h2 style="margin-top:30px">Deposit Requests</h2>
+    {% for deposit in deposit_requests %}
+        <div class="tournament-card" style="padding:15px;margin:10px 0;border-radius:10px">
+            <strong>Deposit #{{ deposit.pk }} · ₹{{ deposit.amount }}</strong>
+            <p>Status: {{ deposit.get_status_display }}</p>
+            <small>{{ deposit.created_at|date:"d M Y, h:i A" }}</small>
+            {% if deposit.payment_reference %}<p>Bank/payment reference: {{ deposit.payment_reference }}</p>{% endif %}
+        </div>
+    {% empty %}
+        <p>Abhi koi deposit request nahi hai.</p>
+    {% endfor %}
     <h2 style="margin-top:30px">Redeem / Withdrawal Requests</h2>
     {% for withdrawal in withdrawal_requests %}
         <div class="tournament-card" style="padding:15px;margin:10px 0;border-radius:10px">
