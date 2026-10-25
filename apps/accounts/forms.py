@@ -19,11 +19,18 @@ class PlayerRegistrationForm(UserCreationForm):
 
     def clean_username(self):
         username = self.cleaned_data["username"].strip()
-        if User.objects.filter(username__iexact=username).exists():
-            raise forms.ValidationError(
-                "Ye username pehle se registered hai. Login karein ya doosra username chunein."
-            )
-        return username
+        if not User.objects.filter(username__iexact=username).exists():
+            return username
+
+        # Keep the player's chosen name as a base and add a unique numeric suffix.
+        base = username[:147]
+        number = 2
+        while True:
+            suffix = f"{number:02d}"
+            candidate = f"{base[:150 - len(suffix)]}{suffix}"
+            if not User.objects.filter(username__iexact=candidate).exists():
+                return candidate
+            number += 1
 
     def clean_email(self):
         email = self.cleaned_data["email"].strip().lower()
