@@ -33,8 +33,8 @@ class CashfreeWalletCheckoutTests(TestCase):
         self.wallet.refresh_from_db()
         self.assertEqual(self.wallet.balance, Decimal("0.00"))
 
-    @patch("apps.accounts.view.create_order", return_value={"payment_session_id": "test-session"})
-    @patch("apps.accounts.view._config", return_value=("sandbox-id", "sandbox-secret", "sandbox", "https://sandbox.cashfree.com/pg"))
+    @patch("apps.accounts.cashfree.create_order", return_value={"payment_session_id": "test-session"})
+    @patch("apps.accounts.cashfree._config", return_value=("sandbox-id", "sandbox-secret", "sandbox", "https://sandbox.cashfree.com/pg"))
     def test_creates_pending_order_and_never_credits_before_payment(self, _config, create_order):
         response = self.client.post(
             reverse("accounts:cashfree_deposit"),
