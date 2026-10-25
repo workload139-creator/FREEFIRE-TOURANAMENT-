@@ -94,6 +94,25 @@ Players must consent to AI processing on the upload form. If AI is unavailable, 
 
 Set `FF_ARENA_UPI_ID` in the Render environment to the UPI ID owned by the receiving account. Do not put API keys or bank credentials in source control. The UPI button only opens a UPI app with the amount prefilled; payment confirmation does not return to this website. Admin must match the actual incoming bank/UPI statement, enter the bank reference on the pending Deposit Request, and approve it in Django admin. Withdrawals still require an admin to send the payout manually and record its payout reference. The internal Admin Wallet is accounting inside the website, not a bank account.
 
+## Automatic Cashfree checkout setup
+
+The automatic checkout route is `/accounts/wallet/deposit/automatic/`. It creates a server-side Cashfree order, opens the existing secure checkout template, and credits the wallet only after the server verifies the order and successful payment. The browser redirect by itself never credits a wallet.
+
+For sandbox testing, add these Render Environment variables (do not commit values):
+- `CASHFREE_CLIENT_ID` — Cashfree sandbox App ID
+- `CASHFREE_CLIENT_SECRET` — Cashfree sandbox secret
+- `CASHFREE_MODE=sandbox`
+
+Configure Cashfree's sandbox webhook URL as `https://YOUR-RENDER-HOST/accounts/wallet/deposit/cashfree/webhook/`. Set the return URL to `https://YOUR-RENDER-HOST/accounts/wallet/deposit/cashfree/return/` if the dashboard requests one; the order API also receives both URLs. The webhook signature is verified before processing. Test with sandbox transactions first.
+
+For real money, switch to production credentials and `CASHFREE_MODE=production` only after Cashfree has approved the actual tournament/entry-fee/prize use case and required business/KYC checks. A free account or sandbox keys do not authorize live real-money gaming. The code does not send withdrawals automatically; withdrawals remain admin-reviewed until an approved payout API is separately integrated and tested.
+
+## Phone OTP and DigiLocker setup status
+
+- Email OTP remains the current working registration verification. Phone numbers are stored, but `phone_verified` remains false until a real SMS/phone verification provider is integrated. Do not mark it true manually or treat a typed number as verified. A provider account/configuration is required; do not put private credentials in GitHub.
+- DigiLocker API access requires registering the organization in the official Partner Organisation Portal and completing their vetting/approval process. After approval, implement against the credentials and technical docs supplied to that organization. Until then, do not collect DigiLocker credentials or claim official document verification.
+- WhatsApp automated delivery likewise requires an approved WhatsApp Business/API provider. Existing links are not automatic messages.
+
 ## External services not yet integrated
 
 - Phone-number OTP verification provider.
