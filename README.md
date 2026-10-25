@@ -61,11 +61,11 @@ This command is not a background scheduler. Configure Windows Task Scheduler or 
 
 ## Wallet and payments — important
 
-- Player deposit requests remain pending until an admin checks the actual receipt/reference and uses the approval action. A typed reference alone does not prove payment.
+- Wallet deposits open a UPI payment intent using `FF_ARENA_UPI_ID`. This only opens the player's UPI app; it does not verify payment automatically. The deposit remains pending until an admin reconciles the actual bank/UPI statement, records the bank reference in the Deposit Request admin page, and runs the approval action. Never approve based only on a screenshot or a player's claim.
 - Tournament entry fees are debited from the player wallet. Admin payment review checks the corresponding wallet ledger before confirming a registration.
 - Withdrawals reserve/debit the requested amount and remain pending until the admin has actually transferred the money through UPI and records the payout reference in admin. The website does not send UPI payments by itself.
 - Kill rewards are credited to the player wallet only after an admin enters the approved kill count and the admin wallet has sufficient balance. This is internal/demo wallet accounting, not a bank transfer.
-- Do not use the demo wallet ledger for real-money operations until a trusted payment provider, verified webhooks, reconciliation, security review and automated tests are in place.
+- This UPI intent/manual reconciliation flow is not an automatic payment integration. Do not advertise automatic deposits or payouts or use it for real-money operations until a supported, authorized verification/payout integration, reconciliation, security review and automated tests are in place.
 
 ## AI match-history review
 
@@ -76,6 +76,10 @@ The optional adapter in `apps/tournaments/ai_review.py` samples frames from the 
 - A model available to your API account, configured with `OPENAI_KILL_REVIEW_MODEL`.
 
 Players must consent to AI processing on the upload form. If AI is unavailable, the evidence is still saved for manual review. AI output is only a proposal; an admin must inspect the evidence and approve/correct the kill count before wallet reward accounting. The upload checks file extensions and size; verify the match video duration and evidence manually.
+
+## UPI deposit setup
+
+Set `FF_ARENA_UPI_ID` in the Render environment to the UPI ID owned by the receiving account. Do not put API keys or bank credentials in source control. The UPI button only opens a UPI app with the amount prefilled; payment confirmation does not return to this website. Admin must match the actual incoming bank/UPI statement, enter the bank reference on the pending Deposit Request, and approve it in Django admin. Withdrawals still require an admin to send the payout manually and record its payout reference. The internal Admin Wallet is accounting inside the website, not a bank account.
 
 ## External services not yet integrated
 
