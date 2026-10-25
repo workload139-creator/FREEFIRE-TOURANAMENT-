@@ -29,28 +29,46 @@ def friends_home(request):
     user = request.user
     search_query = request.GET.get("q", "").strip()
     search_results = []
+    blocked_ids = set(
+        UserBlock.objects.filter(Q(blocker=user) | Q(blocked=user)).values_list(
+            "blocker_id", flat=True
+        )
+    ) | set(
+        UserBlock.objects.filter(Q(blocker=user) | Q(blocked=user)).values_list(
+            "blocked_id", flat=True
+        )
+    )
     if search_query:
-        users = User.objects.exclude(pk=user.pk)
+        users = User.objects.exclude(pk=user.pk).exclude(pk__in=blocked_ids)
         if search_query.upper().startswith("FF-"):
             numeric_id = search_query[3:]
             users = users.filter(pk=int(numeric_id)) if numeric_id.isdigit() else users.none()
         elif search_query.isdigit():
             users = users.filter(pk=int(search_query))
         else:
-            users = users.filter(username__iexact=search_query)
-        for candidate in users[:10]:
-            if not _blocked_either_way(user, candidate):
-                search_results.append({
-                    "user": candidate,
-                    "is_friend": _are_friends(user, candidate),
-                    "outgoing": FriendRequest.objects.filter(
-                        requester=user, recipient=candidate, status=FriendRequest.Status.PENDING
-                    ).exists(),
-                    "incoming": FriendRequest.objects.filter(
-                        requester=candidate, recipient=user, status=FriendRequest.Status.PENDING
-                    ).exists(),
-                    "is_following": Follow.objects.filter(follower=user, following=candidate).exists(),
-                })
+            # Allow partial username searches, not just exact matches.
+            users = users.filter(username__icontains=search_query)
+        for candidate in users.order_by("username")[:10]:
+            search_results.append({
+                "user": candidate,
+                "is_friend": _are_friends(user, candidate),
+                "outgoing": FriendRequest.objects.filter(
+                    requester=user, recipient=candidate, status=FriendRequest.Status.PENDING
+                ).exists(),
+                "incoming": FriendRequest.objects.filter(
+                    requester=candidate, recipient=user, status=FriendRequest.Status.PENDING
+                ).exists(),
+                "is_following": Follow.objects.filter(follower=user, following=candidate).exists(),
+            })
+
+    # Suggestions are real registered accounts only. Hide self, blocked accounts,
+    # and players the current user already follows.
+    following_ids = set(
+        Follow.objects.filter(follower=user).values_list("following_id", flat=True)
+    )
+    suggestions = User.objects.exclude(pk=user.pk).exclude(
+        pk__in=blocked_ids | following_ids
+    ).order_by("-date_joined", "username")[:8]
 
     incoming = FriendRequest.objects.filter(
         recipient=user, status=FriendRequest.Status.PENDING
@@ -70,6 +88,7 @@ def friends_home(request):
     return render(request, "social/friends.html", {
         "search_query": search_query,
         "search_results": search_results,
+        "suggestions": suggestions,
         "incoming_requests": incoming,
         "outgoing_requests": outgoing,
         "friends": friends,

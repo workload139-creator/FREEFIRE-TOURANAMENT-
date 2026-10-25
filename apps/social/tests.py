@@ -18,6 +18,24 @@ class SocialFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "bob")
 
+    def test_partial_username_search_finds_registered_player(self):
+        bob = User.objects.create_user(username="bob_gamer", password="test-password-12345")
+        response = self.client.get(reverse("social:home"), {"q": "bob"})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "bob_gamer")
+        self.assertIn(bob, [item["user"] for item in response.context["search_results"]])
+
+    def test_registered_players_appear_in_suggestions(self):
+        response = self.client.get(reverse("social:home"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(self.bob, response.context["suggestions"])
+
+    def test_followed_player_is_removed_from_suggestions(self):
+        from .models import Follow
+        Follow.objects.create(follower=self.alice, following=self.bob)
+        response = self.client.get(reverse("social:home"))
+        self.assertNotIn(self.bob, response.context["suggestions"])
+
     def test_friend_request_can_be_sent_and_accepted(self):
         self.client.post(reverse("social:send_request", args=[self.bob.pk]))
         request_obj = FriendRequest.objects.get(requester=self.alice, recipient=self.bob)
