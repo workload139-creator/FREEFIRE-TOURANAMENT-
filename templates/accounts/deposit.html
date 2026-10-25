@@ -1,18 +1,35 @@
-
 {% extends "base.html" %}
 
+{% block title %}Wallet Deposit | FF Arena{% endblock %}
+
 {% block content %}
-<section style="max-width:600px; margin:40px auto; padding:20px;">
-    <h1>Wallet Deposit</h1>
-    <p>Current balance: ₹{{ wallet.balance }}</p>
-    <p>Minimum deposit: ₹10 · Maximum wallet balance: ₹5000</p>
+<section class="container" style="max-width:680px;margin:40px auto;padding:20px">
+    <div class="tournament-card" style="padding:24px;border-radius:16px">
+        <h1>Deposit to Wallet</h1>
+        <p>Current balance: <strong>₹{{ wallet.balance }}</strong></p>
+        <p>Minimum deposit ₹10 · Maximum wallet balance ₹5000</p>
 
-    <form method="post">
-        {% csrf_token %}
-        <p><label for="{{ form.amount.id_for_label }}">Deposit amount (₹)</label><br>{{ form.amount }}{{ form.amount.errors }}</p>
-        <button type="submit">Continue to Cashfree Payment</button>
-    </form>
-
-    <p>Wallet mein paisa Cashfree payment verify hone ke baad hi add hoga.</p>
+        {% if deposit and upi_uri %}
+            <h2>Pay ₹{{ deposit.amount }} using your UPI app</h2>
+            <p>Deposit request #{{ deposit.pk }} is pending verification.</p>
+            <p>Pay to FF Arena UPI ID: <strong>{{ upi_id }}</strong></p>
+            <p><a class="button button-primary" href="{{ upi_uri }}">Open UPI App &amp; Pay ₹{{ deposit.amount }}</a></p>
+            <p>Payment karne ke baad admin bank statement se payment verify karega. Verification se pehle wallet balance add nahi hoga. Same payment dobara mat karein.</p>
+        {% else %}
+            <form method="post">
+                {% csrf_token %}
+                {{ form.non_field_errors }}
+                <div class="form-group">
+                    <label for="{{ form.amount.id_for_label }}">Deposit amount (₹)</label>
+                    {{ form.amount }}{{ form.amount.errors }}
+                </div>
+                <button type="submit" class="button button-primary">Continue to UPI Payment</button>
+            </form>
+            {% if not upi_id %}
+                <p role="alert">UPI deposit setup pending hai. Admin ko Render Environment mein FF_ARENA_UPI_ID set karna hoga.</p>
+            {% endif %}
+        {% endif %}
+        <p><a href="{% url 'accounts:wallet' %}">← Back to wallet</a></p>
+    </div>
 </section>
 {% endblock %}
