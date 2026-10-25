@@ -7,6 +7,7 @@ from django.views.static import serve
 
 from apps.accounts.view import login_view, logout_view
 from apps.core.views import home
+from apps.core.assistant import assistant_view
 
 urlpatterns = [
     re_path(
@@ -53,6 +54,7 @@ urlpatterns = [
     path("tournaments/", include("apps.tournaments.urls")),
     path("friends/", include("apps.social.urls")),
     path("chat/", include("apps.chat.urls")),
+    path("assistant/", assistant_view, name="assistant"),
     path("", home, name="home"),
 ]
 
