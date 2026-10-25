@@ -57,16 +57,19 @@ def create_order(*, order_id, amount, user, return_url, notify_url):
     customer_id = "player_" + str(user.pk)
     customer_name = " ".join((user.get_full_name() or user.username).split())
     customer_name = "".join(ch for ch in customer_name if ch.isalnum() or ch in " .'-")[:100] or customer_id
+    customer_details = {
+        "customer_id": customer_id,
+        "customer_name": customer_name,
+        "customer_phone": phone,
+    }
+    if user.email:
+        customer_details["customer_email"] = user.email
+
     return api_request("POST", "/orders", {
         "order_id": order_id,
         "order_amount": float(amount),
         "order_currency": "INR",
-        "customer_details": {
-            "customer_id": customer_id,
-            "customer_name": customer_name,
-            "customer_email": user.email or f"{customer_id}@example.invalid",
-            "customer_phone": phone,
-        },
+        "customer_details": customer_details,
         "order_meta": {
             "return_url": return_url,
             "notify_url": notify_url,
