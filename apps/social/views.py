@@ -18,9 +18,9 @@ def _blocked_either_way(first, second):
 
 
 def _are_friends(first, second):
-    return FriendRequest.objects.filter(
-        Q(requester=first, recipient=second) | Q(requester=second, recipient=first),
-        status=FriendRequest.Status.ACCEPTED,
+    # Friendship exists only while both players follow each other.
+    return Follow.objects.filter(follower=first, following=second).exists() and Follow.objects.filter(
+        follower=second, following=first
     ).exists()
 
 
@@ -58,15 +58,13 @@ def friends_home(request):
     outgoing = FriendRequest.objects.filter(
         requester=user, status=FriendRequest.Status.PENDING
     ).select_related("recipient")
-    accepted = FriendRequest.objects.filter(status=FriendRequest.Status.ACCEPTED).filter(
-        Q(requester=user) | Q(recipient=user)
-    ).select_related("requester", "recipient")
-
-    friends = []
-    for friendship in accepted:
-        friend = friendship.recipient if friendship.requester_id == user.pk else friendship.requester
-        if not _blocked_either_way(user, friend):
-            friends.append(friend)
+    following_ids = set(Follow.objects.filter(follower=user).values_list("following_id", flat=True))
+    follower_ids = set(Follow.objects.filter(following=user).values_list("follower_id", flat=True))
+    mutual_ids = following_ids.intersection(follower_ids)
+    friends = [
+        candidate for candidate in User.objects.filter(pk__in=mutual_ids)
+        if not _blocked_either_way(user, candidate)
+    ]
 
     blocked_users = UserBlock.objects.filter(blocker=user).select_related("blocked")
     return render(request, "social/friends.html", {
@@ -156,6 +154,9 @@ def cancel_friend_request(request, request_id):
 @login_required
 def remove_friend(request, user_id):
     target = get_object_or_404(User, pk=user_id)
+    Follow.objects.filter(
+        Q(follower=request.user, following=target) | Q(follower=target, following=request.user)
+    ).delete()
     FriendRequest.objects.filter(
         Q(requester=request.user, recipient=target) | Q(requester=target, recipient=request.user),
         status=FriendRequest.Status.ACCEPTED,
