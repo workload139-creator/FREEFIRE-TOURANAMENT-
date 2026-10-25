@@ -80,22 +80,26 @@ def login_view(request):
 
 @login_required
 def profile_view(request):
+    from apps.social.models import Follow
+
+    return render(request, "accounts/profile.html", {
+        "player": request.user,
+        "followers_count": Follow.objects.filter(following=request.user).count(),
+        "following_count": Follow.objects.filter(follower=request.user).count(),
+    })
+
+
+@login_required
+def profile_edit_view(request):
     if request.method == "POST":
-        form = ProfileUpdateForm(
-            request.POST, request.FILES, instance=request.user
-        )
+        form = ProfileUpdateForm(request.POST, request.FILES, instance=request.user)
         if form.is_valid():
             form.save()
             messages.success(request, "Player profile update ho gayi.")
             return redirect("accounts:profile")
     else:
         form = ProfileUpdateForm(instance=request.user)
-
-    return render(
-        request,
-        "accounts/profile.html",
-        {"player": request.user, "form": form},
-    )
+    return render(request, "accounts/profile_edit.html", {"form": form, "player": request.user})
 
 
 
