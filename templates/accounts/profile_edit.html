@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Edit Profile | FF Arena{% endblock %}
+{% block content %}
+<section class="profile-page"><div class="profile-panel"><h1>Edit Profile</h1><p>Personal details ko update karein.</p>
+<form method="post" enctype="multipart/form-data" class="profile-form">{% csrf_token %}
+{% if form.non_field_errors %}<div class="profile-errors">{{ form.non_field_errors }}</div>{% endif %}
+{% for field in form %}<p><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}{% for error in field.errors %}<span class="profile-errors">{{ error }}</span>{% endfor %}</p>{% endfor %}
+<button type="submit" class="btn-primary">Save Profile</button> <a href="{% url 'accounts:profile' %}">Cancel</a></form></div></section>
+{% endblock %}
