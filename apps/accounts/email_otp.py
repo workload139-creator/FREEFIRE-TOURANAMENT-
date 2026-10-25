@@ -1,7 +1,10 @@
 import hashlib
 import hmac
+import json
 import secrets
 import time
+import urllib.error
+import urllib.request
 
 from django.conf import settings
 from django.contrib import messages
@@ -17,7 +20,58 @@ OTP_MAX_ATTEMPTS = 5
 
 def _otp_digest(email, code):
     value = f"{email.lower()}:{code}".encode("utf-8")
-    return hmac.new(settings.SECRET_KEY.encode("utf-8"), value, hashlib.sha256).hexdigest()
+    return hmac.new(
+        settings.SECRET_KEY.encode("utf-8"), value, hashlib.sha256
+    ).hexdigest()
+
+
+def _send_otp_email(email, code):
+    subject = "Your FF Arena email verification code"
+    message = (
+        f"Your FF Arena verification code is {code}. "
+        "It expires in 10 minutes. Do not share this code with anyone."
+    )
+
+    # Brevo API goes over HTTPS, avoiding Render Free's blocked SMTP ports.
+    api_key = getattr(settings, "BREVO_API_KEY", "").strip()
+    if api_key:
+        payload = {
+            "sender": {
+                "name": "FF Arena",
+                "email": settings.DEFAULT_FROM_EMAIL,
+            },
+            "to": [{"email": email}],
+            "subject": subject,
+            "textContent": message,
+        }
+        request = urllib.request.Request(
+            "https://api.brevo.com/v3/smtp/email",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "accept": "application/json",
+                "api-key": api_key,
+                "content-type": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=15) as response:
+                return response.status in (200, 201, 202)
+        except urllib.error.HTTPError as exc:
+            # Do not log or expose the API key or provider response to players.
+            raise RuntimeError(
+                f"Brevo API rejected the email (HTTP {exc.code}). "
+                "Check the API key and verified sender address."
+            ) from None
+
+    # Local development / existing SMTP configuration fallback.
+    return bool(send_mail(
+        subject=subject,
+        message=message,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[email],
+        fail_silently=False,
+    ))
 
 
 @require_http_methods(["GET", "POST"])
@@ -43,16 +97,7 @@ def email_otp_view(request):
         else:
             code = f"{secrets.randbelow(1_000_000):06d}"
             try:
-                sent = send_mail(
-                    subject="Your FF Arena email verification code",
-                    message=(
-                        f"Your FF Arena verification code is {code}. "
-                        "It expires in 10 minutes. Do not share this code with anyone."
-                    ),
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[email],
-                    fail_silently=False,
-                )
+                sent = _send_otp_email(email, code)
                 if sent:
                     request.session["email_otp_email"] = email
                     request.session["email_otp_digest"] = _otp_digest(email, code)
@@ -62,9 +107,9 @@ def email_otp_view(request):
                     request.session.modified = True
                     messages.success(request, "Email par OTP bhej diya hai. Spam/Junk folder bhi check karein.")
                     return render(request, "accounts/email_otp.html", {"email": email, "code_sent": True})
-                error = "Email nahi bhej paye. SMTP settings check karke dobara try karein."
+                error = "Email nahi bhej paye. Brevo API settings check karke dobara try karein."
             except Exception:
-                error = "Email send nahi ho saka. Render ki SMTP environment settings check karein."
+                error = "Email send nahi ho saka. Render Environment mein BREVO_API_KEY aur verified DEFAULT_FROM_EMAIL check karein."
 
     elif request.method == "POST" and action == "verify":
         stored_email = request.session.get("email_otp_email", "")
