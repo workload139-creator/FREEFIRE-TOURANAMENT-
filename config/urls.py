@@ -5,6 +5,8 @@ from django.contrib.auth import views as auth_views
 from django.urls import include, path, re_path
 from django.views.static import serve
 
+from apps.core.views import health_check
+
 from apps.accounts.auth_views import login_view
 from apps.accounts.view import logout_view
 from apps.core.views import home
@@ -16,6 +18,7 @@ urlpatterns = [
         serve,
         {"document_root": settings.MEDIA_ROOT / "player_profiles"},
     ),
+    path("health/", health_check, name="health_check"),
     path("admin/", admin.site.urls),
     path("accounts/", include("apps.accounts.urls")),
     path("login/", login_view, name="login"),
