@@ -51,8 +51,13 @@ class Wallet(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    @property
+    def wallet_id(self):
+        """Stable display ID; this is not a bank account or UPI address."""
+        return f"FFW-{self.pk:06d}" if self.pk else "FFW-PENDING"
+
     def __str__(self):
-        return f"{self.user} - ₹{self.balance}"
+        return f"{self.wallet_id} · {self.user} - ₹{self.balance}"
 
 
 class WalletTransaction(models.Model):
@@ -155,8 +160,13 @@ class AdminWallet(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    @property
+    def wallet_id(self):
+        """Internal admin ledger ID; not a UPI ID or bank account."""
+        return f"FFADMIN-{self.pk:04d}" if self.pk else "FFADMIN-PENDING"
+
     def __str__(self):
-        return f"{self.name} - ₹{self.balance}"
+        return f"{self.wallet_id} · {self.name} - ₹{self.balance}"
 
 
 class AdminWalletTransaction(models.Model):
