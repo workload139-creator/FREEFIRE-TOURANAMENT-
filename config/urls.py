@@ -5,7 +5,8 @@ from django.contrib.auth import views as auth_views
 from django.urls import include, path, re_path
 from django.views.static import serve
 
-from apps.accounts.view import login_view, logout_view
+from apps.accounts.auth_views import login_view
+from apps.accounts.view import logout_view
 from apps.core.views import home
 from apps.core.assistant import assistant_view
 
