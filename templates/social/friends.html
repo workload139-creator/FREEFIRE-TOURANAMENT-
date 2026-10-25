@@ -41,23 +41,9 @@
 
   <div class="community-columns">
     <section class="community-panel">
-      <h2>Friend Requests (purana system) <span class="count-pill">{{ incoming_requests|length }}</span></h2>
-      {% for item in incoming_requests %}
-      <article class="player-row compact">
-        <div class="player-avatar">{{ item.requester.username|first|upper }}</div>
-        <div class="player-info"><strong>{{ item.requester.username }}</strong><small>FF-{{ item.requester.pk|stringformat:"06d" }}</small></div>
-        <div class="player-actions">
-          <form method="post" action="{% url 'social:handle_request' item.pk 'accept' %}">{% csrf_token %}<button class="button button-primary" type="submit">Accept</button></form>
-          <form method="post" action="{% url 'social:handle_request' item.pk 'reject' %}">{% csrf_token %}<button class="button button-outline" type="submit">Reject</button></form>
-        </div>
-      </article>
-      {% empty %}<p class="muted">Koi pending request nahi hai.</p>{% endfor %}
-      {% if outgoing_requests %}
-        <h3>Sent requests</h3>
-        {% for item in outgoing_requests %}
-          <div class="player-row compact"><div class="player-info"><strong>{{ item.recipient.username }}</strong><small>Pending request</small></div><form method="post" action="{% url 'social:cancel_request' item.pk %}">{% csrf_token %}<button class="button button-outline" type="submit">Cancel</button></form></div>
-        {% endfor %}
-      {% endif %}
+      <h2>Friend kaise banein?</h2>
+      <p class="muted">Player ko Follow karo. Jab woh bhi tumhe Follow karega, dono automatically friends ban jaoge. Kisi ko unfollow karne par mutual friendship aur private chat access band ho jayega.</p>
+      <p class="muted">Followers aur Following ki alag lists profile page se khol sakte ho. Private Chat ke liye profile ka Open Private Chat button use karo.</p>
     </section>
 
     <section class="community-panel">
