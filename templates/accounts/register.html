@@ -7,6 +7,7 @@
     <div class="auth-card">
         <h1>Create Player Account</h1>
         <p>Register to join Free Fire tournaments.</p>
+        {% if verified_email %}<p class="message success">Verified email: <strong>{{ verified_email }}</strong></p>{% else %}<p><a href="{% url 'accounts:email_otp' %}">Verify email first</a></p>{% endif %}
 
         <form method="post">
             {% csrf_token %}
