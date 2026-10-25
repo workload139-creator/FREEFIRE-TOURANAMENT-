@@ -52,7 +52,7 @@ def approve_verified_deposits(modeladmin, request, queryset):
         try:
             with transaction.atomic():
                 deposit = DepositRequest.objects.select_for_update().select_related("wallet", "wallet__user").get(pk=item.pk)
-                if deposit.status != DepositRequest.Status.PENDING or not deposit.payment_reference.strip():
+                if deposit.status != DepositRequest.Status.PENDING or not deposit.payment_reference.strip() or deposit.payment_reference.startswith("ffdep_"):
                     skipped += 1
                     continue
                 reference = deposit.payment_reference.strip()
