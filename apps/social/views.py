@@ -6,7 +6,7 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from .models import FriendRequest, UserBlock, UserReport
+from .models import Follow, FriendRequest, UserBlock, UserReport
 
 User = get_user_model()
 
@@ -49,6 +49,7 @@ def friends_home(request):
                     "incoming": FriendRequest.objects.filter(
                         requester=candidate, recipient=user, status=FriendRequest.Status.PENDING
                     ).exists(),
+                    "is_following": Follow.objects.filter(follower=user, following=candidate).exists(),
                 })
 
     incoming = FriendRequest.objects.filter(
