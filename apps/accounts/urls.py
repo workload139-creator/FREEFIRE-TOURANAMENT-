@@ -10,6 +10,7 @@ urlpatterns = [
     path("register/", views.register_view, name="register"),
     path("email-otp/", email_otp_view, name="email_otp"),
     path("profile/", views.profile_view, name="profile"),
+    path("profile/edit/", views.profile_edit_view, name="profile_edit"),
     path("password/change/", views.password_change_view, name="password_change"),
     path("wallet/", views.wallet_view, name="wallet"),
     path("wallet/deposit/", views.deposit_view, name="deposit"),
