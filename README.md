@@ -13,6 +13,19 @@ Modular Django website for player accounts, tournament registrations, wallet led
 - `main.py`: shared project-level constants and feature flags.
 - `.github/workflows/django-checks.yml`: automatic migration, system-check and test workflow.
 
+## Deployment health check
+
+The public `/health/` endpoint returns HTTP 200 with `{"status":"ok","database":"ok"}` when Django can connect to its configured database. It returns HTTP 503 with a generic unhealthy response if the database is unavailable, without exposing credentials or internal exception details. After a Render deploy, open `https://freefire-touranament-74nr.onrender.com/health/` to verify the deployed app and database connection.
+
+## Render environment variables
+
+Set secrets in Render Dashboard → your web service → Environment; never commit real keys to GitHub:
+
+- Required: `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS` (include the `onrender.com` hostname), and `DATABASE_URL` when using PostgreSQL.
+- Email OTP/password reset: `BREVO_API_KEY` and `DEFAULT_FROM_EMAIL` (the sender must be verified in Brevo). SMTP fallback uses `EMAIL_HOST_USER` and `EMAIL_HOST_PASSWORD`.
+- UPI intent button: `FF_ARENA_UPI_ID`. This does not verify payment or send withdrawals automatically.
+- AI evidence proposal: `OPENAI_API_KEY` (optional; without it, use manual admin review).
+
 ## Local setup (Windows / PowerShell)
 
 1. Install Python 3.12 (or a supported Python version).
