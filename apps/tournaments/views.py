@@ -355,7 +355,7 @@ def review_kill_submission(request, submission_id):
             submission.proposed_reward = Decimal(approved_kills) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
         else:
             submission.proposed_reward = Decimal("0.00")
-        submission.approved_reward = Decimal("0.00")
+        submission.approved_reward = submission.proposed_reward
         submission.admin_notes = notes
         submission.reviewed_at = timezone.now()
         submission.status = KillSubmission.Status.APPROVED
@@ -366,7 +366,7 @@ def review_kill_submission(request, submission_id):
 
     messages.success(
         request,
-        f"Kill evidence review complete: {approved_kills} kills approved. Payment abhi nahi hua; sab submissions review hone ke baad Tournament admin se batch confirm karein.",
+        f"Kill evidence review complete: {approved_kills} kills approved. Eligible BR reward ₹{submission.approved_reward} calculate hua. Ab admin ko player ki saved UPI ID/QR par manually payout karke real UTR admin panel mein enter karna hoga; review approval se payment nahi hota.",
     )
     return redirect("tournaments:admin_kill_review")
 
