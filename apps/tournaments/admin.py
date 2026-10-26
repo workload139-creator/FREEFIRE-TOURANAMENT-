@@ -8,7 +8,7 @@ from apps.accounts.models import (
     WalletTransaction,
 )
 from .models import KillSubmission, Registration, Tournament
-from .services import award_tournament_winner, cancel_tournament_and_refund
+from .services import award_tournament_winner, cancel_tournament_and_refund, distribute_kill_prize_pool
 
 
 class TournamentAdminForm(forms.ModelForm):
@@ -65,6 +65,23 @@ class RegistrationInline(admin.TabularInline):
     )
 
 
+
+@admin.action(description="Confirm & distribute approved BR kill-prize pool (internal wallet ledger)")
+def distribute_br_kill_prizes(modeladmin, request, queryset):
+    completed = 0
+    skipped = 0
+    for tournament in queryset:
+        ok, message = distribute_kill_prize_pool(tournament.pk)
+        if ok:
+            completed += 1
+            modeladmin.message_user(request, f"{tournament.title}: {message}", messages.SUCCESS)
+        else:
+            skipped += 1
+            modeladmin.message_user(request, f"{tournament.title}: {message}", messages.WARNING)
+    if skipped and not completed:
+        modeladmin.message_user(request, "Koi prize batch distribute nahi hua.", messages.WARNING)
+
+
 @admin.action(description="Cancel tournament and refund registered players")
 def cancel_and_refund_tournaments(modeladmin, request, queryset):
     cancelled = 0
@@ -87,14 +104,14 @@ class TournamentAdmin(admin.ModelAdmin):
     list_display = (
         "title", "mode", "vs_format", "entry_fee", "prize_pool",
         "max_players", "start_time", "status", "is_unlimited_br",
-        "auto_reopen", "winner_prize_paid",
+        "auto_reopen", "winner_prize_paid", "kill_prize_distributed", "kill_prize_pool",
     )
     list_filter = ("mode", "status", "start_time")
     search_fields = ("title", "description")
     ordering = ("start_time",)
     inlines = (RegistrationInline,)
-    actions = (cancel_and_refund_tournaments,)
-    readonly_fields = ("series_root", "winner_prize_paid", "winner_prize_reference")
+    actions = (cancel_and_refund_tournaments, distribute_br_kill_prizes,)
+    readonly_fields = ("series_root", "winner_prize_paid", "winner_prize_reference", "kill_prize_distributed", "kill_prize_pool", "kill_prize_reference")
 
     def get_readonly_fields(self, request, obj=None):
         fields = list(super().get_readonly_fields(request, obj))
@@ -118,6 +135,7 @@ class TournamentAdmin(admin.ModelAdmin):
         ("Schedule & Status", {"fields": ("start_time", "status")}),
         ("Room Details", {"fields": ("room_id", "room_password")}),
         ("First Place Winner", {"fields": ("winner_uid", "winner_prize_paid", "winner_prize_reference")}),
+        ("Kill Prize Batch", {"fields": ("kill_prize_distributed", "kill_prize_pool", "kill_prize_reference")}),
     )
 
 
