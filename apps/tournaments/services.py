@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -250,8 +251,8 @@ def distribute_kill_prize_pool(tournament_id):
 
     verified = []
     total_eligible_kills = 0
-    reward_per_kill = Decimal("5.00")
-    minimum_kills = 2
+    reward_per_kill = Decimal(str(settings.REWARD_PER_APPROVED_KILL))
+    minimum_kills = int(settings.MINIMUM_VERIFIED_KILLS)
     for item in submissions:
         kills = int(item.approved_kills or 0)
         if (
