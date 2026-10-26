@@ -70,78 +70,131 @@ function initializeFormSubmission() {
 }
 
 
-/* Original synthesized esports UI tones. Audio starts only after the visitor opts in. */
+/* Original FF Arena intro voice, looping menu music and UI tones.
+   Audio is opt-in and generated in-browser; no official Free Fire recordings are bundled. */
 function initializeArenaEffects() {
     const toggle = document.getElementById("ffSoundToggle");
     if (!toggle) return;
 
     let audioContext = null;
     let enabled = false;
+    let musicTimer = null;
+    let noteIndex = 0;
     let lastSoundAt = 0;
+    let masterGain = null;
+    const melody = [110, 164.81, 220, 164.81, 130.81, 196, 261.63, 196,
+                    98, 146.83, 196, 146.83, 123.47, 185, 246.94, 185];
+
+    function ensureAudio() {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return false;
+        if (!audioContext) {
+            audioContext = new AudioContextClass();
+            masterGain = audioContext.createGain();
+            masterGain.gain.value = 0.24;
+            masterGain.connect(audioContext.destination);
+        }
+        if (audioContext.state === "suspended") audioContext.resume();
+        return true;
+    }
+
+    function tone(frequency, duration, volume, wave, destination, detune) {
+        if (!audioContext || !destination) return;
+        const start = audioContext.currentTime;
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc.type = wave || "sine";
+        osc.frequency.setValueAtTime(frequency, start);
+        if (detune) osc.detune.setValueAtTime(detune, start);
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(Math.max(volume, 0.0002), start + 0.04);
+        gain.gain.setValueAtTime(Math.max(volume, 0.0002), start + Math.max(0.05, duration - 0.08));
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+        osc.connect(gain);
+        gain.connect(destination);
+        osc.start(start);
+        osc.stop(start + duration + 0.02);
+    }
+
+    function playMusicStep() {
+        if (!enabled || !audioContext) return;
+        const root = melody[noteIndex % melody.length];
+        // Soft cinematic synth bass plus a bright, short top note.
+        tone(root, 0.62, 0.018, "triangle", masterGain);
+        if (noteIndex % 4 === 0) tone(root * 2, 0.22, 0.010, "sine", masterGain);
+        if (noteIndex % 8 === 0) tone(root * 0.5, 0.8, 0.012, "sawtooth", masterGain);
+        noteIndex += 1;
+    }
 
     function playTone(kind) {
-        if (!enabled) return;
+        if (!enabled || !ensureAudio()) return;
         const now = Date.now();
         if (now - lastSoundAt < 110) return;
         lastSoundAt = now;
+        const settings = kind === "confirm"
+            ? { from: 520, to: 880, duration: 0.15, wave: "triangle", volume: 0.045 }
+            : kind === "nav"
+            ? { from: 330, to: 440, duration: 0.08, wave: "sine", volume: 0.025 }
+            : { from: 180, to: 280, duration: 0.10, wave: "square", volume: 0.018 };
+        const start = audioContext.currentTime;
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc.type = settings.wave;
+        osc.frequency.setValueAtTime(settings.from, start);
+        osc.frequency.exponentialRampToValueAtTime(settings.to, start + settings.duration);
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(settings.volume, start + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + settings.duration);
+        osc.connect(gain);
+        gain.connect(masterGain || audioContext.destination);
+        osc.start(start);
+        osc.stop(start + settings.duration + 0.02);
+    }
+
+    function playArenaAnnouncement() {
+        if (!("speechSynthesis" in window) || !window.SpeechSynthesisUtterance) return;
         try {
-            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-            if (!AudioContextClass) return;
-            if (!audioContext) audioContext = new AudioContextClass();
-            if (audioContext.state === "suspended") audioContext.resume();
-
-            const start = audioContext.currentTime;
-            const oscillator = audioContext.createOscillator();
-            const gain = audioContext.createGain();
-            const filter = audioContext.createBiquadFilter();
-            const settings = kind === "confirm"
-                ? { from: 520, to: 880, duration: 0.13, wave: "triangle", volume: 0.045 }
-                : kind === "nav"
-                ? { from: 330, to: 440, duration: 0.075, wave: "sine", volume: 0.025 }
-                : { from: 180, to: 280, duration: 0.10, wave: "square", volume: 0.018 };
-
-            oscillator.type = settings.wave;
-            oscillator.frequency.setValueAtTime(settings.from, start);
-            oscillator.frequency.exponentialRampToValueAtTime(settings.to, start + settings.duration);
-            filter.type = "lowpass";
-            filter.frequency.setValueAtTime(2200, start);
-            gain.gain.setValueAtTime(0.0001, start);
-            gain.gain.exponentialRampToValueAtTime(settings.volume, start + 0.012);
-            gain.gain.exponentialRampToValueAtTime(0.0001, start + settings.duration);
-            oscillator.connect(filter);
-            filter.connect(gain);
-            gain.connect(audioContext.destination);
-            oscillator.start(start);
-            oscillator.stop(start + settings.duration + 0.02);
+            window.speechSynthesis.cancel();
+            const announcement = new SpeechSynthesisUtterance("Welcome to FF Arena. Get ready. Battle begins now!");
+            announcement.lang = "en-IN";
+            announcement.rate = 0.88;
+            announcement.pitch = 0.72;
+            announcement.volume = 0.75;
+            window.speechSynthesis.speak(announcement);
         } catch (_) {
-            // Sound is decorative; the site remains fully usable if audio is unavailable.
+            // Browser voice support is optional.
         }
     }
 
     function setEnabled(value) {
         enabled = value;
         toggle.setAttribute("aria-pressed", String(enabled));
-        toggle.setAttribute("aria-label", enabled ? "Turn FF Arena sound effects off" : "Enable FF Arena sound effects");
+        toggle.setAttribute("aria-label", enabled ? "Turn FF Arena music and sound off" : "Enable FF Arena music and sound");
         toggle.classList.toggle("is-on", enabled);
         const label = toggle.querySelector(".ff-sound-label");
-        if (label) label.textContent = enabled ? "SOUND ON" : "SOUND OFF";
+        if (label) label.textContent = enabled ? "MUSIC ON" : "MUSIC OFF";
         const icon = toggle.querySelector(".ff-sound-icon");
         if (icon) icon.textContent = enabled ? "♫" : "♪";
-        if (enabled) playTone("confirm");
+
+        if (enabled) {
+            if (!ensureAudio()) {
+                enabled = false;
+                toggle.setAttribute("aria-pressed", "false");
+                if (label) label.textContent = "MUSIC UNSUPPORTED";
+                return;
+            }
+            playTone("confirm");
+            playArenaAnnouncement();
+            playMusicStep();
+            musicTimer = window.setInterval(playMusicStep, 620);
+        } else {
+            if (musicTimer !== null) window.clearInterval(musicTimer);
+            musicTimer = null;
+            if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+        }
     }
 
-    toggle.addEventListener("click", () => {
-        if (!enabled) {
-            if (!audioContext) {
-                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-                if (AudioContextClass) audioContext = new AudioContextClass();
-            }
-            setEnabled(true);
-        } else {
-            enabled = false;
-            setEnabled(false);
-        }
-    });
+    toggle.addEventListener("click", () => setEnabled(!enabled));
 
     document.addEventListener("click", (event) => {
         if (!enabled || event.defaultPrevented) return;
@@ -153,4 +206,6 @@ function initializeArenaEffects() {
             playTone("click");
         }
     }, true);
+
+    // Browsers may stop audio on navigation; the visitor can re-enable it on the next page.
 }
