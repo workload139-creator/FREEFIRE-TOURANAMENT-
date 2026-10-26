@@ -140,70 +140,77 @@ class TournamentAdmin(admin.ModelAdmin):
     )
 
 
-@admin.action(description="Verify selected entry payments and confirm registrations")
+@admin.action(description="Verify UTR against actual UPI/bank receipt and confirm entry")
 def verify_entry_payments(modeladmin, request, queryset):
     verified_count = 0
     skipped_count = 0
 
     with transaction.atomic():
         for registration in queryset.select_related("tournament", "player").select_for_update():
-            if registration.payment_verified:
-                skipped_count += 1
-                continue
-
-            if registration.status != Registration.Status.PENDING_PAYMENT:
+            if registration.payment_verified or registration.status != Registration.Status.PENDING_PAYMENT:
                 skipped_count += 1
                 continue
 
             fee = registration.entry_fee_paid
+            utr = (registration.payment_reference or "").strip()
             if fee > 0:
-                ledger_exists = WalletTransaction.objects.filter(
-                    wallet__user=registration.player,
-                    transaction_type=WalletTransaction.TransactionType.ENTRY_FEE,
-                    reference=f"TOURNEY-ENTRY-{registration.pk}",
-                    amount=fee,
-                    status=WalletTransaction.Status.COMPLETED,
-                ).exists()
-                if not ledger_exists:
+                # Admin must check the actual receiving UPI/bank statement first.
+                if len(utr) < 6:
                     skipped_count += 1
                     continue
+                duplicate_utr = Registration.objects.filter(
+                    payment_reference__iexact=utr
+                ).exclude(pk=registration.pk).exists()
+                if duplicate_utr:
+                    skipped_count += 1
+                    continue
+
+                admin_reference = f"ADMIN-ENTRY-{registration.pk}"
+                if AdminWalletTransaction.objects.filter(reference=admin_reference).exists():
+                    skipped_count += 1
+                    continue
+
+                admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
+                admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
+                admin_wallet.balance += fee
+                admin_wallet.save(update_fields=["balance", "updated_at"])
+                AdminWalletTransaction.objects.create(
+                    admin_wallet=admin_wallet,
+                    transaction_type=AdminWalletTransaction.TransactionType.ENTRY_FEE,
+                    amount=fee,
+                    status=AdminWalletTransaction.Status.COMPLETED,
+                    reference=admin_reference,
+                    description=f"Manually verified UTR {utr} for tournament {registration.tournament_id}; admin checked actual bank/UPI receipt.",
+                )
 
             registration.payment_verified = True
             registration.status = Registration.Status.CONFIRMED
             registration.save(update_fields=["payment_verified", "status", "updated_at"])
-
-            if fee > 0:
-                admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
-                admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
-                admin_reference = f"ADMIN-ENTRY-{registration.pk}"
-                if not AdminWalletTransaction.objects.filter(reference=admin_reference).exists():
-                    admin_wallet.balance += fee
-                    admin_wallet.save(update_fields=["balance", "updated_at"])
-                    AdminWalletTransaction.objects.create(
-                        admin_wallet=admin_wallet,
-                        transaction_type=AdminWalletTransaction.TransactionType.ENTRY_FEE,
-                        amount=fee,
-                        status=AdminWalletTransaction.Status.COMPLETED,
-                        reference=admin_reference,
-                        description=f"Verified entry fee for tournament {registration.tournament_id}",
-                    )
             verified_count += 1
 
     if verified_count:
-        modeladmin.message_user(request, f"{verified_count} registration(s) verified and confirmed.", messages.SUCCESS)
+        modeladmin.message_user(
+            request,
+            f"{verified_count} registration(s) confirmed after admin verification. Actual UPI/bank statement check required before this action.",
+            messages.SUCCESS,
+        )
     if skipped_count:
-        modeladmin.message_user(request, f"{skipped_count} registration(s) skipped: status or wallet ledger did not qualify.", messages.WARNING)
+        modeladmin.message_user(
+            request,
+            f"{skipped_count} registration(s) skipped: already verified, missing/duplicate UTR, or transaction already recorded.",
+            messages.WARNING,
+        )
 
 
 @admin.register(Registration)
 class RegistrationAdmin(admin.ModelAdmin):
     list_display = (
         "tournament", "player", "free_fire_uid", "entry_fee_paid",
-        "payment_verified", "status", "room_details_sent",
+        "payment_verified", "payment_reference", "status", "room_details_sent",
         "ready_deadline", "refund_processed", "registered_at",
     )
     list_filter = ("status", "payment_verified", "refund_processed")
-    search_fields = ("free_fire_uid", "player__username", "tournament__title")
+    search_fields = ("free_fire_uid", "payment_reference", "player__username", "tournament__title")
     readonly_fields = (
         "registered_at", "updated_at", "ready_confirmed_at",
         "refund_processed_at",
