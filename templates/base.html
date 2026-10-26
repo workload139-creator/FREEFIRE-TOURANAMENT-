@@ -63,7 +63,15 @@
 
 <footer class="site-footer">
     <p>FF Arena · Compete with skill. Play fair.</p>
-    <p class="footer-note">Wallet and prize features must be used only after payment verification and admin review.</p>
+    <p class="footer-note">Independent community platform. Not affiliated with Garena. Paid events must be used only where lawful and after required approvals.</p>
+    <nav class="footer-links" aria-label="Legal and information">
+        <a href="{% url 'about' %}">About</a>
+        <a href="{% url 'terms' %}">Terms &amp; Conditions</a>
+        <a href="{% url 'privacy_policy' %}">Privacy</a>
+        <a href="{% url 'refund_policy' %}">Refunds &amp; Withdrawals</a>
+        <a href="{% url 'fair_play' %}">Fair Play</a>
+        <a href="mailto:workload139@gmail.com">Support</a>
+    </nav>
 </footer>
 <script src="{% static 'js/main.js' %}" defer></script>
 {% block extra_js %}{% endblock %}
