@@ -80,7 +80,7 @@ def tournament_register(request, tournament_id):
             {"tournament": tournament, "form": form},
         )
 
-    messages.success(request, "Entry fee wallet se debit ho gayi. Admin verification ke baad registration confirm hogi.")
+    messages.success(request, "Registration confirm ho gayi. Entry fee aapke wallet se debit hokar admin tournament wallet mein transfer ho gayi.")
     return redirect("tournaments:list")
 
 
