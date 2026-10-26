@@ -91,7 +91,7 @@ class WithdrawalRequestForm(forms.Form):
 class ProfileUpdateForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ("username", "email", "phone_number", "profile_photo")
+        fields = ("username", "email", "phone_number", "profile_photo", "upi_id")
         widgets = {
             "username": forms.TextInput(attrs={"autocomplete": "username"}),
             "email": forms.EmailInput(attrs={"autocomplete": "email"}),
@@ -105,6 +105,8 @@ class ProfileUpdateForm(forms.ModelForm):
         self.fields["email"].label = "Email address"
         self.fields["phone_number"].label = "Mobile number"
         self.fields["profile_photo"].label = "Profile photo"
+        self.fields["upi_id"].label = "UPI ID for tournament prize payout"
+        self.fields["upi_id"].required = False
         self.fields["profile_photo"].required = False
 
     def clean_username(self):
@@ -135,6 +137,12 @@ class ProfileUpdateForm(forms.ModelForm):
         if existing.exists():
             raise forms.ValidationError("Ye mobile number kisi aur account se linked hai.")
         return phone
+
+    def clean_upi_id(self):
+        upi_id = (self.cleaned_data.get("upi_id") or "").strip()
+        if upi_id and ("@" not in upi_id or any(char.isspace() for char in upi_id)):
+            raise forms.ValidationError("Valid UPI ID enter karein.")
+        return upi_id
 
     def clean_profile_photo(self):
         photo = self.cleaned_data.get("profile_photo")
