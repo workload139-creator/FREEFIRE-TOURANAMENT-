@@ -7,6 +7,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from urllib.parse import quote, urlencode
 from django.views.decorators.http import require_POST
@@ -64,6 +65,10 @@ def build_entry_qr_url(tournament):
 def tournament_register(request, tournament_id):
     process_expired_ready_registrations()
     tournament = get_object_or_404(Tournament, pk=tournament_id)
+    if not (request.user.upi_id or "").strip() and not request.user.upi_qr_code:
+        messages.info(request, "Tournament join karne se pehle prize receive karne ke liye apni UPI ID ya QR profile mein add karein.")
+        target = reverse("accounts:profile_edit") + "?next=" + quote(request.path, safe="")
+        return redirect(target)
 
     if request.method == "GET":
         time_closed = tournament.start_time <= timezone.now() and not tournament.is_unlimited_br
