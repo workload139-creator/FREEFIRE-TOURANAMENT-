@@ -1,4 +1,5 @@
 from datetime import timedelta
+import os
 from decimal import Decimal
 
 from django.conf import settings
@@ -44,7 +45,7 @@ def build_entry_payment_uri(tournament):
     if tournament.entry_fee <= Decimal("0.00"):
         return ""
     query = urlencode({
-        "pa": __import__("os").getenv("FF_ARENA_UPI_ID", "6232481135@fam").strip(),
+        "pa": os.getenv("FF_ARENA_UPI_ID", "6232481135@fam").strip(),
         "pn": __import__("os").getenv("FF_ARENA_UPI_NAME", "Ravibaghel").strip(),
         "am": f"{tournament.entry_fee:.2f}",
         "cu": "INR",
