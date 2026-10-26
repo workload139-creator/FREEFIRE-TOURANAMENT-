@@ -3,6 +3,36 @@
 
 {% block title %}Join {{ tournament.title }} | FF Arena{% endblock %}
 
+{% block extra_css %}
+<style>
+.tournament-register-card{max-width:760px!important;border:1px solid rgba(72,255,155,.24)!important;background:linear-gradient(150deg,rgba(9,17,27,.98),rgba(7,18,18,.98))!important;box-shadow:0 24px 70px rgba(0,0,0,.38),0 0 36px rgba(72,255,155,.05)!important}
+.tournament-register-card .auth-header{padding:25px 12px;border-radius:16px;background:linear-gradient(110deg,rgba(3,10,15,.94),rgba(15,43,32,.88)),url('{% static "images/owner-upi-qr.png" %}') right center/auto 100% no-repeat;border:1px solid rgba(72,255,155,.15)}
+.tournament-register-card .auth-header h1{letter-spacing:.06em}
+.ff-payment-panel{box-shadow:inset 0 1px rgba(255,255,255,.04),0 14px 35px rgba(0,0,0,.18)}
+.ff-payment-actions .button-outline{width:100%;text-decoration:none}
+#entryPaymentQr{display:block}
+@media(max-width:560px){.tournament-register-card{padding:20px!important}.ff-payment-panel>div{gap:14px!important}.ff-payment-panel img{width:100%;max-width:280px;margin:auto}.tournament-register-card .auth-header{padding:18px 10px}}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+ const button=document.getElementById('shareEntryQr');
+ const status=document.getElementById('qrShareStatus');
+ if(!button||!status)return;
+ const qrUrl=new URL("{% static 'images/owner-upi-qr.png' %}",window.location.origin).href;
+ button.addEventListener('click',async function(){
+  try{
+   if(navigator.share){await navigator.share({title:'FF Arena tournament payment QR',text:'Scan this QR and enter the exact tournament entry fee ₹{{ tournament.entry_fee }}. Verify receiver before paying.',url:qrUrl});status.textContent='Share menu open ho gaya.';}
+   else if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(qrUrl);status.textContent='QR link copy ho gaya. Ab ise share kar sakte hain.';}
+   else {window.open(qrUrl,'_blank','noopener');status.textContent='QR new tab mein khul gaya; image save karke share karein.';}
+  }catch(e){if(e&&e.name!=='AbortError') {window.open(qrUrl,'_blank','noopener');status.textContent='QR new tab mein khul gaya; image save karke share karein.';}}
+ });
+})();
+</script>
+{% endblock %}
+
 {% block content %}
 <section class="auth-section">
     <div class="auth-card tournament-register-card">
@@ -39,17 +69,17 @@
                 <small class="help-text">UID yahan enter karein. Isi tournament UID se leaderboard aur kill evidence match hoga.</small>
             </div>
             {% if tournament.entry_fee > 0 %}
-            <section class="profile-notice" style="margin:18px 0;padding:20px;border:1px solid #38d9a9;border-radius:16px;background:#0d1718;color:#fff">
+            <section class="profile-notice ff-payment-panel" style="margin:18px 0;padding:20px;border:1px solid #38d9a9;border-radius:16px;background:linear-gradient(145deg,#101d24,#07110f);color:#fff">
                 <h2 style="margin-top:0">🔐 Pay Entry Fee: ₹{{ tournament.entry_fee }}</h2>
-                <p><strong>Step 1:</strong> Neeche QR scan karein, ya mobile par button dabakar UPI app kholein. Amount aur receiver pehle check karein.</p>
+                <p><strong>Step 1:</strong> QR scan karein. QR generic receiving QR hai, isliye apne UPI app mein entry fee <strong>₹{{ tournament.entry_fee }}</strong> khud enter karein aur receiver verify karein. Mobile par UPI button try karein; desktop par UPI app open na ho to QR download karke phone se scan karein.</p>
                 <div style="display:flex;gap:22px;align-items:center;flex-wrap:wrap">
-                    <img src="{% static 'images/owner-upi-qr.png' %}" alt="Tournament entry payment QR" width="260" height="260" style="max-width:100%;height:auto;background:#fff;padding:10px;border-radius:12px">
+                    <a href="{% static 'images/owner-upi-qr.png' %}" target="_blank" rel="noopener" aria-label="Open full-size payment QR" style="display:block;background:#fff;padding:10px;border-radius:14px"><img id="entryPaymentQr" src="{% static 'images/owner-upi-qr.png' %}" alt="FF Arena entry payment QR" width="280" height="280" style="width:280px;max-width:100%;height:auto;object-fit:contain"></a>
                     <div style="flex:1;min-width:200px">
                         <p>QR exact entry fee ke liye hai. Payment apne UPI app mein complete karein.</p>
-                        <a class="btn-primary" href="{{ upi_payment_uri }}" style="display:inline-block;text-align:center">OPEN UPI APP &amp; PAY ₹{{ tournament.entry_fee }}</a>
+                        <div class="ff-payment-actions" style="display:grid;gap:10px;margin-top:14px"><a class="btn-primary" href="{{ upi_payment_uri }}" style="display:inline-flex;text-align:center" aria-label="Open UPI app to pay entry fee">OPEN UPI APP &amp; PAY ₹{{ tournament.entry_fee }}</a><a class="button button-outline" href="{% static 'images/owner-upi-qr.png' %}" download="ff-arena-entry-qr.png" style="display:inline-flex;justify-content:center;text-align:center;padding:12px">⬇ Download QR Code</a><button class="button button-outline" id="shareEntryQr" type="button" style="padding:12px">↗ Share QR Code</button><p id="qrShareStatus" aria-live="polite" style="font-size:12px;color:#b7c8c4;margin:0">UPI link mobile par hi open ho sakta hai; desktop par QR download karke phone se scan karein.</p></div>
                     </div>
                 </div>
-                <p style="margin-bottom:0"><strong>Step 2:</strong> Payment complete hone ke baad apne transaction details se UTR / reference number neeche enter karein. Screenshot bhejna payment proof nahi maana jayega; admin actual UPI/bank receipt verify karega.</p>
+                <p style="margin-top:18px;margin-bottom:0"><strong>Step 2:</strong> Payment complete hone ke baad apne transaction details se UTR / reference number neeche enter karein. Screenshot bhejna payment proof nahi maana jayega; admin actual UPI/bank receipt verify karega.</p>
             </section>
             <div class="form-group">
                 <label for="{{ form.payment_reference.id_for_label }}">UPI UTR / Transaction Reference</label>
