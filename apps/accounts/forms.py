@@ -9,11 +9,12 @@ from .models import DepositRequest, User
 class PlayerRegistrationForm(UserCreationForm):
     email = forms.EmailField(required=True, label="Email Address")
     phone_number = forms.CharField(max_length=15, required=True, label="Mobile Number")
+    upi_id = forms.CharField(max_length=100, required=True, label="UPI ID for tournament prize payout")
 
     class Meta:
         model = User
         fields = (
-            "username", "email", "phone_number",
+            "username", "email", "phone_number", "upi_id",
             "password1", "password2",
         )
 
@@ -45,6 +46,12 @@ class PlayerRegistrationForm(UserCreationForm):
         if User.objects.filter(phone_number=phone).exists():
             raise forms.ValidationError("Ye mobile number pehle se registered hai.")
         return phone
+
+    def clean_upi_id(self):
+        upi_id = self.cleaned_data["upi_id"].strip()
+        if "@" not in upi_id or any(char.isspace() for char in upi_id):
+            raise forms.ValidationError("Valid UPI ID enter karein, jaise name@upi.")
+        return upi_id
 
 
 class DepositRequestForm(forms.ModelForm):
