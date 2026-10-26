@@ -166,6 +166,9 @@ class Registration(models.Model):
     )
 
     payment_verified = models.BooleanField(default=False)
+    # Player-entered UPI UTR; registration stays pending until admin checks actual receipt.
+    payment_reference = models.CharField(max_length=100, blank=True, default="", db_index=True)
+    payment_submitted_at = models.DateTimeField(null=True, blank=True)
 
     status = models.CharField(
         max_length=20,
