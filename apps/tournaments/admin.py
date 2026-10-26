@@ -380,7 +380,26 @@ def mark_selected_prizes_paid(modeladmin, request, queryset):
             if duplicate:
                 skipped += 1
                 continue
+            ledger_reference = f"ADMIN-KILL-UPI-{item.pk}"
+            if AdminWalletTransaction.objects.filter(reference=ledger_reference).exists():
+                skipped += 1
+                continue
+            admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
+            admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
+            if admin_wallet.balance < item.approved_reward:
+                skipped += 1
+                continue
             # Admin must first complete the transfer in their own UPI app and enter its real UTR.
+            admin_wallet.balance -= item.approved_reward
+            admin_wallet.save(update_fields=["balance", "updated_at"])
+            AdminWalletTransaction.objects.create(
+                admin_wallet=admin_wallet,
+                transaction_type=AdminWalletTransaction.TransactionType.PRIZE,
+                amount=item.approved_reward,
+                status=AdminWalletTransaction.Status.COMPLETED,
+                reference=ledger_reference,
+                description=f"Manual UPI BR kill reward; external UTR {reference}; profile {item.player_id}; tournament {item.tournament_id}.",
+            )
             item.payout_status = KillSubmission.PayoutStatus.PAID
             item.payout_paid_at = timezone.now()
             item.save(update_fields=["payout_status", "payout_paid_at"])
