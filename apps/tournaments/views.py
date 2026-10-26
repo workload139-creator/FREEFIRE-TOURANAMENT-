@@ -220,9 +220,20 @@ def admin_tournament_dashboard(request, tournament_id):
     process_expired_ready_registrations()
     tournament = get_object_or_404(Tournament, pk=tournament_id)
     registrations = Registration.objects.filter(tournament=tournament).select_related("player").order_by("-registered_at")
+    kill_submissions = KillSubmission.objects.filter(
+        tournament=tournament
+    ).select_related("player", "registration").order_by("-submitted_at")
     context = {
         "tournament": tournament,
         "registrations": registrations,
+        "kill_submissions": kill_submissions,
+        "pending_payments": registrations.filter(payment_verified=False, entry_fee_paid__gt=0),
+        "refund_queue": registrations.filter(
+            payment_verified=True,
+            entry_fee_paid__gt=0,
+            refund_processed=False,
+            status__in=[Registration.Status.CANCELLED, Registration.Status.NOT_PLAYING],
+        ).select_related("player"),
         "total_players": registrations.count(),
         "verified_payments": registrations.filter(payment_verified=True).count(),
         "waiting_players": registrations.filter(status=Registration.Status.WAITING_READY).count(),
