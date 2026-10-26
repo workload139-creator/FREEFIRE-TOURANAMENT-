@@ -314,59 +314,28 @@ def review_kill_submission(request, submission_id):
         if approved_kills < 0 or approved_kills > 99:
             messages.error(request, "Approved kills 0 se 99 ke beech hone chahiye.")
             return redirect("tournaments:admin_kill_review")
-        if submission.free_fire_uid != submission.registered_uid or submission.registered_uid != submission.registration.free_fire_uid:
-            messages.error(request, "UID mismatch hai; payout roka gaya.")
+        if (
+            submission.free_fire_uid != submission.registered_uid
+            or submission.registered_uid != submission.registration.free_fire_uid
+        ):
+            messages.error(request, "UID mismatch hai; payout eligibility roki gayi.")
             return redirect("tournaments:admin_kill_review")
 
-        reward = Decimal(approved_kills) * Decimal("5.00")
         submission.approved_kills = approved_kills
-        submission.approved_reward = reward
+        submission.proposed_reward = Decimal(approved_kills) * Decimal("5.00")
+        submission.approved_reward = Decimal("0.00")
         submission.admin_notes = notes
         submission.reviewed_at = timezone.now()
-
-        if reward > 0:
-            admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
-            admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
-            if admin_wallet.balance < reward:
-                messages.error(request, f"Admin wallet mein balance kam hai. ₹{reward} payout approve nahi hua.")
-                return redirect("tournaments:admin_kill_review")
-
-            player_wallet, _ = Wallet.objects.get_or_create(user=submission.player)
-            player_wallet = Wallet.objects.select_for_update().get(pk=player_wallet.pk)
-            reference = f"KILL-PRIZE-{submission.pk}"
-            if WalletTransaction.objects.filter(reference=reference).exists():
-                messages.error(request, "Is submission ka payout reference pehle se maujood hai.")
-                return redirect("tournaments:admin_kill_review")
-
-            admin_wallet.balance -= reward
-            admin_wallet.save(update_fields=["balance", "updated_at"])
-            player_wallet.balance += reward
-            player_wallet.save(update_fields=["balance", "updated_at"])
-            AdminWalletTransaction.objects.create(
-                admin_wallet=admin_wallet,
-                transaction_type=AdminWalletTransaction.TransactionType.PRIZE,
-                amount=reward,
-                status=AdminWalletTransaction.Status.COMPLETED,
-                reference=reference,
-                description=f"Admin-approved kill reward for submission {submission.pk}",
-            )
-            WalletTransaction.objects.create(
-                wallet=player_wallet,
-                transaction_type=WalletTransaction.TransactionType.PRIZE,
-                amount=reward,
-                status=WalletTransaction.Status.COMPLETED,
-                reference=reference,
-                description=f"Admin-approved reward: {approved_kills} kills at ₹5 each",
-            )
-            submission.payout_reference = reference
-
         submission.status = KillSubmission.Status.APPROVED
         submission.save(update_fields=[
-            "approved_kills", "approved_reward", "admin_notes", "reviewed_at",
-            "payout_reference", "status",
+            "approved_kills", "proposed_reward", "approved_reward",
+            "admin_notes", "reviewed_at", "status",
         ])
 
-    messages.success(request, f"Admin review complete. Approved reward: ₹{reward}.")
+    messages.success(
+        request,
+        f"Kill evidence review complete: {approved_kills} kills approved. Payment abhi nahi hua; sab submissions review hone ke baad Tournament admin se batch confirm karein.",
+    )
     return redirect("tournaments:admin_kill_review")
 
 
