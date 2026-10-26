@@ -3,6 +3,8 @@ from django.contrib.auth import login
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import get_user_model
 from django.shortcuts import redirect, render
+from django.urls import reverse
+from urllib.parse import quote
 from django.utils.http import url_has_allowed_host_and_scheme
 
 
@@ -10,6 +12,12 @@ def login_view(request):
     next_url = request.POST.get("next") or request.GET.get("next", "")
 
     if request.user.is_authenticated:
+        if not (request.user.upi_id or "").strip() and not request.user.upi_qr_code:
+            messages.info(request, "Prize receive karne ke liye apni UPI ID ya QR code profile mein add karein.")
+            target = reverse("accounts:profile_edit")
+            if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+                target += "?next=" + quote(next_url, safe="")
+            return redirect(target)
         if next_url and url_has_allowed_host_and_scheme(
             next_url,
             allowed_hosts={request.get_host()},
@@ -31,8 +39,15 @@ def login_view(request):
 
         form = AuthenticationForm(request=request, data=data)
         if form.is_valid():
-            login(request, form.get_user())
+            user = form.get_user()
+            login(request, user)
             messages.success(request, "Login successful! Welcome back to FF Arena.")
+            if not (user.upi_id or "").strip() and not user.upi_qr_code:
+                messages.info(request, "Prize receive karne ke liye apni UPI ID ya QR code profile mein add karein.")
+                target = reverse("accounts:profile_edit")
+                if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+                    target += "?next=" + quote(next_url, safe="")
+                return redirect(target)
             if next_url and url_has_allowed_host_and_scheme(
                 next_url,
                 allowed_hosts={request.get_host()},
