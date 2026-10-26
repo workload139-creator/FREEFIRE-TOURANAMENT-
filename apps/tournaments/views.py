@@ -314,7 +314,12 @@ def kill_submission(request, registration_id):
                     submission.ai_confidence = ai_result["confidence"][:10]
                     submission.ai_uid_matches = ai_result["uid_matches"]
                     submission.ai_review_notes = ai_result["reason"]
-                    if ai_result["proposed_kills"] is not None and registration.tournament.mode == Tournament.Mode.BR:
+                    if (
+                        ai_result["proposed_kills"] is not None
+                        and ai_result["uid_matches"] is True
+                        and submitted_uid == registration.free_fire_uid
+                        and registration.tournament.mode == Tournament.Mode.BR
+                    ):
                         proposed_kills = int(ai_result["proposed_kills"])
                         if proposed_kills >= settings.MINIMUM_VERIFIED_KILLS:
                             submission.proposed_reward = Decimal(proposed_kills) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
