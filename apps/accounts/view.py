@@ -24,7 +24,7 @@ def register_view(request):
         return redirect("accounts:email_otp")
 
     if request.method == "POST":
-        form = PlayerRegistrationForm(request.POST)
+        form = PlayerRegistrationForm(request.POST, request.FILES)
         if form.is_valid() and form.cleaned_data["email"].lower() != verified_email.lower():
             form.add_error("email", "Wahi email use karein jise abhi OTP se verify kiya hai.")
         if form.is_valid():
