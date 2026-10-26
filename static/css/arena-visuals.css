@@ -524,3 +524,18 @@ body::after{
 @keyframes ff-card-arrive{from{opacity:.7;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:600px){.ff-sound-toggle{right:12px;bottom:12px;padding:9px 12px}.ff-sound-label{font-size:.68rem}}
 @media(prefers-reduced-motion:reduce){body::after,.site-header:after,.tournament-card,.feature-card{animation:none!important;transition:none!important}}
+
+/* Esports theme for player registration, profile edit and QR upload */
+.player-register-section{position:relative;isolation:isolate;padding:28px 16px 54px}
+.player-register-card{width:min(100%,760px);margin-inline:auto;border:1px solid rgba(65,245,210,.28);border-radius:22px;background:linear-gradient(145deg,rgba(13,20,35,.97),rgba(20,13,32,.97));box-shadow:0 20px 70px rgba(0,0,0,.38),0 0 28px rgba(0,229,190,.08)}
+.player-register-card h1{color:#f5f8ff;letter-spacing:.04em;text-shadow:0 0 18px rgba(0,229,190,.22)}
+.player-register-card .register-payout-notice,.player-register-card .profile-notice{border:1px solid rgba(0,229,190,.24);border-radius:14px;background:rgba(0,229,190,.06);color:#e7f8f6;padding:14px 16px}
+.player-register-card .register-field{margin:16px 0}
+.player-register-card .register-field label{display:block;margin-bottom:8px;color:#dbeafe;font-weight:700}
+.player-register-card .register-field input:not([type=checkbox]),.player-register-card .register-field select,.player-register-card .register-field textarea{box-sizing:border-box;width:100%;min-height:46px;border:1px solid rgba(148,163,184,.36);border-radius:12px;padding:11px 13px;background:rgba(7,12,24,.9);color:#f8fafc}
+.player-register-card .register-field input[type=file]{min-height:auto;padding:12px;border-style:dashed;cursor:pointer}
+.player-register-card .register-field input:focus,.player-register-card .register-field select:focus,.player-register-card .register-field textarea:focus{outline:2px solid rgba(0,229,190,.7);outline-offset:2px}
+.player-register-card .register-field .help-text,.player-register-card .register-field .helptext{display:block;margin-top:7px;color:#a7b7cb;font-size:.88rem;line-height:1.5}
+.player-register-card .register-field .error,.player-register-card .register-field .error-text{display:block;margin-top:6px;color:#ff9eab}
+.player-register-card button:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.45)}
+@media(max-width:560px){.player-register-section{padding:16px 10px 36px}.player-register-card{border-radius:16px;padding:16px!important}}
