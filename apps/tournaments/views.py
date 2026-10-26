@@ -1,6 +1,7 @@
 from datetime import timedelta
 from decimal import Decimal
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db import IntegrityError, transaction
@@ -244,8 +245,10 @@ def kill_submission(request, registration_id):
                     submission.ai_confidence = ai_result["confidence"][:10]
                     submission.ai_uid_matches = ai_result["uid_matches"]
                     submission.ai_review_notes = ai_result["reason"]
-                    if ai_result["proposed_kills"] is not None:
-                        submission.proposed_reward = Decimal(ai_result["proposed_kills"]) * Decimal("5.00")
+                    if ai_result["proposed_kills"] is not None and registration.tournament.mode == Tournament.Mode.BR:
+                        proposed_kills = int(ai_result["proposed_kills"])
+                        if proposed_kills >= settings.MINIMUM_VERIFIED_KILLS:
+                            submission.proposed_reward = Decimal(proposed_kills) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
                     submission.save(update_fields=[
                         "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
                         "ai_review_notes", "proposed_reward",
@@ -322,7 +325,10 @@ def review_kill_submission(request, submission_id):
             return redirect("tournaments:admin_kill_review")
 
         submission.approved_kills = approved_kills
-        submission.proposed_reward = Decimal(approved_kills) * Decimal("5.00")
+        if submission.tournament.mode == Tournament.Mode.BR and approved_kills >= settings.MINIMUM_VERIFIED_KILLS:
+            submission.proposed_reward = Decimal(approved_kills) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
+        else:
+            submission.proposed_reward = Decimal("0.00")
         submission.approved_reward = Decimal("0.00")
         submission.admin_notes = notes
         submission.reviewed_at = timezone.now()
