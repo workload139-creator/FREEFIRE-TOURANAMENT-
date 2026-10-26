@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from decimal import Decimal
+from urllib.parse import quote
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
@@ -62,13 +63,16 @@ def register_view(request):
 def login_view(request):
     next_url = request.POST.get("next") or request.GET.get("next", "")
     if request.user.is_authenticated:
+        if not (request.user.upi_id or "").strip() and not request.user.upi_qr_code:
+            messages.info(request, "Prize receive karne ke liye apni UPI ID ya QR code profile mein add karein.")
+            target = reverse("accounts:profile_edit")
+            if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+                target += "?next=" + quote(next_url, safe="")
+            return redirect(target)
         if next_url and url_has_allowed_host_and_scheme(
             next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
         ):
             return redirect(next_url)
-        if not (request.user.upi_id or "").strip() and not request.user.upi_qr_code:
-            messages.info(request, "Prize receive karne ke liye apni UPI ID ya QR code profile mein add karein.")
-            return redirect("accounts:profile_edit")
         return redirect("accounts:profile")
 
     if request.method == "POST":
@@ -77,13 +81,16 @@ def login_view(request):
             user = form.get_user()
             login(request, user)
             messages.success(request, "Login successful!")
+            if not (user.upi_id or "").strip() and not user.upi_qr_code:
+                messages.info(request, "Prize receive karne ke liye apni UPI ID ya QR code profile mein add karein.")
+                target = reverse("accounts:profile_edit")
+                if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+                    target += "?next=" + quote(next_url, safe="")
+                return redirect(target)
             if next_url and url_has_allowed_host_and_scheme(
                 next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
             ):
                 return redirect(next_url)
-            if not (user.upi_id or "").strip() and not user.upi_qr_code:
-                messages.info(request, "Prize receive karne ke liye apni UPI ID ya QR code profile mein add karein.")
-                return redirect("accounts:profile_edit")
             return redirect("accounts:profile")
     else:
         form = AuthenticationForm(request=request)
@@ -107,15 +114,18 @@ def profile_view(request):
 
 @login_required
 def profile_edit_view(request):
+    next_url = request.POST.get("next") or request.GET.get("next", "")
     if request.method == "POST":
         form = ProfileUpdateForm(request.POST, request.FILES, instance=request.user)
         if form.is_valid():
             form.save()
             messages.success(request, "Player profile update ho gayi.")
+            if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+                return redirect(next_url)
             return redirect("accounts:profile")
     else:
         form = ProfileUpdateForm(instance=request.user)
-    return render(request, "accounts/profile_edit.html", {"form": form, "player": request.user})
+    return render(request, "accounts/profile_edit.html", {"form": form, "player": request.user, "next": next_url})
 
 
 
