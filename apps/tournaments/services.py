@@ -264,8 +264,6 @@ def distribute_kill_prize_pool(tournament_id):
         ):
             return False, f"Submission #{item.pk} ka UID/registration/payment verify nahi hua; payout roka gaya."
         if kills >= minimum_kills:
-            if not (item.player.upi_id or "").strip():
-                return False, f"Player {item.player.username} (profile ID {item.player_id}) ki UPI ID profile mein missing hai."
             verified.append((item, kills))
             total_eligible_kills += kills
 
