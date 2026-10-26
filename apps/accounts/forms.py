@@ -11,13 +11,21 @@ class PlayerRegistrationForm(UserCreationForm):
     phone_number = forms.CharField(max_length=15, required=True, label="Mobile Number")
     upi_id = forms.CharField(max_length=100, required=True, label="UPI ID for tournament prize payout")
     upi_qr_code = forms.ImageField(required=True, label="Upload your UPI QR code")
-    accept_terms = forms.BooleanField(required=True, label="I agree to the Terms & Conditions and Privacy Policy")
 
     class Meta:
         model = User
         fields = (
             "username", "email", "phone_number", "upi_id", "upi_qr_code",
             "password1", "password2",
+        )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # A non-model field is added here so ModelForm's Meta.fields whitelist
+        # does not accidentally remove the required legal-consent checkbox.
+        self.fields["accept_terms"] = forms.BooleanField(
+            required=True,
+            label="I agree to the Terms & Conditions and Privacy Policy",
         )
 
     def clean_username(self):
