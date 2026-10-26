@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib import admin, messages
 from django.db import transaction
+from django.utils import timezone
 from django.utils.html import format_html
 
 from apps.accounts.models import (
@@ -370,7 +371,7 @@ class RegistrationAdmin(admin.ModelAdmin):
             "fields": ("player_profile_id", "player_email", "player_phone", "player_photo", "player_upi_destination", "player_wallet_balance"),
         }),
         ("3. Entry Payment Verification", {
-            "description": "Player ka UTR aur receiving bank/UPI statement match karein. Phir list page par registration select karke Actions → Verify UTR against actual UPI/bank receipt and confirm entry chalayein.",
+            "description": "Payment app/bank statement mein amount aur UTR dono match karna zaroori hai. Phir list page par checkbox select karein → Actions → Verify UTR against actual UPI/bank receipt and confirm entry → Go. Yeh website gateway se automatic verification nahi hai.",
             "fields": ("entry_fee_paid", "payment_reference", "payment_submitted_at", "payment_verified"),
         }),
         ("4. Match / Room Readiness", {
@@ -484,12 +485,62 @@ def mark_selected_prizes_paid(modeladmin, request, queryset):
         modeladmin.message_user(request, f"{skipped} item(s) skipped: no approved BR reward, missing/duplicate real UTR, or already paid.", messages.WARNING)
 
 
+@admin.action(description="Run / retry AI review for selected evidence")
+def run_ai_review_for_selected(modeladmin, request, queryset):
+    from .ai_review import AIReviewError, analyze_kill_evidence
+
+    reviewed = 0
+    failed = 0
+    for selected in queryset.select_related("registration", "tournament", "player"):
+        if selected.status != KillSubmission.Status.PENDING:
+            failed += 1
+            continue
+        try:
+            result = analyze_kill_evidence(selected)
+            selected.ai_proposed_kills = result["proposed_kills"]
+            selected.ai_confidence = result["confidence"][:10]
+            selected.ai_uid_matches = result["uid_matches"]
+            selected.ai_review_notes = result["reason"]
+            if (
+                result["proposed_kills"] is not None
+                and result["uid_matches"] is True
+                and selected.free_fire_uid == selected.registered_uid
+                and selected.tournament.mode == Tournament.Mode.BR
+                and int(result["proposed_kills"]) >= settings.MINIMUM_VERIFIED_KILLS
+            ):
+                selected.proposed_reward = Decimal(int(result["proposed_kills"])) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
+            else:
+                selected.proposed_reward = Decimal("0.00")
+            selected.save(update_fields=[
+                "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
+                "ai_review_notes", "proposed_reward",
+            ])
+            reviewed += 1
+        except (AIReviewError, OSError, ValueError) as exc:
+            selected.ai_review_notes = f"AI review failed: {str(exc)[:900]}"
+            selected.save(update_fields=["ai_review_notes"])
+            failed += 1
+
+    if reviewed:
+        modeladmin.message_user(
+            request,
+            f"AI review completed for {reviewed} submission(s). Proposals only—open evidence and make the final decision manually.",
+            messages.SUCCESS,
+        )
+    if failed:
+        modeladmin.message_user(
+            request,
+            f"{failed} submission(s) could not be AI-reviewed or were not pending. Check OPENAI_API_KEY, FFmpeg/imageio-ffmpeg, media storage and AI Review Notes; use manual review if unavailable.",
+            messages.WARNING,
+        )
+
+
 @admin.register(KillSubmission)
 class KillSubmissionAdmin(admin.ModelAdmin):
     list_display = (
         "id", "player", "player_profile_id", "tournament", "registered_uid", "free_fire_uid",
         "player_upi_id", "payout_qr", "status", "ai_proposed_kills", "approved_kills", "approved_reward",
-        "payout_reference", "payout_status", "payout_paid_at", "submitted_at",
+        "payout_reference", "payout_status", "payout_paid_at", "ai_confidence", "ai_uid_matches", "submitted_at",
     )
     list_filter = ("status", "payout_status", "tournament", "submitted_at")
     search_fields = ("player__username", "tournament__title", "registered_uid", "free_fire_uid", "payout_reference")
@@ -515,7 +566,7 @@ class KillSubmissionAdmin(admin.ModelAdmin):
             "fields": ("history_video", "history_image_one", "history_image_two"),
         }),
         ("3. AI Initial Review — suggestion only", {
-            "description": "AI result final decision nahi hai. Agar result missing/unclear ho to manual review karein.",
+            "description": "Pehle row checkbox select karke Actions → Run / retry AI review chala sakte hain. Iske liye Render Environment mein OPENAI_API_KEY aur video frame extraction ke liye imageio-ffmpeg/FFmpeg chahiye. AI sirf proposal hai; final decision admin karega.",
             "fields": ("ai_proposed_kills", "ai_confidence", "ai_uid_matches", "ai_review_notes", "proposed_reward"),
         }),
         ("4. Admin Final Decision — REQUIRED", {
@@ -606,4 +657,4 @@ class KillSubmissionAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
-    actions = (mark_selected_prizes_paid,)
+    actions = (run_ai_review_for_selected, mark_selected_prizes_paid,)
