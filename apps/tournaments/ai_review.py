@@ -158,8 +158,13 @@ def analyze_kill_evidence(submission):
                 "KILL_REVIEW_BASE_URL is missing. Set it to a reachable OpenAI-compatible vision API endpoint."
             )
 
-    if not api_key:
-        raise AIReviewError("AI API key is not configured; manual review is required.")
+    # Self-hosted open-source endpoints such as Ollama may not require an API key.
+    # Keep the key optional only for the explicitly configured compatible provider.
+    if provider == "openai" and not api_key:
+        raise AIReviewError("OPENAI_API_KEY is not configured; manual review is required.")
+    if provider == "compatible" and not api_key:
+        # No Authorization header is sent to keyless private/self-hosted endpoints.
+        pass
 
     try:
         video_path = submission.history_video.path
@@ -230,13 +235,13 @@ def analyze_kill_evidence(submission):
         }
         endpoint = base_url if base_url.endswith("/chat/completions") else base_url + "/chat/completions"
 
+    request_headers = {"Content-Type": "application/json"}
+    if api_key:
+        request_headers["Authorization"] = f"Bearer {api_key}"
     request = Request(
         endpoint,
         data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
+        headers=request_headers,
         method="POST",
     )
     try:
