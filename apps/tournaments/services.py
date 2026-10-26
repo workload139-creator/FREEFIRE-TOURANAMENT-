@@ -222,8 +222,8 @@ def process_expired_ready_registrations(limit=500):
 def distribute_kill_prize_pool(tournament_id):
     """
     Admin-confirmed batch distribution from the internal Admin Wallet ledger.
-    Players with 0 or 1 approved kill are excluded. The pool is total approved
-    kills * ₹5, redistributed proportionally across eligible players (>1 kill).
+    Players with 0 or 1 approved kill are excluded. Each eligible player gets
+    exactly ₹5 per approved kill; rewards are not redistributed proportionally.
     This does NOT send real UPI/bank transfers.
     """
     from .models import KillSubmission
@@ -249,7 +249,9 @@ def distribute_kill_prize_pool(tournament_id):
         return False, "Koi admin-approved kill submission nahi mili."
 
     verified = []
-    total_approved_kills = 0
+    total_eligible_kills = 0
+    reward_per_kill = Decimal("5.00")
+    minimum_kills = 2
     for item in submissions:
         kills = int(item.approved_kills or 0)
         if (
@@ -260,31 +262,22 @@ def distribute_kill_prize_pool(tournament_id):
             or item.registration.refund_processed
         ):
             return False, f"Submission #{item.pk} ka UID/registration/payment verify nahi hua; payout roka gaya."
-        total_approved_kills += kills
-        if kills > 1:
+        if kills >= minimum_kills:
             if not (item.player.upi_id or "").strip():
                 return False, f"Player {item.player.username} (profile ID {item.player_id}) ki UPI ID profile mein missing hai."
             verified.append((item, kills))
+            total_eligible_kills += kills
 
-    if total_approved_kills <= 0:
-        return False, "Total approved kills zero hai; prize pool nahi ban sakta."
-    if not verified:
-        return False, "1 se zyada approved kills wala koi eligible player nahi hai."
+    if total_eligible_kills <= 0:
+        return False, "Minimum 2 verified kills wale koi eligible player nahi hain; prize pool nahi bana."
 
-    pool = (Decimal(total_approved_kills) * Decimal("5.00")).quantize(Decimal("0.01"))
-    eligible_kills = sum(kills for _item, kills in verified)
-    # Calculate paise in integer units and assign any rounding remainder to the
-    # last eligible row so shares always sum exactly to the pool.
-    pool_paise = int(pool * 100)
-    shares = []
-    allocated = 0
-    for index, (item, kills) in enumerate(verified):
-        if index == len(verified) - 1:
-            share_paise = pool_paise - allocated
-        else:
-            share_paise = (pool_paise * kills) // eligible_kills
-            allocated += share_paise
-        shares.append((item, Decimal(share_paise) / Decimal("100")))
+    # Each eligible player receives exactly ₹5 for every approved kill.
+    # Players with 0 or 1 approved kill receive ₹0 and are excluded from the pool.
+    pool = (Decimal(total_eligible_kills) * reward_per_kill).quantize(Decimal("0.01"))
+    shares = [
+        (item, (Decimal(kills) * reward_per_kill).quantize(Decimal("0.01")))
+        for item, kills in verified
+    ]
 
     admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
     admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
