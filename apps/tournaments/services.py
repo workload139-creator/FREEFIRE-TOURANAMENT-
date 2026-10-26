@@ -98,6 +98,24 @@ def mark_not_playing_and_refund(registration_id):
                 description=f"Entry fee refund for tournament {registration.tournament_id}",
             )
 
+    if amount > 0:
+        entry_ref = f"ADMIN-ENTRY-{registration.pk}"
+        refund_ref = f"ADMIN-REFUND-{registration.pk}"
+        entry_ledger = AdminWalletTransaction.objects.filter(reference=entry_ref, status=AdminWalletTransaction.Status.COMPLETED).first()
+        if entry_ledger and not AdminWalletTransaction.objects.filter(reference=refund_ref).exists():
+            admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
+            admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
+            admin_wallet.balance -= amount
+            admin_wallet.save(update_fields=["balance", "updated_at"])
+            AdminWalletTransaction.objects.create(
+                admin_wallet=admin_wallet,
+                transaction_type=AdminWalletTransaction.TransactionType.REFUND,
+                amount=amount,
+                status=AdminWalletTransaction.Status.COMPLETED,
+                reference=refund_ref,
+                description=f"Reverse entry fee for player who missed tournament {registration.tournament_id}",
+            )
+
     registration.status = Registration.Status.NOT_PLAYING
     registration.room_details_sent = False
     registration.refund_processed = True
