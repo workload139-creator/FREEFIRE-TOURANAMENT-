@@ -66,6 +66,9 @@ def login_view(request):
             next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
         ):
             return redirect(next_url)
+        if not (request.user.upi_id or "").strip() and not request.user.upi_qr_code:
+            messages.info(request, "Prize receive karne ke liye apni UPI ID ya QR code profile mein add karein.")
+            return redirect("accounts:profile_edit")
         return redirect("accounts:profile")
 
     if request.method == "POST":
@@ -78,6 +81,9 @@ def login_view(request):
                 next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
             ):
                 return redirect(next_url)
+            if not (user.upi_id or "").strip() and not user.upi_qr_code:
+                messages.info(request, "Prize receive karne ke liye apni UPI ID ya QR code profile mein add karein.")
+                return redirect("accounts:profile_edit")
             return redirect("accounts:profile")
     else:
         form = AuthenticationForm(request=request)
