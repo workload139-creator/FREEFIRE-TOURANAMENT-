@@ -70,18 +70,17 @@ function initializeFormSubmission() {
 }
 
 
-/* Opt-in original battle ambience: rainfall, distant generic game-like shots, and UI cues.
-   No official Free Fire recordings or copyrighted assets are bundled. */
+/* Opt-in original Free Fire-inspired battle ambience: punchy gunfire, distant bursts and UI cues.
+   No rainfall and no official Free Fire recordings or copyrighted assets are bundled. */
 function initializeArenaEffects() {
     const toggle = document.getElementById("ffSoundToggle");
     if (!toggle) return;
 
     let audioContext = null;
     let masterGain = null;
-    let rainGain = null;
-    let rainSource = null;
     let ambienceTimer = null;
     let enabled = false;
+    let resumeNeeded = false;
     let lastSoundAt = 0;
     let noiseBuffer = null;
 
@@ -105,38 +104,6 @@ function initializeArenaEffects() {
         const data = noiseBuffer.getChannelData(0);
         for (let i = 0; i < length; i++) data[i] = (Math.random() * 2 - 1) * 0.7;
         return noiseBuffer;
-    }
-
-    function startRain() {
-        if (!audioContext || rainSource) return;
-        const source = audioContext.createBufferSource();
-        source.buffer = getNoiseBuffer();
-        source.loop = true;
-        const lowPass = audioContext.createBiquadFilter();
-        lowPass.type = "lowpass";
-        lowPass.frequency.value = 950;
-        const highPass = audioContext.createBiquadFilter();
-        highPass.type = "highpass";
-        highPass.frequency.value = 130;
-        rainGain = audioContext.createGain();
-        rainGain.gain.value = 0.0001;
-        source.connect(lowPass);
-        lowPass.connect(highPass);
-        highPass.connect(rainGain);
-        rainGain.connect(masterGain);
-        source.start();
-        rainGain.gain.setTargetAtTime(0.10, audioContext.currentTime, 0.8);
-        rainSource = source;
-    }
-
-    function stopRain() {
-        if (!audioContext || !rainSource) return;
-        try {
-            rainGain.gain.setTargetAtTime(0.0001, audioContext.currentTime, 0.12);
-            const source = rainSource;
-            rainSource = null;
-            window.setTimeout(() => { try { source.stop(); } catch (_) {} }, 650);
-        } catch (_) {}
     }
 
     function playGunshot(distant) {
@@ -203,16 +170,20 @@ function initializeArenaEffects() {
 
     function scheduleBattleAmbience() {
         if (!enabled) return;
-        // Sparse distant shots give a battlefield atmosphere without making every click noisy.
-        const wait = 4200 + Math.random() * 7800;
+        // Intermittent distant fire, occasional quick bursts, and rare closer shots.
+        const wait = 3000 + Math.random() * 6500;
         ambienceTimer = window.setTimeout(() => {
-            if (enabled) {
+            if (!enabled) return;
+            const roll = Math.random();
+            if (roll > 0.88) {
+                playGunshot(false);
+                window.setTimeout(() => { if (enabled) playGunshot(false); }, 170 + Math.random() * 150);
+                window.setTimeout(() => { if (enabled) playGunshot(false); }, 360 + Math.random() * 180);
+            } else {
                 playGunshot(true);
-                if (Math.random() > 0.66) {
-                    window.setTimeout(() => { if (enabled) playGunshot(true); }, 280 + Math.random() * 500);
-                }
-                scheduleBattleAmbience();
+                if (roll > 0.48) window.setTimeout(() => { if (enabled) playGunshot(true); }, 240 + Math.random() * 420);
             }
+            scheduleBattleAmbience();
         }, wait);
     }
 
@@ -233,19 +204,25 @@ function initializeArenaEffects() {
                 if (label) label.textContent = "AUDIO NOT SUPPORTED";
                 return;
             }
-            startRain();
+            resumeNeeded = false;
             playUI("confirm");
             scheduleBattleAmbience();
             try { sessionStorage.setItem("ffArenaSoundEnabled", "true"); } catch (_) {}
         } else {
-            stopRain();
             if (ambienceTimer !== null) window.clearTimeout(ambienceTimer);
             ambienceTimer = null;
             try { sessionStorage.setItem("ffArenaSoundEnabled", "false"); } catch (_) {}
         }
     }
 
-    toggle.addEventListener("click", () => setEnabled(!enabled));
+    toggle.addEventListener("click", () => {
+        if (resumeNeeded && !enabled) {
+            resumeNeeded = false;
+            setEnabled(true);
+            return;
+        }
+        setEnabled(!enabled);
+    });
 
     document.addEventListener("click", (event) => {
         if (!enabled || event.defaultPrevented) return;
@@ -261,12 +238,10 @@ function initializeArenaEffects() {
     // Remember preference across page navigation. Browsers may require one click again after reload.
     try {
         if (sessionStorage.getItem("ffArenaSoundEnabled") === "true") {
+            resumeNeeded = true;
             toggle.classList.add("sound-ready");
             const label = toggle.querySelector(".ff-sound-label");
             if (label) label.textContent = "CLICK TO RESUME SOUND";
-            toggle.addEventListener("click", () => {
-                if (!enabled) setEnabled(true);
-            }, { once: true });
         }
     } catch (_) {}
 }
