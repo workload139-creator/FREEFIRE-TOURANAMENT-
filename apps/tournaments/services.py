@@ -50,7 +50,7 @@ def award_tournament_winner(tournament_id):
     WalletTransaction.objects.create(
         wallet=player_wallet, transaction_type=WalletTransaction.TransactionType.PRIZE,
         amount=prize, status=WalletTransaction.Status.COMPLETED, reference=reference,
-        description=f"₹50 first-place prize for tournament {tournament.title}",
+        description=f"₹{prize} first-place prize for tournament {tournament.title}",
     )
     tournament.winner_prize_paid = True
     tournament.winner_prize_reference = reference
