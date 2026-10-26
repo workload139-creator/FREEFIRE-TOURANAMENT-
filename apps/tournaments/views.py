@@ -45,8 +45,8 @@ def build_entry_payment_uri(tournament):
     if tournament.entry_fee <= Decimal("0.00"):
         return ""
     query = urlencode({
-        "pa": os.getenv("FF_ARENA_UPI_ID", "6232481135@fam").strip(),
-        "pn": os.getenv("FF_ARENA_UPI_NAME", "Ravibaghel").strip(),
+        "pa": (os.getenv("FF_ARENA_UPI_ID", "").strip() or "6232481135@fam"),
+        "pn": (os.getenv("FF_ARENA_UPI_NAME", "").strip() or "Ravibaghel"),
         "am": f"{tournament.entry_fee:.2f}",
         "cu": "INR",
         "tn": f"FFArena-{tournament.pk}",
