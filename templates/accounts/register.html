@@ -9,7 +9,7 @@
         <p>Register to join Free Fire tournaments.</p>
         {% if verified_email %}<p class="message success">Verified email: <strong>{{ verified_email }}</strong></p>{% else %}<p><a href="{% url 'accounts:email_otp' %}">Verify email first</a></p>{% endif %}
 
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
 
             {% if form.non_field_errors %}
