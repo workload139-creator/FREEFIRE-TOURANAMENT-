@@ -398,3 +398,60 @@ a[href*="tournaments"],a[href*="leaderboard"],a[href*="results"]{
  50%{opacity:1;box-shadow:0 0 9px #62eaff,0 0 22px rgba(0,170,255,1),0 0 42px rgba(0,115,255,.9),0 0 64px rgba(0,115,255,.45)}
 }
 @media(prefers-reduced-motion:reduce){a[href*="register"]::before,button[name*="register"]::before,button[type="submit"]::before,input[type="submit"]::before{animation:none!important}}
+
+
+/* CINEMATIC EFFECT PACK: fire, electric arcs, golden shimmer and purple energy */
+@keyframes ff-fire-flicker{
+  0%,100%{filter:brightness(1) saturate(1.1);box-shadow:0 0 8px #ff3b12,0 0 18px #ff5a00,0 0 34px rgba(255,48,0,.55),inset 0 0 12px rgba(255,190,30,.2)}
+  35%{filter:brightness(1.28) saturate(1.4);box-shadow:0 0 12px #ff8a00,0 0 27px #ff3b12,0 0 48px rgba(255,30,0,.75),inset 0 0 18px rgba(255,210,60,.38)}
+  70%{filter:brightness(1.12) saturate(1.25);box-shadow:0 0 9px #ffcf38,0 0 22px #ff4b00,0 0 40px rgba(255,48,0,.62)}
+}
+@keyframes ff-flame-wave{
+  0%{background-position:0% 50%;transform:translateY(0) scale(1)}
+  50%{background-position:100% 50%;transform:translateY(-1px) scale(1.012)}
+  100%{background-position:0% 50%;transform:translateY(0) scale(1)}
+}
+@keyframes ff-electric{
+  0%,100%{box-shadow:0 0 7px #168cff,0 0 20px rgba(0,145,255,.5),inset 0 0 9px rgba(80,220,255,.18)}
+  25%{box-shadow:0 0 12px #7af7ff,0 0 29px #168cff,0 0 42px rgba(0,145,255,.6)}
+  27%{box-shadow:0 0 4px #fff,0 0 16px #168cff}
+  60%{box-shadow:0 0 11px #168cff,0 0 30px rgba(0,145,255,.75),0 0 48px rgba(0,145,255,.25)}
+}
+@keyframes ff-gold-shimmer{
+  0%,100%{box-shadow:0 0 8px rgba(255,205,38,.5),0 0 19px rgba(255,205,38,.22)}
+  50%{box-shadow:0 0 13px #ffe66a,0 0 30px rgba(255,190,25,.75),0 0 46px rgba(255,190,25,.25)}
+}
+@keyframes ff-red-energy{
+  0%,100%{box-shadow:0 0 8px rgba(255,35,74,.55),0 0 20px rgba(255,35,74,.24)}
+  50%{box-shadow:0 0 14px #ff345b,0 0 32px rgba(255,35,74,.8),0 0 48px rgba(255,35,74,.3)}
+}
+@keyframes ff-purple-energy{
+  0%,100%{box-shadow:0 0 8px rgba(182,107,255,.5),0 0 20px rgba(145,60,255,.22)}
+  50%{box-shadow:0 0 14px #d8a0ff,0 0 32px rgba(145,60,255,.75),0 0 48px rgba(145,60,255,.3)}
+}
+/* Fire is reserved for the main play/join action and prominent CTA buttons. */
+a[href*="join"],a[href*="play"],.btn-join,.hero-actions .btn-primary,.cta-section .button-primary{
+  position:relative;isolation:isolate;
+  background:linear-gradient(115deg,#a91508,#ff3b12,#ff8a00,#ffcf38,#ff4a12,#a91508)!important;
+  background-size:260% 260%!important;color:#fff!important;border:1px solid #ffb02e!important;
+  text-shadow:0 0 8px rgba(255,240,180,.7);
+  animation:ff-flame-wave 2.1s ease-in-out infinite,ff-fire-flicker 1.45s ease-in-out infinite!important;
+}
+a[href*="join"]::after,.btn-join::after,.hero-actions .btn-primary::after,.cta-section .button-primary::after{
+  content:"";position:absolute;inset:-5px;border-radius:inherit;z-index:-1;pointer-events:none;
+  background:linear-gradient(110deg,transparent,rgba(255,70,0,.28),rgba(255,190,25,.38),transparent);
+  filter:blur(8px);opacity:.9;animation:ff-flame-wave 1.3s ease-in-out infinite;
+}
+/* Register / submit buttons: electric blue energy. */
+a[href*="register"],button[name*="register"],button[type="submit"],input[type="submit"]{
+  animation:ff-electric 1.9s linear infinite!important;
+}
+/* Profile: warm gold glow; wallet: red hot glow; tournament/results: purple energy. */
+a[href*="profile"],a[href*="edit-profile"],a[href*="profile/edit"]{animation:ff-gold-shimmer 2.3s ease-in-out infinite!important}
+a[href*="wallet"],a[href*="withdraw"],a[href*="refund"]{animation:ff-red-energy 1.7s ease-in-out infinite!important}
+a[href*="tournaments"],a[href*="leaderboard"],a[href*="results"]{animation:ff-purple-energy 2s ease-in-out infinite!important}
+@media(prefers-reduced-motion:reduce){
+  a[href*="join"],a[href*="play"],.btn-join,.hero-actions .btn-primary,.cta-section .button-primary,
+  a[href*="register"],button[name*="register"],button[type="submit"],input[type="submit"],
+  a[href*="profile"],a[href*="wallet"],a[href*="tournaments"],a[href*="leaderboard"],a[href*="results"]{animation:none!important}
+}
