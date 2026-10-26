@@ -11,6 +11,7 @@ class PlayerRegistrationForm(UserCreationForm):
     phone_number = forms.CharField(max_length=15, required=True, label="Mobile Number")
     upi_id = forms.CharField(max_length=100, required=True, label="UPI ID for tournament prize payout")
     upi_qr_code = forms.ImageField(required=True, label="Upload your UPI QR code")
+    accept_terms = forms.BooleanField(required=True, label="I agree to the Terms & Conditions and Privacy Policy")
 
     class Meta:
         model = User
