@@ -1,4 +1,4 @@
-{% extends "admin/index.html" %}
+{% extends "admin/base_site.html" %}
 {% load i18n static %}
 {% block content %}
 <style>
@@ -29,5 +29,5 @@
   </div>
   <div class="ff-admin-note"><b>Important:</b> Website abhi payment ko apne aap UPI se transfer nahi karti. Payment/Prize/Refund ko tabhi verified ya paid mark karein jab bank/UPI app mein transaction sach mein dikh raha ho. AI bhi final judge nahi hai. Tournament start karna ho to <b>Manage Tournaments → tournament title → Schedule & Status → Status = Live → Save</b>.</div>
 </div>
-{{ block.super }}
+{% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
 {% endblock %}
