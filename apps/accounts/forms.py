@@ -9,8 +9,8 @@ from .models import DepositRequest, User
 class PlayerRegistrationForm(UserCreationForm):
     email = forms.EmailField(required=True, label="Email Address")
     phone_number = forms.CharField(max_length=15, required=True, label="Mobile Number")
-    upi_id = forms.CharField(max_length=100, required=True, label="UPI ID for tournament prize payout")
-    upi_qr_code = forms.ImageField(required=True, label="Upload your UPI QR code")
+    upi_id = forms.CharField(max_length=100, required=False, label="UPI ID for tournament prize payout (enter UPI ID or upload QR)")
+    upi_qr_code = forms.ImageField(required=False, label="Upload your UPI QR code (UPI ID or QR required)")
 
     class Meta:
         model = User
@@ -62,6 +62,20 @@ class PlayerRegistrationForm(UserCreationForm):
         if "@" not in upi_id or any(char.isspace() for char in upi_id):
             raise forms.ValidationError("Valid UPI ID enter karein, jaise name@upi.")
         return upi_id
+
+    def clean_upi_qr_code(self):
+        qr = self.cleaned_data.get("upi_qr_code")
+        if qr and qr.size > 2 * 1024 * 1024:
+            raise forms.ValidationError("UPI QR image 2 MB se chhoti honi chahiye.")
+        if qr and getattr(qr, "content_type", "") not in ("image/jpeg", "image/png", "image/webp"):
+            raise forms.ValidationError("UPI QR ke liye JPG, PNG ya WebP image upload karein.")
+        return qr
+
+    def clean(self):
+        cleaned = super().clean()
+        if not cleaned.get("upi_id") and not cleaned.get("upi_qr_code"):
+            raise forms.ValidationError("Prize receive karne ke liye apni UPI ID ya UPI QR code mein se kam-se-kam ek add karein.")
+        return cleaned
 
     def clean_upi_qr_code(self):
         qr = self.cleaned_data.get("upi_qr_code")
