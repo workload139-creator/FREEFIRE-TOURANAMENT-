@@ -26,13 +26,41 @@
         <form method="post" action="{% url 'tournaments:register' tournament.id %}">
             {% csrf_token %}
             <div class="form-group">
+                <label for="{{ form.profile_uid.id_for_label }}">Website Profile UID</label>
+                {{ form.profile_uid }}
+                {% for error in form.profile_uid.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                <small class="help-text">Aapki website profile ID: {{ request.user.id }}. Isse verify karein.</small>
+            </div>
+            <div class="form-group">
                 <label for="{{ form.free_fire_uid.id_for_label }}">Free Fire UID</label>
                 {{ form.free_fire_uid }}
                 {% for error in form.free_fire_uid.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
                 <small class="help-text">UID yahan enter karein. Isi tournament UID se leaderboard aur kill evidence match hoga.</small>
             </div>
-            <div class="profile-notice"><p>Entry fee ₹{{ tournament.entry_fee }} aapke wallet se debit hogi. Wallet mein balance kam hua to pehle deposit karein. Payment ko admin verify karega.</p></div>
-            <button type="submit" class="btn-primary">CONTINUE REGISTRATION</button>
+            {% if tournament.entry_fee > 0 %}
+            <section class="profile-notice" style="margin:18px 0;padding:20px;border:1px solid #38d9a9;border-radius:16px;background:#0d1718;color:#fff">
+                <h2 style="margin-top:0">🔐 Pay Entry Fee: ₹{{ tournament.entry_fee }}</h2>
+                <p><strong>Step 1:</strong> Neeche QR scan karein, ya mobile par button dabakar UPI app kholein. Amount aur receiver pehle check karein.</p>
+                <div style="display:flex;gap:22px;align-items:center;flex-wrap:wrap">
+                    <img src="{{ qr_image_url }}" alt="Tournament entry payment QR" width="260" height="260" style="max-width:100%;height:auto;background:#fff;padding:10px;border-radius:12px">
+                    <div style="flex:1;min-width:200px">
+                        <p>QR exact entry fee ke liye hai. Payment apne UPI app mein complete karein.</p>
+                        <a class="btn-primary" href="{{ upi_payment_uri }}" style="display:inline-block;text-align:center">OPEN UPI APP &amp; PAY ₹{{ tournament.entry_fee }}</a>
+                    </div>
+                </div>
+                <p style="margin-bottom:0"><strong>Step 2:</strong> Payment complete hone ke baad apne transaction details se UTR / reference number neeche enter karein. Screenshot bhejna payment proof nahi maana jayega; admin actual UPI/bank receipt verify karega.</p>
+            </section>
+            <div class="form-group">
+                <label for="{{ form.payment_reference.id_for_label }}">UPI UTR / Transaction Reference</label>
+                {{ form.payment_reference }}
+                {% for error in form.payment_reference.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                <small class="help-text">{{ form.payment_reference.help_text }}</small>
+            </div>
+            <div class="profile-notice"><p>Notice: Sirf UTR submit karne se registration confirm nahi hogi. Admin ke aapke payment ko verify karne ke baad hi seat confirm hogi. Duplicate UTR accept nahi hoga.</p></div>
+            {% else %}
+            <div class="profile-notice"><p>Yeh free tournament hai; registration submit karne par confirm ho jayegi.</p></div>
+            {% endif %}
+            <button type="submit" class="btn-primary">{% if tournament.entry_fee > 0 %}SUBMIT PAYMENT &amp; REGISTER{% else %}REGISTER FREE{% endif %}</button>
         </form>
     </div>
 </section>
