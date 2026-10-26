@@ -46,7 +46,7 @@ def build_entry_payment_uri(tournament):
         return ""
     query = urlencode({
         "pa": os.getenv("FF_ARENA_UPI_ID", "6232481135@fam").strip(),
-        "pn": __import__("os").getenv("FF_ARENA_UPI_NAME", "Ravibaghel").strip(),
+        "pn": os.getenv("FF_ARENA_UPI_NAME", "Ravibaghel").strip(),
         "am": f"{tournament.entry_fee:.2f}",
         "cu": "INR",
         "tn": f"FFArena-{tournament.pk}",
@@ -94,7 +94,7 @@ def tournament_register(request, tournament_id):
         return render(
             request,
             "tournaments/register.html",
-            {"tournament": tournament, "form": form, "upi_payment_uri": build_entry_payment_uri(tournament)},
+            {"tournament": tournament, "form": form, "upi_payment_uri": build_entry_payment_uri(tournament), "qr_image_url": build_entry_qr_url(tournament)},
         )
     except IntegrityError:
         form.add_error(None, "Registration nahi ho saki; aap pehle se registered ho sakte hain.")
