@@ -44,8 +44,8 @@ def build_entry_payment_uri(tournament):
     if tournament.entry_fee <= Decimal("0.00"):
         return ""
     query = urlencode({
-        "pa": "6232481135@fam",
-        "pn": "Ravibaghel",
+        "pa": __import__("os").getenv("FF_ARENA_UPI_ID", "6232481135@fam").strip(),
+        "pn": __import__("os").getenv("FF_ARENA_UPI_NAME", "Ravibaghel").strip(),
         "am": f"{tournament.entry_fee:.2f}",
         "cu": "INR",
         "tn": f"FFArena-{tournament.pk}",
@@ -79,7 +79,7 @@ def tournament_register(request, tournament_id):
 
     form = RegistrationForm(request.POST, user=request.user, tournament=tournament)
     if not form.is_valid():
-        return render(request, "tournaments/register.html", {"tournament": tournament, "form": form, "upi_payment_uri": build_entry_payment_uri(tournament)})
+        return render(request, "tournaments/register.html", {"tournament": tournament, "form": form, "upi_payment_uri": build_entry_payment_uri(tournament), "qr_image_url": build_entry_qr_url(tournament)})
 
     try:
         create_pending_registration(
@@ -100,7 +100,7 @@ def tournament_register(request, tournament_id):
         return render(
             request,
             "tournaments/register.html",
-            {"tournament": tournament, "form": form},
+            {"tournament": tournament, "form": form, "upi_payment_uri": build_entry_payment_uri(tournament), "qr_image_url": build_entry_qr_url(tournament)},
         )
 
     if tournament.entry_fee > Decimal("0.00"):
