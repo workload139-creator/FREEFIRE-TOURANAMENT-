@@ -19,6 +19,10 @@
             <p>Status: {{ deposit.get_status_display }}</p>
             <small>{{ deposit.created_at|date:"d M Y, h:i A" }}</small>
             {% if deposit.payment_reference %}<p>Bank/payment reference: {{ deposit.payment_reference }}</p>{% endif %}
+            {% if deposit.status == "pending" and deposit.payment_reference|slice:":4" == "ffw_" %}
+                <p><a class="button button-outline" href="{% url 'accounts:cashfree_return' %}?order_id={{ deposit.payment_reference|urlencode }}">Check Cashfree payment status</a></p>
+                <small>Ye button Cashfree se status verify karta hai; sirf successful verified payment hi wallet mein credit hogi.</small>
+            {% endif %}
         </div>
     {% empty %}
         <p>Abhi koi deposit request nahi hai.</p>
