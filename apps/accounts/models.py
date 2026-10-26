@@ -22,6 +22,7 @@ class User(AbstractUser):
     uid_verified = models.BooleanField(default=False)
 
     upi_id = models.CharField(max_length=100, blank=True)
+    upi_qr_code = models.ImageField(upload_to="player_upi_qr/", blank=True, null=True)
     upi_verified = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
