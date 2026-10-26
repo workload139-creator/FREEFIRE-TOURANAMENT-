@@ -58,8 +58,8 @@ class PlayerRegistrationForm(UserCreationForm):
         return phone
 
     def clean_upi_id(self):
-        upi_id = self.cleaned_data["upi_id"].strip()
-        if "@" not in upi_id or any(char.isspace() for char in upi_id):
+        upi_id = (self.cleaned_data.get("upi_id") or "").strip()
+        if upi_id and ("@" not in upi_id or any(char.isspace() for char in upi_id)):
             raise forms.ValidationError("Valid UPI ID enter karein, jaise name@upi.")
         return upi_id
 
