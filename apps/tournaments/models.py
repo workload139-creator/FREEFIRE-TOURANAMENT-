@@ -95,6 +95,11 @@ class Tournament(models.Model):
     winner_prize_paid = models.BooleanField(default=False)
     winner_prize_reference = models.CharField(max_length=100, blank=True, default="")
 
+    # Kill-based prize batch is an internal ledger distribution, not a bank transfer.
+    kill_prize_distributed = models.BooleanField(default=False)
+    kill_prize_pool = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    kill_prize_reference = models.CharField(max_length=100, blank=True, default="")
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
