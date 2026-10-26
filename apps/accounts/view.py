@@ -184,21 +184,43 @@ from .models import DepositRequest, Wallet, WalletTransaction
 
 @login_required
 def deposit_view(request):
-    """Create a pending wallet deposit and open the player's UPI app.
-
-    This does not claim to verify UPI payment. An admin must reconcile the
-    incoming bank/UPI statement and record the bank reference before crediting.
-    """
+    """Create a manual UPI deposit request; credit only after admin verifies bank receipt."""
+    import base64
+    import io
     import os
+    import re
     from urllib.parse import urlencode
+
+    import qrcode
 
     wallet, _ = Wallet.objects.get_or_create(user=request.user)
     upi_id = os.getenv("FF_ARENA_UPI_ID", "").strip()
     deposit = None
     upi_uri = ""
+    qr_data_uri = ""
+    submitted_for_verification = False
+    form = DepositRequestForm(request.POST or None)
 
-    if request.method == "POST":
-        form = DepositRequestForm(request.POST)
+    if request.method == "POST" and request.POST.get("confirm_payment") == "1":
+        deposit_id = request.POST.get("deposit_id", "").strip()
+        utr = request.POST.get("utr", "").strip()
+        deposit = DepositRequest.objects.filter(
+            pk=deposit_id, wallet=wallet, status=DepositRequest.Status.PENDING
+        ).first()
+        if deposit is None:
+            messages.error(request, "Pending deposit request nahi mila. Nayi request banayein.")
+            form = DepositRequestForm()
+        elif not re.fullmatch(r"[A-Za-z0-9-]{6,40}", utr):
+            messages.error(request, "UPI app ka valid UTR/transaction reference (6–40 characters) enter karein.")
+        elif DepositRequest.objects.filter(payment_reference=utr).exclude(pk=deposit.pk).exists() or WalletTransaction.objects.filter(reference=utr).exists():
+            messages.error(request, "Ye UTR pehle use ho chuka hai. Apna naya transaction reference enter karein.")
+        else:
+            deposit.payment_reference = utr
+            deposit.save(update_fields=["payment_reference"])
+            submitted_for_verification = True
+            messages.success(request, "UTR submit ho gaya. Admin actual bank statement se verify karega; verification se pehle wallet credit nahi hoga.")
+
+    elif request.method == "POST":
         if not upi_id:
             form.add_error(None, "UPI deposit abhi configure nahi hai. Admin se FF_ARENA_UPI_ID set karwayein.")
         if form.is_valid():
@@ -207,42 +229,35 @@ def deposit_view(request):
                 wallet = Wallet.objects.select_for_update().get(pk=wallet.pk)
                 pending_total = sum(
                     DepositRequest.objects.filter(
-                        wallet=wallet,
-                        status=DepositRequest.Status.PENDING,
+                        wallet=wallet, status=DepositRequest.Status.PENDING
                     ).values_list("amount", flat=True),
                     start=Decimal("0.00"),
                 )
                 if wallet.balance + pending_total + amount > Decimal("5000.00"):
-                    form.add_error(
-                        "amount",
-                        "Wallet limit ₹5000 hai. Pending requests bhi limit mein count hongi.",
-                    )
+                    form.add_error("amount", "Wallet limit ₹5000 hai. Pending requests bhi limit mein count hongi.")
                 else:
-                    deposit = DepositRequest.objects.create(
-                        wallet=wallet,
-                        amount=amount,
-                        payment_reference="",
-                    )
+                    deposit = DepositRequest.objects.create(wallet=wallet, amount=amount)
                     upi_uri = "upi://pay?" + urlencode({
                         "pa": upi_id,
                         "pn": "FF Arena",
                         "am": f"{amount:.2f}",
                         "cu": "INR",
-                        "tn": f"FF Arena wallet deposit {deposit.pk}",
+                        "tn": f"{wallet.wallet_id} deposit {deposit.pk}",
                     })
-                    messages.info(
-                        request,
-                        "UPI payment karein. Wallet mein paisa tabhi aayega jab admin actual bank receipt verify karega.",
-                    )
-    else:
-        form = DepositRequestForm()
+    if deposit and upi_id and not submitted_for_verification and not deposit.payment_reference:
+        upi_uri = "upi://pay?" + urlencode({
+            "pa": upi_id, "pn": "FF Arena", "am": f"{deposit.amount:.2f}",
+            "cu": "INR", "tn": f"{wallet.wallet_id} deposit {deposit.pk}",
+        })
+        qr = qrcode.make(upi_uri)
+        buffer = io.BytesIO()
+        qr.save(buffer, format="PNG")
+        qr_data_uri = "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode("ascii")
 
     return render(request, "accounts/deposit.html", {
-        "form": form,
-        "wallet": wallet,
-        "deposit": deposit,
-        "upi_id": upi_id,
-        "upi_uri": upi_uri,
+        "form": form, "wallet": wallet, "deposit": deposit, "upi_id": upi_id,
+        "upi_uri": upi_uri, "qr_data_uri": qr_data_uri,
+        "submitted_for_verification": submitted_for_verification,
     })
 
 
