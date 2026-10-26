@@ -216,3 +216,126 @@ def process_expired_ready_registrations(limit=500):
         if changed:
             processed += 1
     return processed
+
+
+@transaction.atomic
+def distribute_kill_prize_pool(tournament_id):
+    """
+    Admin-confirmed batch distribution from the internal Admin Wallet ledger.
+    Players with 0 or 1 approved kill are excluded. The pool is total approved
+    kills * ₹5, redistributed proportionally across eligible players (>1 kill).
+    This does NOT send real UPI/bank transfers.
+    """
+    from .models import KillSubmission
+
+    tournament = Tournament.objects.select_for_update().get(pk=tournament_id)
+    if tournament.mode != Tournament.Mode.BR:
+        return False, "Kill-based ₹5 payout batch sirf BR tournament ke liye hai."
+    if tournament.kill_prize_distributed:
+        return False, "Is tournament ka kill prize batch pehle distribute ho chuka hai."
+
+    if KillSubmission.objects.filter(
+        tournament=tournament, status=KillSubmission.Status.PENDING
+    ).exists():
+        return False, "Pehle is tournament ki sabhi pending kill submissions review karein."
+
+    submissions = list(
+        KillSubmission.objects.select_for_update()
+        .select_related("player", "registration")
+        .filter(tournament=tournament, status=KillSubmission.Status.APPROVED)
+        .order_by("pk")
+    )
+    if not submissions:
+        return False, "Koi admin-approved kill submission nahi mili."
+
+    verified = []
+    total_approved_kills = 0
+    for item in submissions:
+        kills = int(item.approved_kills or 0)
+        if (
+            item.registered_uid != item.free_fire_uid
+            or item.registered_uid != item.registration.free_fire_uid
+            or item.registration.tournament_id != tournament.pk
+            or not item.registration.payment_verified
+            or item.registration.refund_processed
+        ):
+            return False, f"Submission #{item.pk} ka UID/registration/payment verify nahi hua; payout roka gaya."
+        total_approved_kills += kills
+        if kills > 1:
+            if not (item.player.upi_id or "").strip():
+                return False, f"Player {item.player.username} (profile ID {item.player_id}) ki UPI ID profile mein missing hai."
+            verified.append((item, kills))
+
+    if total_approved_kills <= 0:
+        return False, "Total approved kills zero hai; prize pool nahi ban sakta."
+    if not verified:
+        return False, "1 se zyada approved kills wala koi eligible player nahi hai."
+
+    pool = (Decimal(total_approved_kills) * Decimal("5.00")).quantize(Decimal("0.01"))
+    eligible_kills = sum(kills for _item, kills in verified)
+    # Calculate paise in integer units and assign any rounding remainder to the
+    # last eligible row so shares always sum exactly to the pool.
+    pool_paise = int(pool * 100)
+    shares = []
+    allocated = 0
+    for index, (item, kills) in enumerate(verified):
+        if index == len(verified) - 1:
+            share_paise = pool_paise - allocated
+        else:
+            share_paise = (pool_paise * kills) // eligible_kills
+            allocated += share_paise
+        shares.append((item, Decimal(share_paise) / Decimal("100")))
+
+    admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
+    admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
+    if admin_wallet.balance < pool:
+        return False, f"Admin Wallet mein ₹{pool} chahiye, abhi ₹{admin_wallet.balance} hai. Batch distribute nahi hua."
+
+    batch_reference = f"KILL-BATCH-{tournament.pk}"
+    if AdminWalletTransaction.objects.filter(reference=batch_reference).exists():
+        return False, "Is tournament ka batch reference pehle se maujood hai."
+
+    for item, amount in shares:
+        if amount <= 0:
+            continue
+        reference = f"KILL-PRIZE-{item.pk}"
+        if WalletTransaction.objects.filter(reference=reference).exists():
+            return False, f"Submission #{item.pk} ka payout reference pehle se maujood hai; batch roka gaya."
+
+    # All validations happen before balances are changed.
+    admin_wallet.balance -= pool
+    admin_wallet.save(update_fields=["balance", "updated_at"])
+    AdminWalletTransaction.objects.create(
+        admin_wallet=admin_wallet,
+        transaction_type=AdminWalletTransaction.TransactionType.PRIZE,
+        amount=pool,
+        status=AdminWalletTransaction.Status.COMPLETED,
+        reference=batch_reference,
+        description=f"Kill-based prize pool for BR tournament {tournament.title}; {total_approved_kills} total approved kills",
+    )
+
+    for item, amount in shares:
+        item.approved_reward = amount
+        item.payout_reference = f"KILL-PRIZE-{item.pk}"
+        if amount > 0:
+            player_wallet, _ = Wallet.objects.get_or_create(user=item.player)
+            player_wallet = Wallet.objects.select_for_update().get(pk=player_wallet.pk)
+            player_wallet.balance += amount
+            player_wallet.save(update_fields=["balance", "updated_at"])
+            WalletTransaction.objects.create(
+                wallet=player_wallet,
+                transaction_type=WalletTransaction.TransactionType.PRIZE,
+                amount=amount,
+                status=WalletTransaction.Status.COMPLETED,
+                reference=item.payout_reference,
+                description=f"BR kill-prize share: {item.approved_kills} kills; profile ID {item.player_id}; FF UID {item.registered_uid}. Internal wallet credit; not a UPI transfer.",
+            )
+        item.save(update_fields=["approved_reward", "payout_reference"])
+
+    tournament.kill_prize_distributed = True
+    tournament.kill_prize_pool = pool
+    tournament.kill_prize_reference = batch_reference
+    tournament.save(update_fields=[
+        "kill_prize_distributed", "kill_prize_pool", "kill_prize_reference", "updated_at"
+    ])
+    return True, f"₹{pool} ledger prize pool distribute hua. Eligible players: {len(verified)}; total approved kills: {total_approved_kills}. Real UPI payout abhi nahi bheja gaya."
