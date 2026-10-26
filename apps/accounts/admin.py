@@ -92,12 +92,49 @@ class AdminWalletAdmin(admin.ModelAdmin):
     readonly_fields = ("balance", "created_at", "updated_at")
 
 
+@admin.action(description="Confirm received admin UPI deposit and add it to Admin Wallet")
+def confirm_admin_wallet_topups(modeladmin, request, queryset):
+    credited = 0
+    skipped = 0
+    for item in queryset:
+        with transaction.atomic():
+            entry = AdminWalletTransaction.objects.select_for_update().select_related(
+                "admin_wallet"
+            ).get(pk=item.pk)
+            if (
+                entry.transaction_type != AdminWalletTransaction.TransactionType.TOP_UP
+                or entry.status != AdminWalletTransaction.Status.PENDING
+                or not entry.reference.strip()
+            ):
+                skipped += 1
+                continue
+            wallet = AdminWallet.objects.select_for_update().get(pk=entry.admin_wallet_id)
+            wallet.balance += entry.amount
+            wallet.save(update_fields=("balance", "updated_at"))
+            entry.status = AdminWalletTransaction.Status.COMPLETED
+            entry.save(update_fields=("status",))
+            credited += 1
+    if credited:
+        modeladmin.message_user(
+            request,
+            f"{credited} verified admin deposit(s) added to the Admin Wallet ledger.",
+            messages.SUCCESS,
+        )
+    if skipped:
+        modeladmin.message_user(
+            request,
+            f"{skipped} item(s) skipped. Only pending top-ups with a UPI/bank reference can be confirmed.",
+            messages.WARNING,
+        )
+
+
 @admin.register(AdminWalletTransaction)
 class AdminWalletTransactionAdmin(admin.ModelAdmin):
     list_display = ("admin_wallet", "transaction_type", "amount", "status", "reference", "created_at")
     list_filter = ("transaction_type", "status")
     search_fields = ("admin_wallet__name", "reference", "description")
     readonly_fields = ("created_at",)
+    actions = (confirm_admin_wallet_topups,)
 
 
 
