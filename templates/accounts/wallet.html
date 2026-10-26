@@ -9,11 +9,8 @@
         <p>Wallet ID: <strong>{{ wallet.wallet_id }}</strong></p>
         <p>Available Balance</p>
         <h2>₹{{ wallet.balance }}</h2>
-        <div style="margin:18px 0;padding:18px;border:1px solid rgba(255,215,120,.38);border-radius:14px;background:linear-gradient(135deg,rgba(255,215,120,.08),rgba(72,255,155,.05))">
-            <strong style="color:#ffd778">🔒 Wallet deposits &amp; withdrawals: Not available yet</strong>
-            <p style="margin:8px 0 0">Wallet top-up aur withdrawal feature abhi available nahi hai. Is feature ko baad mein enable kiya jayega. Abhi tournament entry fee ke liye registration page par diya gaya UPI QR use karein aur UTR admin se verify karwayein.</p>
-        </div>
-        <p><a class="button button-outline" href="{% url 'tournaments:my_registrations' %}">My Tournaments</a></p>
+        <p>Deposit minimum ₹10 hai. Maximum wallet balance ₹5000 hai.</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap"><a class="button button-primary" href="{% url 'accounts:deposit' %}">Deposit to Wallet</a><a class="button button-outline" href="{% url 'accounts:withdraw' %}">Redeem / Withdraw to UPI</a><a class="button button-outline" href="{% url 'tournaments:my_registrations' %}">My Tournaments</a></div>
     </div>
     <h2 style="margin-top:30px">Deposit Requests</h2>
     {% for deposit in deposit_requests %}

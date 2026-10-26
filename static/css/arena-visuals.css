@@ -236,3 +236,105 @@ tr:hover td { background:rgba(72,255,155,.035); }
   th,td { padding:9px 7px; font-size:.86rem; }
 }
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; transition-duration:.01ms!important; animation-duration:.01ms!important; } }
+
+
+/* FF ARENA NEON OVERDRIVE — premium esports glow pass */
+:root{
+ --neon-yellow:#ffe65c;--neon-blue:#45b8ff;--neon-red:#ff365d;
+ --neon-violet:#b66bff;--neon-cyan:#40fff0;
+}
+body{
+ background:
+  radial-gradient(ellipse at 8% 8%,rgba(255,54,93,.12),transparent 27%),
+  radial-gradient(ellipse at 90% 18%,rgba(69,184,255,.13),transparent 29%),
+  radial-gradient(ellipse at 70% 88%,rgba(255,230,92,.08),transparent 30%),
+  linear-gradient(180deg,rgba(3,6,12,.90),rgba(3,6,12,.97)),
+  url("https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=2200&q=90") center top/cover fixed,#03060c;
+}
+.site-header{
+ position:relative;
+ border-bottom:1px solid rgba(64,255,240,.6);
+ box-shadow:0 4px 32px rgba(64,255,240,.12),0 12px 38px rgba(0,0,0,.5);
+}
+.site-header:after{
+ content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;
+ background:linear-gradient(90deg,transparent,var(--neon-red),var(--neon-yellow),var(--neon-blue),var(--neon-violet),transparent);
+ background-size:220% 100%;animation:ff-spectrum 8s linear infinite;pointer-events:none;
+}
+.brand-icon{
+ background:linear-gradient(145deg,#fff38a,#ff9b35 58%,#ff365d)!important;
+ box-shadow:0 0 14px rgba(255,230,92,.55),0 0 34px rgba(255,54,93,.25)!important;
+}
+.brand strong{color:var(--neon-yellow)!important;text-shadow:0 0 12px rgba(255,230,92,.6),0 0 28px rgba(255,230,92,.2)}
+.main-nav>a:hover{color:var(--neon-cyan)!important;text-shadow:0 0 12px rgba(64,255,240,.65)}
+.button-primary,.btn-primary,.button.button-primary,.btn-join{
+ border-color:rgba(255,230,92,.85)!important;
+ background:linear-gradient(110deg,#ff365d,#ff9b35 46%,#ffe65c)!important;
+ box-shadow:0 0 12px rgba(255,54,93,.4),0 0 28px rgba(255,230,92,.18),inset 0 1px rgba(255,255,255,.25)!important;
+ animation:ff-button-pulse 3.5s ease-in-out infinite;
+}
+.button-primary:hover,.btn-primary:hover,.button.button-primary:hover,.btn-join:hover{
+ box-shadow:0 0 18px rgba(255,54,93,.7),0 0 42px rgba(255,230,92,.35)!important;
+}
+.button-outline,.btn-secondary{
+ border-color:rgba(69,184,255,.5)!important;
+ box-shadow:inset 0 0 14px rgba(69,184,255,.035),0 0 12px rgba(69,184,255,.08);
+}
+.button-outline:hover,.btn-secondary:hover{border-color:var(--neon-blue)!important;box-shadow:0 0 18px rgba(69,184,255,.28);color:#a9e4ff!important}
+.hero{
+ border-color:rgba(255,230,92,.45)!important;
+ box-shadow:0 0 0 1px rgba(69,184,255,.08),0 0 24px rgba(255,54,93,.12),0 28px 90px rgba(0,0,0,.58),inset 0 0 50px rgba(69,184,255,.05)!important;
+}
+.hero:after{height:3px;background:linear-gradient(90deg,var(--neon-red),var(--neon-yellow),var(--neon-blue),var(--neon-violet),var(--neon-red));background-size:250% 100%;animation:ff-spectrum 7s linear infinite}
+.hero h1 span{color:var(--neon-yellow)!important;text-shadow:0 0 10px rgba(255,230,92,.55),0 0 36px rgba(255,230,92,.22)!important}
+.hero .badge{box-shadow:0 0 18px rgba(255,230,92,.10),inset 0 0 14px rgba(255,230,92,.04)}
+.hero-card{border-color:rgba(69,184,255,.6)!important;box-shadow:0 0 18px rgba(69,184,255,.12),0 18px 60px rgba(0,0,0,.6)!important}
+.stats .stat-card:nth-child(3n+1),.tournament-grid .tournament-card:nth-child(3n+1),.features-grid .feature-card:nth-child(3n+1){--card-neon:var(--neon-yellow)}
+.stats .stat-card:nth-child(3n+2),.tournament-grid .tournament-card:nth-child(3n+2),.features-grid .feature-card:nth-child(3n+2){--card-neon:var(--neon-blue)}
+.stats .stat-card:nth-child(3n),.tournament-grid .tournament-card:nth-child(3n),.features-grid .feature-card:nth-child(3n){--card-neon:var(--neon-red)}
+.stat-card,.tournament-card,.feature-card,.cta-section,.empty-state{
+ position:relative;isolation:isolate;
+ border-color:color-mix(in srgb,var(--card-neon,var(--accent)) 42%,transparent)!important;
+ box-shadow:0 0 0 1px rgba(255,255,255,.015),0 0 22px color-mix(in srgb,var(--card-neon,var(--accent)) 10%,transparent),0 18px 45px rgba(0,0,0,.28)!important;
+ transition:transform .24s ease,border-color .24s ease,box-shadow .24s ease!important;
+}
+.stat-card:hover,.tournament-card:hover,.feature-card:hover{
+ transform:translateY(-5px)!important;
+ border-color:var(--card-neon,var(--neon-cyan))!important;
+ box-shadow:0 0 12px color-mix(in srgb,var(--card-neon,var(--accent)) 28%,transparent),0 0 34px color-mix(in srgb,var(--card-neon,var(--accent)) 17%,transparent),0 22px 52px rgba(0,0,0,.4)!important;
+}
+.stat-card h3,.feature-card h3{ text-shadow:0 0 16px color-mix(in srgb,var(--card-neon,var(--accent)) 22%,transparent)}
+.tournament-banner,.feature-card{
+ background-size:cover!important;background-position:center!important;
+}
+.tournament-banner:after,.feature-card:after{
+ content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+ background:linear-gradient(135deg,rgba(255,54,93,.12),transparent 42%,rgba(69,184,255,.12));
+}
+.tournament-banner>* ,.feature-card>*{position:relative;z-index:1}
+.section-label,.eyebrow{color:var(--neon-yellow)!important;text-shadow:0 0 12px rgba(255,230,92,.18)}
+h2 span{ text-shadow:0 0 18px rgba(69,184,255,.2)}
+.cta-section{
+ background:linear-gradient(130deg,rgba(255,54,93,.12),rgba(6,15,24,.96) 42%,rgba(69,184,255,.12)),url("https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1800&q=85") center/cover!important;
+ border-color:rgba(182,107,255,.45)!important;
+ box-shadow:0 0 28px rgba(182,107,255,.12),0 24px 70px rgba(0,0,0,.35)!important;
+}
+.site-footer{border-top-color:rgba(255,54,93,.45)!important;box-shadow:0 -12px 40px rgba(255,54,93,.04)}
+input:focus,select:focus,textarea:focus{
+ border-color:var(--neon-blue)!important;box-shadow:0 0 0 3px rgba(69,184,255,.12),0 0 18px rgba(69,184,255,.14)!important;outline:none;
+}
+table{border-color:rgba(69,184,255,.22)!important}
+thead th{background:linear-gradient(90deg,rgba(255,54,93,.14),rgba(69,184,255,.13))!important;color:#f4f8ff!important}
+tr:hover td{background:rgba(69,184,255,.055)!important}
+.admin-neon-hero{
+ padding:clamp(22px,4vw,40px);border:1px solid rgba(69,184,255,.45);border-radius:22px;
+ background:linear-gradient(100deg,rgba(4,10,17,.96),rgba(4,12,22,.72)),url("https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1800&q=85") center/cover;
+ box-shadow:0 0 25px rgba(69,184,255,.12),0 18px 50px rgba(0,0,0,.3);margin-bottom:22px;
+}
+.admin-neon-hero h1{color:#fff;text-shadow:0 0 18px rgba(69,184,255,.25)}
+.admin-shortcuts{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+.admin-shortcuts a{display:inline-flex;align-items:center;justify-content:center;padding:11px 16px;border-radius:10px;text-decoration:none}
+@keyframes ff-spectrum{0%{background-position:0% 50%}100%{background-position:250% 50%}}
+@keyframes ff-button-pulse{0%,100%{filter:drop-shadow(0 0 0 rgba(255,230,92,0))}50%{filter:drop-shadow(0 0 7px rgba(255,230,92,.23))}}
+@media(max-width:600px){.main-nav{box-shadow:0 16px 30px rgba(0,0,0,.45)}.admin-neon-hero{padding:20px 16px}}
+@media(prefers-reduced-motion:reduce){.site-header:after,.hero:after,.button-primary,.btn-primary,.button.button-primary,.btn-join{animation:none!important}}
