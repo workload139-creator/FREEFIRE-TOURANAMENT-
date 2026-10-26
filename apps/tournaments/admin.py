@@ -417,8 +417,8 @@ class KillSubmissionAdmin(admin.ModelAdmin):
         "player_upi_id", "payout_qr", "status", "ai_proposed_kills", "approved_kills", "approved_reward",
         "payout_reference", "payout_status", "payout_paid_at", "submitted_at",
     )
-    list_filter = ("status", "tournament", "submitted_at")
-    search_fields = ("player__username", "tournament__title", "registered_uid", "free_fire_uid")
+    list_filter = ("status", "payout_status", "tournament", "submitted_at")
+    search_fields = ("player__username", "tournament__title", "registered_uid", "free_fire_uid", "payout_reference")
     readonly_fields = (
         "registration", "player", "tournament", "registered_uid", "free_fire_uid",
         "history_video", "history_image_one", "history_image_two",
