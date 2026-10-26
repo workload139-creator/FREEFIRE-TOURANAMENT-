@@ -252,7 +252,15 @@ class KillSubmission(models.Model):
         max_length=12, choices=Status.choices, default=Status.PENDING, db_index=True
     )
     admin_notes = models.TextField(blank=True)
-    payout_reference = models.CharField(max_length=100, blank=True, default="")
+    payout_reference = models.CharField(
+        max_length=100, blank=True, default="",
+        help_text="After sending prize manually to the player's UPI ID/QR, enter the real UPI transaction reference here and use the admin action to mark it paid.",
+    )
+    class PayoutStatus(models.TextChoices):
+        PENDING = "pending", "Pending Manual UPI Payout"
+        PAID = "paid", "Paid by UPI"
+    payout_status = models.CharField(max_length=10, choices=PayoutStatus.choices, default=PayoutStatus.PENDING, db_index=True)
+    payout_paid_at = models.DateTimeField(null=True, blank=True)
     submitted_at = models.DateTimeField(auto_now_add=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)
 
