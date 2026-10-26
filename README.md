@@ -24,7 +24,7 @@ Set secrets in Render Dashboard → your web service → Environment; never comm
 - Required: `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS` (include the `onrender.com` hostname), and `DATABASE_URL` when using PostgreSQL.
 - Email OTP/password reset: `BREVO_API_KEY` and `DEFAULT_FROM_EMAIL` (the sender must be verified in Brevo). SMTP fallback uses `EMAIL_HOST_USER` and `EMAIL_HOST_PASSWORD`.
 - Tournament entry UPI: `FF_ARENA_UPI_ID` and optional `FF_ARENA_UPI_NAME`. The registration page shows an amount-specific QR and an “Open UPI app” link, then asks for the player's Profile UID, Free Fire UID and UTR. Registration remains pending until admin checks the actual incoming UPI/bank statement and verifies it.
-- AI evidence proposal: `OPENAI_API_KEY` (optional; without it, use manual admin review).
+- AI evidence proposal: default provider uses `OPENAI_API_KEY` and `OPENAI_KILL_REVIEW_MODEL`. To use an OpenAI-compatible vision endpoint instead, set `KILL_REVIEW_PROVIDER=compatible`, `KILL_REVIEW_BASE_URL`, `KILL_REVIEW_API_KEY`, and `OPENAI_KILL_REVIEW_MODEL`. Keep all keys in Render Environment, never in GitHub. A Render service cannot reach your PC's `localhost`; a PC-hosted model needs a secure, reachable endpoint or tunnel.
 
 ## Local setup (Windows / PowerShell)
 
@@ -82,11 +82,9 @@ This command is not a background scheduler. Configure Windows Task Scheduler or 
 
 ## AI match-history review
 
-The optional adapter in `apps/tournaments/ai_review.py` samples frames from the submitted video using FFmpeg and sends those frames plus two screenshots to the configured OpenAI Responses API. It requires:
+The optional adapter in `apps/tournaments/ai_review.py` samples frames from the submitted video using FFmpeg and sends those frames plus two screenshots to the configured vision model. By default it uses the OpenAI Responses API. Alternatively, `KILL_REVIEW_PROVIDER=compatible` uses an OpenAI-compatible `/chat/completions` vision endpoint (for example a suitably configured Ollama endpoint). Configure `KILL_REVIEW_BASE_URL`, `KILL_REVIEW_API_KEY`, and `OPENAI_KILL_REVIEW_MODEL` for that provider. The endpoint must be reachable from Render; `localhost` on Render refers to the Render container, not your Windows PC. A model must support image inputs. Keep API keys in environment variables, never source control.
 
-- `OPENAI_API_KEY` configured in the local/server environment (never commit it).
-- FFmpeg installed on the server and available on `PATH`, or set `FFMPEG_PATH`.
-- A model available to your API account, configured with `OPENAI_KILL_REVIEW_MODEL`.
+Both modes require FFmpeg installed on the server and available on `PATH`, or set `FFMPEG_PATH`.
 
 Players must consent to AI processing on the upload form. If AI is unavailable, the evidence is still saved for manual review. AI output is only a proposal; an admin must inspect the evidence and approve/correct the kill count before wallet reward accounting. The upload checks file extensions and size; verify the match video duration and evidence manually.
 
