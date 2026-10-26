@@ -426,32 +426,47 @@ def results(request):
 
 
 def leaderboard(request, tournament_id):
+    """Show every paid, verified entrant; kills/rewards appear only after admin approval."""
     tournament = get_object_or_404(Tournament, pk=tournament_id)
-    submissions = KillSubmission.objects.filter(
-        tournament=tournament,
-        status=KillSubmission.Status.APPROVED,
-    ).select_related("player", "registration").order_by("-approved_kills", "reviewed_at")
-    submissions = list(submissions)
-    winner_registration = None
-    winner_submission = None
-    if tournament.winner_uid:
-        winner_registration = Registration.objects.filter(
+    eligible_statuses = [
+        Registration.Status.CONFIRMED,
+        Registration.Status.WAITING_READY,
+        Registration.Status.READY,
+    ]
+    registrations = list(
+        Registration.objects.filter(
             tournament=tournament,
-            free_fire_uid=tournament.winner_uid,
             payment_verified=True,
             refund_processed=False,
-            status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
-        ).select_related("player").first()
-        if winner_registration:
-            winner_submission = next(
-                (item for item in submissions if item.player_id == winner_registration.player_id),
-                None,
-            )
-            submissions = [item for item in submissions if item.player_id != winner_registration.player_id]
-    submissions.sort(key=lambda item: (-(item.approved_kills or 0), item.reviewed_at or timezone.now()))
+            status__in=eligible_statuses,
+        ).select_related("player").order_by("registered_at")
+    )
+    approved_submissions = {
+        item.registration_id: item
+        for item in KillSubmission.objects.filter(
+            tournament=tournament,
+            status=KillSubmission.Status.APPROVED,
+        ).select_related("player", "registration")
+    }
+    rows = []
+    for registration in registrations:
+        submission = approved_submissions.get(registration.pk)
+        rows.append({
+            "registration": registration,
+            "submission": submission,
+            "kills": submission.approved_kills if submission and submission.approved_kills is not None else -1,
+            "is_winner": bool(tournament.winner_uid and registration.free_fire_uid == tournament.winner_uid),
+        })
+
+    # Admin-confirmed winner stays first; remaining verified entrants sort by approved kills,
+    # with players awaiting evidence/review still visible and shown as pending.
+    rows.sort(key=lambda row: (
+        not row["is_winner"],
+        -row["kills"],
+        row["registration"].registered_at,
+    ))
     return render(request, "tournaments/leaderboard.html", {
         "tournament": tournament,
-        "submissions": submissions,
-        "winner_registration": winner_registration,
-        "winner_submission": winner_submission,
+        "leaderboard_rows": rows,
+        "verified_player_count": len(rows),
     })
