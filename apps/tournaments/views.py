@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from urllib.parse import urlencode
 from django.views.decorators.http import require_POST
 
 from apps.accounts.models import Wallet, WalletTransaction, AdminWallet, AdminWalletTransaction
@@ -38,6 +39,20 @@ def tournament_detail(request, tournament_id):
     return render(request, "tournaments/tournament_detail.html", {"tournament": tournament})
 
 
+def build_entry_payment_uri(tournament):
+    """Create an amount-prefilled UPI deep link; actual receipt must be verified by admin."""
+    if tournament.entry_fee <= Decimal("0.00"):
+        return ""
+    query = urlencode({
+        "pa": "6232481135@fam",
+        "pn": "Ravibaghel",
+        "am": f"{tournament.entry_fee:.2f}",
+        "cu": "INR",
+        "tn": f"FFArena-{tournament.pk}",
+    })
+    return f"upi://pay?{query}"
+
+
 @login_required
 def tournament_register(request, tournament_id):
     process_expired_ready_registrations()
@@ -51,27 +66,28 @@ def tournament_register(request, tournament_id):
         if Registration.objects.filter(tournament=tournament, player=request.user).exists():
             messages.info(request, "Aap is tournament mein pehle se registered hain.")
             return redirect("tournaments:detail", tournament_id=tournament.pk)
-        return render(request, "tournaments/register.html", {"tournament": tournament, "form": RegistrationForm()})
+        return render(request, "tournaments/register.html", {"tournament": tournament, "form": RegistrationForm(user=request.user, tournament=tournament), "upi_payment_uri": build_entry_payment_uri(tournament)})
 
     if request.method != "POST":
         return redirect("tournaments:list")
 
-    form = RegistrationForm(request.POST)
+    form = RegistrationForm(request.POST, user=request.user, tournament=tournament)
     if not form.is_valid():
-        return render(request, "tournaments/register.html", {"tournament": tournament, "form": form})
+        return render(request, "tournaments/register.html", {"tournament": tournament, "form": form, "upi_payment_uri": build_entry_payment_uri(tournament)})
 
     try:
         create_pending_registration(
             tournament_id=tournament_id,
             player=request.user,
             free_fire_uid=form.cleaned_data["free_fire_uid"],
+            payment_reference=form.cleaned_data.get("payment_reference", ""),
         )
     except RegistrationError as exc:
         form.add_error(None, str(exc))
         return render(
             request,
             "tournaments/register.html",
-            {"tournament": tournament, "form": form},
+            {"tournament": tournament, "form": form, "upi_payment_uri": build_entry_payment_uri(tournament)},
         )
     except IntegrityError:
         form.add_error(None, "Registration nahi ho saki; aap pehle se registered ho sakte hain.")
@@ -81,8 +97,11 @@ def tournament_register(request, tournament_id):
             {"tournament": tournament, "form": form},
         )
 
-    messages.success(request, "Registration confirm ho gayi. Entry fee aapke wallet se debit hokar admin tournament wallet mein transfer ho gayi.")
-    return redirect("tournaments:list")
+    if tournament.entry_fee > Decimal("0.00"):
+        messages.info(request, "Payment UTR submit ho gaya. Registration tabhi confirm hogi jab admin aapki payment apne UPI/bank statement se verify karega.")
+    else:
+        messages.success(request, "Free tournament registration confirm ho gayi.")
+    return redirect("tournaments:my_registrations")
 
 
 @login_required
