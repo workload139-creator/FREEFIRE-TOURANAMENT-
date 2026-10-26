@@ -1,0 +1,22 @@
+{% extends "admin/base.html" %}
+{% load static %}
+{% block title %}{{ title }} | FF Tournament Admin{% endblock %}
+{% block branding %}
+<h1 id="site-name"><a href="{% url 'admin:index' %}">🔥 FF Tournament — Admin Control Room</a></h1>
+{% endblock %}
+{% block extrastyle %}
+{{ block.super }}
+<style>
+:root{--primary:#ff8a24;--secondary:#e66d0b;--accent:#ff9c38}
+body{background:#f4f6fa}
+#header{background:#151922;color:#fff;border-bottom:3px solid #ff8a24}
+#branding h1,#branding h1 a:link,#branding h1 a:visited{color:#fff;font-weight:800}
+.module h2,.module caption,.inline-group h2{background:#242b38;color:#fff}
+div.breadcrumbs{background:#303848}
+.button, input[type=submit], input[type=button], .submit-row input, a.button{background:#e97816;border-radius:6px}
+.button:hover,input[type=submit]:hover,input[type=button]:hover,.submit-row input:hover{background:#ff9c38}
+#content h1{font-weight:800}
+.object-tools a{background:#e97816;border-radius:6px}
+#nav-sidebar .current-app .section:link,#nav-sidebar .current-app .section:visited{color:#d95f00}
+</style>
+{% endblock %}
