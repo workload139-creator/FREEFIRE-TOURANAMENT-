@@ -31,6 +31,7 @@ class CustomUserAdmin(UserAdmin):
 
 @admin.register(Wallet)
 class WalletAdmin(admin.ModelAdmin):
+    fieldsets = ((None, {"fields": ("user", "balance", "created_at", "updated_at"), "description": "PLAYER WALLET: one wallet per player. Balance is read-only here. Use Deposit Requests and Withdrawal Requests for audited changes; do not edit balance directly."}),)
     list_display = ("wallet_id", "user", "balance", "updated_at")
     search_fields = ("user__username", "user__email")
     readonly_fields = ("balance", "created_at", "updated_at")
@@ -38,6 +39,7 @@ class WalletAdmin(admin.ModelAdmin):
 
 @admin.register(WalletTransaction)
 class WalletTransactionAdmin(admin.ModelAdmin):
+    fieldsets = ((None, {"fields": ("wallet", "transaction_type", "amount", "status", "reference", "description", "created_at"), "description": "PLAYER WALLET LEDGER: audit trail for deposits, withdrawals, entry fees, refunds and prizes. Inspect records here; do not invent or duplicate payment references."}),)
     list_display = ("wallet", "transaction_type", "amount", "status", "reference", "created_at")
     list_filter = ("transaction_type", "status", "created_at")
     search_fields = ("wallet__user__username", "reference", "description")
@@ -78,6 +80,7 @@ def approve_verified_deposits(modeladmin, request, queryset):
 
 @admin.register(DepositRequest)
 class DepositRequestAdmin(admin.ModelAdmin):
+    fieldsets = ((None, {"fields": ("wallet", "amount", "payment_reference", "status", "created_at"), "description": "DEPOSIT VERIFICATION: match the reference against the actual incoming UPI/bank receipt first. Then select pending requests and run the credit action. Player deposits are ₹10–₹5,000; duplicate or placeholder references are skipped."}),)
     list_display = ("wallet", "amount", "payment_reference", "status", "created_at")
     list_filter = ("status", "created_at")
     search_fields = ("wallet__user__username", "payment_reference")
@@ -88,6 +91,7 @@ class DepositRequestAdmin(admin.ModelAdmin):
 
 @admin.register(AdminWallet)
 class AdminWalletAdmin(admin.ModelAdmin):
+    fieldsets = ((None, {"fields": ("name", "balance", "created_at", "updated_at"), "description": "ADMIN WALLET: internal accounting separate from player wallets. Balance is read-only here. Confirm real received top-ups through Admin Wallet Transactions; this is not a bank account."}),)
     list_display = ("wallet_id", "name", "balance", "updated_at")
     readonly_fields = ("balance", "created_at", "updated_at")
 
@@ -130,6 +134,7 @@ def confirm_admin_wallet_topups(modeladmin, request, queryset):
 
 @admin.register(AdminWalletTransaction)
 class AdminWalletTransactionAdmin(admin.ModelAdmin):
+    fieldsets = ((None, {"fields": ("admin_wallet", "transaction_type", "amount", "status", "reference", "description", "created_at"), "description": "ADMIN WALLET LEDGER: top-ups and prize/refund accounting. Verify a real received payment before confirming top-ups. Winner UPI transfers happen separately and must use a genuine UTR."}),)
     list_display = ("admin_wallet", "transaction_type", "amount", "status", "reference", "created_at")
     list_filter = ("transaction_type", "status")
     search_fields = ("admin_wallet__name", "reference", "description")
@@ -213,6 +218,7 @@ def reject_withdrawals_and_refund(modeladmin, request, queryset):
 
 @admin.register(WithdrawalRequest)
 class WithdrawalRequestAdmin(admin.ModelAdmin):
+    fieldsets = ((None, {"fields": ("wallet", "amount", "upi_id", "status", "payout_reference", "created_at", "processed_at"), "description": "WITHDRAWAL PROCESSING: check the pending request and UPI ID. Send the real UPI transfer outside the website, enter the genuine payout reference, then run the paid action. If rejected, use the refund action to return the amount to the player wallet."}),)
     list_display = ("wallet", "amount", "upi_id", "status", "payout_reference", "created_at", "processed_at")
     list_filter = ("status", "created_at")
     search_fields = ("wallet__user__username", "upi_id", "payout_reference")
