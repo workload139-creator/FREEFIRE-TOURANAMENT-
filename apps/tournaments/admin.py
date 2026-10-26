@@ -246,17 +246,17 @@ class KillSubmissionAdmin(admin.ModelAdmin):
     @admin.display(description="UPI QR")
     def payout_qr(self, obj):
         upi_id = (obj.player.upi_id or "").strip()
-        if not upi_id or "@" not in upi_id:
-            return "UPI ID missing"
         if obj.player.upi_qr_code:
             try:
                 return format_html(
-                    '<a href="{}" target="_blank" rel="noopener"><img src="{}" width="72" height="72" alt="Uploaded player UPI QR" /></a>',
+                    '<a href="{}" target="_blank" rel="noopener"><img src="{}" width="96" height="96" alt="Player uploaded UPI QR for manual prize payout" /></a>',
                     obj.player.upi_qr_code.url,
                     obj.player.upi_qr_code.url,
                 )
             except (ValueError, OSError):
                 pass
+        if not upi_id or "@" not in upi_id:
+            return "Player has not provided a usable UPI ID or QR"
         import base64
         import io
         from urllib.parse import urlencode
