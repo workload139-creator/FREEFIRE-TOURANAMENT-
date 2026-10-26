@@ -201,12 +201,64 @@ def verify_entry_payments(modeladmin, request, queryset):
         )
 
 
+@admin.action(description="Mark UPI refunds paid after sending actual refund and entering its UTR")
+def mark_manual_upi_refunds_paid(modeladmin, request, queryset):
+    completed = 0
+    skipped = 0
+    for selected in queryset:
+        with transaction.atomic():
+            registration = Registration.objects.select_for_update().select_related("tournament", "player").get(pk=selected.pk)
+            utr = (registration.refund_reference or "").strip()
+            if (
+                not registration.payment_reference
+                or not registration.payment_verified
+                or registration.status not in (Registration.Status.CANCELLED, Registration.Status.NOT_PLAYING)
+                or registration.refund_processed
+                or len(utr) < 6
+            ):
+                skipped += 1
+                continue
+            if Registration.objects.filter(refund_reference__iexact=utr).exclude(pk=registration.pk).exists():
+                skipped += 1
+                continue
+            ledger_reference = f"ADMIN-UPI-REFUND-{registration.pk}"
+            if AdminWalletTransaction.objects.filter(reference=ledger_reference).exists():
+                skipped += 1
+                continue
+            admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
+            admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
+            amount = registration.entry_fee_paid
+            if admin_wallet.balance < amount:
+                skipped += 1
+                continue
+            # This action only records a refund already sent outside the website through UPI.
+            admin_wallet.balance -= amount
+            admin_wallet.save(update_fields=["balance", "updated_at"])
+            AdminWalletTransaction.objects.create(
+                admin_wallet=admin_wallet,
+                transaction_type=AdminWalletTransaction.TransactionType.REFUND,
+                amount=amount,
+                status=AdminWalletTransaction.Status.COMPLETED,
+                reference=ledger_reference,
+                description=f"Manual UPI refund UTR {utr} for cancelled/not-playing registration {registration.pk}",
+            )
+            registration.status = Registration.Status.REFUNDED
+            registration.refund_processed = True
+            registration.refund_processed_at = timezone.now()
+            registration.save(update_fields=["status", "refund_processed", "refund_processed_at", "updated_at"])
+            completed += 1
+    if completed:
+        modeladmin.message_user(request, f"{completed} manual UPI refund(s) recorded after transfer.", messages.SUCCESS)
+    if skipped:
+        modeladmin.message_user(request, f"{skipped} refund(s) skipped: verify payment/status, enter unique real UTR, and check Admin Wallet ledger balance.", messages.WARNING)
+
+
 @admin.register(Registration)
 class RegistrationAdmin(admin.ModelAdmin):
     list_display = (
         "tournament", "player", "free_fire_uid", "entry_fee_paid",
         "payment_verified", "payment_reference", "status", "room_details_sent",
-        "ready_deadline", "refund_processed", "registered_at",
+        "ready_deadline", "refund_processed", "refund_reference", "registered_at",
     )
     list_filter = ("status", "payment_verified", "refund_processed")
     search_fields = ("free_fire_uid", "payment_reference", "player__username", "tournament__title")
@@ -214,7 +266,7 @@ class RegistrationAdmin(admin.ModelAdmin):
         "registered_at", "updated_at", "ready_confirmed_at",
         "refund_processed_at",
     )
-    actions = (verify_entry_payments,)
+    actions = (verify_entry_payments, mark_manual_upi_refunds_paid,)
 
 
 @admin.action(description="Mark selected BR prizes PAID after completing manual UPI transfer")
