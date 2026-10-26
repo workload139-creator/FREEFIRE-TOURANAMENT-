@@ -5,7 +5,7 @@ from django.contrib.auth import views as auth_views
 from django.urls import include, path, re_path
 from django.views.static import serve
 
-from apps.core.views import health_check
+from apps.core.views import health_check, terms, privacy_policy, refund_policy, fair_play, about
 
 from apps.accounts.auth_views import login_view
 from apps.accounts.view import logout_view
@@ -24,6 +24,11 @@ urlpatterns = [
         {"document_root": settings.MEDIA_ROOT / "player_upi_qr"},
     ),
     path("health/", health_check, name="health_check"),
+    path("terms/", terms, name="terms"),
+    path("privacy/", privacy_policy, name="privacy_policy"),
+    path("refund-policy/", refund_policy, name="refund_policy"),
+    path("fair-play/", fair_play, name="fair_play"),
+    path("about/", about, name="about"),
     path("admin/", admin.site.urls),
     path("accounts/", include("apps.accounts.urls")),
     path("login/", login_view, name="login"),
