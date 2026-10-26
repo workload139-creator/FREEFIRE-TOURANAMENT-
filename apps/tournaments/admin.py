@@ -9,7 +9,7 @@ from apps.accounts.models import (
     WalletTransaction,
 )
 from .models import KillSubmission, Registration, Tournament
-from .services import award_tournament_winner, cancel_tournament_and_refund, distribute_kill_prize_pool
+from .services import award_tournament_winner, cancel_tournament_and_refund
 
 
 class TournamentAdminForm(forms.ModelForm):
@@ -65,22 +65,6 @@ class RegistrationInline(admin.TabularInline):
         "refund_processed_at",
     )
 
-
-
-@admin.action(description="Confirm & distribute approved BR kill-prize pool (internal wallet ledger)")
-def distribute_br_kill_prizes(modeladmin, request, queryset):
-    completed = 0
-    skipped = 0
-    for tournament in queryset:
-        ok, message = distribute_kill_prize_pool(tournament.pk)
-        if ok:
-            completed += 1
-            modeladmin.message_user(request, f"{tournament.title}: {message}", messages.SUCCESS)
-        else:
-            skipped += 1
-            modeladmin.message_user(request, f"{tournament.title}: {message}", messages.WARNING)
-    if skipped and not completed:
-        modeladmin.message_user(request, "Koi prize batch distribute nahi hua.", messages.WARNING)
 
 
 @admin.action(description="Cancel tournament and refund registered players")
