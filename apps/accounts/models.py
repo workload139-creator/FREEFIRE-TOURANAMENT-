@@ -53,8 +53,8 @@ class Wallet(models.Model):
 
     @property
     def wallet_id(self):
-        """Stable display ID; this is not a bank account or UPI address."""
-        return f"FFW-{self.pk:06d}" if self.pk else "FFW-PENDING"
+        """Player wallet ID derived from the player's profile/user ID, not a UPI address."""
+        return f"FFW-{self.user_id:06d}" if self.user_id else "FFW-PENDING"
 
     def __str__(self):
         return f"{self.wallet_id} · {self.user} - ₹{self.balance}"
