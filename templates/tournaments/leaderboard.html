@@ -3,37 +3,30 @@
 {% block content %}
 <section class="container" style="max-width:1000px;margin:35px auto;padding:20px">
     <h1>🏆 {{ tournament.title }} — Leaderboard</h1>
-    <p>Only admin-approved kill submissions appear here. Har tournament ka leaderboard alag hai.</p>
+    <p>Payment verified players: <strong>{{ verified_player_count }}</strong>. Har tournament ka leaderboard alag hai.</p>
+    <p>Payment verify hone ke baad player yahan dikhai deta hai. Kills aur kill-reward sirf admin-approved evidence ke baad show honge.</p>
     {% if tournament.winner_uid %}
         <div class="tournament-card" style="padding:16px;margin:16px 0;border:2px solid #eab308">
             <strong>🏆 Admin-confirmed First Place</strong>
             <p>Free Fire UID: {{ tournament.winner_uid }} — Prize: ₹{{ tournament.prize_pool }}</p>
-            <p>Status: {% if tournament.winner_prize_paid %}Prize player wallet mein credit ho gaya{% else %}Prize pending — admin wallet balance ya UID verification check karein{% endif %}</p>
+            <p>Status: {% if tournament.winner_prize_paid %}Prize marked paid{% else %}Prize pending admin payout{% endif %}</p>
         </div>
     {% endif %}
     <div class="tournament-card" style="padding:20px;overflow-x:auto">
         <table style="width:100%;border-collapse:collapse">
-            <thead><tr><th>Rank</th><th>Player</th><th>Free Fire UID</th><th>Approved Kills</th><th>Reward</th></tr></thead>
+            <thead><tr><th>Rank</th><th>Player</th><th>Free Fire UID</th><th>Payment</th><th>Approved Kills</th><th>Reward</th></tr></thead>
             <tbody>
-            {% if tournament.winner_uid and winner_registration %}
+            {% for row in leaderboard_rows %}
                 <tr>
-                    <td>1 🏆</td>
-                    <td>{{ winner_registration.player.username }}</td>
-                    <td>{{ tournament.winner_uid }}</td>
-                    <td>{% if winner_submission %}{{ winner_submission.approved_kills }}{% else %}—{% endif %}</td>
-                    <td>₹{{ tournament.prize_pool }} first-place{% if winner_submission %} + ₹{{ winner_submission.approved_reward }} kills{% endif %}</td>
-                </tr>
-            {% endif %}
-            {% for submission in submissions %}
-                <tr>
-                    <td>{% if winner_registration %}{{ forloop.counter|add:1 }}{% else %}{{ forloop.counter }}{% endif %}</td>
-                    <td>{{ submission.player.username }}</td>
-                    <td>{{ submission.registered_uid }}</td>
-                    <td>{{ submission.approved_kills }}</td>
-                    <td>₹{{ submission.approved_reward }}</td>
+                    <td>{% if row.is_winner %}🏆 1{% else %}{{ forloop.counter }}{% endif %}</td>
+                    <td>{{ row.registration.player.username }}</td>
+                    <td>{{ row.registration.free_fire_uid }}</td>
+                    <td><span style="color:#38d9a9">Verified</span></td>
+                    <td>{% if row.submission %}{{ row.submission.approved_kills }}{% else %}Pending review{% endif %}</td>
+                    <td>{% if row.submission %}₹{{ row.submission.approved_reward }}{% elif row.is_winner %}₹{{ tournament.prize_pool }} first-place pending review{% else %}—{% endif %}</td>
                 </tr>
             {% empty %}
-                {% if not winner_registration %}<tr><td colspan="5">Abhi leaderboard ke liye approved result nahi hai.</td></tr>{% endif %}
+                <tr><td colspan="6">Abhi koi payment-verified player nahi hai. Payment verify hone ke baad entries yahan aayengi.</td></tr>
             {% endfor %}
             </tbody>
         </table>
