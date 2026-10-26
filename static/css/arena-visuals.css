@@ -1,0 +1,71 @@
+/* FF Arena visual refresh: cinematic gaming imagery, neon green and gold accents. */
+:root {
+  --accent: #12e879;
+  --accent-hover: #00c968;
+  --gold: #ffc94a;
+  --bg-primary: #050a0b;
+  --bg-secondary: #091416;
+  --bg-card: rgba(8, 20, 22, .94);
+  --border-color: rgba(39, 235, 156, .22);
+}
+body {
+  background:
+    linear-gradient(180deg, rgba(3, 8, 10, .90), rgba(3, 8, 10, .97)),
+    url("https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=2000&q=85") center top / cover fixed,
+    #050a0b;
+}
+.site-header {
+  background:
+    linear-gradient(90deg, rgba(3, 10, 12, .98), rgba(4, 24, 23, .92)),
+    url("https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1600&q=80") center 42% / cover;
+  border-bottom: 1px solid rgba(25, 232, 132, .5);
+  box-shadow: 0 8px 30px rgba(0,0,0,.28);
+}
+.nav-container {
+  min-height: 76px;
+}
+.brand { gap: 10px; font-size: 1.1rem; text-transform: uppercase; }
+.brand-icon {
+  background: linear-gradient(145deg, #18f08a, #087e50);
+  color: #03130c;
+  box-shadow: 0 0 24px rgba(18,232,121,.32);
+}
+.main-nav { align-items: center; }
+.main-nav > a { transition: .2s ease; }
+.main-nav > a:hover { color: #17ef8b; text-shadow: 0 0 14px rgba(23,239,139,.25); }
+.button-primary, .btn-primary {
+  background: linear-gradient(110deg, #00bd69, #18ed88);
+  border-color: #18ed88;
+  color: #04130b;
+  box-shadow: 0 6px 22px rgba(0,220,111,.16);
+}
+.button-primary:hover, .btn-primary:hover { background: #24f39a; color: #04130b; }
+.auth-section {
+  background:
+    linear-gradient(180deg, rgba(3,10,11,.45), rgba(3,10,11,.82)),
+    url("https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1600&q=80") center / cover;
+}
+.auth-card, .community-panel, .profile-panel, .feature-card, .tournament-card {
+  backdrop-filter: blur(10px);
+  box-shadow: 0 18px 45px rgba(0,0,0,.24);
+}
+.feature-card, .tournament-card, .community-panel {
+  border-color: rgba(18,232,121,.20);
+  background-color: rgba(7,17,19,.91);
+}
+.feature-card:hover, .tournament-card:hover {
+  border-color: rgba(18,232,121,.65);
+  box-shadow: 0 16px 40px rgba(0,220,111,.10);
+}
+.site-footer {
+  background: linear-gradient(180deg, rgba(4,10,12,.94), #030708);
+  border-top: 1px solid rgba(18,232,121,.2);
+}
+input:focus, textarea:focus, select:focus {
+  border-color: #12e879 !important;
+  box-shadow: 0 0 0 3px rgba(18,232,121,.12) !important;
+}
+@media (max-width: 760px) {
+  body { background-attachment: scroll; }
+  .site-header { background: rgba(3,10,12,.98); }
+}
