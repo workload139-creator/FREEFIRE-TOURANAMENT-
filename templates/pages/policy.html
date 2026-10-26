@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{{ policy_title }} | FF Arena{% endblock %}
+{% block content %}
+<section class="policy-page" style="max-width: 920px; margin: 2rem auto; padding: 0 1rem 3rem;">
+    <header style="margin-bottom: 1.5rem;">
+        <p style="color: #a7b2c7; font-size: .9rem;">FF ARENA · INFORMATION &amp; POLICIES</p>
+        <h1>{{ policy_title }}</h1>
+        <p style="line-height: 1.7;">{{ policy_intro }}</p>
+        <p style="color: #a7b2c7; font-size: .85rem;">Last updated: {{ policy_updated }}</p>
+    </header>
+    {% for heading, paragraphs in policy_sections %}
+        <section style="margin: 1.5rem 0; padding: 1.25rem; border: 1px solid rgba(160,175,200,.2); border-radius: 12px; background: rgba(20,27,40,.45);">
+            <h2 style="font-size: 1.2rem; margin-top: 0;">{{ heading }}</h2>
+            {% for paragraph in paragraphs %}
+                <p style="line-height: 1.75;">{{ paragraph }}</p>
+            {% endfor %}
+        </section>
+    {% endfor %}
+    <p style="line-height: 1.7;"><strong>Important:</strong> These pages provide general website information, not legal advice. The operator must verify and adapt them to the actual business, payment flow, applicable Indian and state laws, and payment-provider requirements before accepting paid entries or real-money prizes.</p>
+    <p><a href="{% url 'home' %}">← Back to FF Arena</a> · <a href="mailto:workload139@gmail.com">Contact support</a></p>
+</section>
+{% endblock %}
