@@ -213,9 +213,9 @@ class RegistrationAdmin(admin.ModelAdmin):
 @admin.register(KillSubmission)
 class KillSubmissionAdmin(admin.ModelAdmin):
     list_display = (
-        "id", "player", "tournament", "registered_uid", "free_fire_uid",
-        "status", "ai_proposed_kills", "approved_kills", "approved_reward",
-        "submitted_at",
+        "id", "player", "player_profile_id", "tournament", "registered_uid", "free_fire_uid",
+        "player_upi_id", "status", "ai_proposed_kills", "approved_kills", "approved_reward",
+        "payout_reference", "submitted_at",
     )
     list_filter = ("status", "tournament", "submitted_at")
     search_fields = ("player__username", "tournament__title", "registered_uid", "free_fire_uid")
@@ -226,6 +226,14 @@ class KillSubmissionAdmin(admin.ModelAdmin):
         "approved_kills", "proposed_reward", "approved_reward",
         "status", "admin_notes", "payout_reference", "submitted_at", "reviewed_at",
     )
+
+    @admin.display(description="Profile ID", ordering="player__id")
+    def player_profile_id(self, obj):
+        return obj.player_id
+
+    @admin.display(description="Prize UPI ID", ordering="player__upi_id")
+    def player_upi_id(self, obj):
+        return obj.player.upi_id or "Missing — player must add it in Profile"
 
     def has_add_permission(self, request):
         return False
