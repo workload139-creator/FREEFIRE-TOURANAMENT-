@@ -1,15 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}Join {{ tournament.title }} | FF Arena{% if tournament.entry_fee > 0 %}
-<script>
-(() => {
- const qr=document.getElementById("entryPaymentQr"), status=document.getElementById("qrActionMessage");
- async function qrFile(){const r=await fetch(qr.src);if(!r.ok)throw new Error("QR unavailable");const b=await r.blob();return new File([b],"ff-arena-entry-qr.png",{type:b.type||"image/png"});}
- document.getElementById("downloadEntryQr").addEventListener("click",async()=>{try{const f=await qrFile(),u=URL.createObjectURL(f),a=document.createElement("a");a.href=u;a.download=f.name;a.click();URL.revokeObjectURL(u);status.textContent="QR download ho gaya.";}catch(e){status.textContent="Direct download fail hua. QR image open karke right-click/long-press se Save Image karein.";window.open(qr.src,"_blank","noopener");}});
- document.getElementById("shareEntryQr").addEventListener("click",async()=>{try{const f=await qrFile();if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[f]}))){await navigator.share({title:"FF Arena Entry QR",text:"Entry fee ₹{{ tournament.entry_fee }}. Payee aur amount verify karein.",files:[f]});status.textContent="Share menu open ho gaya.";}else{status.textContent="Share supported nahi; Download QR use karein.";}}catch(e){if(e.name!=="AbortError")status.textContent="Share nahi hua; Download QR use karein.";}});
-})();
-</script>
-{% endif %}
+{% block title %}Join {{ tournament.title }} | FF Arena
+
 {% endblock %}
 
 {% block content %}
@@ -35,7 +27,7 @@
         {% if form.non_field_errors %}<div class="error-box">{{ form.non_field_errors }}</div>{% endif %}
         <form method="post" action="{% url 'tournaments:register' tournament.id %}">
             {% csrf_token %}
-            <div class="form-group">
+            <div class="form-group register-field">
                 <label for="{{ form.profile_uid.id_for_label }}">Website Profile UID</label>
                 {{ form.profile_uid }}
                 {% for error in form.profile_uid.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
@@ -48,7 +40,8 @@
                 <small class="help-text">UID yahan enter karein. Isi tournament UID se leaderboard aur kill evidence match hoga.</small>
             </div>
             {% if tournament.entry_fee > 0 %}
-            <section class="profile-notice" style="margin:18px 0;padding:20px;border:1px solid #38d9a9;border-radius:16px;background:#0d1718;color:#fff">
+            {% if upi_payment_uri %}
+            <section class="profile-notice tournament-payment-panel" style="margin:18px 0;padding:20px;border:1px solid #38d9a9;border-radius:16px;background:#0d1718;color:#fff">
                 <h2 style="margin-top:0">🔐 Pay Entry Fee: ₹{{ tournament.entry_fee }}</h2>
                 <p><strong>Step 1:</strong> Neeche QR scan karein, ya mobile par button dabakar UPI app kholein. Amount aur receiver pehle check karein.</p>
                 <div style="display:flex;gap:22px;align-items:center;flex-wrap:wrap">
@@ -63,6 +56,9 @@
                 <p><strong>Agar UPI app open na ho:</strong> QR ko doosre phone se scan karein, ya Download/Share QR karke UPI app ke Scan QR option se pay karein. Payee name aur amount check karke hi payment karein.</p>
                 <p style="margin-bottom:0"><strong>Step 2:</strong> Payment complete hone ke baad apne transaction details se UTR / reference number neeche enter karein. Screenshot bhejna payment proof nahi maana jayega; admin actual UPI/bank receipt verify karega.</p>
             </section>
+            {% else %}
+            <div class="profile-notice" role="alert"><strong>Payment temporarily unavailable.</strong> Admin ko receiving UPI ID configure karni hai. Abhi payment mat bhejein aur registration submit na karein.</div>
+            {% endif %}
             <div class="form-group">
                 <label for="{{ form.payment_reference.id_for_label }}">UPI UTR / Transaction Reference</label>
                 {{ form.payment_reference }}
@@ -73,8 +69,20 @@
             {% else %}
             <div class="profile-notice"><p>Yeh free tournament hai; registration submit karne par confirm ho jayegi.</p></div>
             {% endif %}
-            <button type="submit" class="btn-primary">{% if tournament.entry_fee > 0 %}SUBMIT PAYMENT &amp; REGISTER{% else %}REGISTER FREE{% endif %}</button>
+            <button type="submit" class="btn-primary" {% if tournament.entry_fee > 0 and not upi_payment_uri %}disabled aria-disabled="true"{% endif %}>{% if tournament.entry_fee > 0 %}SUBMIT PAYMENT &amp; REGISTER{% else %}REGISTER FREE{% endif %}</button>
         </form>
     </div>
 </section>
+{% if tournament.entry_fee > 0 and upi_payment_uri %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+ const qr=document.getElementById("entryPaymentQr"), status=document.getElementById("qrActionMessage");
+ const download=document.getElementById("downloadEntryQr"), share=document.getElementById("shareEntryQr");
+ if(!qr||!status||!download||!share)return;
+ async function qrFile(){const response=await fetch(qr.src);if(!response.ok)throw new Error("QR unavailable");return new File([await response.blob()],"ff-arena-entry-qr.png",{type:"image/png"});}
+ download.addEventListener("click",async()=>{try{const file=await qrFile(),url=URL.createObjectURL(file),link=document.createElement("a");link.href=url;link.download="ff-arena-entry-qr.png";document.body.appendChild(link);link.click();link.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1500);status.textContent="QR download start ho gaya. Downloads folder check karein.";}catch(e){status.textContent="Download fail hua. QR image par right-click/long-press karke Save Image try karein.";}});
+ share.addEventListener("click",async()=>{try{const file=await qrFile();if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({title:"FF Arena Tournament Payment QR",text:"Entry fee ₹{{ tournament.entry_fee }}. Payee aur amount verify karein.",files:[file]});status.textContent="Share menu open hua.";}else{status.textContent="Browser file share support nahi karta. Download QR use karein ya doosre phone se screen scan karein.";}}catch(e){if(!e||e.name!=="AbortError")status.textContent="Share nahi hua. Download QR option use karein.";}});
+});
+</script>
+{% endif %}
 {% endblock %}

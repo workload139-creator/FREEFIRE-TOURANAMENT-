@@ -1,6 +1,8 @@
 from datetime import timedelta
 import os
 from decimal import Decimal
+import base64
+import io
 
 from django.conf import settings
 from django.contrib import messages
@@ -18,6 +20,8 @@ from .ai_review import AIReviewError, analyze_kill_evidence
 from .registration_services import RegistrationError, create_pending_registration
 from .models import KillSubmission, Registration, Tournament
 from .services import process_expired_ready_registrations, mark_not_playing_and_refund
+
+import qrcode
 
 
 def tournament_list(request):
@@ -42,24 +46,25 @@ def tournament_detail(request, tournament_id):
 
 
 def build_entry_payment_uri(tournament):
-    """Create an amount-prefilled UPI deep link; actual receipt must be verified by admin."""
+    """Build a UPI deep link only when the configured receiving UPI ID exists."""
     if tournament.entry_fee <= Decimal("0.00"):
         return ""
-    query = urlencode({
-        "pa": (os.getenv("FF_ARENA_UPI_ID", "").strip() or "6232481135@fam"),
-        "pn": (os.getenv("FF_ARENA_UPI_NAME", "").strip() or "Ravibaghel"),
-        "am": f"{tournament.entry_fee:.2f}",
-        "cu": "INR",
-        "tn": f"FFArena-{tournament.pk}",
-    })
+    upi_id = os.getenv("FF_ARENA_UPI_ID", "").strip()
+    if not upi_id or "@" not in upi_id or any(char.isspace() for char in upi_id):
+        return ""
+    query = urlencode({"pa": upi_id, "pn": os.getenv("FF_ARENA_UPI_NAME", "FF Arena").strip() or "FF Arena", "am": f"{tournament.entry_fee:.2f}", "cu": "INR", "tn": f"FFArena-{tournament.pk}"})
     return f"upi://pay?{query}"
 
 
 def build_entry_qr_url(tournament):
-    """Generate a scannable QR for the exact payee and entry amount."""
+    """Create QR locally, avoiding external QR API and cross-origin download failures."""
     uri = build_entry_payment_uri(tournament)
-    return "https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=12&data=" + quote(uri, safe="") if uri else ""
-
+    if not uri:
+        return ""
+    image = qrcode.make(uri)
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode("ascii")
 
 @login_required
 def tournament_register(request, tournament_id):
@@ -79,6 +84,10 @@ def tournament_register(request, tournament_id):
             messages.info(request, "Aap is tournament mein pehle se registered hain.")
             return redirect("tournaments:detail", tournament_id=tournament.pk)
         return render(request, "tournaments/register.html", {"tournament": tournament, "form": RegistrationForm(user=request.user, tournament=tournament), "upi_payment_uri": build_entry_payment_uri(tournament), "qr_image_url": build_entry_qr_url(tournament)})
+
+    if tournament.entry_fee > Decimal("0.00") and not build_entry_payment_uri(tournament):
+        messages.error(request, "Tournament payment abhi configured nahi hai. Admin ko Render Environment mein valid FF_ARENA_UPI_ID set karna hoga.")
+        return redirect("tournaments:detail", tournament_id=tournament.pk)
 
     if request.method != "POST":
         return redirect("tournaments:list")
