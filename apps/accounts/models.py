@@ -171,6 +171,7 @@ class AdminWallet(models.Model):
 
 class AdminWalletTransaction(models.Model):
     class TransactionType(models.TextChoices):
+        TOP_UP = "top_up", "Admin UPI Deposit / Top-up"
         ENTRY_FEE = "entry_fee", "Demo Entry Fee"
         PRIZE = "prize", "Demo Prize"
         REFUND = "refund", "Demo Refund"
