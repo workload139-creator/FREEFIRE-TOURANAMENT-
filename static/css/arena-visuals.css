@@ -338,3 +338,36 @@ tr:hover td{background:rgba(69,184,255,.055)!important}
 @keyframes ff-button-pulse{0%,100%{filter:drop-shadow(0 0 0 rgba(255,230,92,0))}50%{filter:drop-shadow(0 0 7px rgba(255,230,92,.23))}}
 @media(max-width:600px){.main-nav{box-shadow:0 16px 30px rgba(0,0,0,.45)}.admin-neon-hero{padding:20px 16px}}
 @media(prefers-reduced-motion:reduce){.site-header:after,.hero:after,.button-primary,.btn-primary,.button.button-primary,.btn-join{animation:none!important}}
+
+
+/* Action-specific esports button colors: blue Register, gold Profile, red Wallet */
+a[href*="register"],button[name*="register"],button[type="submit"],input[type="submit"]{
+ border:1px solid rgba(69,184,255,.95)!important;
+ background:linear-gradient(115deg,#064caa,#087cf0 52%,#35d8ff)!important;
+ color:#fff!important;
+ text-shadow:0 0 8px rgba(255,255,255,.28);
+ box-shadow:0 0 8px rgba(0,125,255,.85),0 0 22px rgba(0,125,255,.5),0 0 44px rgba(0,125,255,.22),inset 0 1px rgba(255,255,255,.32)!important;
+ animation:ff-blue-register-pulse 2.8s ease-in-out infinite;
+}
+a[href*="register"]:hover,button[name*="register"]:hover,button[type="submit"]:hover,input[type="submit"]:hover{
+ border-color:#a8f2ff!important;
+ box-shadow:0 0 12px #168cff,0 0 32px rgba(0,145,255,.9),0 0 58px rgba(0,145,255,.35)!important;
+ transform:translateY(-2px);
+}
+a[href*="profile"],a[href*="edit-profile"],a[href*="profile/edit"]{
+ border-color:rgba(255,222,79,.9)!important;
+ box-shadow:0 0 10px rgba(255,205,38,.4),0 0 25px rgba(255,205,38,.18)!important;
+}
+a[href*="wallet"],a[href*="withdraw"],a[href*="refund"]{
+ border-color:rgba(255,54,93,.72)!important;
+ box-shadow:0 0 10px rgba(255,54,93,.3),0 0 22px rgba(255,54,93,.12)!important;
+}
+a[href*="tournaments"],a[href*="leaderboard"],a[href*="results"]{
+ border-color:rgba(182,107,255,.72)!important;
+ box-shadow:0 0 10px rgba(182,107,255,.25),0 0 22px rgba(182,107,255,.1)!important;
+}
+@keyframes ff-blue-register-pulse{
+ 0%,100%{box-shadow:0 0 8px rgba(0,125,255,.7),0 0 20px rgba(0,125,255,.36),inset 0 1px rgba(255,255,255,.25)}
+ 50%{box-shadow:0 0 14px rgba(0,160,255,1),0 0 32px rgba(0,125,255,.72),0 0 48px rgba(0,125,255,.28),inset 0 1px rgba(255,255,255,.38)}
+}
+@media(prefers-reduced-motion:reduce){a[href*="register"],button[name*="register"],button[type="submit"],input[type="submit"]{animation:none!important}}

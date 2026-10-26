@@ -2,16 +2,12 @@
 {% block title %}{{ tournament.title }} | Tournament Admin{% endblock %}
 {% block content %}
 <div class="container py-4">
-    <section class="admin-neon-hero">
-      <span class="section-label">SECURE CONTROL ROOM</span>
-      <h1>🔥 Tournament Admin Control</h1>
-      <h3>{{ tournament.title }}</h3>
-      <p>Is page par sirf isi tournament ki registrations, payment checks, kill evidence aur refunds dikhte hain.</p>
-      <div class="admin-shortcuts"><a class="btn-primary" href="/admin/">Open Django Admin</a><a class="btn-secondary" href="/admin/apps/tournaments/registration/">Verify Payments / Refunds</a><a class="btn-secondary" href="{% url 'tournaments:admin_kill_review' %}">Kill Review</a><a class="btn-secondary" href="{% url 'tournaments:admin_room_page' tournament.id %}">Room Management</a></div>
-    </section>
+    <h2>🔥 Tournament Admin Control</h2>
+    <h4>{{ tournament.title }}</h4>
+    <p>Is page par sirf isi tournament ki registrations, payment checks, kill evidence aur refunds dikhte hain.</p>
 
     <div class="row g-3 my-3">
-        <div class="col-md-4"><div class="card p-3 tournament-card"><h6>Total Registrations</h6><h3>{{ total_players }}</h3></div></div>
+        <div class="col-md-4"><div class="card p-3"><h6>Total Registrations</h6><h3>{{ total_players }}</h3></div></div>
         <div class="col-md-4"><div class="card p-3"><h6>Verified Payments</h6><h3>{{ verified_payments }}</h3></div></div>
         <div class="col-md-4"><div class="card p-3"><h6>Waiting for YES</h6><h3>{{ waiting_players }}</h3></div></div>
         <div class="col-md-4"><div class="card p-3"><h6>Ready to Play</h6><h3>{{ ready_players }}</h3></div></div>
@@ -19,7 +15,7 @@
         <div class="col-md-4"><div class="card p-3"><h6>Refunds Recorded</h6><h3>{{ refunded_players }}</h3></div></div>
     </div>
 
-    <div class="card p-3 my-3 tournament-card">
+    <div class="card p-3 my-3">
         <h4>1. Entry Payment Verification</h4>
         <p>UTR ko apne UPI/bank record se match karne ke baad Django Admin → Registrations mein usi registration ko select karke “Verify UTR against actual UPI/bank receipt and confirm entry” action use karein.</p>
         <div class="table-responsive"><table class="table table-striped table-bordered">
