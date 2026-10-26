@@ -23,7 +23,7 @@ Set secrets in Render Dashboard → your web service → Environment; never comm
 
 - Required: `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS` (include the `onrender.com` hostname), and `DATABASE_URL` when using PostgreSQL.
 - Email OTP/password reset: `BREVO_API_KEY` and `DEFAULT_FROM_EMAIL` (the sender must be verified in Brevo). SMTP fallback uses `EMAIL_HOST_USER` and `EMAIL_HOST_PASSWORD`.
-- UPI intent button: `FF_ARENA_UPI_ID`. This does not verify payment or send withdrawals automatically.
+- Tournament entry UPI: `FF_ARENA_UPI_ID` and optional `FF_ARENA_UPI_NAME`. The registration page shows an amount-specific QR and an “Open UPI app” link, then asks for the player's Profile UID, Free Fire UID and UTR. Registration remains pending until admin checks the actual incoming UPI/bank statement and verifies it.
 - AI evidence proposal: `OPENAI_API_KEY` (optional; without it, use manual admin review).
 
 ## Local setup (Windows / PowerShell)
@@ -64,7 +64,7 @@ Open `http://127.0.0.1:8000/`; the admin site is at `http://127.0.0.1:8000/admin
 
 ## Room confirmation and refunds
 
-The admin sets room details for eligible registrations. Players can see them only after payment verification and must press YES within 60 seconds. To process expired confirmations, run:
+The admin sets room details only for verified registrations. Players can see them only after payment verification and must press YES within 60 seconds. Cancellation/refund actions should be reviewed carefully because real UPI transfers require manual reconciliation. To process expired confirmations, run:
 
 ```powershell
 python manage.py process_expired_confirmations
@@ -75,9 +75,9 @@ This command is not a background scheduler. Configure Windows Task Scheduler or 
 ## Wallet and payments — important
 
 - Wallet deposits open a UPI payment intent using `FF_ARENA_UPI_ID`. This only opens the player's UPI app; it does not verify payment automatically. The deposit remains pending until an admin reconciles the actual bank/UPI statement, records the bank reference in the Deposit Request admin page, and runs the approval action. Never approve based only on a screenshot or a player's claim.
-- Tournament entry fees are debited from the player wallet. Admin payment review checks the corresponding wallet ledger before confirming a registration.
+- Tournament entry fees are paid directly to the receiving UPI account. Players submit the transaction UTR; admin must match the UTR and exact amount against the real receiving account statement before confirming registration. The internal Admin Wallet is only a website ledger, not the actual bank/UPI balance.
 - Withdrawals reserve/debit the requested amount and remain pending until the admin has actually transferred the money through UPI and records the payout reference in admin. The website does not send UPI payments by itself.
-- Kill rewards are credited to the player wallet only after an admin enters the approved kill count and the admin wallet has sufficient balance. This is internal/demo wallet accounting, not a bank transfer.
+- BR kill rewards are calculated at ₹5 per admin-approved kill with a 2-kill minimum. Admin reviews the video/screenshots, then manually transfers the approved amount to the player's saved UPI ID or QR outside the website and enters the real UTR in the Kill Submission admin page before marking it paid. VS mode does not use this kill reward rule.
 - This UPI intent/manual reconciliation flow is not an automatic payment integration. Do not advertise automatic deposits or payouts or use it for real-money operations until a supported, authorized verification/payout integration, reconciliation, security review and automated tests are in place.
 
 ## AI match-history review
