@@ -243,9 +243,9 @@ class KillSubmissionAdmin(admin.ModelAdmin):
             return "UPI ID missing"
         if obj.player.upi_qr_code:
             try:
-                from django.templatetags.static import static
                 return format_html(
-                    '<a href="{}" target="_blank" rel="noopener">Open uploaded UPI QR</a>',
+                    '<a href="{}" target="_blank" rel="noopener"><img src="{}" width="72" height="72" alt="Uploaded player UPI QR" /></a>',
+                    obj.player.upi_qr_code.url,
                     obj.player.upi_qr_code.url,
                 )
             except (ValueError, OSError):
