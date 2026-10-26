@@ -9,7 +9,9 @@
             <h2>{{ registration.tournament.title }}</h2>
             <p>Free Fire UID: <strong>{{ registration.free_fire_uid }}</strong></p>
             <p>Entry fee: ₹{{ registration.entry_fee_paid }}</p>
-            <p>Payment: {% if registration.payment_verified %}Verified{% else %}Pending review{% endif %}</p>
+            <p>Payment: {% if registration.payment_verified %}<strong>Verified</strong>{% else %}<strong>Pending admin UPI/UTR verification</strong>{% endif %}</p>
+            {% if registration.payment_reference %}<p>Submitted UTR: <strong>{{ registration.payment_reference }}</strong></p>{% endif %}
+            {% if registration.status == "pending_payment" %}<p class="profile-notice">Aapki seat abhi final confirm nahi hai. Admin aapke UTR ko actual received payment se match karega; verified hone par status update hoga.</p>{% endif %}
             <p>Status: {{ registration.get_status_display }}</p>
             <p>Match time: {{ registration.tournament.start_time|date:"d M Y, h:i A" }}</p>
             {% if registration.status == "waiting_ready" or registration.status == "ready" %}
