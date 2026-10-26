@@ -54,6 +54,14 @@ class PlayerRegistrationForm(UserCreationForm):
             raise forms.ValidationError("Valid UPI ID enter karein, jaise name@upi.")
         return upi_id
 
+    def clean_upi_qr_code(self):
+        qr = self.cleaned_data.get("upi_qr_code")
+        if qr and qr.size > 2 * 1024 * 1024:
+            raise forms.ValidationError("UPI QR image 2 MB se chhoti honi chahiye.")
+        if qr and hasattr(qr, "content_type") and qr.content_type not in ("image/jpeg", "image/png", "image/webp"):
+            raise forms.ValidationError("UPI QR ke liye JPG, PNG ya WebP image upload karein.")
+        return qr
+
 
 class DepositRequestForm(forms.ModelForm):
     class Meta:
