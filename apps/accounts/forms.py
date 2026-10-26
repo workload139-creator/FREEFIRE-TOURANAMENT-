@@ -73,7 +73,7 @@ class PlayerRegistrationForm(UserCreationForm):
         qr = self.cleaned_data.get("upi_qr_code")
         if qr and qr.size > 2 * 1024 * 1024:
             raise forms.ValidationError("UPI QR image 2 MB se chhoti honi chahiye.")
-        if qr and hasattr(qr, "content_type") and qr.content_type not in ("image/jpeg", "image/png", "image/webp"):
+        if qr and hasattr(qr, "content_type") and qr.content_type not in ("image/jpeg", "image/png", "image/webp", "image/jpg"):
             raise forms.ValidationError("UPI QR ke liye JPG, PNG ya WebP image upload karein.")
         return qr
 
