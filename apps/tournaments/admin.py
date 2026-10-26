@@ -57,6 +57,13 @@ class TournamentAdminForm(forms.ModelForm):
             cleaned["auto_start_at_capacity"] = True
         elif cleaned.get("auto_reopen"):
             self.add_error("auto_reopen", "Auto reopen sirf Unlimited BR series ke liye hai.")
+
+        # Room credentials must be saved in the same admin submission that makes it LIVE.
+        if cleaned.get("status") == Tournament.Status.LIVE:
+            if not (cleaned.get("room_id") or "").strip():
+                self.add_error("room_id", "Tournament LIVE karne se pehle Room ID bharo.")
+            if not (cleaned.get("room_password") or "").strip():
+                self.add_error("room_password", "Tournament LIVE karne se pehle Room Password bharo.")
         return cleaned
 
 
@@ -162,6 +169,86 @@ class TournamentAdmin(admin.ModelAdmin):
     inlines = (RegistrationInline,)
     actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid,)
     readonly_fields = ("series_root", "winner_prize_paid", "kill_prize_distributed", "kill_prize_pool", "kill_prize_reference", "winner_payout_destination", "winner_payout_qr")
+
+    def save_model(self, request, obj, form, change):
+        previous_status = None
+        if change and obj.pk:
+            previous_status = Tournament.objects.filter(pk=obj.pk).values_list("status", flat=True).first()
+
+        was_live = previous_status == Tournament.Status.LIVE
+        super().save_model(request, obj, form, change)
+
+        # Publish room access only when admin moves the tournament into LIVE.
+        if obj.status != Tournament.Status.LIVE or was_live:
+            return
+
+        from datetime import timedelta
+        from django.conf import settings
+        from django.core.mail import send_mail
+        from django.urls import reverse
+        from django.utils import timezone
+
+        now = timezone.now()
+        eligible = Registration.objects.filter(
+            tournament=obj,
+            payment_verified=True,
+            refund_processed=False,
+            status=Registration.Status.CONFIRMED,
+        ).select_related("player")
+        eligible.update(
+            status=Registration.Status.WAITING_READY,
+            room_details_sent=True,
+            ready_deadline=now + timedelta(seconds=60),
+            ready_confirmed_at=None,
+        )
+
+        sent = 0
+        missing_email = 0
+        for registration in Registration.objects.filter(
+            tournament=obj,
+            payment_verified=True,
+            refund_processed=False,
+            status=Registration.Status.WAITING_READY,
+        ).select_related("player"):
+            player = registration.player
+            if not (player.email or "").strip():
+                missing_email += 1
+                continue
+            try:
+                room_url = request.build_absolute_uri(
+                    reverse("tournaments:player_room", args=[registration.pk])
+                )
+                send_mail(
+                    subject=f"FF Arena: {obj.title} is LIVE — confirm YES/NO",
+                    message=(
+                        f"Hi {player.username},\n\n"
+                        f"Tournament: {obj.title} is now LIVE.\n"
+                        f"Your registered Free Fire UID: {registration.free_fire_uid}\n"
+                        f"Entry fee: INR {registration.entry_fee_paid}\n\n"
+                        "Open the secure tournament page and press YES if you want to play, "
+                        "or NO if you cannot play. Room ID/password are shown only after YES. "
+                        "Please respond within 60 seconds. If you press NO or do not respond, "
+                        "you will be marked NOT PLAYING. If your entry was paid directly by UPI, "
+                        "the admin must send the real refund and record its UTR; the website "
+                        "cannot transfer money automatically.\n\n"
+                        f"Confirm here: {room_url}\n"
+                    ),
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[player.email],
+                    fail_silently=True,
+                )
+                sent += 1
+            except Exception:
+                # Email failure must not expose room credentials or stop the admin save.
+                continue
+
+        self.message_user(
+            request,
+            f"Tournament is LIVE. {eligible.count()} verified player(s) were queued for YES/NO; "
+            f"email attempts: {sent}, players without email: {missing_email}. "
+            "Check SMTP/Brevo configuration and email delivery logs.",
+            level=messages.SUCCESS,
+        )
 
     def get_readonly_fields(self, request, obj=None):
         fields = list(super().get_readonly_fields(request, obj))
