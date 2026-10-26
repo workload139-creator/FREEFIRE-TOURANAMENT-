@@ -1,38 +1,39 @@
 {% extends "base.html" %}
-
 {% block title %}{{ tournament.title }} | FF Arena{% endblock %}
-
 {% block content %}
 <section class="container" style="max-width:850px;margin:40px auto;padding:20px">
-    <a href="{% url 'tournaments:list' %}">← All Tournaments</a>
-    <h1>{{ tournament.title }}</h1>
-    <p>{{ tournament.description|default:"Tournament ki details yahan dikhengi." }}</p>
-    <p><strong>Mode:</strong> {{ tournament.get_mode_display }}{% if tournament.mode == "VS" %} — {{ tournament.get_vs_format_display }}{% endif %}</p>
-    <p><strong>Entry Fee:</strong> ₹{{ tournament.entry_fee }}</p>
-    <p><strong>Prize Pool:</strong> ₹{{ tournament.prize_pool }}</p>
-    <p><strong>Players:</strong> {{ tournament.confirmed_players_count }}/{{ tournament.max_players }}</p>
-    <p><strong>Start Time:</strong> {{ tournament.start_time|date:"d M Y, h:i A" }}</p>
-    <p><strong>Status:</strong> {{ tournament.get_status_display }}</p>
-    {% if tournament.mode == "BR" %}
-    <section class="tournament-card" style="margin:20px 0;padding:18px;border:1px solid #ff7a45;border-radius:14px;background:linear-gradient(135deg,#241712,#171923);color:#fff">
-        <h2 style="margin-top:0">🔥 BR Kill Reward Rules</h2>
-        <p>Kill reward rate configured tournament rules ke hisaab se hoga; minimum 2 verified kills required.</p>
-        <p>0 ya 1 verified kill par kill reward nahi milega.</p>
-        <p>Video and game-history screenshots are reviewed; AI only suggests, and admin makes the final decision. Eligible rewards are credited through the tournament wallet batch after admin confirmation.</p>
-    </section>
-    {% endif %}
-
-    {% if user.is_authenticated %}
-        {% if tournament.status == "upcoming" and not tournament.is_full %}
-            <a class="button button-primary" href="{% url 'tournaments:register' tournament.id %}">Register for Tournament</a>
-        {% elif tournament.is_full %}
-            <p>Room full hai. Abhi registration available nahi hai.</p>
-        {% else %}
-            <p>Is tournament ki registration abhi available nahi hai.</p>
-        {% endif %}
+  <a href="{% url 'tournaments:list' %}">← All Tournaments</a>
+  <h1>{{ tournament.title }}</h1>
+  <p>{{ tournament.description|default:"Tournament ki details yahan dikhengi." }}</p>
+  <p><strong>Mode:</strong> {{ tournament.get_mode_display }}{% if tournament.mode == "VS" %} — {{ tournament.get_vs_format_display }}{% endif %}</p>
+  <p><strong>Entry Fee:</strong> ₹{{ tournament.entry_fee }}</p>
+  <p><strong>Prize Pool:</strong> ₹{{ tournament.prize_pool }}</p>
+  <p><strong>Players:</strong> {{ tournament.confirmed_players_count }}/{{ tournament.max_players }}</p>
+  <p><strong>Start Time:</strong> {{ tournament.start_time|date:"d M Y, h:i A" }}</p>
+  <p><strong>Status:</strong> {{ tournament.get_status_display }}</p>
+  {% if tournament.mode == "BR" %}
+  <section class="tournament-card" style="margin:20px 0;padding:18px;border:1px solid #ff7a45;border-radius:14px;background:linear-gradient(135deg,#241712,#171923);color:#fff">
+    <h2 style="margin-top:0">🔥 BR Kill Verification</h2>
+    <ol>
+      <li>Register karke isi tournament mein match khelein.</li>
+      <li>My Registrations kholein; eligible/ready registration par Submit Kill Proof dabayein.</li>
+      <li>15–30 second ki gameplay/history video aur 2 clear game-history screenshots upload karein.</li>
+      <li>AI initial evidence review karega agar AI service configured ho. Final kill count aur reward admin approve karega.</li>
+    </ol>
+    <p>AI unavailable ya evidence unclear ho to manual admin review hoga. Reward tournament ke configured rules par depend karta hai; upload karne se reward guarantee nahi hota.</p>
+  </section>
+  {% endif %}
+  {% if user.is_authenticated %}
+    {% if tournament.status == "upcoming" and not tournament.is_full %}
+      <a class="button button-primary" href="{% url 'tournaments:register' tournament.id %}">Register for Tournament</a>
+    {% elif tournament.is_full %}
+      <p>Room full hai. Abhi registration available nahi hai.</p>
     {% else %}
-        <p>Registration karne ke liye pehle login karo.</p>
-        <a href="{% url 'login' %}?next={{ request.path }}">Login</a>
+      <p>Is tournament ki registration abhi available nahi hai.</p>
     {% endif %}
+  {% else %}
+    <p>Registration karne ke liye pehle login karo.</p>
+    <a href="{% url 'login' %}?next={{ request.path }}">Login</a>
+  {% endif %}
 </section>
 {% endblock %}

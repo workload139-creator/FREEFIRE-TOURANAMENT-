@@ -2,33 +2,48 @@
 {% block title %}My Registrations | FF Arena{% endblock %}
 {% block content %}
 <section class="container" style="max-width:1000px;margin:35px auto;padding:20px">
-    <h1>My Tournament Registrations</h1>
-    <div class="tournament-grid">
-    {% for registration in registrations %}
-        <article class="tournament-card" style="padding:20px;border-radius:14px">
-            <h2>{{ registration.tournament.title }}</h2>
-            <p>Free Fire UID: <strong>{{ registration.free_fire_uid }}</strong></p>
-            <p>Entry fee: ₹{{ registration.entry_fee_paid }}</p>
-            <p>Payment: {% if registration.payment_verified %}<strong>Verified</strong>{% else %}<strong>Pending admin UPI/UTR verification</strong>{% endif %}</p>
-            {% if registration.payment_reference %}<p>Submitted UTR: <strong>{{ registration.payment_reference }}</strong></p>{% endif %}
-            {% if registration.status == "pending_payment" %}<p class="profile-notice">Aapki seat abhi final confirm nahi hai. Admin aapke UTR ko actual received payment se match karega; verified hone par status update hoga.</p>{% endif %}
-            <p>Status: {{ registration.get_status_display }}</p>
-            <p>Match time: {{ registration.tournament.start_time|date:"d M Y, h:i A" }}</p>
-            {% if registration.status == "waiting_ready" or registration.status == "ready" %}
-                <a class="button button-primary" href="{% url 'tournaments:player_room' registration.id %}">Open Room / Confirm</a>
-            {% endif %}
-            {% if registration.status == "ready" %}
-                <a class="button button-outline" href="{% url 'tournaments:kill_submission' registration.id %}">Submit Kill Evidence</a>
-            {% endif %}
-            <a href="{% url 'tournaments:detail' registration.tournament.id %}">Tournament details</a>
-            <a href="{% url 'tournaments:leaderboard' registration.tournament.id %}">Leaderboard</a>
-        </article>
-    {% empty %}
-        <div class="tournament-card" style="padding:22px">
-            <p>Abhi aapki koi registration nahi hai.</p>
-            <a href="{% url 'tournaments:list' %}">Browse tournaments</a>
-        </div>
-    {% endfor %}
+  <h1>My Tournament Registrations</h1>
+  <p>Yahan apni registration, payment, room-confirmation aur kill-proof status check karein.</p>
+  <div class="tournament-grid">
+  {% for registration in registrations %}
+    <article class="tournament-card" style="padding:20px;border-radius:14px">
+      <h2>{{ registration.tournament.title }}</h2>
+      <p>Player: <strong>{{ request.user.username }}</strong> · Website Profile ID: <strong>{{ request.user.pk }}</strong></p>
+      <p>Free Fire UID: <strong>{{ registration.free_fire_uid }}</strong></p>
+      <p>Mode: {{ registration.tournament.get_mode_display }}{% if registration.tournament.mode == "VS" %} · {{ registration.tournament.get_vs_format_display }}{% endif %}</p>
+      <p>Entry fee: ₹{{ registration.entry_fee_paid }}</p>
+      <p>Payment: {% if registration.payment_verified %}<strong>Verified</strong>{% else %}<strong>Pending admin UPI/UTR verification</strong>{% endif %}</p>
+      {% if registration.payment_reference %}<p>Submitted UTR: <strong>{{ registration.payment_reference }}</strong></p>{% endif %}
+      {% if registration.status == "pending_payment" %}<div class="profile-notice">Seat abhi confirm nahi hai. Admin ko UTR ko actual received payment se match karna hoga.</div>{% endif %}
+      <p>Registration status: <strong>{{ registration.get_status_display }}</strong></p>
+      <p>Match time: {{ registration.tournament.start_time|date:"d M Y, h:i A" }}</p>
+      {% if registration.status == "waiting_ready" or registration.status == "ready" %}
+        <a class="button button-primary" href="{% url 'tournaments:player_room' registration.id %}">Open Room / Confirm</a>
+      {% endif %}
+      {% if registration.status == "ready" %}
+        <h3>Kill verification</h3>
+        {% with submission=registration.kill_submissions.all|first %}
+          {% if submission %}
+            <p>Kill proof status: <strong>{{ submission.get_status_display }}</strong></p>
+            {% if submission.ai_proposed_kills != None %}<p>AI suggested kills: {{ submission.ai_proposed_kills }}</p>{% endif %}
+            {% if submission.ai_confidence %}<p>AI confidence: {{ submission.ai_confidence }}</p>{% endif %}
+            {% if submission.ai_review_notes %}<p>AI notes: {{ submission.ai_review_notes }}</p>{% endif %}
+            {% if submission.admin_notes %}<p>Admin review notes: {{ submission.admin_notes }}</p>{% endif %}
+            <p>Evidence already submitted for this registration. Admin review is required before any prize approval.</p>
+          {% else %}
+            <p>Match ke baad 15–30 second ki gameplay/history video aur 2 clear game-history screenshots submit karein. UID registration wali UID se match honi chahiye.</p>
+            <a class="button button-primary" href="{% url 'tournaments:kill_submission' registration.id %}">Submit Kill Proof</a>
+          {% endif %}
+        {% endwith %}
+      {% endif %}
+      <p><a href="{% url 'tournaments:detail' registration.tournament.id %}">Tournament details</a> · <a href="{% url 'tournaments:leaderboard' registration.tournament.id %}">Leaderboard</a></p>
+    </article>
+  {% empty %}
+    <div class="tournament-card" style="padding:22px">
+      <p>Abhi aapki koi registration nahi hai.</p>
+      <a href="{% url 'tournaments:list' %}">Browse tournaments</a>
     </div>
+  {% endfor %}
+  </div>
 </section>
 {% endblock %}

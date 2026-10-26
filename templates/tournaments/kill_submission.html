@@ -1,28 +1,59 @@
 {% extends "base.html" %}
 {% block title %}Kill Evidence | FF Arena{% endblock %}
 {% block content %}
-<section class="container" style="max-width:760px;margin:40px auto;padding:20px">
-    <div class="tournament-card" style="padding:24px;border-radius:16px">
-        <p class="section-label">AI MATCH REVIEW</p>
-        <h1>Submit Kill Evidence</h1>
-        <h2>{{ tournament.title }}</h2>
-        <p>Registered UID: <strong>{{ registration.free_fire_uid }}</strong></p>
-        <p>Upload an approximately 20-second match-history video and 2 screenshots. When the OpenAI API key is configured, AI will assess the submitted evidence and suggest a kill count and UID match. The result is only a proposal; an admin must inspect the files and approve/correct the final kill count before any demo wallet reward.</p>
-        {% if tournament.mode == "BR" %}
-        <p><strong>BR reward rule:</strong> ₹5 per admin-approved kill, with a minimum of 2 verified kills. 0 or 1 kill earns ₹0 kill reward. 2 kills = ₹10; 5 kills = ₹25. AI only suggests a count; the admin must verify the evidence and approve the final count. Eligible rewards are processed through the tournament wallet batch after admin confirmation.</p>
-        {% else %}
-        <p><strong>Note:</strong> The ₹5-per-kill reward applies only to BR Mode, not VS Mode. This evidence flow does not authorize any VS reward.</p>
-        {% endif %}
-        <form method="post" enctype="multipart/form-data">
-            {% csrf_token %}
-            {{ form.non_field_errors }}
-            <div class="form-group"><label for="{{ form.free_fire_uid.id_for_label }}">Free Fire UID</label>{{ form.free_fire_uid }}{{ form.free_fire_uid.errors }}</div>
-            <div class="form-group"><label for="{{ form.history_video.id_for_label }}">Match-history video (MP4/MOV/WEBM, 15–30 seconds, max 50 MB)</label>{{ form.history_video }}{{ form.history_video.errors }}</div>
-            <div class="form-group"><label for="{{ form.history_image_one.id_for_label }}">Screenshot 1 (JPG/PNG/WEBP, max 5 MB)</label>{{ form.history_image_one }}{{ form.history_image_one.errors }}</div>
-            <div class="form-group"><label for="{{ form.history_image_two.id_for_label }}">Screenshot 2 (JPG/PNG/WEBP, max 5 MB)</label>{{ form.history_image_two }}{{ form.history_image_two.errors }}</div>
-            <div class="form-group">{{ form.consent_ai_review }} <label for="{{ form.consent_ai_review.id_for_label }}">{{ form.consent_ai_review.label }}</label>{{ form.consent_ai_review.errors }}</div>
-            <button type="submit" class="button button-primary">Submit for AI + Admin Review</button>
-        </form>
+<section class="container" style="max-width:820px;margin:40px auto;padding:20px">
+  <div class="tournament-card" style="padding:24px;border-radius:16px">
+    <p class="section-label">MATCH EVIDENCE · AI + ADMIN REVIEW</p>
+    <h1>Submit Kill Proof</h1>
+    <h2>{{ tournament.title }}</h2>
+    <p><strong>Registered Free Fire UID:</strong> {{ registration.free_fire_uid }}</p>
+    <h3>Kill verify kaise karein?</h3>
+    <ol>
+      <li>Isi tournament ka match khelne ke baad apni gameplay/match-history ki playable video banayein. Video 15–30 seconds ki honi chahiye (recommended approx. 20 seconds).</li>
+      <li>Game history ke 2 clear screenshots upload karein. UID aur kills padhne layak hon.</li>
+      <li>Registered Free Fire UID bilkul wahi enter karein jo registration mein hai.</li>
+      <li>Submit karne ke baad system configured AI se video ke sampled frames aur screenshots ka initial analysis karne ki koshish karega.</li>
+      <li>Apni submission ka status My Registrations mein dekhein. AI unavailable ho ya evidence unclear ho to admin manual review karega.</li>
+    </ol>
+    <div class="profile-notice" role="note">
+      <strong>Important:</strong> AI ka result final decision nahi hai. UID mismatch, unclear/edited evidence ya kills verify na hone par admin clarification maang sakta hai ya submission reject kar sakta hai. Prize sirf admin ke final approval ke baad process hoga. Upload karna apne aap prize guarantee nahi karta.
     </div>
+    {% if tournament.mode == "BR" %}
+      <p><strong>BR reward:</strong> Reward tournament/admin-configured rules ke mutabik hoga. Minimum 2 admin-approved kills ki shart lagu ho sakti hai; final amount admin review aur tournament settings par depend karega. Is page par koi fixed ₹/kill rate guarantee nahi hai.</p>
+    {% else %}
+      <p><strong>VS mode:</strong> Kill-proof submission se VS reward automatically calculate ya approve nahi hota. VS reward ke liye tournament ke rules follow karein.</p>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      <div class="form-group">
+        <label for="{{ form.free_fire_uid.id_for_label }}">Free Fire UID</label>
+        {{ form.free_fire_uid }}
+        {% for error in form.free_fire_uid.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="form-group">
+        <label for="{{ form.history_video.id_for_label }}">Match/game-history video (MP4/MOV/WEBM, 15–30 seconds, max 50 MB)</label>
+        {{ form.history_video }}
+        {% for error in form.history_video.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="form-group">
+        <label for="{{ form.history_image_one.id_for_label }}">Game-history screenshot 1 (JPG/PNG/WEBP, max 5 MB)</label>
+        {{ form.history_image_one }}
+        {% for error in form.history_image_one.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="form-group">
+        <label for="{{ form.history_image_two.id_for_label }}">Game-history screenshot 2 (JPG/PNG/WEBP, max 5 MB)</label>
+        {{ form.history_image_two }}
+        {% for error in form.history_image_two.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="form-group">
+        {{ form.consent_ai_review }}
+        <label for="{{ form.consent_ai_review.id_for_label }}">{{ form.consent_ai_review.label }}</label>
+        {% for error in form.consent_ai_review.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+      </div>
+      <button type="submit" class="button button-primary">Submit Kill Proof for Review</button>
+      <p><a href="{% url 'tournaments:my_registrations' %}">Back to My Registrations / Check Status</a></p>
+    </form>
+  </div>
 </section>
 {% endblock %}
