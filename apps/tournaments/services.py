@@ -166,6 +166,23 @@ def cancel_tournament_and_refund(tournament_id):
                 description=f"Automatic wallet refund because tournament {tournament.title} was cancelled",
             )
 
+        entry_ref = f"ADMIN-ENTRY-{registration.pk}"
+        admin_refund_ref = f"ADMIN-REFUND-CANCEL-{registration.pk}"
+        entry_ledger = AdminWalletTransaction.objects.filter(reference=entry_ref, status=AdminWalletTransaction.Status.COMPLETED).first()
+        if entry_ledger and not AdminWalletTransaction.objects.filter(reference=admin_refund_ref).exists():
+            admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
+            admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
+            admin_wallet.balance -= registration.entry_fee_paid
+            admin_wallet.save(update_fields=["balance", "updated_at"])
+            AdminWalletTransaction.objects.create(
+                admin_wallet=admin_wallet,
+                transaction_type=AdminWalletTransaction.TransactionType.REFUND,
+                amount=registration.entry_fee_paid,
+                status=AdminWalletTransaction.Status.COMPLETED,
+                reference=admin_refund_ref,
+                description=f"Reverse entry fee for cancelled tournament {tournament.pk}",
+            )
+
         registration.status = Registration.Status.REFUNDED
         registration.room_details_sent = False
         registration.refund_processed = True
