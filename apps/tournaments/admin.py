@@ -310,12 +310,12 @@ class TournamentAdmin(admin.ModelAdmin):
         return format_html('<img src="data:image/png;base64,{}" width="120" height="120" alt="Winner UPI payment QR" />', encoded)
 
     fieldsets = (
-        ("Tournament Details", {"fields": ("title", "description", "mode", "vs_format")}),
-        ("Fees & Players", {"fields": ("entry_fee", "prize_pool", "max_players")}),
-        ("Unlimited BR Series", {"fields": ("is_unlimited_br", "auto_start_at_capacity", "auto_reopen", "series_root")}),
-        ("Schedule & Status", {"fields": ("start_time", "status")}),
-        ("Room Details", {"fields": ("room_id", "room_password")}),
-        ("First Place Winner", {"fields": ("winner_uid", "winner_payout_destination", "winner_payout_qr", "winner_prize_reference", "winner_prize_paid")}),
+        ("1. Tournament Details — kya ban raha hai?", {"description": "Title public tournament name hai. Description mein rules/time/instructions likhein. Mode mein BR (Battle Royale) ya VS (Clash Squad) chunein. VS select karne par 1v1/2v2/3v3/4v4 format chunein; BR mein VS format khaali rakhein.", "fields": ("title", "description", "mode", "vs_format")}),
+        ("2. Fees & Players — entry aur capacity", {"description": "Entry Fee player se li jane wali registration fee hai. Prize Pool tournament ka first-place prize hai; ise admin ke funds aur payout process ke mutabik set karein. Max Players room capacity hai (maximum 49). BR kill reward alag rule hai: minimum 2 approved kills ke baad ₹5 per approved kill; evidence aur admin approval zaroori hai.", "fields": ("entry_fee", "prize_pool", "max_players")}),
+        ("3. Unlimited BR Series — optional", {"description": "Sirf unlimited BR series ke liye ON karein. Har round mein 49 players. Auto start capacity par round shuru karne ke liye hai; Auto reopen agla round khol sakta hai. Normal tournament ho to in options ko OFF rakhein.", "fields": ("is_unlimited_br", "auto_start_at_capacity", "auto_reopen", "series_root")}),
+        ("4. Schedule & Status — publish / LIVE", {"description": "Start Time tournament ka scheduled time hai. Draft public list mein nahi dikhta; Upcoming se listing/registration khulti hai. LIVE karne se pehle Room Details section mein Room ID aur Password bharna zaroori hai. LIVE karne par verified paid players ko YES/NO confirmation email bhejne ki koshish hoti hai; email delivery SMTP setup par depend karti hai.", "fields": ("start_time", "status")}),
+        ("5. Room Details — private until YES", {"description": "Room ID aur Password game room ke credentials hain. Tournament LIVE karte waqt dono bharein. Player ko room tabhi dikhega jab woh deadline ke andar YES kare. Credentials public description/website post mein na likhein.", "fields": ("room_id", "room_password")}),
+        ("6. First Place Winner & payout tracking", {"description": "Tournament complete/review ke baad winner ki registered Free Fire UID enter karein. Neeche player ki saved UPI/QR details dekh sakte hain. Winner Prize Reference mein actual transfer ka real UTR enter karne ke baad hi payout action use karein. Is field ko bharna apne-aap paise transfer nahi karta.", "fields": ("winner_uid", "winner_payout_destination", "winner_payout_qr", "winner_prize_reference", "winner_prize_paid")}),
     )
 
 
