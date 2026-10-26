@@ -486,3 +486,41 @@ a[href*="tournaments"],a[href*="leaderboard"],a[href*="results"]{animation:ff-pu
 .wallet-record small,.wallet-record p{display:block;color:#aebbd0;margin:8px 0 0;overflow-wrap:anywhere}
 .wallet-empty{padding:15px;color:#aebbd0;border:1px dashed rgba(255,255,255,.16);border-radius:12px}
 @media(max-width:600px){.wallet-page{padding:12px!important;margin:18px auto!important}.wallet-balance-card{grid-template-columns:1fr;padding:20px}.wallet-readonly{position:static;justify-self:start}.wallet-notice{padding:16px;gap:11px}.wallet-action-row a{flex:1}}
+
+
+/* FF ARENA IMMERSIVE HUD: animated scanlines, ambient energy and opt-in UI sound */
+body{position:relative}
+body::before{
+ content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.16;
+ background:repeating-linear-gradient(0deg,transparent 0,transparent 3px,rgba(115,205,255,.045) 4px,transparent 5px);
+ mix-blend-mode:screen;
+}
+body::after{
+ content:"";position:fixed;inset:-20%;z-index:0;pointer-events:none;opacity:.18;
+ background:radial-gradient(ellipse at 10% 20%,rgba(255,55,80,.12),transparent 30%),radial-gradient(ellipse at 88% 30%,rgba(52,177,255,.13),transparent 32%),radial-gradient(ellipse at 55% 95%,rgba(178,86,255,.1),transparent 34%);
+ animation:ff-ambient-drift 18s ease-in-out infinite alternate;
+}
+.site-header,main,.site-footer,.site-messages{position:relative;z-index:1}
+@keyframes ff-ambient-drift{0%{transform:translate3d(-1%,0,0) scale(1)}100%{transform:translate3d(1%,1%,0) scale(1.04)}}
+.site-header{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px)}
+.site-header:after{content:"";display:block;height:2px;background:linear-gradient(90deg,transparent,#ff385d,#ffbd43,#42c7ff,#b66bff,transparent);background-size:220% 100%;animation:ff-spectrum 6s linear infinite;opacity:.85}
+.ff-sound-toggle{
+ position:fixed;right:18px;bottom:18px;z-index:1000;display:flex;align-items:center;gap:9px;
+ padding:11px 15px;border-radius:999px;border:1px solid rgba(69,184,255,.65);
+ color:#f4f9ff;background:linear-gradient(135deg,rgba(5,16,29,.96),rgba(19,9,34,.96));
+ box-shadow:0 0 12px rgba(69,184,255,.22),0 8px 28px rgba(0,0,0,.4);
+ font-size:.74rem;font-weight:950;letter-spacing:.1em;cursor:pointer;
+ transition:transform .2s,border-color .2s,box-shadow .2s;
+}
+.ff-sound-toggle:hover{transform:translateY(-3px);border-color:#8beaff;box-shadow:0 0 16px rgba(69,184,255,.45),0 10px 30px rgba(0,0,0,.4)}
+.ff-sound-icon{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:rgba(69,184,255,.14);color:#63ddff;font-size:1.15rem}
+.ff-sound-toggle.is-on{border-color:#64ffad;box-shadow:0 0 12px rgba(72,255,155,.25),0 0 28px rgba(72,255,155,.12),0 8px 28px rgba(0,0,0,.4)}
+.ff-sound-toggle.is-on .ff-sound-icon{background:rgba(72,255,155,.14);color:#72ffb1}
+.hero,.tournament-card,.feature-card,.stat-card,.auth-card,.wallet-hero,.admin-neon-hero{transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease}
+.hero{box-shadow:0 0 0 1px rgba(69,184,255,.08),0 24px 70px rgba(0,0,0,.45),0 0 42px rgba(69,184,255,.07)}
+.tournament-card,.feature-card{animation:ff-card-arrive .65s both}
+.tournament-card:nth-child(2),.feature-card:nth-child(2){animation-delay:.08s}
+.tournament-card:nth-child(3),.feature-card:nth-child(3){animation-delay:.16s}
+@keyframes ff-card-arrive{from{opacity:.7;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:600px){.ff-sound-toggle{right:12px;bottom:12px;padding:9px 12px}.ff-sound-label{font-size:.68rem}}
+@media(prefers-reduced-motion:reduce){body::after,.site-header:after,.tournament-card,.feature-card{animation:none!important;transition:none!important}}
