@@ -3,52 +3,89 @@
 {% block title %}My Wallet | FF Arena{% endblock %}
 
 {% block content %}
-<section class="container" style="max-width:900px;margin:40px auto;padding:20px">
-    <h1>My Wallet</h1>
-    <div class="tournament-card" style="padding:24px;border-radius:16px">
-        <p>Wallet ID: <strong>{{ wallet.wallet_id }}</strong></p>
-        <p>Available Balance</p>
-        <h2>₹{{ wallet.balance }}</h2>
-        <p>Deposit minimum ₹10 hai. Maximum wallet balance ₹5000 hai.</p>
-        <div style="display:flex;gap:12px;flex-wrap:wrap"><a class="button button-primary" href="{% url 'accounts:deposit' %}">Deposit to Wallet</a><a class="button button-outline" href="{% url 'accounts:withdraw' %}">Redeem / Withdraw to UPI</a><a class="button button-outline" href="{% url 'tournaments:my_registrations' %}">My Tournaments</a></div>
+<section class="container wallet-page" style="max-width:960px;margin:40px auto;padding:20px">
+    <div class="wallet-hero">
+        <span class="wallet-kicker">FF ARENA · WALLET NOTICE</span>
+        <h1>My Wallet</h1>
+        <p class="wallet-subtitle">Wallet services are currently unavailable</p>
+        <div class="wallet-status"><span class="wallet-status-dot"></span> WALLET INACTIVE · VIEW ONLY</div>
     </div>
-    <h2 style="margin-top:30px">Deposit Requests</h2>
+
+    <div class="wallet-notice" role="status">
+        <div class="wallet-notice-icon">!</div>
+        <div>
+            <h2>Wallet abhi active nahi hai</h2>
+            <p>Filhaal FF Arena par wallet deposit, wallet balance add karna aur UPI withdrawal/redeem service available nahi hai. Is page par dikhne wala balance ya purane records wallet service active hone ka confirmation nahi hain.</p>
+            <p><strong>Kripya abhi wallet mein paise deposit na karein aur nayi withdrawal request submit na karein.</strong> Kisi purani pending request ke liye payment dobara na bhejein; support/admin se status confirm karein.</p>
+        </div>
+    </div>
+
+    <div class="wallet-balance-card">
+        <div>
+            <span class="wallet-muted-label">Wallet ID</span>
+            <p class="wallet-id">{{ wallet.wallet_id }}</p>
+        </div>
+        <div class="wallet-balance">
+            <span class="wallet-muted-label">Displayed balance · not available to use</span>
+            <strong>₹{{ wallet.balance }}</strong>
+        </div>
+        <span class="wallet-readonly">READ ONLY</span>
+    </div>
+
+    <div class="wallet-action-row">
+        <a class="button button-outline" href="{% url 'tournaments:my_registrations' %}">My Tournaments</a>
+        <a class="button button-outline" href="mailto:workload139@gmail.com?subject=FF%20Arena%20Wallet%20Request">Contact Support</a>
+    </div>
+
+    <div class="wallet-history-heading">
+        <span class="wallet-kicker">ACCOUNT RECORDS</span>
+        <h2>Previous Deposit Requests</h2>
+        <p>These are historical request records only. Wallet service is currently inactive.</p>
+    </div>
     {% for deposit in deposit_requests %}
-        <div class="tournament-card" style="padding:15px;margin:10px 0;border-radius:10px">
-            <strong>Deposit #{{ deposit.pk }} · ₹{{ deposit.amount }}</strong>
-            <p>Status: {{ deposit.get_status_display }}</p>
+        <div class="wallet-record">
+            <div class="wallet-record-top">
+                <strong>Deposit #{{ deposit.pk }} · ₹{{ deposit.amount }}</strong>
+                <span class="wallet-record-status">{{ deposit.get_status_display }}</span>
+            </div>
             <small>{{ deposit.created_at|date:"d M Y, h:i A" }}</small>
-            {% if deposit.payment_reference %}<p>Bank/payment reference: {{ deposit.payment_reference }}</p>{% endif %}
-            {% if deposit.status == "pending" and deposit.payment_reference|slice:":4" == "ffw_" %}
-                <p><a class="button button-outline" href="{% url 'accounts:cashfree_return' %}?order_id={{ deposit.payment_reference|urlencode }}">Check Cashfree payment status</a></p>
-                <small>Ye button Cashfree se status verify karta hai; sirf successful verified payment hi wallet mein credit hogi.</small>
-            {% endif %}
+            {% if deposit.payment_reference %}<p>Payment reference: {{ deposit.payment_reference }}</p>{% endif %}
         </div>
     {% empty %}
-        <p>Abhi koi deposit request nahi hai.</p>
+        <p class="wallet-empty">Abhi koi deposit request record nahi hai.</p>
     {% endfor %}
-    <h2 style="margin-top:30px">Redeem / Withdrawal Requests</h2>
+
+    <div class="wallet-history-heading">
+        <h2>Previous Withdrawal Requests</h2>
+        <p>Pending payout records must be checked with support/admin; do not assume payment has been sent.</p>
+    </div>
     {% for withdrawal in withdrawal_requests %}
-        <div class="tournament-card" style="padding:15px;margin:10px 0;border-radius:10px">
-            <strong>₹{{ withdrawal.amount }} → {{ withdrawal.upi_id }}</strong>
-            <p>Status: {{ withdrawal.get_status_display }}</p>
+        <div class="wallet-record">
+            <div class="wallet-record-top">
+                <strong>₹{{ withdrawal.amount }} → {{ withdrawal.upi_id }}</strong>
+                <span class="wallet-record-status">{{ withdrawal.get_status_display }}</span>
+            </div>
             {% if withdrawal.payout_reference %}<p>Reference: {{ withdrawal.payout_reference }}</p>{% endif %}
             <small>{{ withdrawal.created_at|date:"d M Y, h:i A" }}</small>
         </div>
     {% empty %}
-        <p>Abhi koi redeem request nahi hai.</p>
+        <p class="wallet-empty">Abhi koi withdrawal request record nahi hai.</p>
     {% endfor %}
-    <h2 style="margin-top:30px">Transaction History</h2>
+
+    <div class="wallet-history-heading">
+        <h2>Transaction History</h2>
+    </div>
     {% for transaction in transactions %}
-        <div class="tournament-card" style="padding:15px;margin:10px 0;border-radius:10px">
-            <strong>{{ transaction.get_transaction_type_display }}</strong>
-            <p>Amount: ₹{{ transaction.amount }}</p>
-            <p>Status: {{ transaction.get_status_display }}</p>
+        <div class="wallet-record">
+            <div class="wallet-record-top">
+                <strong>{{ transaction.get_transaction_type_display }} · ₹{{ transaction.amount }}</strong>
+                <span class="wallet-record-status">{{ transaction.get_status_display }}</span>
+            </div>
             <small>{{ transaction.created_at|date:"d M Y, h:i A" }}</small>
             {% if transaction.description %}<p>{{ transaction.description }}</p>{% endif %}
         </div>
     {% empty %}
-        <p>Abhi koi transaction nahi hai.</p>
+        <p class="wallet-empty">Abhi koi transaction nahi hai.</p>
     {% endfor %}
 </section>
 {% endblock %}
