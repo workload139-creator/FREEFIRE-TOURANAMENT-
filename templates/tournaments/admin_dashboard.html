@@ -74,7 +74,7 @@
             {% empty %}<tr><td colspan="7">Is tournament ke liye abhi kill evidence submit nahi hua.</td></tr>{% endfor %}
             </tbody>
         </table></div>
-        <a href="{% url 'tournaments:admin_kill_review' %}" class="btn btn-outline-primary">Open Kill Review</a>
+        <a href="{% url 'tournaments:admin_kill_review' %}?tournament={{ tournament.id }}" class="btn btn-outline-primary">Open This Tournament's Kill Review</a>
     </div>
 
     <div class="card p-3 my-3">
