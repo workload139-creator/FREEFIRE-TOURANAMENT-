@@ -6,42 +6,60 @@
 <section class="container" style="max-width:680px;margin:40px auto;padding:20px">
     <div class="tournament-card" style="padding:24px;border-radius:16px">
         <h1>Deposit to Wallet</h1>
+        <p>Player Wallet ID: <strong>{{ wallet.wallet_id }}</strong></p>
         <p>Current balance: <strong>₹{{ wallet.balance }}</strong></p>
         <p>Minimum deposit ₹10 · Maximum wallet balance ₹5000</p>
 
-        {% if deposit and upi_uri %}
-            <h2>Pay ₹{{ deposit.amount }} using your UPI app</h2>
-            <p>Deposit request #{{ deposit.pk }} is pending verification.</p>
-            <p>Pay to FF Arena UPI ID: <strong>{{ upi_id }}</strong></p>
+        {% if deposit and submitted_for_verification %}
+            <h2>UTR submitted</h2>
+            <p>Deposit #{{ deposit.pk }} · ₹{{ deposit.amount }}</p>
+            <p>Submitted reference: <strong>{{ deposit.payment_reference }}</strong></p>
+            <p>Status: Pending admin verification. Wallet balance will update only after the payment is matched with the actual bank/UPI statement.</p>
+        {% elif deposit and qr_data_uri %}
+            <h2>Pay ₹{{ deposit.amount }} using any UPI app</h2>
+            <p>Deposit request #{{ deposit.pk }} · Wallet ID <strong>{{ wallet.wallet_id }}</strong></p>
+            <p>Scan this QR in your UPI app, or open the app directly:</p>
+            <div style="text-align:center;margin:18px 0">
+                <img src="{{ qr_data_uri }}" alt="UPI QR for wallet deposit {{ deposit.pk }}" width="240" height="240" style="max-width:100%;background:#fff;padding:8px;border-radius:10px">
+            </div>
+            <p>Payee UPI ID: <strong>{{ upi_id }}</strong></p>
             <p><a class="button button-primary" href="{{ upi_uri }}">Open UPI App &amp; Pay ₹{{ deposit.amount }}</a></p>
-            <p>Payment karne ke baad admin bank statement se payment verify karega. Verification se pehle wallet balance add nahi hoga. Same payment dobara mat karein.</p>
-        {% else %}
-        {% if gateway_only %}
-            <form method="post">
+            <p>Payment ke baad UPI app se UTR/transaction reference copy karke neeche submit karein. Screenshot ya UTR akela payment proof nahi hai; admin bank statement se verify karega.</p>
+            <form method="post" style="margin-top:18px">
                 {% csrf_token %}
-                {{ form.non_field_errors }}
-                <div class="form-group">
-                    <label for="{{ form.amount.id_for_label }}">Deposit amount (₹)</label>
-                    {{ form.amount }}{{ form.amount.errors }}
-                </div>
-                <button type="submit" class="button button-primary">Create secure Cashfree payment</button>
+                <input type="hidden" name="confirm_payment" value="1">
+                <input type="hidden" name="deposit_id" value="{{ deposit.pk }}">
+                <label for="utr">UPI UTR / Transaction Reference</label>
+                <input id="utr" name="utr" type="text" minlength="6" maxlength="40" required placeholder="UPI app ka transaction ID" style="width:100%;padding:12px;margin:8px 0">
+                <button type="submit" class="button button-primary">Submit UTR for Verification</button>
             </form>
-            <p>Automatic verification tabhi chalegi jab admin Cashfree sandbox/live keys configure karega. Wallet payment confirmation se pehle credit nahi hoga.</p>
         {% else %}
-            <form method="post">
-                {% csrf_token %}
-                {{ form.non_field_errors }}
-                <div class="form-group">
-                    <label for="{{ form.amount.id_for_label }}">Deposit amount (₹)</label>
-                    {{ form.amount }}{{ form.amount.errors }}
-                </div>
-                <button type="submit" class="button button-primary">Continue to UPI Payment</button>
-            </form>
-            <p><a class="button button-outline" href="{% url 'accounts:cashfree_deposit' %}">Use automatic gateway (Cashfree)</a></p>
-            {% if not upi_id %}
-                <p role="alert">UPI deposit setup pending hai. Admin ko Render Environment mein FF_ARENA_UPI_ID set karna hoga.</p>
+            {% if gateway_only %}
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form.non_field_errors }}
+                    <div class="form-group">
+                        <label for="{{ form.amount.id_for_label }}">Deposit amount (₹)</label>
+                        {{ form.amount }}{{ form.amount.errors }}
+                    </div>
+                    <button type="submit" class="button button-primary">Create secure Cashfree payment</button>
+                </form>
+                <p>Automatic verification tabhi chalegi jab Cashfree production/sandbox keys configured hon. Wallet payment confirmation se pehle credit nahi hoga.</p>
+            {% else %}
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form.non_field_errors }}
+                    <div class="form-group">
+                        <label for="{{ form.amount.id_for_label }}">Deposit amount (₹)</label>
+                        {{ form.amount }}{{ form.amount.errors }}
+                    </div>
+                    <button type="submit" class="button button-primary">Create UPI QR</button>
+                </form>
+                <p><a class="button button-outline" href="{% url 'accounts:cashfree_deposit' %}">Use automatic gateway (Cashfree)</a></p>
+                {% if not upi_id %}
+                    <p role="alert">UPI deposit setup pending hai. Admin ko Render Environment mein FF_ARENA_UPI_ID set karna hoga.</p>
+                {% endif %}
             {% endif %}
-        {% endif %}
         {% endif %}
         <p><a href="{% url 'accounts:wallet' %}">← Back to wallet</a></p>
     </div>
