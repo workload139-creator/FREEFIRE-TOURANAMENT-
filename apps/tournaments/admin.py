@@ -105,13 +105,13 @@ class TournamentAdmin(admin.ModelAdmin):
     list_display = (
         "title", "mode", "vs_format", "entry_fee", "prize_pool",
         "max_players", "start_time", "status", "is_unlimited_br",
-        "auto_reopen", "winner_prize_paid", "kill_prize_distributed", "kill_prize_pool",
+        "auto_reopen", "winner_prize_paid",
     )
     list_filter = ("mode", "status", "start_time")
     search_fields = ("title", "description")
     ordering = ("start_time",)
     inlines = (RegistrationInline,)
-    actions = (cancel_and_refund_tournaments, distribute_br_kill_prizes,)
+    actions = (cancel_and_refund_tournaments,)
     readonly_fields = ("series_root", "winner_prize_paid", "winner_prize_reference", "kill_prize_distributed", "kill_prize_pool", "kill_prize_reference")
 
     def get_readonly_fields(self, request, obj=None):
@@ -136,7 +136,6 @@ class TournamentAdmin(admin.ModelAdmin):
         ("Schedule & Status", {"fields": ("start_time", "status")}),
         ("Room Details", {"fields": ("room_id", "room_password")}),
         ("First Place Winner", {"fields": ("winner_uid", "winner_prize_paid", "winner_prize_reference")}),
-        ("Kill Prize Batch", {"fields": ("kill_prize_distributed", "kill_prize_pool", "kill_prize_reference")}),
     )
 
 
@@ -218,6 +217,39 @@ class RegistrationAdmin(admin.ModelAdmin):
     actions = (verify_entry_payments,)
 
 
+@admin.action(description="Mark selected BR prizes PAID after completing manual UPI transfer")
+def mark_selected_prizes_paid(modeladmin, request, queryset):
+    paid = 0
+    skipped = 0
+    for selected in queryset:
+        with transaction.atomic():
+            item = KillSubmission.objects.select_for_update().select_related("player", "tournament").get(pk=selected.pk)
+            reference = (item.payout_reference or "").strip()
+            if (
+                item.status != KillSubmission.Status.APPROVED
+                or item.tournament.mode != Tournament.Mode.BR
+                or item.approved_reward <= 0
+                or item.payout_status == KillSubmission.PayoutStatus.PAID
+                or len(reference) < 6
+                or reference.startswith("KILL-PRIZE-")
+            ):
+                skipped += 1
+                continue
+            duplicate = KillSubmission.objects.filter(payout_reference__iexact=reference).exclude(pk=item.pk).exists()
+            if duplicate:
+                skipped += 1
+                continue
+            # Admin must first complete the transfer in their own UPI app and enter its real UTR.
+            item.payout_status = KillSubmission.PayoutStatus.PAID
+            item.payout_paid_at = timezone.now()
+            item.save(update_fields=["payout_status", "payout_paid_at"])
+            paid += 1
+    if paid:
+        modeladmin.message_user(request, f"{paid} prize(s) marked PAID using manually entered UPI reference(s).", messages.SUCCESS)
+    if skipped:
+        modeladmin.message_user(request, f"{skipped} item(s) skipped: no approved BR reward, missing/duplicate real UTR, or already paid.", messages.WARNING)
+
+
 @admin.register(KillSubmission)
 class KillSubmissionAdmin(admin.ModelAdmin):
     list_display = (
@@ -232,7 +264,7 @@ class KillSubmissionAdmin(admin.ModelAdmin):
         "history_video", "history_image_one", "history_image_two",
         "ai_proposed_kills", "ai_confidence", "ai_uid_matches", "ai_review_notes",
         "approved_kills", "proposed_reward", "approved_reward",
-        "status", "admin_notes", "payout_reference", "submitted_at", "reviewed_at",
+        "status", "admin_notes", "payout_status", "payout_paid_at", "submitted_at", "reviewed_at",
     )
 
     @admin.display(description="Profile ID", ordering="player__id")
@@ -282,3 +314,5 @@ class KillSubmissionAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+    actions = (mark_selected_prizes_paid,)
