@@ -90,7 +90,7 @@ class Tournament(models.Model):
         related_name="series_rounds",
     )
 
-    # Admin-selected winner receives a ₹50 internal-wallet prize once.
+    # Admin-selected winner receives the admin-configured prize_pool into their internal wallet once.
     winner_uid = models.CharField(max_length=30, blank=True, default="")
     winner_prize_paid = models.BooleanField(default=False)
     winner_prize_reference = models.CharField(max_length=100, blank=True, default="")
