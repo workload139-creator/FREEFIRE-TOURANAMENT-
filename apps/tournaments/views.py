@@ -17,7 +17,7 @@ from .forms import KillSubmissionForm, RegistrationForm
 from .ai_review import AIReviewError, analyze_kill_evidence
 from .registration_services import RegistrationError, create_pending_registration
 from .models import KillSubmission, Registration, Tournament
-from .services import process_expired_ready_registrations
+from .services import process_expired_ready_registrations, mark_not_playing_and_refund
 
 
 def tournament_list(request):
@@ -145,6 +145,24 @@ def confirm_playing(request, registration_id):
 
 
 @login_required
+@require_POST
+def decline_playing(request, registration_id):
+    process_expired_ready_registrations()
+    registration = get_object_or_404(Registration, pk=registration_id, player=request.user)
+    if registration.status != Registration.Status.WAITING_READY:
+        messages.error(request, "Is registration ke liye NO option ab available nahi hai.")
+        return redirect("tournaments:my_registrations")
+    registration.ready_deadline = timezone.now()
+    registration.save(update_fields=["ready_deadline", "updated_at"])
+    changed, detail = mark_not_playing_and_refund(registration.pk)
+    if changed:
+        messages.warning(request, "Aap NOT PLAYING mark ho gaye. Direct UPI refund ke liye admin ko actual transfer process karna hoga.")
+    else:
+        messages.error(request, "Status update nahi ho saka: " + detail)
+    return redirect("tournaments:my_registrations")
+
+
+@login_required
 @user_passes_test(lambda user: user.is_staff)
 @require_POST
 def send_room_details(request, tournament_id):
@@ -201,7 +219,7 @@ def player_room(request, registration_id):
     can_view_room = (
         registration.payment_verified
         and registration.room_details_sent
-        and registration.status in (Registration.Status.WAITING_READY, Registration.Status.READY)
+        and registration.status == Registration.Status.READY
         and bool(registration.tournament.room_id)
         and (registration.status == Registration.Status.READY or (
             registration.ready_deadline and timezone.now() < registration.ready_deadline

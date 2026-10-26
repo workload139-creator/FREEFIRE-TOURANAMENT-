@@ -37,6 +37,9 @@ urlpatterns = [
         name="confirm_playing",
     ),
 
+    # Player declines the ready check
+    path("registration/<int:registration_id>/decline/", views.decline_playing, name="decline_playing"),
+
     # Player room
     path(
         "registration/<int:registration_id>/room/",
