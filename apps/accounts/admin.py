@@ -24,7 +24,7 @@ class CustomUserAdmin(UserAdmin):
     fieldsets = UserAdmin.fieldsets + (
         ("Player Details", {"fields": (
             "phone_number", "phone_verified", "free_fire_uid",
-            "uid_verified", "upi_id", "upi_verified",
+            "uid_verified", "upi_id", "upi_qr_code", "upi_verified",
         )}),
     )
 
