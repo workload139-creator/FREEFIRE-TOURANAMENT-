@@ -85,7 +85,6 @@ class DepositRequestAdmin(admin.ModelAdmin):
     list_filter = ("status", "created_at")
     search_fields = ("wallet__user__username", "payment_reference")
     readonly_fields = ("status", "created_at")
-    fields = ("wallet", "amount", "payment_reference", "status", "created_at")
     actions = (approve_verified_deposits,)
 
 
@@ -223,5 +222,4 @@ class WithdrawalRequestAdmin(admin.ModelAdmin):
     list_filter = ("status", "created_at")
     search_fields = ("wallet__user__username", "upi_id", "payout_reference")
     readonly_fields = ("status", "created_at", "processed_at")
-    fields = ("wallet", "amount", "upi_id", "status", "payout_reference", "created_at", "processed_at")
     actions = (mark_withdrawals_paid, reject_withdrawals_and_refund)
