@@ -18,7 +18,7 @@ from .services import credit_verified_deposit
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
-    list_display = ("username", "phone_number", "free_fire_uid", "phone_verified", "uid_verified", "is_active")
+    list_display = ("username", "phone_number", "free_fire_uid", "upi_id", "upi_verified", "phone_verified", "uid_verified", "is_active")
     search_fields = ("username", "phone_number", "free_fire_uid")
     list_filter = ("phone_verified", "uid_verified", "is_active", "is_staff")
     fieldsets = UserAdmin.fieldsets + (
