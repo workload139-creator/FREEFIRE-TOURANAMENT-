@@ -371,3 +371,30 @@ a[href*="tournaments"],a[href*="leaderboard"],a[href*="results"]{
  50%{box-shadow:0 0 14px rgba(0,160,255,1),0 0 32px rgba(0,125,255,.72),0 0 48px rgba(0,125,255,.28),inset 0 1px rgba(255,255,255,.38)}
 }
 @media(prefers-reduced-motion:reduce){a[href*="register"],button[name*="register"],button[type="submit"],input[type="submit"]{animation:none!important}}
+
+
+/* Visible neon light emission on action buttons */
+a[href*="register"],button[name*="register"],button[type="submit"],input[type="submit"]{
+ position:relative!important;isolation:isolate;overflow:visible!important;
+ filter:drop-shadow(0 0 5px rgba(0,145,255,.9)) drop-shadow(0 0 14px rgba(0,115,255,.65))!important;
+}
+a[href*="register"]::before,button[name*="register"]::before,button[type="submit"]::before,input[type="submit"]::before{
+ content:"";position:absolute;inset:-4px;border-radius:inherit;z-index:-1;pointer-events:none;
+ border:1px solid rgba(83,210,255,.85);
+ box-shadow:0 0 7px #168cff,0 0 17px rgba(0,145,255,.9),0 0 34px rgba(0,115,255,.72),0 0 56px rgba(0,115,255,.42);
+ animation:ff-light-emission 1.8s ease-in-out infinite;
+}
+a[href*="profile"],a[href*="edit-profile"],a[href*="profile/edit"]{
+ filter:drop-shadow(0 0 5px rgba(255,220,55,.85)) drop-shadow(0 0 15px rgba(255,195,25,.55))!important;
+}
+a[href*="wallet"],a[href*="withdraw"],a[href*="refund"]{
+ filter:drop-shadow(0 0 5px rgba(255,54,93,.9)) drop-shadow(0 0 15px rgba(255,30,75,.58))!important;
+}
+a[href*="tournaments"],a[href*="leaderboard"],a[href*="results"]{
+ filter:drop-shadow(0 0 5px rgba(182,107,255,.8)) drop-shadow(0 0 14px rgba(145,60,255,.55))!important;
+}
+@keyframes ff-light-emission{
+ 0%,100%{opacity:.6;box-shadow:0 0 5px #168cff,0 0 13px rgba(0,145,255,.75),0 0 26px rgba(0,115,255,.5)}
+ 50%{opacity:1;box-shadow:0 0 9px #62eaff,0 0 22px rgba(0,170,255,1),0 0 42px rgba(0,115,255,.9),0 0 64px rgba(0,115,255,.45)}
+}
+@media(prefers-reduced-motion:reduce){a[href*="register"]::before,button[name*="register"]::before,button[type="submit"]::before,input[type="submit"]::before{animation:none!important}}
