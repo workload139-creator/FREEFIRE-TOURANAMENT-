@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Join {{ tournament.title }} | FF Arena{% endblock %}
 
@@ -42,7 +43,7 @@
                 <h2 style="margin-top:0">🔐 Pay Entry Fee: ₹{{ tournament.entry_fee }}</h2>
                 <p><strong>Step 1:</strong> Neeche QR scan karein, ya mobile par button dabakar UPI app kholein. Amount aur receiver pehle check karein.</p>
                 <div style="display:flex;gap:22px;align-items:center;flex-wrap:wrap">
-                    <img src="{{ qr_image_url }}" alt="Tournament entry payment QR" width="260" height="260" style="max-width:100%;height:auto;background:#fff;padding:10px;border-radius:12px">
+                    <img src="{% static 'images/owner-upi-qr.png' %}" alt="Tournament entry payment QR" width="260" height="260" style="max-width:100%;height:auto;background:#fff;padding:10px;border-radius:12px">
                     <div style="flex:1;min-width:200px">
                         <p>QR exact entry fee ke liye hai. Payment apne UPI app mein complete karein.</p>
                         <a class="btn-primary" href="{{ upi_payment_uri }}" style="display:inline-block;text-align:center">OPEN UPI APP &amp; PAY ₹{{ tournament.entry_fee }}</a>
