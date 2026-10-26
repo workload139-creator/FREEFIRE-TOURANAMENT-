@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib import admin, messages
 from django.db import transaction
+from django.utils.html import format_html
 
 from apps.accounts.models import (
     AdminWallet,
@@ -214,7 +215,7 @@ class RegistrationAdmin(admin.ModelAdmin):
 class KillSubmissionAdmin(admin.ModelAdmin):
     list_display = (
         "id", "player", "player_profile_id", "tournament", "registered_uid", "free_fire_uid",
-        "player_upi_id", "status", "ai_proposed_kills", "approved_kills", "approved_reward",
+        "player_upi_id", "payout_qr", "status", "ai_proposed_kills", "approved_kills", "approved_reward",
         "payout_reference", "submitted_at",
     )
     list_filter = ("status", "tournament", "submitted_at")
@@ -234,6 +235,31 @@ class KillSubmissionAdmin(admin.ModelAdmin):
     @admin.display(description="Prize UPI ID", ordering="player__upi_id")
     def player_upi_id(self, obj):
         return obj.player.upi_id or "Missing — player must add it in Profile"
+
+    @admin.display(description="UPI QR")
+    def payout_qr(self, obj):
+        upi_id = (obj.player.upi_id or "").strip()
+        if not upi_id or "@" not in upi_id:
+            return "UPI ID missing"
+        import base64
+        import io
+        from urllib.parse import urlencode
+        import qrcode
+
+        uri = "upi://pay?" + urlencode({
+            "pa": upi_id,
+            "pn": obj.player.username[:50],
+            "cu": "INR",
+            "tn": f"FF tournament prize profile {obj.player_id}",
+        })
+        image = qrcode.make(uri)
+        buffer = io.BytesIO()
+        image.save(buffer, format="PNG")
+        encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+        return format_html(
+            '<img src="data:image/png;base64,{}" width="72" height="72" alt="Player UPI QR" />',
+            encoded,
+        )
 
     def has_add_permission(self, request):
         return False
