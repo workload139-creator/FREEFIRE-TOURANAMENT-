@@ -9,7 +9,7 @@ from apps.accounts.models import (
     WalletTransaction,
 )
 from .models import KillSubmission, Registration, Tournament
-from .services import award_tournament_winner, cancel_tournament_and_refund
+from .services import cancel_tournament_and_refund
 
 
 class TournamentAdminForm(forms.ModelForm):
@@ -83,6 +83,67 @@ def cancel_and_refund_tournaments(modeladmin, request, queryset):
     )
 
 
+@admin.action(description="Mark winner prize PAID after manual UPI transfer and real UTR entry")
+def mark_winner_prizes_paid(modeladmin, request, queryset):
+    paid = 0
+    skipped = 0
+    for selected in queryset:
+        with transaction.atomic():
+            tournament = Tournament.objects.select_for_update().get(pk=selected.pk)
+            if tournament.winner_prize_paid or not tournament.winner_uid or tournament.prize_pool <= 0:
+                skipped += 1
+                continue
+            utr = (tournament.winner_prize_reference or "").strip()
+            if len(utr) < 6 or utr.startswith("WIN-PRIZE-"):
+                skipped += 1
+                continue
+            if Tournament.objects.filter(winner_prize_reference__iexact=utr).exclude(pk=tournament.pk).exists():
+                skipped += 1
+                continue
+            eligible = Registration.objects.select_for_update().filter(
+                tournament=tournament,
+                free_fire_uid=str(tournament.winner_uid).strip(),
+                payment_verified=True,
+                refund_processed=False,
+                status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
+            ).select_related("player")
+            if eligible.count() != 1:
+                skipped += 1
+                continue
+            winner = eligible.first()
+            if not (winner.player.upi_id or "").strip() and not winner.player.upi_qr_code:
+                skipped += 1
+                continue
+            admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
+            admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
+            prize = tournament.prize_pool
+            if admin_wallet.balance < prize:
+                skipped += 1
+                continue
+            ledger_reference = f"ADMIN-WIN-UPI-{tournament.pk}"
+            if AdminWalletTransaction.objects.filter(reference=ledger_reference).exists():
+                skipped += 1
+                continue
+            # Real transfer must already be sent externally to the winner's saved UPI ID/QR.
+            admin_wallet.balance -= prize
+            admin_wallet.save(update_fields=["balance", "updated_at"])
+            AdminWalletTransaction.objects.create(
+                admin_wallet=admin_wallet,
+                transaction_type=AdminWalletTransaction.TransactionType.PRIZE,
+                amount=prize,
+                status=AdminWalletTransaction.Status.COMPLETED,
+                reference=ledger_reference,
+                description=f"Manual UPI winner prize for tournament {tournament.pk}; external UTR {utr}; player profile {winner.player_id}.",
+            )
+            tournament.winner_prize_paid = True
+            tournament.save(update_fields=["winner_prize_paid", "updated_at"])
+            paid += 1
+    if paid:
+        modeladmin.message_user(request, f"{paid} winner prize(s) marked paid after manual UPI transfer.", messages.SUCCESS)
+    if skipped:
+        modeladmin.message_user(request, f"{skipped} winner prize(s) skipped: check winner UID, saved UPI/QR, real unique UTR and Admin Wallet ledger balance.", messages.WARNING)
+
+
 @admin.register(Tournament)
 class TournamentAdmin(admin.ModelAdmin):
     form = TournamentAdminForm
@@ -95,8 +156,8 @@ class TournamentAdmin(admin.ModelAdmin):
     search_fields = ("title", "description")
     ordering = ("start_time",)
     inlines = (RegistrationInline,)
-    actions = (cancel_and_refund_tournaments,)
-    readonly_fields = ("series_root", "winner_prize_paid", "winner_prize_reference", "kill_prize_distributed", "kill_prize_pool", "kill_prize_reference")
+    actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid,)
+    readonly_fields = ("series_root", "winner_prize_paid", "kill_prize_distributed", "kill_prize_pool", "kill_prize_reference", "winner_payout_destination", "winner_payout_qr")
 
     def get_readonly_fields(self, request, obj=None):
         fields = list(super().get_readonly_fields(request, obj))
@@ -104,14 +165,58 @@ class TournamentAdmin(admin.ModelAdmin):
             fields.append("winner_uid")
         return tuple(fields)
 
-    def save_model(self, request, obj, form, change):
-        super().save_model(request, obj, form, change)
-        if obj.winner_uid and not obj.winner_prize_paid:
-            paid, message = award_tournament_winner(obj.pk)
-            if paid:
-                self.message_user(request, message, messages.SUCCESS)
-            elif "Winner UID enter" not in message:
-                self.message_user(request, message, messages.WARNING)
+    @admin.display(description="Winner UPI destination")
+    def winner_payout_destination(self, obj):
+        if not obj or not obj.pk or not obj.winner_uid:
+            return "Set Winner UID first; then reload to view payout details."
+        registrations = Registration.objects.filter(
+            tournament=obj, free_fire_uid=str(obj.winner_uid).strip(), payment_verified=True
+        ).select_related("player")
+        if registrations.count() != 1:
+            return "No unique verified registration matches this Winner UID."
+        player = registrations.first().player
+        if (player.upi_id or "").strip():
+            return f"Profile #{player.pk} · {player.username} · UPI ID saved"
+        if player.upi_qr_code:
+            return f"Profile #{player.pk} · {player.username} · use uploaded QR below"
+        return f"Profile #{player.pk} · {player.username} · no UPI ID/QR saved"
+
+    @admin.display(description="Winner UPI QR")
+    def winner_payout_qr(self, obj):
+        if not obj or not obj.pk or not obj.winner_uid:
+            return "Set Winner UID first."
+        registration = Registration.objects.filter(
+            tournament=obj, free_fire_uid=str(obj.winner_uid).strip(), payment_verified=True
+        ).select_related("player").first()
+        if not registration:
+            return "No verified registration matches this Winner UID."
+        player = registration.player
+        if player.upi_qr_code:
+            try:
+                return format_html(
+                    '<a href="{}" target="_blank" rel="noopener"><img src="{}" width="120" height="120" alt="Winner uploaded UPI QR" /></a>',
+                    player.upi_qr_code.url, player.upi_qr_code.url,
+                )
+            except (ValueError, OSError):
+                pass
+        if not (player.upi_id or "").strip() or "@" not in player.upi_id:
+            return "Winner has not supplied a usable UPI ID or QR."
+        import base64
+        import io
+        from urllib.parse import urlencode
+        import qrcode
+        uri = "upi://pay?" + urlencode({
+            "pa": player.upi_id.strip(),
+            "pn": player.username[:50],
+            "am": f"{obj.prize_pool:.2f}",
+            "cu": "INR",
+            "tn": f"FF winner prize tournament {obj.pk}",
+        })
+        image = qrcode.make(uri)
+        buffer = io.BytesIO()
+        image.save(buffer, format="PNG")
+        encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+        return format_html('<img src="data:image/png;base64,{}" width="120" height="120" alt="Winner UPI payment QR" />', encoded)
 
     fieldsets = (
         ("Tournament Details", {"fields": ("title", "description", "mode", "vs_format")}),
@@ -119,7 +224,7 @@ class TournamentAdmin(admin.ModelAdmin):
         ("Unlimited BR Series", {"fields": ("is_unlimited_br", "auto_start_at_capacity", "auto_reopen", "series_root")}),
         ("Schedule & Status", {"fields": ("start_time", "status")}),
         ("Room Details", {"fields": ("room_id", "room_password")}),
-        ("First Place Winner", {"fields": ("winner_uid", "winner_prize_paid", "winner_prize_reference")}),
+        ("First Place Winner", {"fields": ("winner_uid", "winner_payout_destination", "winner_payout_qr", "winner_prize_reference", "winner_prize_paid")}),
     )
 
 
