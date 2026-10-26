@@ -13,6 +13,14 @@
     <p><strong>Players:</strong> {{ tournament.confirmed_players_count }}/{{ tournament.max_players }}</p>
     <p><strong>Start Time:</strong> {{ tournament.start_time|date:"d M Y, h:i A" }}</p>
     <p><strong>Status:</strong> {{ tournament.get_status_display }}</p>
+    {% if tournament.mode == "BR" %}
+    <section class="tournament-card" style="margin:20px 0;padding:18px;border:1px solid #ff7a45;border-radius:14px;background:linear-gradient(135deg,#241712,#171923);color:#fff">
+        <h2 style="margin-top:0">🔥 BR Kill Reward Rules</h2>
+        <p><strong>₹5 per admin-verified kill</strong> — minimum 2 verified kills required.</p>
+        <p>2 kills = ₹10 · 5 kills = ₹25 · 10 kills = ₹50. 0 or 1 kill = ₹0 kill reward.</p>
+        <p>Video and game-history screenshots are reviewed; AI only suggests, and admin makes the final decision. Eligible rewards are credited through the tournament wallet batch after admin confirmation.</p>
+    </section>
+    {% endif %}
 
     {% if user.is_authenticated %}
         {% if tournament.status == "upcoming" and not tournament.is_full %}
