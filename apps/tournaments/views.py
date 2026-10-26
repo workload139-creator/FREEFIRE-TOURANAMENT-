@@ -348,7 +348,13 @@ def admin_kill_review(request):
     submissions = KillSubmission.objects.filter(
         status=KillSubmission.Status.PENDING
     ).select_related("player", "tournament", "registration")
-    return render(request, "tournaments/admin_kill_review.html", {"submissions": submissions})
+    tournament_id = request.GET.get("tournament")
+    if tournament_id and str(tournament_id).isdigit():
+        submissions = submissions.filter(tournament_id=int(tournament_id))
+    return render(request, "tournaments/admin_kill_review.html", {
+        "submissions": submissions,
+        "selected_tournament_id": tournament_id or "",
+    })
 
 
 @login_required
