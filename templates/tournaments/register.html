@@ -1,6 +1,16 @@
 {% extends "base.html" %}
 
-{% block title %}Join {{ tournament.title }} | FF Arena{% endblock %}
+{% block title %}Join {{ tournament.title }} | FF Arena{% if tournament.entry_fee > 0 %}
+<script>
+(() => {
+ const qr=document.getElementById("entryPaymentQr"), status=document.getElementById("qrActionMessage");
+ async function qrFile(){const r=await fetch(qr.src);if(!r.ok)throw new Error("QR unavailable");const b=await r.blob();return new File([b],"ff-arena-entry-qr.png",{type:b.type||"image/png"});}
+ document.getElementById("downloadEntryQr").addEventListener("click",async()=>{try{const f=await qrFile(),u=URL.createObjectURL(f),a=document.createElement("a");a.href=u;a.download=f.name;a.click();URL.revokeObjectURL(u);status.textContent="QR download ho gaya.";}catch(e){status.textContent="Direct download fail hua. QR image open karke right-click/long-press se Save Image karein.";window.open(qr.src,"_blank","noopener");}});
+ document.getElementById("shareEntryQr").addEventListener("click",async()=>{try{const f=await qrFile();if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[f]}))){await navigator.share({title:"FF Arena Entry QR",text:"Entry fee ₹{{ tournament.entry_fee }}. Payee aur amount verify karein.",files:[f]});status.textContent="Share menu open ho gaya.";}else{status.textContent="Share supported nahi; Download QR use karein.";}}catch(e){if(e.name!=="AbortError")status.textContent="Share nahi hua; Download QR use karein.";}});
+})();
+</script>
+{% endif %}
+{% endblock %}
 
 {% block content %}
 <section class="auth-section">
@@ -42,12 +52,15 @@
                 <h2 style="margin-top:0">🔐 Pay Entry Fee: ₹{{ tournament.entry_fee }}</h2>
                 <p><strong>Step 1:</strong> Neeche QR scan karein, ya mobile par button dabakar UPI app kholein. Amount aur receiver pehle check karein.</p>
                 <div style="display:flex;gap:22px;align-items:center;flex-wrap:wrap">
-                    <img src="{{ qr_image_url }}" alt="Tournament entry payment QR" width="260" height="260" style="max-width:100%;height:auto;background:#fff;padding:10px;border-radius:12px">
+                    <img src="{{ qr_image_url }}" id="entryPaymentQr" alt="Tournament entry payment QR" width="260" height="260" style="max-width:100%;height:auto;background:#fff;padding:10px;border-radius:12px">
                     <div style="flex:1;min-width:200px">
                         <p>QR exact entry fee ke liye hai. Payment apne UPI app mein complete karein.</p>
                         <a class="btn-primary" href="{{ upi_payment_uri }}" style="display:inline-block;text-align:center">OPEN UPI APP &amp; PAY ₹{{ tournament.entry_fee }}</a>
+                        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px"><button type="button" class="button button-outline" id="downloadEntryQr">⬇ Download QR</button><button type="button" class="button button-outline" id="shareEntryQr">↗ Share QR</button></div>
+                        <p id="qrActionMessage" class="help-text" aria-live="polite"></p>
                     </div>
                 </div>
+                <p><strong>Agar UPI app open na ho:</strong> QR ko doosre phone se scan karein, ya Download/Share QR karke UPI app ke Scan QR option se pay karein. Payee name aur amount check karke hi payment karein.</p>
                 <p style="margin-bottom:0"><strong>Step 2:</strong> Payment complete hone ke baad apne transaction details se UTR / reference number neeche enter karein. Screenshot bhejna payment proof nahi maana jayega; admin actual UPI/bank receipt verify karega.</p>
             </section>
             <div class="form-group">
