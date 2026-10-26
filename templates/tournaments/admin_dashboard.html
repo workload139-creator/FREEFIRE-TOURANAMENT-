@@ -4,7 +4,8 @@
 <div class="container py-4">
     <h2>🔥 Tournament Admin Control</h2>
     <h4>{{ tournament.title }}</h4>
-    <p>Is page par sirf isi tournament ki registrations, payment checks, kill evidence aur refunds dikhte hain.</p>
+    <p>Yeh page sirf is tournament ka control panel hai. Neeche har section ka kaam diya hai. Pehle payment/UTR verify karein, phir LIVE aur room confirmation manage karein, phir kill evidence aur refunds review karein.</p>
+    <div class="alert alert-warning"><strong>BR reward rule:</strong> minimum 2 verified kills; har admin-approved kill par ₹5 (2 kills = ₹10, 5 = ₹25, 10 = ₹50). Registered UID match aur video + 2 screenshots check karein. VS tournaments par yeh BR kill reward lagu nahi hota. AI sirf suggestion deta hai; final approval admin karega.</div>
 
     <div class="row g-3 my-3">
         <div class="col-md-4"><div class="card p-3"><h6>Total Registrations</h6><h3>{{ total_players }}</h3></div></div>
@@ -16,7 +17,7 @@
     </div>
 
     <div class="card p-3 my-3">
-        <h4>1. Entry Payment Verification</h4>
+        <h4>1. Entry Payment Verification — UTR check karke entry confirm karein</h4>
         <p>UTR ko apne UPI/bank record se match karne ke baad Django Admin → Registrations mein usi registration ko select karke “Verify UTR against actual UPI/bank receipt and confirm entry” action use karein.</p>
         <div class="table-responsive"><table class="table table-striped table-bordered">
             <thead><tr><th>Player / Profile ID</th><th>Free Fire UID</th><th>Entry Fee</th><th>Submitted UTR</th><th>Submitted At</th><th>Status</th></tr></thead>
@@ -36,7 +37,8 @@
     </div>
 
     <div class="card p-3 my-3">
-        <h4>2. All Registered Players</h4>
+        <h4>2. All Registered Players — player status, payment aur refund dekhein</h4>
+        <p>Waiting for Confirmation ka matlab player YES/NO ka wait kar raha hai; Ready to Play ka matlab YES confirm ho gaya; Not Playing ka matlab player ne NO kiya ya deadline expire hui.</p>
         <div class="table-responsive"><table class="table table-striped table-bordered">
             <thead><tr><th>Player / Profile ID</th><th>Free Fire UID</th><th>Entry Fee</th><th>Payment UTR</th><th>Payment</th><th>Player Status</th><th>Refund</th></tr></thead>
             <tbody>
@@ -56,7 +58,7 @@
     </div>
 
     <div class="card p-3 my-3">
-        <h4>3. Kill Evidence & Prize Queue — This Tournament</h4>
+        <h4>3. Kill Evidence & Prize Queue — video/screenshots review aur reward</h4>
         <p>Video aur dono screenshots verify karein. BR mein minimum 2 approved kills par ₹5 per kill; VS mein kill reward nahi. Prize player ke saved UPI/QR par manually bhejne ke baad real UTR record karein.</p>
         <div class="table-responsive"><table class="table table-striped table-bordered">
             <thead><tr><th>Player / Profile ID</th><th>UID</th><th>Evidence</th><th>AI Kills</th><th>Admin Kills</th><th>Prize</th><th>Payout</th></tr></thead>
@@ -78,7 +80,7 @@
     </div>
 
     <div class="card p-3 my-3">
-        <h4>4. Refund Queue — This Tournament</h4>
+        <h4>4. Refund Queue — pending real UPI refunds</h4>
         <p>Refund eligible hone par target hai admin ke check ke baad 10 ghante ke andar actual UPI refund bhejna. Website transfer khud nahi karti. Player ka saved QR/UPI profile mein dekhein; real refund bhejne ke baad registration ke Refund Reference field mein UTR enter karke Django Admin → Registrations se “Mark UPI refunds paid” action chalayein.</p>
         <div class="table-responsive"><table class="table table-striped table-bordered">
             <thead><tr><th>Player / Profile ID</th><th>UID</th><th>Refund Amount</th><th>Player UPI ID</th><th>Player QR</th><th>Status / UTR</th></tr></thead>
