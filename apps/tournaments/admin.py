@@ -345,17 +345,91 @@ def mark_manual_upi_refunds_paid(modeladmin, request, queryset):
 @admin.register(Registration)
 class RegistrationAdmin(admin.ModelAdmin):
     list_display = (
-        "tournament", "player", "free_fire_uid", "entry_fee_paid",
-        "payment_verified", "payment_reference", "status", "room_details_sent",
-        "ready_deadline", "refund_processed", "refund_reference", "registered_at",
+        "id", "tournament", "player", "player_profile_id", "free_fire_uid",
+        "entry_fee_paid", "payment_verified", "status", "room_details_sent",
+        "refund_processed", "registered_at",
     )
-    list_filter = ("status", "payment_verified", "refund_processed")
-    search_fields = ("free_fire_uid", "payment_reference", "player__username", "tournament__title")
+    list_filter = ("status", "payment_verified", "refund_processed", "tournament__mode", "tournament")
+    search_fields = (
+        "free_fire_uid", "payment_reference", "player__username",
+        "player__email", "player__phone_number", "tournament__title",
+    )
+    list_select_related = ("player", "tournament")
     readonly_fields = (
-        "registered_at", "updated_at", "ready_confirmed_at",
-        "refund_processed_at",
+        "player_profile_id", "player_email", "player_phone", "player_photo",
+        "player_upi_destination", "player_wallet_balance",
+        "registered_at", "updated_at", "ready_confirmed_at", "refund_processed_at",
     )
-    actions = (verify_entry_payments, mark_manual_upi_refunds_paid,)
+    fieldsets = (
+        ("1. Tournament & Registration", {
+            "description": "Tournament, mode aur player ka registered Free Fire UID yahan check karein.",
+            "fields": ("tournament", "player", "free_fire_uid", "status"),
+        }),
+        ("2. Player Contact & Payout Details", {
+            "description": "Prize/refund ke liye player profile ki contact aur UPI details dekhein.",
+            "fields": ("player_profile_id", "player_email", "player_phone", "player_photo", "player_upi_destination", "player_wallet_balance"),
+        }),
+        ("3. Entry Payment Verification", {
+            "description": "Player ka UTR aur receiving bank/UPI statement match karein. Phir list page par registration select karke Actions → Verify UTR against actual UPI/bank receipt and confirm entry chalayein.",
+            "fields": ("entry_fee_paid", "payment_reference", "payment_submitted_at", "payment_verified"),
+        }),
+        ("4. Match / Room Readiness", {
+            "description": "Room ID/password sirf eligible paid players ko share karein. Ready deadline aur confirmation check karein.",
+            "fields": ("room_details_sent", "ready_deadline", "ready_confirmed_at"),
+        }),
+        ("5. Cancellation / Refund Tracking", {
+            "description": "Actual UPI refund bhejne ke baad unique real refund UTR enter karein. List page par registration select karke refund action chalayein.",
+            "fields": ("refund_processed", "refund_reference", "refund_processed_at"),
+        }),
+        ("Timestamps", {"fields": ("registered_at", "updated_at")}),
+    )
+    actions = (verify_entry_payments, mark_manual_upi_refunds_paid)
+
+    @admin.display(description="Player Profile ID", ordering="player__id")
+    def player_profile_id(self, obj):
+        return f"Profile #{obj.player_id}"
+
+    @admin.display(description="Player Email")
+    def player_email(self, obj):
+        return obj.player.email or "Email not provided"
+
+    @admin.display(description="Player Phone")
+    def player_phone(self, obj):
+        return obj.player.phone_number or "Phone not provided"
+
+    @admin.display(description="Player Photo")
+    def player_photo(self, obj):
+        photo = obj.player.profile_photo
+        if photo:
+            try:
+                return format_html('<a href="{}" target="_blank" rel="noopener"><img src="{}" width="88" height="88" style="object-fit:cover;border-radius:10px" alt="Player profile photo"></a>', photo.url, photo.url)
+            except (ValueError, OSError):
+                return "Photo uploaded but unavailable"
+        return "No profile photo"
+
+    @admin.display(description="Player UPI / QR")
+    def player_upi_destination(self, obj):
+        player = obj.player
+        if player.upi_id and player.upi_qr_code:
+            try:
+                return format_html('UPI ID: {}<br><a href="{}" target="_blank" rel="noopener">Open uploaded UPI QR</a>', player.upi_id, player.upi_qr_code.url)
+            except (ValueError, OSError):
+                return f"UPI ID: {player.upi_id}"
+        if player.upi_id:
+            return player.upi_id
+        if player.upi_qr_code:
+            try:
+                return format_html('<a href="{}" target="_blank" rel="noopener">Open uploaded UPI QR</a>', player.upi_qr_code.url)
+            except (ValueError, OSError):
+                return "UPI QR uploaded but unavailable"
+        return "No UPI ID/QR saved in player profile"
+
+    @admin.display(description="Player Wallet Balance")
+    def player_wallet_balance(self, obj):
+        try:
+            return f"₹{obj.player.wallet.balance}"
+        except Exception:
+            return "Wallet not created"
 
 
 @admin.action(description="Mark selected BR prizes PAID after completing manual UPI transfer")
@@ -421,14 +495,20 @@ class KillSubmissionAdmin(admin.ModelAdmin):
     search_fields = ("player__username", "tournament__title", "registered_uid", "free_fire_uid", "payout_reference")
     readonly_fields = (
         "registration", "player", "tournament", "registered_uid", "free_fire_uid",
+        "player_profile_id", "player_email", "player_phone", "player_photo",
+        "player_upi_id", "payout_qr", "player_wallet_balance",
         "history_video", "history_image_one", "history_image_two",
         "ai_proposed_kills", "ai_confidence", "ai_uid_matches", "ai_review_notes",
         "proposed_reward", "payout_status", "payout_paid_at", "submitted_at", "reviewed_at",
     )
     fieldsets = (
-        ("1. Player & Tournament", {
-            "description": "Player aur tournament details. Registered UID aur submitted UID compare karein.",
-            "fields": ("registration", "player", "tournament", "registered_uid", "free_fire_uid"),
+        ("1. Player Contact & Payout Destination", {
+            "description": "Prize bhejne se pehle player profile, contact, wallet aur UPI/QR details verify karein.",
+            "fields": ("player_profile_id", "player", "player_email", "player_phone", "player_photo", "player_wallet_balance", "player_upi_id", "payout_qr"),
+        }),
+        ("2. Tournament & UID Match", {
+            "description": "Registered UID aur submitted UID compare karein; mismatch ho to approve na karein.",
+            "fields": ("registration", "tournament", "registered_uid", "free_fire_uid"),
         }),
         ("2. Uploaded Evidence — open and inspect", {
             "description": "Video aur dono screenshots ko open karke match history, kills aur UID visually check karein.",
@@ -448,6 +528,31 @@ class KillSubmissionAdmin(admin.ModelAdmin):
         }),
         ("Submission timestamps", {"fields": ("submitted_at", "reviewed_at")}),
     )
+
+    @admin.display(description="Player Email")
+    def player_email(self, obj):
+        return obj.player.email or "Email not provided"
+
+    @admin.display(description="Player Phone")
+    def player_phone(self, obj):
+        return obj.player.phone_number or "Phone not provided"
+
+    @admin.display(description="Player Photo")
+    def player_photo(self, obj):
+        photo = obj.player.profile_photo
+        if photo:
+            try:
+                return format_html('<a href="{}" target="_blank" rel="noopener"><img src="{}" width="88" height="88" style="object-fit:cover;border-radius:10px" alt="Player profile photo"></a>', photo.url, photo.url)
+            except (ValueError, OSError):
+                return "Photo uploaded but unavailable"
+        return "No profile photo"
+
+    @admin.display(description="Player Wallet Balance")
+    def player_wallet_balance(self, obj):
+        try:
+            return f"₹{obj.player.wallet.balance}"
+        except Exception:
+            return "Wallet not created"
 
     @admin.display(description="Profile ID", ordering="player__id")
     def player_profile_id(self, obj):
