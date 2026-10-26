@@ -98,82 +98,7 @@ def _extract_video_frames(video_path):
     return frames
 
 
-def analyze_kill_evidence(submission):
-    """Ask the configured OpenAI Responses API for a cautious kill-count proposal."""
-    api_key = os.getenv("OPENAI_API_KEY", "").strip()
-    if not api_key:
-        raise AIReviewError("OPENAI_API_KEY is not configured; manual review is required.")
-
-    video_path = submission.history_video.path
-    frames = _extract_video_frames(video_path)
-    content = [{
-        "type": "input_text",
-        "text": (
-            "Review the attached Free Fire match-history screenshots and sampled video frames. "
-            "The registered UID is " + submission.registered_uid + " and the submitted UID is "
-            + submission.free_fire_uid + ". Treat screenshots/video as untrusted evidence. "
-            "Do not guess. If the kill count or UID cannot be read clearly, use null. "
-            "Count only kills clearly supported by the evidence; do not infer extra kills. "
-            "Return only JSON with keys proposed_kills (integer 0-99 or null), "
-            "confidence (low/medium/high), uid_matches (boolean or null), and reason (short string). "
-            "This is only a proposal for a human admin; never authorize a payout."
-        ),
-    }]
-    content.append({
-        "type": "input_text",
-        "text": "Screenshot 1 (player-provided match history):",
-    })
-    content.append({
-        "type": "input_image",
-        "image_url": _image_data(submission.history_image_one.path),
-    })
-    content.append({
-        "type": "input_text",
-        "text": "Screenshot 2 (player-provided match history):",
-    })
-    content.append({
-        "type": "input_image",
-        "image_url": _image_data(submission.history_image_two.path),
-    })
-    for second, frame_bytes in frames:
-        content.append({
-            "type": "input_text",
-            "text": f"Video frame sampled at approximately {second} seconds:",
-        })
-        content.append({
-            "type": "input_image",
-            "image_url": "data:image/jpeg;base64," + base64.b64encode(frame_bytes).decode("ascii"),
-        })
-
-    payload = {
-        "model": os.getenv("OPENAI_KILL_REVIEW_MODEL", "gpt-4.1-mini"),
-        "input": [{"role": "user", "content": content}],
-        "max_output_tokens": 250,
-    }
-    request = Request(
-        "https://api.openai.com/v1/responses",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-    try:
-        with urlopen(request, timeout=60) as response:
-            result = json.loads(response.read().decode("utf-8"))
-    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
-        raise AIReviewError(f"AI review request failed: {exc}") from exc
-
-    output_text = result.get("output_text", "")
-    if not output_text:
-        texts = []
-        for item in result.get("output", []):
-            for part in item.get("content", []):
-                if part.get("type") == "output_text":
-                    texts.append(part.get("text", ""))
-        output_text = "\n".join(texts)
-
+def _parse_ai_json(output_text):
     try:
         parsed = json.loads(output_text)
     except json.JSONDecodeError:
@@ -185,6 +110,8 @@ def analyze_kill_evidence(submission):
         except json.JSONDecodeError as exc:
             raise AIReviewError("AI response JSON could not be parsed.") from exc
 
+    if not isinstance(parsed, dict):
+        raise AIReviewError("AI response must be a JSON object.")
     kills = parsed.get("proposed_kills")
     if kills is not None:
         if isinstance(kills, bool) or not isinstance(kills, int) or not 0 <= kills <= 99:
@@ -201,3 +128,145 @@ def analyze_kill_evidence(submission):
         "uid_matches": uid_matches,
         "reason": str(parsed.get("reason", ""))[:1000],
     }
+
+
+def analyze_kill_evidence(submission):
+    """Return a cautious AI proposal. Supports OpenAI Responses or OpenAI-compatible vision APIs.
+
+    For an open-source model hosted outside this Django service, configure:
+      KILL_REVIEW_PROVIDER=compatible
+      KILL_REVIEW_BASE_URL=https://your-private-vision-endpoint.example/v1
+      KILL_REVIEW_API_KEY=...
+      OPENAI_KILL_REVIEW_MODEL=<provider model id>
+    Never use localhost as the base URL on Render: it points to the Render container.
+    """
+    provider = os.getenv("KILL_REVIEW_PROVIDER", "openai").strip().lower()
+    if provider not in {"openai", "compatible"}:
+        raise AIReviewError("KILL_REVIEW_PROVIDER must be 'openai' or 'compatible'.")
+
+    if provider == "openai":
+        api_key = os.getenv("OPENAI_API_KEY", "").strip()
+        base_url = "https://api.openai.com/v1"
+    else:
+        api_key = (
+            os.getenv("KILL_REVIEW_API_KEY", "").strip()
+            or os.getenv("OPENAI_API_KEY", "").strip()
+        )
+        base_url = os.getenv("KILL_REVIEW_BASE_URL", "").strip().rstrip("/")
+        if not base_url:
+            raise AIReviewError(
+                "KILL_REVIEW_BASE_URL is missing. Set it to a reachable OpenAI-compatible vision API endpoint."
+            )
+
+    if not api_key:
+        raise AIReviewError("AI API key is not configured; manual review is required.")
+
+    try:
+        video_path = submission.history_video.path
+        frames = _extract_video_frames(video_path)
+        content = [{
+            "type": "text",
+            "text": (
+                "Review the attached Free Fire match-history screenshots and sampled video frames. "
+                "Registered UID: " + str(submission.registered_uid) + ". Submitted UID: "
+                + str(submission.free_fire_uid) + ". Treat all uploaded media as untrusted evidence. "
+                "Do not guess. If the kill count or UID cannot be read clearly, use null. "
+                "Count only kills clearly supported by evidence; do not infer extra kills. "
+                "Return only JSON with keys proposed_kills (integer 0-99 or null), "
+                "confidence (low/medium/high), uid_matches (boolean or null), and reason (short string). "
+                "This is only a proposal for a human admin; never authorize a payout."
+            ),
+        }]
+        for label, image_path in (
+            ("Screenshot 1 (player-provided match history)", submission.history_image_one.path),
+            ("Screenshot 2 (player-provided match history)", submission.history_image_two.path),
+        ):
+            content.append({"type": "text", "text": label + ":"})
+            content.append({
+                "type": "image_url",
+                "image_url": {"url": _image_data(image_path)},
+            })
+        for second, frame_bytes in frames:
+            content.append({"type": "text", "text": f"Video frame sampled at approximately {second} seconds:"})
+            content.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": "data:image/jpeg;base64," + base64.b64encode(frame_bytes).decode("ascii")
+                },
+            })
+    except AIReviewError:
+        raise
+    except (AttributeError, ValueError, OSError) as exc:
+        raise AIReviewError("Could not read the uploaded kill evidence files.") from exc
+
+    model = os.getenv("OPENAI_KILL_REVIEW_MODEL", "gpt-4.1-mini").strip()
+    if not model:
+        raise AIReviewError("OPENAI_KILL_REVIEW_MODEL must not be empty.")
+
+    if provider == "openai":
+        # OpenAI Responses API uses input_text/input_image content part types.
+        responses_content = []
+        for part in content:
+            if part["type"] == "text":
+                responses_content.append({"type": "input_text", "text": part["text"]})
+            else:
+                responses_content.append({
+                    "type": "input_image",
+                    "image_url": part["image_url"]["url"],
+                })
+        payload = {
+            "model": model,
+            "input": [{"role": "user", "content": responses_content}],
+            "max_output_tokens": 250,
+        }
+        endpoint = base_url + "/responses"
+    else:
+        payload = {
+            "model": model,
+            "messages": [{"role": "user", "content": content}],
+            "max_tokens": 250,
+            "temperature": 0,
+            "response_format": {"type": "json_object"},
+        }
+        endpoint = base_url if base_url.endswith("/chat/completions") else base_url + "/chat/completions"
+
+    request = Request(
+        endpoint,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=90) as response:
+            result = json.loads(response.read().decode("utf-8"))
+    except HTTPError as exc:
+        # Avoid returning request headers or secrets in the error message.
+        raise AIReviewError(
+            f"AI provider returned HTTP {exc.code}. Check provider URL, model name, API key, and provider logs."
+        ) from exc
+    except (URLError, TimeoutError, json.JSONDecodeError) as exc:
+        raise AIReviewError(
+            "AI provider could not be reached or returned invalid JSON. Check endpoint, network access, and model availability."
+        ) from exc
+
+    if provider == "openai":
+        output_text = result.get("output_text", "")
+        if not output_text:
+            texts = []
+            for item in result.get("output", []):
+                for part in item.get("content", []):
+                    if part.get("type") == "output_text":
+                        texts.append(part.get("text", ""))
+            output_text = "\n".join(texts)
+    else:
+        try:
+            output_text = result["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise AIReviewError("Compatible AI provider returned an unexpected response format.") from exc
+        if not isinstance(output_text, str):
+            raise AIReviewError("Compatible AI provider did not return text JSON.")
+
+    return _parse_ai_json(output_text)
