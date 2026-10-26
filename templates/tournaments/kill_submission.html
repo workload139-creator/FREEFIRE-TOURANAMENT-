@@ -8,7 +8,11 @@
         <h2>{{ tournament.title }}</h2>
         <p>Registered UID: <strong>{{ registration.free_fire_uid }}</strong></p>
         <p>Upload an approximately 20-second match-history video and 2 screenshots. When the OpenAI API key is configured, AI will assess the submitted evidence and suggest a kill count and UID match. The result is only a proposal; an admin must inspect the files and approve/correct the final kill count before any demo wallet reward.</p>
-        <p><strong>Reward rule:</strong> ₹5 per admin-approved kill. AI review does not send money or authorize a payout.</p>
+        {% if tournament.mode == "BR" %}
+        <p><strong>BR reward rule:</strong> ₹5 per admin-approved kill, with a minimum of 2 verified kills. 0 or 1 kill earns ₹0 kill reward. 2 kills = ₹10; 5 kills = ₹25. AI only suggests a count; the admin must verify the evidence and approve the final count. Eligible rewards are processed through the tournament wallet batch after admin confirmation.</p>
+        {% else %}
+        <p><strong>Note:</strong> The ₹5-per-kill reward applies only to BR Mode, not VS Mode. This evidence flow does not authorize any VS reward.</p>
+        {% endif %}
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             {{ form.non_field_errors }}
