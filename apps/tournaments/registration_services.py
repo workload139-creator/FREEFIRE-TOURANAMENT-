@@ -15,7 +15,7 @@ class RegistrationError(Exception):
 
 
 @transaction.atomic
-def create_pending_registration(*, tournament_id, player, free_fire_uid):
+def create_pending_registration(*, tournament_id, player, free_fire_uid, payment_reference=""):
     tournament = Tournament.objects.select_for_update().get(pk=tournament_id)
 
     if tournament.status != Tournament.Status.UPCOMING:
@@ -31,48 +31,29 @@ def create_pending_registration(*, tournament_id, player, free_fire_uid):
     if Registration.objects.filter(tournament=tournament, player=player).exists():
         raise RegistrationError("Aap is tournament mein pehle se registered hain.")
 
-    wallet, _ = Wallet.objects.get_or_create(user=player)
-    wallet = Wallet.objects.select_for_update().get(pk=wallet.pk)
     fee = tournament.entry_fee
-    if wallet.balance < fee:
-        raise RegistrationError(
-            f"Wallet mein balance kam hai. Entry fee ₹{fee} hai; pehle wallet mein deposit karein."
-        )
+    reference = str(payment_reference or "").strip()
+    if fee > Decimal("0.00"):
+        if not reference or len(reference) < 6:
+            raise RegistrationError("Payment ke baad UTR/reference number zaroor daalein.")
+        if Registration.objects.filter(payment_reference__iexact=reference).exists():
+            raise RegistrationError("Ye UTR pehle submit ho chuka hai.")
+        registration_status = Registration.Status.PENDING_PAYMENT
+        payment_verified = False
+    else:
+        registration_status = Registration.Status.CONFIRMED
+        payment_verified = True
 
     registration = Registration.objects.create(
         tournament=tournament,
         player=player,
         free_fire_uid=uid,
         entry_fee_paid=fee,
-        payment_verified=True,
-        status=Registration.Status.CONFIRMED,
+        payment_reference=reference,
+        payment_submitted_at=timezone.now() if reference else None,
+        payment_verified=payment_verified,
+        status=registration_status,
     )
-    if fee > Decimal("0.00"):
-        wallet.balance -= fee
-        wallet.save(update_fields=["balance", "updated_at"])
-        WalletTransaction.objects.create(
-            wallet=wallet,
-            transaction_type=WalletTransaction.TransactionType.ENTRY_FEE,
-            amount=fee,
-            status=WalletTransaction.Status.COMPLETED,
-            reference=f"TOURNEY-ENTRY-{registration.pk}",
-            description=f"Entry fee for tournament {tournament.title}",
-        )
-
-        admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
-        admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
-        admin_reference = f"ADMIN-ENTRY-{registration.pk}"
-        if not AdminWalletTransaction.objects.filter(reference=admin_reference).exists():
-            admin_wallet.balance += fee
-            admin_wallet.save(update_fields=["balance", "updated_at"])
-            AdminWalletTransaction.objects.create(
-                admin_wallet=admin_wallet,
-                transaction_type=AdminWalletTransaction.TransactionType.ENTRY_FEE,
-                amount=fee,
-                status=AdminWalletTransaction.Status.COMPLETED,
-                reference=admin_reference,
-                description=f"Player wallet entry fee for tournament {tournament.title}",
-            )
     # Start a BR round at 49 registrations, then optionally open a fresh round.
     if tournament.is_unlimited_br and tournament.auto_start_at_capacity:
         active_count = Registration.objects.filter(tournament=tournament).exclude(
