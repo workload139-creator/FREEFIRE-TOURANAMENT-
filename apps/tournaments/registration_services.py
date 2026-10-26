@@ -4,9 +4,6 @@ from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
 
-from apps.accounts.models import (
-    AdminWallet, AdminWalletTransaction, Wallet, WalletTransaction,
-)
 from .models import Registration, Tournament
 
 
@@ -56,8 +53,10 @@ def create_pending_registration(*, tournament_id, player, free_fire_uid, payment
     )
     # Start a BR round at 49 registrations, then optionally open a fresh round.
     if tournament.is_unlimited_br and tournament.auto_start_at_capacity:
-        active_count = Registration.objects.filter(tournament=tournament).exclude(
-            status__in=[Registration.Status.CANCELLED, Registration.Status.REFUNDED, Registration.Status.NOT_PLAYING]
+        active_count = Registration.objects.filter(
+            tournament=tournament,
+            payment_verified=True,
+            status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
         ).count()
         if active_count >= tournament.max_players:
             tournament.status = Tournament.Status.LIVE
