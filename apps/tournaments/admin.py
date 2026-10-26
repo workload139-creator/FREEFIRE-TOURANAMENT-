@@ -255,7 +255,7 @@ class KillSubmissionAdmin(admin.ModelAdmin):
     list_display = (
         "id", "player", "player_profile_id", "tournament", "registered_uid", "free_fire_uid",
         "player_upi_id", "payout_qr", "status", "ai_proposed_kills", "approved_kills", "approved_reward",
-        "payout_reference", "submitted_at",
+        "payout_reference", "payout_status", "payout_paid_at", "submitted_at",
     )
     list_filter = ("status", "tournament", "submitted_at")
     search_fields = ("player__username", "tournament__title", "registered_uid", "free_fire_uid")
