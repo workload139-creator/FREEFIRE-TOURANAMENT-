@@ -273,7 +273,11 @@ class KillSubmissionAdmin(admin.ModelAdmin):
 
     @admin.display(description="Prize UPI ID", ordering="player__upi_id")
     def player_upi_id(self, obj):
-        return obj.player.upi_id or "Missing — player must add it in Profile"
+        if (obj.player.upi_id or "").strip():
+            return obj.player.upi_id
+        if obj.player.upi_qr_code:
+            return "UPI ID not entered — use uploaded QR"
+        return "Missing — player must add UPI ID or QR in Profile"
 
     @admin.display(description="UPI QR")
     def payout_qr(self, obj):
