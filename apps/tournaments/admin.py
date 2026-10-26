@@ -189,13 +189,13 @@ class TournamentAdmin(admin.ModelAdmin):
         from django.utils import timezone
 
         now = timezone.now()
-        eligible = Registration.objects.filter(
+        eligible_ids = list(Registration.objects.filter(
             tournament=obj,
             payment_verified=True,
             refund_processed=False,
             status=Registration.Status.CONFIRMED,
-        ).select_related("player")
-        eligible.update(
+        ).values_list("pk", flat=True))
+        Registration.objects.filter(pk__in=eligible_ids).update(
             status=Registration.Status.WAITING_READY,
             room_details_sent=True,
             ready_deadline=now + timedelta(seconds=60),
@@ -204,12 +204,7 @@ class TournamentAdmin(admin.ModelAdmin):
 
         sent = 0
         missing_email = 0
-        for registration in Registration.objects.filter(
-            tournament=obj,
-            payment_verified=True,
-            refund_processed=False,
-            status=Registration.Status.WAITING_READY,
-        ).select_related("player"):
+        for registration in Registration.objects.filter(pk__in=eligible_ids).select_related("player"):
             player = registration.player
             if not (player.email or "").strip():
                 missing_email += 1
@@ -244,7 +239,7 @@ class TournamentAdmin(admin.ModelAdmin):
 
         self.message_user(
             request,
-            f"Tournament is LIVE. {eligible.count()} verified player(s) were queued for YES/NO; "
+            f"Tournament is LIVE. {len(eligible_ids)} verified player(s) were queued for YES/NO; "
             f"email attempts: {sent}, players without email: {missing_email}. "
             "Check SMTP/Brevo configuration and email delivery logs.",
             level=messages.SUCCESS,
