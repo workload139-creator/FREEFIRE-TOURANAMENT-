@@ -4,7 +4,9 @@ from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
 
-from apps.accounts.models import Wallet, WalletTransaction
+from apps.accounts.models import (
+    AdminWallet, AdminWalletTransaction, Wallet, WalletTransaction,
+)
 from .models import Registration, Tournament
 
 
@@ -42,8 +44,8 @@ def create_pending_registration(*, tournament_id, player, free_fire_uid):
         player=player,
         free_fire_uid=uid,
         entry_fee_paid=fee,
-        payment_verified=False,
-        status=Registration.Status.PENDING_PAYMENT,
+        payment_verified=True,
+        status=Registration.Status.CONFIRMED,
     )
     if fee > Decimal("0.00"):
         wallet.balance -= fee
@@ -54,8 +56,23 @@ def create_pending_registration(*, tournament_id, player, free_fire_uid):
             amount=fee,
             status=WalletTransaction.Status.COMPLETED,
             reference=f"TOURNEY-ENTRY-{registration.pk}",
-            description=f"Entry fee for tournament {tournament.title}; awaiting admin review",
+            description=f"Entry fee for tournament {tournament.title}",
         )
+
+        admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
+        admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
+        admin_reference = f"ADMIN-ENTRY-{registration.pk}"
+        if not AdminWalletTransaction.objects.filter(reference=admin_reference).exists():
+            admin_wallet.balance += fee
+            admin_wallet.save(update_fields=["balance", "updated_at"])
+            AdminWalletTransaction.objects.create(
+                admin_wallet=admin_wallet,
+                transaction_type=AdminWalletTransaction.TransactionType.ENTRY_FEE,
+                amount=fee,
+                status=AdminWalletTransaction.Status.COMPLETED,
+                reference=admin_reference,
+                description=f"Player wallet entry fee for tournament {tournament.title}",
+            )
     # Start a BR round at 49 registrations, then optionally open a fresh round.
     if tournament.is_unlimited_br and tournament.auto_start_at_capacity:
         active_count = Registration.objects.filter(tournament=tournament).exclude(
