@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 from django.views.decorators.http import require_POST
 
 from apps.accounts.models import Wallet, WalletTransaction, AdminWallet, AdminWalletTransaction
@@ -53,6 +53,12 @@ def build_entry_payment_uri(tournament):
     return f"upi://pay?{query}"
 
 
+def build_entry_qr_url(tournament):
+    """Generate a scannable QR for the exact payee and entry amount."""
+    uri = build_entry_payment_uri(tournament)
+    return "https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=12&data=" + quote(uri, safe="") if uri else ""
+
+
 @login_required
 def tournament_register(request, tournament_id):
     process_expired_ready_registrations()
@@ -66,7 +72,7 @@ def tournament_register(request, tournament_id):
         if Registration.objects.filter(tournament=tournament, player=request.user).exists():
             messages.info(request, "Aap is tournament mein pehle se registered hain.")
             return redirect("tournaments:detail", tournament_id=tournament.pk)
-        return render(request, "tournaments/register.html", {"tournament": tournament, "form": RegistrationForm(user=request.user, tournament=tournament), "upi_payment_uri": build_entry_payment_uri(tournament)})
+        return render(request, "tournaments/register.html", {"tournament": tournament, "form": RegistrationForm(user=request.user, tournament=tournament), "upi_payment_uri": build_entry_payment_uri(tournament), "qr_image_url": build_entry_qr_url(tournament)})
 
     if request.method != "POST":
         return redirect("tournaments:list")
