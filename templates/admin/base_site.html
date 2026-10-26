@@ -1,0 +1,27 @@
+{% extends "admin/base.html" %}
+{% load static %}
+{% block title %}FF Tournament Admin{% endblock %}
+{% block extrastyle %}
+{{ block.super }}
+<style>
+:root{--primary:#111827;--secondary:#f97316;--accent:#fbbf24}
+#header{background:#111827;color:#fff;border-bottom:3px solid #f97316}
+#branding h1,#branding h1 a:link,#branding h1 a:visited{color:#fff;font-weight:800;letter-spacing:.3px}
+#user-tools{color:#e5e7eb}
+#user-tools a{color:#fbbf24}
+div.breadcrumbs{background:#1f2937;color:#e5e7eb}
+div.breadcrumbs a{color:#fbbf24}
+.button, input[type=submit], input[type=button], .submit-row input, a.button{background:#f97316!important;border-radius:7px!important;color:#111827!important;font-weight:700}
+.button.default, input[type=submit].default{background:#fbbf24!important}
+.module h2,.module caption,.inline-group h2{background:#1f2937}
+#content h1{font-weight:800;color:#111827}
+a:link,a:visited{color:#c2410c}
+.object-tools a:link,.addlink,.changelink{border-radius:6px}
+.admin-help-note{padding:14px 16px;margin:0 0 18px;background:#fff7ed;border-left:5px solid #f97316;border-radius:8px;color:#431407}
+@media(max-width:767px){#header{padding:12px}.admin-help-note{padding:12px}}
+</style>
+{% endblock %}
+{% block branding %}
+<div id="site-name"><h1><a href="{% url 'admin:index' %}">🔥 FF Tournament — Admin Control Room</a></h1></div>
+{% endblock %}
+{% block nav-global %}{% endblock %}

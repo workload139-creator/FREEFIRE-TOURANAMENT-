@@ -1,0 +1,73 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+{% block content %}
+<div class="admin-help-note">
+  <h2 style="margin-top:0">Admin panel ka use — yahin se website manage karein</h2>
+  <p><strong>Kaam ka sahi order:</strong> Tournament banayein → payment proof/UTR check karein → entry confirm karein → match/room details manage karein → kill evidence ka AI report dekhein → khud final approve/reject karein → actual prize transfer ke baad payout reference darj karein.</p>
+  <p><strong>Important:</strong> AI sirf initial suggestion deta hai. Winner ya kills ka final decision admin karega. Payment ko tabhi verified karein jab bank/UPI statement mein paisa sach mein mila ho. Website payout mark karne se pehle real UPI transfer karein.</p>
+</div>
+
+<div id="content-main">
+  <h2>⚡ Quick Actions — direct yahan click karein</h2>
+  <div class="module" style="padding:16px">
+    <h3>🏆 1. Tournament banana aur manage karna</h3>
+    <p>BR/VS mode, VS format (1v1–4v4), entry fee, prize pool, start time aur Upcoming status set karein.</p>
+    <p><a class="button" href="/admin/apps/tournaments/tournament/">Tournament list / Add tournament</a></p>
+    <hr>
+    <h3>💳 2. Registration payment verify karna</h3>
+    <p>Player ka UTR aur actual bank/UPI receipt match karein. Registration select karke action menu se <strong>Verify UTR against actual UPI/bank receipt and confirm entry</strong> chalayein.</p>
+    <p><a class="button" href="/admin/apps/tournaments/registration/">Registrations &amp; payment review</a></p>
+    <hr>
+    <h3>🎮 3. Kill proof + AI report + final admin decision</h3>
+    <p>Submission kholein; video, dono history screenshots, registered UID, AI proposed kills/confidence/notes dekhein. Phir final kills/reward aur admin notes review karein. AI suggestion ko bina evidence check kiye approve na karein.</p>
+    <p><a class="button" href="/admin/apps/tournaments/killsubmission/">Open Kill Verification queue</a></p>
+    <hr>
+    <h3>🥇 4. Winner prize / BR kill prize payout</h3>
+    <p>Tournament mein winner UID aur prize pool check karein. BR kill prize ke liye Kill Verification queue mein approved submission, approved reward aur payout reference use karein. UPI app se actual transfer ke baad hi real UTR/reference enter karke Paid action chalayein.</p>
+    <p><a class="button" href="/admin/apps/tournaments/tournament/">Winner prize settings</a>
+       <a class="button" href="/admin/apps/tournaments/killsubmission/">BR kill prize payout</a></p>
+    <hr>
+    <h3>👥 5. Players / profiles</h3>
+    <p>Username, email, phone, Free Fire UID aur player account status manage karein.</p>
+    <p><a class="button" href="/admin/apps/accounts/user/">Player accounts</a></p>
+    <hr>
+    <h3>💰 6. Wallet, deposit aur withdrawal requests</h3>
+    <p>Player deposit ko actual payment check ke baad approve karein. Withdrawal ko actual UPI transfer ke baad payout reference ke saath Paid mark karein. Wallet ledger ko manually edit na karein.</p>
+    <p><a class="button" href="/admin/apps/accounts/depositrequest/">Player deposits</a>
+       <a class="button" href="/admin/apps/accounts/withdrawalrequest/">Withdrawal requests</a>
+       <a class="button" href="/admin/apps/accounts/wallet/">Player wallets</a>
+       <a class="button" href="/admin/apps/accounts/adminwallet/">Admin wallet</a>
+       <a class="button" href="/admin/apps/accounts/adminwallettransaction/">Admin wallet ledger</a></p>
+    <hr>
+    <h3>↩️ 7. Cancellation aur refund</h3>
+    <p>Tournament list mein tournament select karke cancel/refund action use karein. Manual UPI refund ke liye pehle real transfer karein, phir registration mein unique refund UTR daal kar refund action chalayein.</p>
+    <p><a class="button" href="/admin/apps/tournaments/registration/">Registration / refund management</a></p>
+  </div>
+
+  {% if app_list %}
+    <h2>All management sections</h2>
+    {% for app in app_list %}
+      <div class="module">
+        <table>
+          <caption>{{ app.name }}</caption>
+          {% for model in app.models %}
+            <tr>
+              {% if model.admin_url %}
+                <th scope="row"><a href="{{ model.admin_url }}">{{ model.name }}</a></th>
+              {% else %}
+                <th scope="row">{{ model.name }}</th>
+              {% endif %}
+              <td>
+                {% if model.add_url %}<a href="{{ model.add_url }}" class="addlink">Add</a>{% endif %}
+                {% if model.admin_url %}<a href="{{ model.admin_url }}" class="changelink">Manage</a>{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </table>
+      </div>
+    {% endfor %}
+  {% else %}
+    <p>{% translate "You don't have permission to view or edit anything." %}</p>
+  {% endif %}
+</div>
+{% endblock %}

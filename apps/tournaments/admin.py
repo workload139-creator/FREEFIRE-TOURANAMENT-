@@ -423,8 +423,30 @@ class KillSubmissionAdmin(admin.ModelAdmin):
         "registration", "player", "tournament", "registered_uid", "free_fire_uid",
         "history_video", "history_image_one", "history_image_two",
         "ai_proposed_kills", "ai_confidence", "ai_uid_matches", "ai_review_notes",
-        "approved_kills", "proposed_reward", "approved_reward",
-        "status", "admin_notes", "payout_status", "payout_paid_at", "submitted_at", "reviewed_at",
+        "proposed_reward", "payout_status", "payout_paid_at", "submitted_at", "reviewed_at",
+    )
+    fieldsets = (
+        ("1. Player & Tournament", {
+            "description": "Player aur tournament details. Registered UID aur submitted UID compare karein.",
+            "fields": ("registration", "player", "tournament", "registered_uid", "free_fire_uid"),
+        }),
+        ("2. Uploaded Evidence — open and inspect", {
+            "description": "Video aur dono screenshots ko open karke match history, kills aur UID visually check karein.",
+            "fields": ("history_video", "history_image_one", "history_image_two"),
+        }),
+        ("3. AI Initial Review — suggestion only", {
+            "description": "AI result final decision nahi hai. Agar result missing/unclear ho to manual review karein.",
+            "fields": ("ai_proposed_kills", "ai_confidence", "ai_uid_matches", "ai_review_notes", "proposed_reward"),
+        }),
+        ("4. Admin Final Decision — REQUIRED", {
+            "description": "Evidence dekhne ke baad approved kills, approved reward, status aur admin notes yahan set karein.",
+            "fields": ("approved_kills", "approved_reward", "status", "admin_notes"),
+        }),
+        ("5. Prize Payout Tracking", {
+            "description": "Prize ko manually UPI se bhejne ke baad real UTR/reference enter karein, phir list action se Paid mark karein.",
+            "fields": ("payout_reference", "payout_status", "payout_paid_at"),
+        }),
+        ("Submission timestamps", {"fields": ("submitted_at", "reviewed_at")}),
     )
 
     @admin.display(description="Profile ID", ordering="player__id")
