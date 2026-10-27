@@ -14,6 +14,7 @@ from apps.accounts.models import (
     AdminWalletTransaction,
     WalletTransaction,
 )
+from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry, UnlimitedTournament
 from .services import cancel_tournament_and_refund
 
@@ -280,7 +281,7 @@ class TournamentAdmin(admin.ModelAdmin):
         Registration.objects.filter(pk__in=eligible_ids).update(
             status=Registration.Status.WAITING_READY,
             room_details_sent=True,
-            ready_deadline=now + timedelta(minutes=10),
+            ready_deadline=now + timedelta(seconds=PLAYER_CONFIRMATION_TIMEOUT_SECONDS),
             ready_confirmed_at=None,
         )
 
