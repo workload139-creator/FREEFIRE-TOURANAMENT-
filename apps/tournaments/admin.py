@@ -843,7 +843,7 @@ class UnlimitedTournamentAdmin(TournamentAdmin):
 
     @admin.display(description="Players", ordering="start_time")
     def confirmed_players_count_display(self, obj):
-        return f"{obj.confirmed_players_count}/49"
+        return f"{obj.paid_players_count}/49"
 
     list_filter = ("status", "auto_reopen", "live_notification_status", "start_time")
     list_display = (
