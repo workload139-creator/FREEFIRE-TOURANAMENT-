@@ -130,19 +130,10 @@ def _parse_ai_json(output_text):
     }
 
 
-def analyze_kill_evidence(submission):
-    """Return a cautious AI proposal. Supports OpenAI Responses or OpenAI-compatible vision APIs.
-
-    For an open-source model hosted outside this Django service, configure:
-      KILL_REVIEW_PROVIDER=compatible
-      KILL_REVIEW_BASE_URL=https://your-private-vision-endpoint.example/v1
-      KILL_REVIEW_API_KEY=...
-      OPENAI_KILL_REVIEW_MODEL=<provider model id>
-    Never use localhost as the base URL on Render: it points to the Render container.
-    """
-    provider = os.getenv("KILL_REVIEW_PROVIDER", "openai").strip().lower()
+def _analyze_with_provider(submission, provider, model_override=None):
+    """Run one multimodal assessment using the selected provider."""
     if provider not in {"openai", "compatible"}:
-        raise AIReviewError("KILL_REVIEW_PROVIDER must be 'openai' or 'compatible'.")
+        raise AIReviewError("Provider must be 'openai' or 'compatible'.")
 
     if provider == "openai":
         api_key = os.getenv("OPENAI_API_KEY", "").strip()
@@ -204,7 +195,7 @@ def analyze_kill_evidence(submission):
     except (AttributeError, ValueError, OSError) as exc:
         raise AIReviewError("Could not read the uploaded kill evidence files.") from exc
 
-    model = os.getenv("OPENAI_KILL_REVIEW_MODEL", "gpt-4.1-mini").strip()
+    model = (model_override or os.getenv("OPENAI_KILL_REVIEW_MODEL", "gpt-4.1-mini")).strip()
     if not model:
         raise AIReviewError("OPENAI_KILL_REVIEW_MODEL must not be empty.")
 
@@ -275,3 +266,55 @@ def analyze_kill_evidence(submission):
             raise AIReviewError("Compatible AI provider did not return text JSON.")
 
     return _parse_ai_json(output_text)
+
+
+def analyze_kill_evidence(submission):
+    """Run primary OpenAI assessment, then an independent compatible vision model.
+
+    In dual mode, automatic Diamonds require both providers to agree with high
+    confidence on the kill count and registered UID.
+    """
+    mode = os.getenv("KILL_REVIEW_PROVIDER", "openai").strip().lower()
+    if mode != "dual":
+        return _analyze_with_provider(
+            submission, mode, os.getenv("OPENAI_KILL_REVIEW_MODEL", "gpt-4.1-mini")
+        )
+
+    primary_model = os.getenv("OPENAI_KILL_REVIEW_MODEL", "gpt-4.1-mini").strip()
+    secondary_model = os.getenv("OLLAMA_KILL_REVIEW_MODEL", "gemma4").strip()
+    primary = _analyze_with_provider(submission, "openai", primary_model)
+    try:
+        secondary = _analyze_with_provider(submission, "compatible", secondary_model)
+    except AIReviewError as exc:
+        primary["confidence"] = "low"
+        primary["reason"] = (
+            f"OPENAI ({primary_model}): {primary['reason']} "
+            f"SECONDARY OPEN-SOURCE REVIEW ({secondary_model}) FAILED: {str(exc)[:250]}. "
+            "No automatic Diamonds; manual review required."
+        )[:1000]
+        return primary
+
+    agrees = (
+        primary["proposed_kills"] is not None
+        and primary["proposed_kills"] == secondary["proposed_kills"]
+        and primary["uid_matches"] is True
+        and secondary["uid_matches"] is True
+        and primary["confidence"] == "high"
+        and secondary["confidence"] == "high"
+    )
+    chosen = dict(primary)
+    if not agrees:
+        chosen["confidence"] = "low"
+    chosen["uid_matches"] = (
+        True if primary["uid_matches"] is True and secondary["uid_matches"] is True
+        else False if primary["uid_matches"] is False or secondary["uid_matches"] is False
+        else None
+    )
+    chosen["reason"] = (
+        f"OPENAI ({primary_model}): kills={primary['proposed_kills']}, "
+        f"confidence={primary['confidence']}, UID={primary['uid_matches']}. {primary['reason']} "
+        f"OPEN-SOURCE ({secondary_model}): kills={secondary['proposed_kills']}, "
+        f"confidence={secondary['confidence']}, UID={secondary['uid_matches']}. {secondary['reason']} "
+        f"DUAL CHECK: {'BOTH AGREE; configured automatic review rules may apply.' if agrees else 'DISAGREEMENT; no automatic Diamonds, admin review required.'}"
+    )[:1000]
+    return chosen
