@@ -525,9 +525,9 @@ def retry_ai_kill_review(request, submission_id):
         # and both configured AI providers explicitly agree with high confidence.
         dual_agreement = (
             os.getenv("KILL_REVIEW_PROVIDER", "openai").strip().lower() == "dual"
+            and result.get("dual_agreement") is True
             and result["confidence"] == "high"
             and result["uid_matches"] is True
-            and "BOTH AGREE" in result["reason"]
         )
         eligible = (
             dual_agreement
@@ -575,8 +575,9 @@ def retry_ai_kill_review(request, submission_id):
                         "and OpenAI plus configured open-source AI agreed at high confidence."
                     )
                     submission.save(update_fields=[
-                        "approved_kills", "proposed_reward", "approved_reward",
-                        "status", "reviewed_at", "admin_notes",
+                        "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
+                        "ai_review_notes", "approved_kills", "proposed_reward",
+                        "approved_reward", "status", "reviewed_at", "admin_notes",
                     ])
             messages.success(request, f"Dual AI agree hua: {proposed} kills verify hue aur {int(submission.approved_reward)} Diamonds credit kiye gaye.")
         else:
