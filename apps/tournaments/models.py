@@ -142,6 +142,17 @@ class Tournament(models.Model):
         ).count()
 
     @property
+    def paid_players_count(self):
+        return self.registrations.filter(
+            payment_verified=True,
+            status__in=[
+                Registration.Status.CONFIRMED,
+                Registration.Status.WAITING_READY,
+                Registration.Status.READY,
+            ],
+        ).count()
+
+    @property
     def is_full(self):
         return self.confirmed_players_count >= self.max_players
 
