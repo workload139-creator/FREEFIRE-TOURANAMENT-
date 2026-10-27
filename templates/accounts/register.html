@@ -7,7 +7,7 @@
     <div class="auth-card player-register-card">
         <h1>Create Player Account</h1>
         <p>Register to join Free Fire tournaments.</p>
-        <div class="profile-notice register-payout-notice"><strong>Prize receiving — dono details mandatory:</strong> Account banane ke liye apni UPI ID aur apna UPI QR code dono dena zaroori hai. Inke bina registration complete nahi hoga. Eligible prize/withdrawal admin ke manual verification ke baad hi bheja jayega.</div>
+        <div class="profile-notice register-payout-notice"><strong>Easy registration:</strong> Account banane ke liye mobile number ya UPI QR upload karna zaroori nahi. Withdrawal ke waqt apni UPI ID dena hoga; admin actual payment verify karega.</div>
         {% if verified_email %}<p class="message success">Verified email: <strong>{{ verified_email }}</strong></p>{% else %}<p><a href="{% url 'accounts:email_otp' %}">Verify email first</a></p>{% endif %}
 
         <form method="post" enctype="multipart/form-data">
@@ -26,7 +26,6 @@
                     </label>
 
                     {{ field }}
-                    {% if field.name == "upi_qr_code" %}<small class="help-text">Apna UPI QR JPG, PNG ya WebP format mein upload karein (maximum 2 MB). Yeh prize receive karne ke liye hai, tournament entry fee payment ke liye nahi.</small>{% endif %}
 
                     {% for error in field.errors %}
                         <small class="error">{{ error }}</small>
