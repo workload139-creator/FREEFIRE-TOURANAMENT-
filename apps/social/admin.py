@@ -191,4 +191,4 @@ class FanTokenAwardAdmin(admin.ModelAdmin):
     list_display = ("user", "follower_milestone", "quantity", "created_at")
     list_filter = ("follower_milestone", "created_at")
     search_fields = ("user__username", "user__email")
-    readonly_fields = ("user", "follower_milestone", "quantity", "created_at)
+    readonly_fields = ("user", "follower_milestone", "quantity", "created_at")
