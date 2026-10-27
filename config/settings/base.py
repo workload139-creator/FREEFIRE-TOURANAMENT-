@@ -185,13 +185,13 @@ EMAIL_BACKEND = os.getenv(
         else "django.core.mail.backends.smtp.EmailBackend"
     ),
 )
-EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp-relay.brevo.com").strip()
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() == "true"
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "").strip()
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.getenv(
-    "DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "noreply@ffarena.local"
+    "DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "workload139@gmail.com"
 )
 
 TOURNAMENT_ADMIN_EMAIL = os.getenv("TOURNAMENT_ADMIN_EMAIL", "").strip()
