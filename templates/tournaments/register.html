@@ -25,7 +25,7 @@
         </div>
 
         {% if form.non_field_errors %}<div class="error-box">{{ form.non_field_errors }}</div>{% endif %}
-        <form method="post" action="{% url 'tournaments:register' tournament.id %}">
+        <form method="post" enctype="multipart/form-data" action="{% url 'tournaments:register' tournament.id %}">
             {% csrf_token %}
             <div class="form-group register-field">
                 <label for="{{ form.profile_uid.id_for_label }}">Website Profile UID</label>
@@ -33,6 +33,14 @@
                 {% for error in form.profile_uid.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
                 <small class="help-text">Aapki website profile ID: {{ request.user.id }}. Isse verify karein.</small>
             </div>
+            {% if tournament.gender_category == "girls_vs_boys" %}
+            <section class="profile-notice" style="margin:18px 0;padding:18px;border:1px solid #d18bff;border-radius:14px;background:linear-gradient(135deg,rgba(110,50,160,.2),rgba(20,130,150,.12))">
+                <h2 style="margin-top:0">📸 Live Selfie Verification</h2>
+                <p>Girls vs Boys event ke liye camera se clear selfie lein. Mobile par camera khul sakta hai; agar browser camera option na de, camera se photo lekar select karein. Admin photo aur profile category check karega.</p>
+                <p><strong>Privacy:</strong> Yeh photo sirf tournament admin verification ke liye hai; isse akela gender ki pakki tasdeeq nahi hoti. Admin ko manual review karna hoga.</p>
+                <div class="form-group"><label for="{{ form.verification_photo.id_for_label }}">{{ form.verification_photo.label }} *</label>{{ form.verification_photo }}<small class="help-text">{{ form.verification_photo.help_text }}</small>{% for error in form.verification_photo.errors %}<small class="error-text">{{ error }}</small>{% endfor %}</div>
+            </section>
+            {% endif %}
             <div class="form-group">
                 <label for="{{ form.free_fire_uid.id_for_label }}">Free Fire UID</label>
                 {{ form.free_fire_uid }}
