@@ -134,7 +134,7 @@ class CurrencyWithdrawalRequestForm(forms.Form):
 class ProfileUpdateForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ("username", "email", "phone_number", "gender", "profile_photo", "upi_id", "upi_qr_code")
+        fields = ("username", "email", "gender", "profile_photo")
         widgets = {
             "username": forms.TextInput(attrs={"autocomplete": "username"}),
             "email": forms.EmailInput(attrs={"autocomplete": "email"}),
@@ -148,10 +148,7 @@ class ProfileUpdateForm(forms.ModelForm):
         self.fields["gender"].help_text = "Used to filter Boys-only and Girls-only tournaments."
         self.fields["username"].label = "Username / Player ID name"
         self.fields["email"].label = "Email address"
-        self.fields["phone_number"].label = "Mobile number"
         self.fields["profile_photo"].label = "Profile photo"
-        self.fields["upi_qr_code"].label = "UPI QR code for prize payout"
-        self.fields["upi_qr_code"].required = False
         self.fields["profile_photo"].required = False
 
     def clean_username(self):
@@ -171,17 +168,6 @@ class ProfileUpdateForm(forms.ModelForm):
         if existing.exists():
             raise forms.ValidationError("Ye email kisi aur account se linked hai.")
         return email
-
-    def clean_phone_number(self):
-        phone = self.cleaned_data["phone_number"].strip()
-        if not phone.isdigit() or not 10 <= len(phone) <= 15:
-            raise forms.ValidationError("10 se 15 digits ka valid mobile number enter karein.")
-        existing = User.objects.filter(phone_number=phone)
-        if self.instance and self.instance.pk:
-            existing = existing.exclude(pk=self.instance.pk)
-        if existing.exists():
-            raise forms.ValidationError("Ye mobile number kisi aur account se linked hai.")
-        return phone
 
     def clean_profile_photo(self):
         photo = self.cleaned_data.get("profile_photo")
