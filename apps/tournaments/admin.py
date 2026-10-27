@@ -828,11 +828,11 @@ class KillSubmissionAdmin(admin.ModelAdmin):
             "description": "Sirf low-confidence/unclear evidence ko inspect karke approved kills, approved reward, status aur admin notes set karein. BR reward Diamonds mein player ke shop wallet mein credit hota hai; UPI payout ke liye alag withdrawal request chahiye.",
             "fields": ("approved_kills", "approved_reward", "status", "admin_notes"),
         }),
-        ("5. Legacy payout fields", {
+        ("6. Legacy payout fields", {
             "description": "Purane manual UPI prize records ke liye ye fields rakhe gaye hain. Naye AI kill rewards Diamonds ke roop mein credit hote hain; actual INR withdrawal Currency Withdrawal queue mein handle karein.",
             "fields": ("payout_reference", "payout_status", "payout_paid_at"),
         }),
-        ("Submission timestamps", {"fields": ("submitted_at", "reviewed_at")}),
+        ("7. Submission timestamps", {"fields": ("submitted_at", "reviewed_at")}),
     )
 
     @admin.display(description="Player Email")
