@@ -118,3 +118,43 @@ class Follow(models.Model):
 
     def __str__(self):
         return f"{self.follower} follows {self.following}"
+
+
+class PhotoPost(models.Model):
+    """Image-only community post."""
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="photo_posts")
+    photo = models.ImageField(upload_to="community_posts/")
+    caption = models.CharField(max_length=180, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_hidden = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return f"Photo post #{self.pk} by {self.author}"
+
+
+class FFTickSubscription(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending admin verification"
+        ACTIVE = "active", "Active"
+        REJECTED = "rejected", "Rejected"
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="ff_tick_subscriptions")
+    amount = models.DecimalField(max_digits=7, decimal_places=2, default=100)
+    duration_months = models.PositiveSmallIntegerField(default=3)
+    payment_reference = models.CharField(max_length=100, blank=True)
+    payment_screenshot = models.ImageField(upload_to="ff_tick_payments/", blank=True, null=True)
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDING)
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    verified_at = models.DateTimeField(blank=True, null=True)
+    expires_at = models.DateTimeField(blank=True, null=True)
+    verified_by = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, on_delete=models.SET_NULL, related_name="verified_ff_tick_payments")
+    admin_note = models.CharField(max_length=250, blank=True)
+
+    class Meta:
+        ordering = ("-submitted_at",)
+
+    def __str__(self):
+        return f"FF Tick - {self.user} - {self.status}"
