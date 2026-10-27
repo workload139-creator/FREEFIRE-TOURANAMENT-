@@ -365,31 +365,9 @@ def shop_view(request):
                 ShopPaymentRequest.objects.create(user=request.user, product=product, quantity=quantity, amount=amount, payment_reference=reference, payment_screenshot=screenshot)
                 messages.success(request, "Shop payment request admin verification ke liye bhej di gayi. Approval ke baad items balance mein aayenge.")
                 return redirect("social:shop")
-        elif action == "withdraw":
-            currency = request.POST.get("currency")
-            try:
-                quantity = int(request.POST.get("quantity", "0"))
-            except (TypeError, ValueError):
-                quantity = 0
-            upi_id = request.POST.get("upi_id", "").strip()[:100]
-            if currency not in ("diamonds", "coins") or quantity < 100 or quantity % 100 != 0 or not upi_id:
-                messages.error(request, "Withdrawal ke liye valid UPI aur kam se kam 100 diamonds ya 1000 coins chahiye; 100-unit steps use karein.")
-            else:
-                amount = Decimal(quantity) if currency == "diamonds" else Decimal(quantity) / Decimal("10")
-                with transaction.atomic():
-                    locked = PlayerShopWallet.objects.select_for_update().get(user=request.user)
-                    field = "diamonds" if currency == "diamonds" else "coins"
-                    if getattr(locked, field) < quantity:
-                        messages.error(request, "Aapka balance is withdrawal ke liye kaafi nahi hai.")
-                    else:
-                        setattr(locked, field, getattr(locked, field) - quantity)
-                        locked.save(update_fields=[field, "updated_at"])
-                        CurrencyWithdrawalRequest.objects.create(user=request.user, currency=currency, quantity=quantity, amount_inr=amount, upi_id=upi_id)
-                        messages.success(request, "Withdrawal request admin ko bhej di. Admin real UPI payout manually karega.")
-                        return redirect("social:shop")
+
     wallet.refresh_from_db()
     return render(request, "social/shop.html", {
         "shop_wallet": wallet,
         "payment_requests": ShopPaymentRequest.objects.filter(user=request.user)[:10],
-        "withdrawals": CurrencyWithdrawalRequest.objects.filter(user=request.user)[:10],
     })
