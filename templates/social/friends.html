@@ -1,89 +1,46 @@
 {% extends "base.html" %}
-{% block title %}Friends | FF Arena{% endblock %}
+{% block title %}Players & Follow | FF Arena{% endblock %}
 {% block content %}
 <section class="community-page">
   <div class="community-hero">
     <span class="eyebrow">FF ARENA COMMUNITY</span>
-    <h1>Friends & Players</h1>
-    <p>Player ID se players search karo. Dono ek-doosre ko follow karenge tab friend banoge; private chat alag section mein hai.</p>
+    <h1>Players & Follow</h1>
+    <p>Player ID ya username se search karo. Kisi player ko follow karte hi chat shuru kar sakte ho. Friend request ki zaroorat nahi.</p>
     <form method="get" class="player-search">
       <label for="player-search">Player ID ya username</label>
-      <div class="search-row">
-        <input id="player-search" name="q" value="{{ search_query }}" placeholder="FF-000123 ya username" maxlength="150" required>
-        <button class="button button-primary" type="submit">Search</button>
-      </div>
+      <div class="search-row"><input id="player-search" name="q" value="{{ search_query }}" placeholder="FF-000123 ya username" maxlength="150" required><button class="button button-primary" type="submit">Search</button></div>
     </form>
   </div>
-
   {% if search_query %}
-  <section class="community-panel">
-    <h2>Search results</h2>
+  <section class="community-panel"><h2>Search results</h2>
     {% for result in search_results %}
-      <article class="player-row">
-        <div class="player-avatar">{{ result.user.username|first|upper }}</div>
-        <div class="player-info"><strong><a href="{% url 'social:player_profile' result.user.pk %}">{{ result.user.username }}</a></strong><small>Player ID: FF-{{ result.user.pk|stringformat:"06d" }} · {% if result.user.is_online %}<span class="online-label">Online</span>{% else %}Offline{% endif %}</small></div>
-        <div class="player-actions">
-          <form method="post" action="{% url 'social:toggle_follow' result.user.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{% url 'social:home' %}?q={{ search_query|urlencode }}"><button class="button button-outline" type="submit">{% if result.is_following %}Unfollow{% else %}Follow{% endif %}</button></form>
-          {% if result.is_friend %}
-            <span class="muted">Mutual follow · Friend</span>
-            <a class="button button-primary" href="{% url 'chat:open' result.user.pk %}">Message</a>
-          {% elif result.is_following %}
-            <span class="muted">Following · Follow back karne par friend banoge</span>
-          {% else %}
-            <span class="muted">Follow karke connect karo</span>
-          {% endif %}
-          <a class="text-link" href="{% url 'social:report_user' result.user.pk %}">Report</a>
-        </div>
-      </article>
+    <article class="player-row">
+      <div class="player-avatar">{% if result.user.profile_photo %}<img src="{{ result.user.profile_photo.url }}" alt="{{ result.user.username }}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">{% else %}{{ result.user.username|first|upper }}{% endif %}</div>
+      <div class="player-info"><strong><a href="{% url 'social:player_profile' result.user.pk %}">{{ result.user.username }}</a></strong><small>Player ID: FF-{{ result.user.pk|stringformat:"06d" }} · {% if result.user.profile_visibility == "private" %}Private profile{% else %}Public profile{% endif %} · {% if result.user.is_online %}<span class="online-label">Online</span>{% else %}Offline{% endif %}</small></div>
+      <div class="player-actions">
+        <form method="post" action="{% url 'social:toggle_follow' result.user.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{% url 'social:home' %}?q={{ search_query|urlencode }}"><button class="button {% if result.is_following %}button-outline{% else %}button-primary{% endif %}" type="submit">{% if result.is_following %}Unfollow{% else %}＋ Follow{% endif %}</button></form>
+        {% if result.is_following %}<a class="button button-outline" href="{% url 'chat:open' result.user.pk %}">💬 Chat</a>{% endif %}
+        <a class="text-link" href="{% url 'social:report_user' result.user.pk %}">Report</a>
+      </div>
+    </article>
     {% empty %}<p class="muted">Is ID ya username ka player nahi mila.</p>{% endfor %}
   </section>
   {% endif %}
-
-  <section class="community-panel">
-    <h2>Players you may know</h2>
-    <p class="muted">Yahan naye aur active registered players dikhte hain. Player account banane ke baad yahan suggestion mein aa sakta hai.</p>
+  <section class="community-panel"><h2>Players to discover</h2><p class="muted">Naye registered players ko follow karo aur community se connect raho.</p>
     <div class="player-suggestions">
       {% for person in suggestions %}
       <article class="player-row compact">
         <div class="player-avatar">{% if person.profile_photo %}<img src="{{ person.profile_photo.url }}" alt="{{ person.username }}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">{% else %}{{ person.username|first|upper }}{% endif %}</div>
-        <div class="player-info"><strong><a href="{% url 'social:player_profile' person.pk %}">{{ person.username }}</a></strong><small>Player ID: FF-{{ person.pk|stringformat:"06d" }} · {% if person.is_online %}<span class="online-label">Online</span>{% else %}Offline{% endif %}</small></div>
-        <div class="player-actions">
-          <form method="post" action="{% url 'social:toggle_follow' person.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{% url 'social:home' %}"><button class="button button-primary" type="submit">Follow / Add</button></form>
-        </div>
+        <div class="player-info"><strong><a href="{% url 'social:player_profile' person.pk %}">{{ person.username }}</a></strong><small>FF-{{ person.pk|stringformat:"06d" }} · {% if person.profile_visibility == "private" %}Private{% else %}Public{% endif %} · {% if person.is_online %}<span class="online-label">Online</span>{% else %}Offline{% endif %}</small></div>
+        <div class="player-actions"><form method="post" action="{% url 'social:toggle_follow' person.pk %}">{% csrf_token %}<button class="button button-primary" type="submit">＋ Follow</button></form></div>
       </article>
-      {% empty %}<p class="muted">Abhi naye players nahi mile. Baad mein dobara check karo ya search use karo.</p>{% endfor %}
+      {% empty %}<p class="muted">Abhi naye players nahi mile. Search use karo.</p>{% endfor %}
     </div>
   </section>
-
-  <div class="community-columns">
-    <section class="community-panel">
-      <h2>Friend kaise banein?</h2>
-      <p class="muted">Player ko Follow karo. Jab woh bhi tumhe Follow karega, dono automatically friends ban jaoge. Kisi ko unfollow karne par mutual friendship aur private chat access band ho jayega.</p>
-      <p class="muted">Followers aur Following ki alag lists profile page se khol sakte ho. Private Chat ke liye profile ka Open Private Chat button use karo.</p>
-    </section>
-
-    <section class="community-panel">
-      <h2>My Friends <span class="count-pill">{{ friends|length }}</span></h2>
-      {% for friend in friends %}
-      <article class="player-row compact">
-        <div class="player-avatar">{{ friend.username|first|upper }}</div>
-        <div class="player-info"><strong><a href="{% url 'social:player_profile' friend.pk %}">{{ friend.username }}</a></strong><small>FF-{{ friend.pk|stringformat:"06d" }} · {% if friend.is_online %}<span class="online-label">Online</span>{% else %}Offline{% endif %}</small></div>
-        <div class="player-actions">
-          <a class="button button-primary" href="{% url 'chat:open' friend.pk %}">Chat</a>
-          <form method="post" action="{% url 'social:remove_friend' friend.pk %}">{% csrf_token %}<button class="button button-outline" type="submit">Remove</button></form>
-          <form method="post" action="{% url 'social:block_user' friend.pk %}">{% csrf_token %}<button class="text-link danger-link" type="submit">Block</button></form>
-        </div>
-      </article>
-      {% empty %}<p class="muted">Abhi friends nahi hain. Upar Player ID se search karo.</p>{% endfor %}
-    </section>
-  </div>
-
-  <section class="community-panel blocked-panel">
-    <h2>Blocked players</h2>
-    {% for item in blocked_users %}
-      <div class="player-row compact"><div class="player-info"><strong>{{ item.blocked.username }}</strong><small>FF-{{ item.blocked.pk|stringformat:"06d" }}</small></div><form method="post" action="{% url 'social:unblock_user' item.blocked.pk %}">{% csrf_token %}<button class="button button-outline" type="submit">Unblock</button></form></div>
+  <section class="community-panel blocked-panel"><h2>Blocked players</h2>
+    {% for item in blocked_users %}<div class="player-row compact"><div class="player-info"><strong>{{ item.blocked.username }}</strong><small>FF-{{ item.blocked.pk|stringformat:"06d" }}</small></div><form method="post" action="{% url 'social:unblock_user' item.blocked.pk %}">{% csrf_token %}<button class="button button-outline" type="submit">Unblock</button></form></div>
     {% empty %}<p class="muted">Koi blocked player nahi hai.</p>{% endfor %}
   </section>
-  <p class="community-note">Privacy: friend tab bante hain jab dono ek-doosre ko follow karein. Private chat alag hai aur sirf mutual-follow friends ke liye hai. Block karne par chat band ho jayegi.</p>
+  <p class="community-note">Privacy: private profile dekhne ke liye player ko follow karein. Block karne par chat band ho jayegi. Normal chat free hai; gifts balance se deduct hote hain.</p>
 </section>
 {% endblock %}
