@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Withdraw Diamonds & Coins | FF Arena{% endblock %}
+{% block content %}
+<section class="container" style="max-width:900px;margin:35px auto;padding:18px;color:#eef4ff">
+  <header style="padding:26px;border-radius:20px;background:linear-gradient(120deg,#172b4b,#171627);border:1px solid #70dfff55">
+    <span style="color:#7be7d3;font-weight:900;letter-spacing:2px">FF ARENA · MANUAL PAYOUT REVIEW</span>
+    <h1>Withdraw Diamonds / Coins</h1>
+    <p>Shop balances: 💎 {{ shop_wallet.diamonds }} Diamonds · 🪙 {{ shop_wallet.coins }} Coins</p>
+    <p>Conversion rate follows shop packs: 1 Diamond = ₹1; 10 Coins = ₹1. Minimum withdrawal ₹10. Admin reviews requests; money is not sent automatically.</p>
+  </header>
+  <section style="margin:18px 0;padding:22px;border-radius:16px;background:#111827;border:1px solid #ffffff20">
+    <h2>Withdrawal request</h2>
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div style="color:#ff9e9e">{{ form.non_field_errors }}</div>{% endif %}
+      {% for field in form %}
+        <p style="margin:16px 0"><label for="{{ field.id_for_label }}" style="display:block;font-weight:800;margin-bottom:6px">{{ field.label }}</label>{{ field }}{% for error in field.errors %}<span style="display:block;color:#ff9e9e">{{ error }}</span>{% endfor %}</p>
+      {% endfor %}
+      <p style="color:#bdc9dc">UPI ID aur QR dono zaroori hain. QR JPG/PNG/WebP ho aur 2 MB se chhota ho. Admin actual payout manually verify karega.</p>
+      <button type="submit" class="btn-primary">Submit Withdrawal Request</button>
+    </form>
+  </section>
+  <section style="padding:10px 0"><h2>My withdrawal requests</h2>
+    {% for item in withdrawal_requests %}
+      <article style="margin:10px 0;padding:15px;border-radius:12px;background:#111827;border:1px solid #ffffff18">
+        <strong>{{ item.quantity }} {{ item.get_currency_display }} → ₹{{ item.amount_inr }}</strong>
+        <p>UPI: {{ item.upi_id }} · Status: {{ item.get_status_display }}</p>
+        {% if item.upi_qr_code %}<p>Uploaded QR: <a href="{{ item.upi_qr_code.url }}" target="_blank" rel="noopener">View QR</a></p>{% endif %}
+        {% if item.payout_reference %}<p>Admin payout reference: {{ item.payout_reference }}</p>{% endif %}
+        <small>{{ item.created_at|date:"d M Y, h:i A" }}</small>
+      </article>
+    {% empty %}<p>No withdrawal requests yet.</p>{% endfor %}
+  </section>
+</section>
+{% endblock %}
