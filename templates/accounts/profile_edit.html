@@ -2,10 +2,10 @@
 {% block title %}Edit Profile | FF Arena{% endblock %}
 {% block content %}
 <section class="profile-page player-register-section"><div class="profile-panel player-register-card"><h1>Edit Profile</h1><p>Personal details ko update karein.</p>
-<div class="profile-notice"><strong>Prize / withdrawal details:</strong> Apni UPI ID aur apna UPI QR code dono save karein. Naye profile ke liye dono mandatory hain; agar purana QR pehle se saved hai to use dobara upload karne ki zaroorat nahi. Admin actual payment manually verify karega.</div>
+<div class="profile-notice"><strong>Prize / withdrawal details:</strong> UPI ID yahan optional hai. Withdrawal request karte waqt apni UPI ID dena zaroori hoga. Mobile number aur QR code profile banane ke liye required nahi hain; admin actual payment manually verify karega.</div>
 <form method="post" enctype="multipart/form-data" class="profile-form">{% csrf_token %}
 {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
 {% if form.non_field_errors %}<div class="profile-errors">{{ form.non_field_errors }}</div>{% endif %}
-{% for field in form %}<p class="register-field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.name == "upi_qr_code" %}<span class="helptext">JPG, PNG ya WebP; maximum 2 MB. Apna UPI QR hi upload karein.</span>{% endif %}{% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}{% for error in field.errors %}<span class="profile-errors">{{ error }}</span>{% endfor %}</p>{% endfor %}
+{% for field in form %}<p class="register-field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}{% for error in field.errors %}<span class="profile-errors">{{ error }}</span>{% endfor %}</p>{% endfor %}
 <button type="submit" class="btn-primary">Save Profile</button> <a href="{% url 'accounts:profile' %}">Cancel</a></form></div></section>
 {% endblock %}
