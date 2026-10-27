@@ -173,7 +173,7 @@ class ProfileUpdateForm(forms.ModelForm):
     def clean_upi_id(self):
         upi_id = (self.cleaned_data.get("upi_id") or "").strip()
         if not upi_id:
-            raise forms.ValidationError("Apni UPI ID dena zaroori hai.")
+            return ""
         if "@" not in upi_id or any(char.isspace() for char in upi_id):
             raise forms.ValidationError("Valid UPI ID enter karein.")
         return upi_id
