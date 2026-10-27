@@ -19,6 +19,7 @@
         <div class="profile-item"><span>Username</span><strong>{{ player.username }}</strong></div>
         <div class="profile-item"><span>Email</span><strong>{{ player.email|default:"Not added" }}</strong></div>
         <div class="profile-item"><span>Account created</span><strong>{{ player.date_joined|date:"d M Y" }}</strong></div>
+        <div class="profile-item"><span>Profile visibility</span><strong>{% if player.profile_visibility == "private" %}🔒 Private{% else %}🌐 Public{% endif %}</strong></div>
       </div>
       <p class="profile-contact-note">Account details aur profile photo yahan manage karein. Withdrawal ke liye UPI details Wallet section mein di jaati hain.</p>
       <div class="profile-stats">
