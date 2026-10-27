@@ -513,6 +513,7 @@ def currency_withdrawal_view(request):
                             quantity=quantity,
                             amount_inr=amount,
                             upi_id=upi_id,
+                            upi_qr_code=form.cleaned_data["upi_qr_code"],
                         )
                         if currency == "diamonds":
                             wallet.diamonds -= quantity
