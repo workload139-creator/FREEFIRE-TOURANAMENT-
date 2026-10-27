@@ -8,14 +8,11 @@ from .models import DepositRequest, User
 
 class PlayerRegistrationForm(UserCreationForm):
     email = forms.EmailField(required=True, label="Email Address")
-    phone_number = forms.CharField(max_length=15, required=True, label="Mobile Number")
-    upi_id = forms.CharField(max_length=100, required=False, label="UPI ID for tournament prize payout (enter UPI ID or upload QR)")
-    upi_qr_code = forms.ImageField(required=True, label="Upload your UPI QR code (required)")
 
     class Meta:
         model = User
         fields = (
-            "username", "email", "phone_number", "gender", "upi_id", "upi_qr_code",
+            "username", "email", "gender",
             "password1", "password2",
         )
 
