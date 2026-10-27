@@ -331,13 +331,14 @@ def community_feed(request):
     return render(request, "social/feed.html", {"posts": posts})
 
 
-def _shop_payment_qr_data_uri():
-    """Build a QR for the shop's UPI ID; it does not confirm or verify a payment."""
+def _shop_payment_qr_data_uri(payee_name="Ravibaghel"):
+    """Build a QR for the shop UPI ID; a QR is not proof of a completed payment."""
     import base64
     from io import BytesIO
+    from urllib.parse import quote
     import qrcode
 
-    upi_uri = "upi://pay?pa=6232481135%40fam&pn=Ravibaghel&cu=INR"
+    upi_uri = f"upi://pay?pa=6232481135%40fam&pn={quote(payee_name)}&cu=INR"
     image = qrcode.make(upi_uri)
     output = BytesIO()
     image.save(output, format="PNG")
@@ -385,10 +386,11 @@ def shop_view(request):
                 quantity = int(request.POST.get("quantity", "0"))
             except (TypeError, ValueError):
                 quantity = 0
-            # Fixed packs only: ₹10 = 10 diamonds OR 100 coins.
+            # Fixed packs only. Diamonds and coins are virtual, non-cash shop items.
             packs = {("diamonds", 10): Decimal("10.00"), ("diamonds", 50): Decimal("50.00"),
-                     ("diamonds", 100): Decimal("100.00"), ("coins", 100): Decimal("10.00"),
-                     ("coins", 500): Decimal("50.00"), ("coins", 1000): Decimal("100.00")}
+                     ("diamonds", 100): Decimal("100.00"), ("diamonds", 500): Decimal("500.00"),
+                     ("coins", 100): Decimal("10.00"), ("coins", 500): Decimal("50.00"),
+                     ("coins", 1000): Decimal("100.00")}
             amount = packs.get((product, quantity))
             reference = request.POST.get("payment_reference", "").strip()[:100]
             screenshot = request.FILES.get("payment_screenshot")
@@ -409,7 +411,8 @@ def shop_view(request):
     return render(request, "social/shop.html", {
         "shop_wallet": wallet,
         "payment_requests": ShopPaymentRequest.objects.filter(user=request.user)[:10],
-        "payment_qr_data_uri": _shop_payment_qr_data_uri(),
+        "diamond_payment_qr_data_uri": _shop_payment_qr_data_uri("Ravi Baghel"),
+        "coin_payment_qr_data_uri": _shop_payment_qr_data_uri("Ravibaghel"),
     })
 
 

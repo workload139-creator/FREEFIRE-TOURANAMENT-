@@ -19,7 +19,7 @@ from .forms import KillSubmissionForm, RegistrationForm
 from .ai_review import AIReviewError, analyze_kill_evidence
 from .registration_services import RegistrationError, create_pending_registration
 from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry
-from .services import process_expired_ready_registrations, mark_not_playing_and_refund
+from .services import process_expired_ready_registrations, mark_not_playing_and_refund, cancel_tournament_and_refund
 
 import qrcode
 
@@ -287,8 +287,24 @@ def admin_tournament_dashboard(request, tournament_id):
         "ready_players": registrations.filter(status=Registration.Status.READY).count(),
         "not_playing_players": registrations.filter(status=Registration.Status.NOT_PLAYING).count(),
         "refunded_players": registrations.filter(refund_processed=True).count(),
+        "pending_kills_count": kill_submissions.filter(status=KillSubmission.Status.PENDING).count(),
+        "ledger_entries": tournament.ledger_entries.select_related("player", "registration").order_by("-created_at")[:100],
     }
-    return render(request, "tournaments/admin_dashboard.html", context)
+    return render(request, "tournaments/admin_tournament_workspace.html", context)
+
+
+@login_required
+@user_passes_test(lambda user: user.is_staff)
+@require_POST
+def admin_cancel_tournament(request, tournament_id):
+    tournament = get_object_or_404(Tournament, pk=tournament_id)
+    was_cancelled = tournament.status == Tournament.Status.CANCELLED
+    refunded, message = cancel_tournament_and_refund(tournament.pk)
+    if was_cancelled:
+        messages.warning(request, f"{message} External UPI refunds, if any, still require a real transfer and reference.")
+    else:
+        messages.success(request, f"{message} External UPI refunds, if any, still require a real transfer and reference.")
+    return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
 
 
 

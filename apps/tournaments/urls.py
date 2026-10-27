@@ -65,6 +65,7 @@ urlpatterns = [
         views.admin_tournament_dashboard,
         name="admin_tournament_dashboard",
     ),
+    path("admin/tournament/<int:tournament_id>/cancel/", views.admin_cancel_tournament, name="admin_cancel_tournament"),
     path("my-registrations/", views.my_registrations, name="my_registrations"),
     path("registration/<int:registration_id>/kill-evidence/", views.kill_submission, name="kill_submission"),
     path("leaderboard/<int:tournament_id>/", views.leaderboard, name="leaderboard"),
