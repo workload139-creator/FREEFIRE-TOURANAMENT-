@@ -591,6 +591,21 @@ class RegistrationAdmin(admin.ModelAdmin):
     def player_profile_id(self, obj):
         return f"Profile #{obj.player_id}"
 
+    @admin.display(description="Configured AI sources")
+    def ai_source_configuration(self, obj):
+        import os
+        provider = os.getenv("KILL_REVIEW_PROVIDER", "openai").strip().lower()
+        openai_model = os.getenv("OPENAI_KILL_REVIEW_MODEL", "gpt-4.1-mini").strip()
+        source_model = os.getenv("OLLAMA_KILL_REVIEW_MODEL", "gemma4").strip()
+        base_url = os.getenv("KILL_REVIEW_BASE_URL", "").strip()
+        return (
+            f"Mode: {provider} · OpenAI model: {openai_model} · "
+            f"Open-source model: {source_model} · "
+            f"Open-source endpoint configured: {'yes' if base_url else 'no'} · "
+            f"OpenAI key configured: {'yes' if os.getenv('OPENAI_API_KEY', '').strip() else 'no'} · "
+            f"Open-source key configured: {'yes' if os.getenv('KILL_REVIEW_API_KEY', '').strip() else 'no'}"
+        )
+
     @admin.display(description="Player Email")
     def player_email(self, obj):
         return obj.player.email or "Email not provided"
@@ -786,6 +801,7 @@ class KillSubmissionAdmin(admin.ModelAdmin):
         "history_video", "history_image_one", "history_image_two",
         "ai_proposed_kills", "ai_confidence", "ai_uid_matches", "ai_review_notes",
         "proposed_reward", "payout_status", "payout_paid_at", "submitted_at", "reviewed_at",
+        "ai_source_configuration",
     )
     fieldsets = (
         ("1. Player Contact & Payout Destination", {
@@ -800,11 +816,15 @@ class KillSubmissionAdmin(admin.ModelAdmin):
             "description": "Video aur dono screenshots ko open karke match history, kills aur UID visually check karein.",
             "fields": ("history_video", "history_image_one", "history_image_two"),
         }),
-        ("3. AI Review & automatic Diamond reward", {
-            "description": "Player upload par AI review automatic chalta hai. High-confidence UID match par BR ke har verified kill ke ₹5 equivalent Diamonds automatically credit hote hain. Low confidence, UID mismatch, or AI failure cases pending rehte hain; row checkbox select karke Actions → Run / retry AI review chala sakte hain. Render mein OPENAI_API_KEY aur imageio-ffmpeg/FFmpeg chahiye.",
+        ("3. AI Assessment Details", {
+            "description": "Yahan dono models ke kills, confidence, UID match aur reasons ka combined audit note dikhega. Dual mode mein OpenAI aur open-source model dono ko high-confidence par same kills aur UID match confirm karna hoga; disagreement ya provider failure par automatic Diamonds nahi milenge.",
             "fields": ("ai_proposed_kills", "ai_confidence", "ai_uid_matches", "ai_review_notes", "proposed_reward"),
         }),
-        ("4. Manual fallback — only unclear cases", {
+        ("4. AI Source Configuration", {
+            "description": "Provider keys ko yahan plaintext mein nahi dikhaya jata. Render Environment mein KILL_REVIEW_PROVIDER=dual, OPENAI_API_KEY, OPENAI_KILL_REVIEW_MODEL, KILL_REVIEW_BASE_URL, KILL_REVIEW_API_KEY aur OLLAMA_KILL_REVIEW_MODEL set karein. Model names aur provider status read-only dikhte hain.",
+            "fields": ("ai_source_configuration",),
+        }),
+        ("5. Manual fallback — only unclear cases", {
             "description": "Sirf low-confidence/unclear evidence ko inspect karke approved kills, approved reward, status aur admin notes set karein. BR reward Diamonds mein player ke shop wallet mein credit hota hai; UPI payout ke liye alag withdrawal request chahiye.",
             "fields": ("approved_kills", "approved_reward", "status", "admin_notes"),
         }),
