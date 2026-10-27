@@ -41,6 +41,7 @@
                         <th>Players</th>
                         <th>Start Time</th>
                         <th>Status</th>
+                        <th>Tournament Workspace</th>
                     </tr>
                 </thead>
 
@@ -57,10 +58,11 @@
                                 {{ tournament.start_time|date:"d M Y, h:i A" }}
                             </td>
                             <td>{{ tournament.get_status_display }}</td>
+                            <td><a class="workspace-link" href="{% url 'tournaments:admin_tournament_dashboard' tournament.pk %}">Open dashboard →</a></td>
                         </tr>
                     {% empty %}
                         <tr>
-                            <td colspan="6">
+                            <td colspan="7">
                                 Abhi koi tournament available nahi hai.
                             </td>
                         </tr>
