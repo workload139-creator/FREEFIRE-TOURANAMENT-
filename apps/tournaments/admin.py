@@ -606,6 +606,21 @@ class RegistrationAdmin(admin.ModelAdmin):
             f"Open-source key configured: {'yes' if os.getenv('KILL_REVIEW_API_KEY', '').strip() else 'no'}"
         )
 
+    @admin.display(description="Configured AI sources")
+    def ai_source_configuration(self, obj):
+        import os
+        provider = os.getenv("KILL_REVIEW_PROVIDER", "openai").strip().lower()
+        openai_model = os.getenv("OPENAI_KILL_REVIEW_MODEL", "gpt-4.1-mini").strip()
+        source_model = os.getenv("OLLAMA_KILL_REVIEW_MODEL", "gemma4").strip()
+        base_url = os.getenv("KILL_REVIEW_BASE_URL", "").strip()
+        return (
+            f"Mode: {provider} · OpenAI model: {openai_model} · "
+            f"Open-source model: {source_model} · "
+            f"Open-source endpoint configured: {'yes' if base_url else 'no'} · "
+            f"OpenAI key configured: {'yes' if os.getenv('OPENAI_API_KEY', '').strip() else 'no'} · "
+            f"Open-source key configured: {'yes' if os.getenv('KILL_REVIEW_API_KEY', '').strip() else 'no'}"
+        )
+
     @admin.display(description="Player Email")
     def player_email(self, obj):
         return obj.player.email or "Email not provided"
