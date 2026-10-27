@@ -7,9 +7,18 @@
     <h1>Choose Your <span>Tournament</span></h1>
     <p class="tournament-intro">Apna mode chuno, squad banao aur leaderboard par apni jagah banao.</p>
     <nav class="arena-mode-nav" aria-label="Tournament categories">
-      <a href="#br-tournaments">🔥 Battle Royale</a><a href="#cs-tournaments">⚔️ Clash Squad</a><a href="#girls-vs-boys">💜 Girls vs Boys</a>
+      <a href="#unlimited-tournaments">♾️ Unlimited Tournament</a><a href="#br-tournaments">🔥 Battle Royale</a><a href="#cs-tournaments">⚔️ Clash Squad</a><a href="#girls-vs-boys">💜 Girls vs Boys</a>
     </nav>
   </header>
+
+  <section class="mode-section unlimited-section" id="unlimited-tournaments">
+    <div class="mode-heading"><span class="mode-label">♾️ 49-PLAYER AUTO START</span><h2>Unlimited Tournament</h2><p>₹10 entry · 49 verified players hote hi automatic LIVE · next round automatically opens.</p></div>
+    <div class="tournament-grid">
+    {% for tournament in unlimited_tournaments %}
+      {% include "tournaments/_tournament_card.html" with tournament=tournament %}
+    {% empty %}<article class="tournament-empty unlimited-empty"><span>♾️</span><h3>Unlimited Arena ready hai</h3><p>Admin panel ke <strong>Unlimited Tournaments</strong> section se event create hote hi yahan dikhai dega.</p></article>{% endfor %}
+    </div>
+  </section>
 
   <section class="mode-section" id="br-tournaments">
     <div class="mode-heading"><span class="mode-label">01 / SURVIVAL MODE</span><h2>Battle Royale</h2><p>Solo survival, kill-based results aur BR leaderboard.</p></div>
@@ -59,7 +68,7 @@
 .arena-mode-nav{display:flex;justify-content:center;flex-wrap:wrap;gap:10px}
 .arena-mode-nav a{padding:10px 15px;border:1px solid #ffffff22;border-radius:999px;background:#0b141e;color:#f5f7ff;text-decoration:none;font-weight:800;font-size:13px}
 .arena-mode-nav a:hover{border-color:#55ffc0;color:#55ffc0;transform:translateY(-2px)}
-.mode-section{margin:44px 0;scroll-margin-top:100px}
+.mode-section{margin:44px 0;scroll-margin-top:100px}.unlimited-section{padding:22px;border:1px solid #55ffc044;border-radius:24px;background:radial-gradient(ellipse at 10% 10%,#28ff9a12,transparent 45%),#07120f}.unlimited-section .mode-label{color:#58ffb4}.unlimited-empty{border-color:#55ffc044}
 .mode-heading{margin-bottom:20px}.mode-heading h2{font-size:clamp(27px,4vw,40px);margin:8px 0}.mode-heading p{color:#afbdce;max-width:760px}.mode-label{color:#ffb45c;font-size:11px;font-weight:950;letter-spacing:2px}.cs-title{color:#c4a3ff}
 .tournament-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,285px),1fr));gap:20px}
 .tournament-card{padding:0 0 22px!important;border:1px solid #ffffff18!important;border-radius:18px!important;background:linear-gradient(145deg,#111e2b,#070d15)!important;color:#f8faff!important;overflow:hidden;box-shadow:0 18px 45px #0005;transition:transform .2s,border-color .2s}

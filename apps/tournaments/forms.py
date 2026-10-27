@@ -26,7 +26,7 @@ class RegistrationForm(forms.Form):
 
     payment_method = forms.ChoiceField(
         label="Entry payment method",
-        choices=(("upi", "UPI / INR"), ("diamonds", "💎 Diamonds"), ("coins", "🪙 Coins")),
+        choices=(("upi", "UPI / INR"), ("diamonds", "💎 Diamonds"), ("coins", "🪙 Coins"), ("fan_tokens", "✨ Fan Tokens")),
         initial="upi",
         widget=forms.RadioSelect,
     )

@@ -49,10 +49,10 @@
             </div>
             <section class="entry-currency-choice">
                 <h2>Choose Entry Payment</h2>
-                <p>Your balance: <strong>💎 {{ shop_wallet.diamonds|default:0 }} Diamonds</strong> · <strong>🪙 {{ shop_wallet.coins|default:0 }} Coins</strong></p>
+                <p>Your balance: <strong>💎 {{ shop_wallet.diamonds|default:0 }} Diamonds</strong> · <strong>🪙 {{ shop_wallet.coins|default:0 }} Coins</strong> · <strong>✨ {{ shop_wallet.fan_tokens|default:0 }} Fan Tokens</strong></p>
                 <div class="form-group"><label>{{ form.payment_method.label }}</label>{{ form.payment_method }}{% for error in form.payment_method.errors %}<small class="error-text">{{ error }}</small>{% endfor %}</div>
-                <p class="help-text">Rate: 1 Diamond = ₹1 entry value · 10 Coins = ₹1 entry value. ₹{{ tournament.entry_fee }} entry = {{ tournament.entry_fee|floatformat:0 }} Diamonds or {{ tournament.entry_fee|floatformat:0 }}0 Coins when the fee is a whole rupee.</p>
-                <a class="button button-outline" href="{% url 'social:shop' %}">💎 No Coins / Diamonds? Open Shop</a>
+                <p class="help-text">Rate: 1 Diamond = ₹1 · 10 Coins = ₹1 · 1 Fan Token = ₹1 entry value. Fan Tokens milte hain har 10 followers par 1; ye withdraw nahi ho sakte. ₹{{ tournament.entry_fee }} entry = utne hi Diamonds, 10× Coins, ya utne hi Fan Tokens (whole-rupee fee par).</p>
+                <a class="button button-outline" href="{% url 'social:shop' %}">💎 Need Diamonds/Coins? Open Shop · ✨ Follow milestones se Fan Tokens</a>
             </section>
             <div id="upiPaymentFields">
             {% if tournament.entry_fee > 0 %}

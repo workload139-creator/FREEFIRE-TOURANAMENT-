@@ -1,3 +1,4 @@
+from datetime import timedelta
 from decimal import Decimal
 
 from django import forms
@@ -12,7 +13,7 @@ from apps.accounts.models import (
     AdminWalletTransaction,
     WalletTransaction,
 )
-from .models import KillSubmission, Registration, Tournament
+from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry, UnlimitedTournament
 from .services import cancel_tournament_and_refund
 
 
@@ -39,6 +40,7 @@ class TournamentAdminForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if not self.instance.pk:
             self.initial["status"] = Tournament.Status.UPCOMING
+        self.fields["gender_category"].required = False
         self.fields["status"].help_text = (
             "Website par dikhane aur registration kholne ke liye "
             "'Upcoming' select karein. Draft tournaments public list mein nahi dikhte."
@@ -54,6 +56,8 @@ class TournamentAdminForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
+        if not cleaned.get("gender_category"):
+            cleaned["gender_category"] = Tournament.GenderCategory.OPEN
         if cleaned.get("mode") == Tournament.Mode.BR and cleaned.get("vs_format"):
             self.add_error("vs_format", "BR tournament ke liye CS/VS format khaali rakhein.")
         if cleaned.get("mode") == Tournament.Mode.VS and not cleaned.get("vs_format"):
@@ -315,7 +319,7 @@ class TournamentAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ("1. Tournament Details — kya ban raha hai?", {"description": "Title public tournament name hai. Mode mein BR ya CS/VS chunein. CS/VS mein 1v1/2v2/3v3/4v4 format chunein. Gender Category se Open, Boys Only, Girls Only ya Girls vs Boys event banayein. Har saved tournament ka apna detail page hoga.", "fields": ("title", "description", "mode", "vs_format", "gender_category")}),
-        ("2. Fees & Players — entry aur capacity", {"description": "Entry Fee player se li jane wali registration fee hai. Prize Pool tournament ka first-place prize hai; ise admin ke funds aur payout process ke mutabik set karein. Max Players room capacity hai (maximum 49). BR kill reward alag rule hai: minimum 2 approved kills ke baad ₹5 per approved kill; evidence aur admin approval zaroori hai.", "fields": ("entry_fee", "prize_pool", "max_players")}),
+        ("2. Fees & Players — entry aur capacity", {"description": "Entry Fee player se li jane wali registration fee hai. Prize Pool tournament ka first-place prize hai; ise admin ke funds aur payout process ke mutabik set karein. Max Players room capacity hai (maximum 49). BR kill reward alag rule hai: har verified kill par ₹5 ke equivalent 5 Diamonds; evidence aur admin approval zaroori hai.", "fields": ("entry_fee", "prize_pool", "max_players")}),
         ("3. Unlimited BR Series — optional", {"description": "Sirf unlimited BR series ke liye ON karein. Har round mein 49 players. Auto start capacity par round shuru karne ke liye hai; Auto reopen agla round khol sakta hai. Normal tournament ho to in options ko OFF rakhein.", "fields": ("is_unlimited_br", "auto_start_at_capacity", "auto_reopen", "series_root")}),
         ("4. Schedule & Status — publish / LIVE", {"description": "Start Time tournament ka scheduled time hai. Draft public list mein nahi dikhta; Upcoming se listing/registration khulti hai. LIVE karne se pehle Room Details section mein Room ID aur Password bharna zaroori hai. LIVE karne par verified paid players ko YES/NO confirmation email bhejne ki koshish hoti hai; email delivery SMTP setup par depend karti hai.", "fields": ("start_time", "status")}),
         ("5. Room Details — private until YES", {"description": "Room ID aur Password game room ke credentials hain. Tournament LIVE karte waqt dono bharein. Player ko room tabhi dikhega jab woh deadline ke andar YES kare. Credentials public description/website post mein na likhein.", "fields": ("room_id", "room_password")}),
@@ -369,6 +373,9 @@ def verify_entry_payments(modeladmin, request, queryset):
             registration.payment_verified = True
             registration.status = Registration.Status.CONFIRMED
             registration.save(update_fields=["payment_verified", "status", "updated_at"])
+            if registration.tournament.is_unlimited_br:
+                from .registration_services import maybe_start_unlimited_tournament
+                maybe_start_unlimited_tournament(registration.tournament_id)
             verified_count += 1
 
     if verified_count:
@@ -609,20 +616,50 @@ def run_ai_review_for_selected(modeladmin, request, queryset):
             selected.ai_confidence = result["confidence"][:10]
             selected.ai_uid_matches = result["uid_matches"]
             selected.ai_review_notes = result["reason"]
-            if (
+            proposed_kills = int(result["proposed_kills"] or 0)
+            auto_approved = (
                 result["proposed_kills"] is not None
                 and result["uid_matches"] is True
                 and selected.free_fire_uid == selected.registered_uid
+                and selected.registered_uid == selected.registration.free_fire_uid
                 and selected.tournament.mode == Tournament.Mode.BR
-                and int(result["proposed_kills"]) >= settings.MINIMUM_VERIFIED_KILLS
-            ):
-                selected.proposed_reward = Decimal(int(result["proposed_kills"])) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
+                and result["confidence"] == "high"
+            )
+            selected.proposed_reward = (
+                Decimal(proposed_kills) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
+                if auto_approved and proposed_kills > 0 else Decimal("0.00")
+            )
+            if auto_approved:
+                with transaction.atomic():
+                    locked = KillSubmission.objects.select_for_update().get(pk=selected.pk)
+                    if locked.status != KillSubmission.Status.PENDING:
+                        failed += 1
+                        continue
+                    locked.ai_proposed_kills = result["proposed_kills"]
+                    locked.ai_confidence = result["confidence"][:10]
+                    locked.ai_uid_matches = result["uid_matches"]
+                    locked.ai_review_notes = result["reason"]
+                    locked.proposed_reward = selected.proposed_reward
+                    locked.approved_kills = proposed_kills
+                    locked.approved_reward = locked.proposed_reward
+                    locked.status = KillSubmission.Status.APPROVED
+                    locked.reviewed_at = timezone.now()
+                    if proposed_kills > 0:
+                        from apps.social.models import PlayerShopWallet
+                        shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=locked.player)
+                        shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
+                        shop_wallet.diamonds += int(locked.approved_reward)
+                        shop_wallet.save(update_fields=("diamonds", "updated_at"))
+                    locked.save(update_fields=[
+                        "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
+                        "ai_review_notes", "proposed_reward", "approved_kills",
+                        "approved_reward", "status", "reviewed_at",
+                    ])
             else:
-                selected.proposed_reward = Decimal("0.00")
-            selected.save(update_fields=[
-                "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
-                "ai_review_notes", "proposed_reward",
-            ])
+                selected.save(update_fields=[
+                    "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
+                    "ai_review_notes", "proposed_reward",
+                ])
             reviewed += 1
         except (AIReviewError, OSError, ValueError) as exc:
             selected.ai_review_notes = f"AI review failed: {str(exc)[:900]}"
@@ -632,7 +669,7 @@ def run_ai_review_for_selected(modeladmin, request, queryset):
     if reviewed:
         modeladmin.message_user(
             request,
-            f"AI review completed for {reviewed} submission(s). Proposals only—open evidence and make the final decision manually.",
+            f"AI review completed for {reviewed} submission(s). High-confidence UID matches were approved and credited in Diamonds automatically; other cases remain pending for manual review.",
             messages.SUCCESS,
         )
     if failed:
@@ -673,16 +710,16 @@ class KillSubmissionAdmin(admin.ModelAdmin):
             "description": "Video aur dono screenshots ko open karke match history, kills aur UID visually check karein.",
             "fields": ("history_video", "history_image_one", "history_image_two"),
         }),
-        ("3. AI Initial Review — suggestion only", {
-            "description": "Pehle row checkbox select karke Actions → Run / retry AI review chala sakte hain. Iske liye Render Environment mein OPENAI_API_KEY aur video frame extraction ke liye imageio-ffmpeg/FFmpeg chahiye. AI sirf proposal hai; final decision admin karega.",
+        ("3. AI Review & automatic Diamond reward", {
+            "description": "Player upload par AI review automatic chalta hai. High-confidence UID match par BR ke har verified kill ke ₹5 equivalent Diamonds automatically credit hote hain. Low confidence, UID mismatch, or AI failure cases pending rehte hain; row checkbox select karke Actions → Run / retry AI review chala sakte hain. Render mein OPENAI_API_KEY aur imageio-ffmpeg/FFmpeg chahiye.",
             "fields": ("ai_proposed_kills", "ai_confidence", "ai_uid_matches", "ai_review_notes", "proposed_reward"),
         }),
-        ("4. Admin Final Decision — REQUIRED", {
-            "description": "Evidence dekhne ke baad approved kills, approved reward, status aur admin notes yahan set karein.",
+        ("4. Manual fallback — only unclear cases", {
+            "description": "Sirf low-confidence/unclear evidence ko inspect karke approved kills, approved reward, status aur admin notes set karein. BR reward Diamonds mein player ke shop wallet mein credit hota hai; UPI payout ke liye alag withdrawal request chahiye.",
             "fields": ("approved_kills", "approved_reward", "status", "admin_notes"),
         }),
-        ("5. Prize Payout Tracking", {
-            "description": "Prize ko manually UPI se bhejne ke baad real UTR/reference enter karein, phir list action se Paid mark karein.",
+        ("5. Legacy payout fields", {
+            "description": "Purane manual UPI prize records ke liye ye fields rakhe gaye hain. Naye AI kill rewards Diamonds ke roop mein credit hote hain; actual INR withdrawal Currency Withdrawal queue mein handle karein.",
             "fields": ("payout_reference", "payout_status", "payout_paid_at"),
         }),
         ("Submission timestamps", {"fields": ("submitted_at", "reviewed_at")}),
@@ -766,3 +803,69 @@ class KillSubmissionAdmin(admin.ModelAdmin):
         return False
 
     actions = (run_ai_review_for_selected, mark_selected_prizes_paid,)
+
+
+@admin.action(description="Retry LIVE email notifications for selected Unlimited Tournaments")
+def retry_unlimited_live_notifications(modeladmin, request, queryset):
+    from .registration_services import send_unlimited_live_notifications
+
+    attempted = 0
+    for tournament in queryset.filter(status=Tournament.Status.LIVE).exclude(live_notification_status="sent"):
+        send_unlimited_live_notifications(tournament.pk)
+        attempted += 1
+    modeladmin.message_user(
+        request,
+        f"Email retry attempted for {attempted} LIVE Unlimited Tournament(s). Check notification status and email provider delivery.",
+        level=messages.INFO,
+    )
+
+
+@admin.register(UnlimitedTournament)
+class UnlimitedTournamentAdmin(TournamentAdmin):
+    """Separate admin menu for the repeating 49-player Unlimited BR series."""
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).filter(is_unlimited_br=True)
+
+    def save_model(self, request, obj, form, change):
+        obj.is_unlimited_br = True
+        obj.auto_start_at_capacity = True
+        obj.mode = Tournament.Mode.BR
+        obj.vs_format = ""
+        obj.max_players = 49
+        obj.entry_fee = Decimal("10.00")
+        if not change:
+            obj.auto_reopen = True
+            obj.status = Tournament.Status.UPCOMING
+            if not obj.start_time or obj.start_time <= timezone.now():
+                obj.start_time = timezone.now() + timedelta(minutes=10)
+        super().save_model(request, obj, form, change)
+
+    @admin.display(description="Players", ordering="start_time")
+    def confirmed_players_count_display(self, obj):
+        return f"{obj.paid_players_count}/49"
+
+    list_filter = ("status", "auto_reopen", "live_notification_status", "start_time")
+    list_display = (
+        "title", "entry_fee", "confirmed_players_count_display", "start_time",
+        "status", "auto_reopen", "live_notification_status",
+    )
+    search_fields = ("title", "description")
+    ordering = ("-created_at",)
+    actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid, retry_unlimited_live_notifications)
+    readonly_fields = (
+        "series_root", "winner_prize_paid", "kill_prize_distributed",
+        "kill_prize_pool", "kill_prize_reference", "live_notification_sent_at",
+        "live_notification_status", "winner_payout_destination", "winner_payout_qr",
+    )
+
+
+@admin.register(TournamentLedgerEntry)
+class TournamentLedgerEntryAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "tournament", "player", "entry_type", "currency", "quantity", "amount_inr", "status", "reference")
+    list_filter = ("tournament", "entry_type", "currency", "status", "created_at")
+    search_fields = ("tournament__title", "player__username", "reference", "description")
+    date_hierarchy = "created_at"
+    list_select_related = ("tournament", "player", "registration")
+    readonly_fields = ("created_at",)
+    ordering = ("-created_at",)

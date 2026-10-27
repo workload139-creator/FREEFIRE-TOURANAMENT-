@@ -1,6 +1,6 @@
 from django.contrib import admin, messages
 
-from .models import FriendRequest, UserBlock, UserReport, PhotoPost, FFTickSubscription, PlayerShopWallet, ShopPaymentRequest, CurrencyWithdrawalRequest, DailySpin
+from .models import FriendRequest, UserBlock, UserReport, PhotoPost, FFTickSubscription, PlayerShopWallet, ShopPaymentRequest, CurrencyWithdrawalRequest, DailySpin, FanTokenAward
 
 
 @admin.register(FriendRequest)
@@ -121,26 +121,46 @@ class ShopPaymentRequestAdmin(admin.ModelAdmin):
     actions = (approve_shop_payments, reject_shop_payments)
 
 
-@admin.action(description="Mark selected currency withdrawals PAID after real UPI transfer")
+@admin.action(description="Confirm PAID after sending actual UPI money and entering reference")
 def mark_currency_withdrawals_paid(modeladmin, request, queryset):
-    count = queryset.filter(status=CurrencyWithdrawalRequest.Status.PENDING, payout_reference__gt="").update(status=CurrencyWithdrawalRequest.Status.PAID, processed_at=timezone.now(), processed_by=request.user)
-    modeladmin.message_user(request, f"{count} withdrawal(s) marked paid. Ensure genuine payout reference is entered first.", messages.SUCCESS)
+    from django.db import transaction
+
+    paid = skipped = 0
+    with transaction.atomic():
+        for item in queryset.select_for_update().filter(status=CurrencyWithdrawalRequest.Status.PENDING):
+            # Never confirm a payout unless the admin has saved a real transfer reference.
+            if not (item.payout_reference or "").strip():
+                skipped += 1
+                continue
+            item.status = CurrencyWithdrawalRequest.Status.PAID
+            item.processed_at = timezone.now()
+            item.processed_by = request.user
+            item.save(update_fields=("status", "processed_at", "processed_by"))
+            paid += 1
+    if paid:
+        modeladmin.message_user(request, f"{paid} withdrawal(s) confirmed PAID.", messages.SUCCESS)
+    if skipped:
+        modeladmin.message_user(request, f"{skipped} request(s) remain PENDING: save the genuine UPI/UTR reference after transferring the money.", messages.WARNING)
 
 
-@admin.action(description="Reject selected withdrawals and refund currency")
+@admin.action(description="Reject selected PENDING withdrawals and refund currency")
 def reject_currency_withdrawals(modeladmin, request, queryset):
+    from django.db import transaction
+    from django.db.models import F
+
     refunded = 0
-    for item in queryset.select_for_update().filter(status=CurrencyWithdrawalRequest.Status.PENDING).select_related("user"):
-        wallet, _ = PlayerShopWallet.objects.get_or_create(user=item.user)
-        if item.currency == CurrencyWithdrawalRequest.Currency.DIAMONDS:
-            PlayerShopWallet.objects.filter(pk=wallet.pk).update(diamonds=__import__("django.db.models", fromlist=["F"]).F("diamonds") + item.quantity)
-        else:
-            PlayerShopWallet.objects.filter(pk=wallet.pk).update(coins=__import__("django.db.models", fromlist=["F"]).F("coins") + item.quantity)
-        item.status = CurrencyWithdrawalRequest.Status.REJECTED
-        item.processed_at = timezone.now()
-        item.processed_by = request.user
-        item.save(update_fields=("status", "processed_at", "processed_by"))
-        refunded += 1
+    with transaction.atomic():
+        for item in queryset.select_for_update().filter(status=CurrencyWithdrawalRequest.Status.PENDING).select_related("user"):
+            wallet, _ = PlayerShopWallet.objects.get_or_create(user=item.user)
+            if item.currency == CurrencyWithdrawalRequest.Currency.DIAMONDS:
+                PlayerShopWallet.objects.filter(pk=wallet.pk).update(diamonds=F("diamonds") + item.quantity)
+            else:
+                PlayerShopWallet.objects.filter(pk=wallet.pk).update(coins=F("coins") + item.quantity)
+            item.status = CurrencyWithdrawalRequest.Status.REJECTED
+            item.processed_at = timezone.now()
+            item.processed_by = request.user
+            item.save(update_fields=("status", "processed_at", "processed_by"))
+            refunded += 1
     modeladmin.message_user(request, f"{refunded} withdrawal(s) rejected and currency refunded.", messages.INFO)
 
 
@@ -149,7 +169,8 @@ class CurrencyWithdrawalAdmin(admin.ModelAdmin):
     list_display = ("user", "currency", "quantity", "amount_inr", "upi_id", "upi_qr_code", "status", "payout_reference", "created_at")
     list_filter = ("status", "currency", "created_at")
     search_fields = ("user__username", "upi_id", "payout_reference")
-    readonly_fields = ("created_at", "processed_at", "processed_by")
+    readonly_fields = ("user", "currency", "quantity", "amount_inr", "upi_id", "upi_qr_code", "status", "created_at", "processed_at", "processed_by")
+    fields = ("user", "currency", "quantity", "amount_inr", "upi_id", "upi_qr_code", "status", "payout_reference", "created_at", "processed_at", "processed_by")
     actions = (mark_currency_withdrawals_paid, reject_currency_withdrawals)
 
 
@@ -163,3 +184,11 @@ class DailySpinAdmin(admin.ModelAdmin):
         return False
     def has_change_permission(self, request, obj=None):
         return False
+
+
+@admin.register(FanTokenAward)
+class FanTokenAwardAdmin(admin.ModelAdmin):
+    list_display = ("user", "follower_milestone", "quantity", "created_at")
+    list_filter = ("follower_milestone", "created_at")
+    search_fields = ("user__username", "user__email")
+    readonly_fields = ("user", "follower_milestone", "quantity", "created_at")

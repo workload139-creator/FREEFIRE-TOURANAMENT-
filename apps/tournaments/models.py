@@ -96,6 +96,8 @@ class Tournament(models.Model):
     is_unlimited_br = models.BooleanField(default=False)
     auto_start_at_capacity = models.BooleanField(default=False)
     auto_reopen = models.BooleanField(default=False)
+    live_notification_sent_at = models.DateTimeField(null=True, blank=True)
+    live_notification_status = models.CharField(max_length=20, default="pending", db_index=True)
     series_root = models.ForeignKey(
         "self", on_delete=models.SET_NULL, null=True, blank=True,
         related_name="series_rounds",
@@ -140,8 +142,28 @@ class Tournament(models.Model):
         ).count()
 
     @property
+    def paid_players_count(self):
+        return self.registrations.filter(
+            payment_verified=True,
+            status__in=[
+                Registration.Status.CONFIRMED,
+                Registration.Status.WAITING_READY,
+                Registration.Status.READY,
+            ],
+        ).count()
+
+    @property
     def is_full(self):
         return self.confirmed_players_count >= self.max_players
+
+
+class UnlimitedTournament(Tournament):
+    """Separate admin section for the repeating 49-player BR tournament series."""
+
+    class Meta:
+        proxy = True
+        verbose_name = "Unlimited Tournament"
+        verbose_name_plural = "Unlimited Tournaments"
 
 
 class Registration(models.Model):
@@ -182,11 +204,11 @@ class Registration(models.Model):
     payment_verified = models.BooleanField(default=False)
     payment_method = models.CharField(
         max_length=12,
-        choices=(("upi", "UPI payment"), ("diamonds", "Diamonds"), ("coins", "Coins"), ("free", "Free entry")),
+        choices=(("upi", "UPI payment"), ("diamonds", "Diamonds"), ("coins", "Coins"), ("fan_tokens", "Fan Tokens"), ("free", "Free entry")),
         default="upi",
         db_index=True,
     )
-    currency_amount = models.PositiveIntegerField(default=0, help_text="Amount of Diamonds or Coins consumed for entry.")
+    currency_amount = models.PositiveIntegerField(default=0, help_text="Amount of Diamonds, Coins, or Fan Tokens consumed for entry.")
     # Player-entered UPI UTR; registration stays pending until admin checks actual receipt.
     payment_reference = models.CharField(max_length=100, blank=True, default="", db_index=True)
     payment_submitted_at = models.DateTimeField(null=True, blank=True)
@@ -229,6 +251,44 @@ class Registration(models.Model):
 
     def __str__(self):
         return f"{self.player.username} - {self.tournament.title}"
+
+
+class TournamentLedgerEntry(models.Model):
+    """Immutable-style audit trail for entry payments, Diamond rewards and refunds per tournament."""
+    class EntryType(models.TextChoices):
+        ENTRY = "entry", "Entry Payment"
+        REWARD = "reward", "AI / Tournament Reward"
+        REFUND = "refund", "Refund"
+        ADJUSTMENT = "adjustment", "Admin Adjustment"
+
+    class Currency(models.TextChoices):
+        INR = "inr", "INR"
+        DIAMONDS = "diamonds", "Diamonds"
+        COINS = "coins", "Coins"
+        FAN_TOKENS = "fan_tokens", "Fan Tokens"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        COMPLETED = "completed", "Completed"
+        REJECTED = "rejected", "Rejected"
+
+    tournament = models.ForeignKey(Tournament, on_delete=models.PROTECT, related_name="ledger_entries")
+    player = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="tournament_ledger_entries")
+    registration = models.ForeignKey(Registration, on_delete=models.PROTECT, null=True, blank=True, related_name="ledger_entries")
+    entry_type = models.CharField(max_length=12, choices=EntryType.choices, db_index=True)
+    currency = models.CharField(max_length=12, choices=Currency.choices)
+    quantity = models.PositiveIntegerField(default=0)
+    amount_inr = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.COMPLETED, db_index=True)
+    reference = models.CharField(max_length=100, blank=True, db_index=True)
+    description = models.CharField(max_length=250, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ("-created_at", "-pk")
+
+    def __str__(self):
+        return f"{self.tournament} · {self.player} · {self.get_entry_type_display()} · {self.quantity} {self.currency}"
 
 class KillSubmission(models.Model):
     """Evidence submitted by a player; a human admin must approve the final kill count."""

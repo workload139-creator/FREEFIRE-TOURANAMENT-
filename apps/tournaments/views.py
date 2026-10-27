@@ -18,7 +18,7 @@ from apps.accounts.models import Wallet, WalletTransaction, AdminWallet, AdminWa
 from .forms import KillSubmissionForm, RegistrationForm
 from .ai_review import AIReviewError, analyze_kill_evidence
 from .registration_services import RegistrationError, create_pending_registration
-from .models import KillSubmission, Registration, Tournament
+from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry
 from .services import process_expired_ready_registrations, mark_not_playing_and_refund
 
 import qrcode
@@ -34,9 +34,10 @@ def tournament_list(request):
         "tournaments/list.html",
         {
             "tournaments": tournaments,
-            "br_tournaments": tournaments.filter(mode=Tournament.Mode.BR),
+            "unlimited_tournaments": tournaments.filter(is_unlimited_br=True),
+            "br_tournaments": tournaments.filter(mode=Tournament.Mode.BR, is_unlimited_br=False),
             "vs_tournaments": tournaments.filter(mode=Tournament.Mode.VS).exclude(gender_category=Tournament.GenderCategory.GIRLS_VS_BOYS),
-            "girls_vs_boys_tournaments": tournaments.filter(gender_category=Tournament.GenderCategory.GIRLS_VS_BOYS),
+            "girls_vs_boys_tournaments": tournaments.filter(gender_category=Tournament.GenderCategory.GIRLS_VS_BOYS, is_unlimited_br=False),
         },
     )
 
@@ -111,9 +112,9 @@ def tournament_register(request, tournament_id):
             payment_method=form.cleaned_data.get("payment_method", "upi"),
         )
     except RegistrationError as exc:
-        if str(exc) in ("NO_COINS", "NO_DIAMONDS"):
-            label = "Coins" if str(exc) == "NO_COINS" else "Diamonds"
-            messages.warning(request, f"No {label} / not enough {label}. Shop se {label} lein, phir tournament join karein.")
+        if str(exc) in ("NO_COINS", "NO_DIAMONDS", "NO_FAN_TOKENS"):
+            label = {"NO_COINS": "Coins", "NO_DIAMONDS": "Diamonds", "NO_FAN_TOKENS": "Fan Tokens"}[str(exc)]
+            messages.warning(request, f"No {label} / not enough {label}. Shop ya follower milestones se {label} hasil karein, phir tournament join karein.")
             return redirect("social:shop")
         form.add_error(None, str(exc))
         from apps.social.models import PlayerShopWallet
@@ -135,7 +136,7 @@ def tournament_register(request, tournament_id):
         registration.verification_photo = form.cleaned_data["verification_photo"]
         registration.save(update_fields=["verification_photo"])
 
-    if registration.payment_method in ("diamonds", "coins"):
+    if registration.payment_method in ("diamonds", "coins", "fan_tokens"):
         messages.success(request, f"Tournament registration confirmed. {registration.currency_amount} {registration.get_payment_method_display()} use hue.")
     elif tournament.entry_fee > Decimal("0.00"):
         messages.info(request, "Payment UTR submit ho gaya. Registration tabhi confirm hogi jab admin aapki payment apne UPI/bank statement se verify karega.")
@@ -333,23 +334,69 @@ def kill_submission(request, registration_id):
                     submission.ai_confidence = ai_result["confidence"][:10]
                     submission.ai_uid_matches = ai_result["uid_matches"]
                     submission.ai_review_notes = ai_result["reason"]
-                    if (
+                    auto_approved = (
                         ai_result["proposed_kills"] is not None
                         and ai_result["uid_matches"] is True
                         and submitted_uid == registration.free_fire_uid
                         and registration.tournament.mode == Tournament.Mode.BR
-                    ):
-                        proposed_kills = int(ai_result["proposed_kills"])
-                        if proposed_kills >= settings.MINIMUM_VERIFIED_KILLS:
-                            submission.proposed_reward = Decimal(proposed_kills) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
-                    submission.save(update_fields=[
-                        "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
-                        "ai_review_notes", "proposed_reward",
-                    ])
-                    messages.success(
-                        request,
-                        "Evidence submit ho gaya. AI ka result sirf proposal hai; admin final review karega.",
+                        and ai_result["confidence"] == "high"
+                        and int(ai_result["proposed_kills"] or 0) >= settings.MINIMUM_VERIFIED_KILLS
                     )
+                    proposed_kills = int(ai_result["proposed_kills"] or 0)
+                    if auto_approved and proposed_kills > 0:
+                        # ₹5 per verified kill converts to 5 Diamonds at ₹1 per Diamond.
+                        submission.proposed_reward = Decimal(proposed_kills) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
+                    with transaction.atomic():
+                        submission = KillSubmission.objects.select_for_update().get(pk=submission.pk)
+                        submission.ai_proposed_kills = ai_result["proposed_kills"]
+                        submission.ai_confidence = ai_result["confidence"][:10]
+                        submission.ai_uid_matches = ai_result["uid_matches"]
+                        submission.ai_review_notes = ai_result["reason"]
+                        if auto_approved:
+                            from apps.social.models import PlayerShopWallet
+                            submission.proposed_reward = (
+                                Decimal(proposed_kills) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
+                                if proposed_kills > 0 else Decimal("0.00")
+                            )
+                            submission.approved_kills = proposed_kills
+                            submission.approved_reward = submission.proposed_reward
+                            submission.status = KillSubmission.Status.APPROVED
+                            submission.reviewed_at = timezone.now()
+                            if proposed_kills > 0:
+                                shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=submission.player)
+                                shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
+                                shop_wallet.diamonds += int(submission.approved_reward)
+                                shop_wallet.save(update_fields=("diamonds", "updated_at"))
+                                TournamentLedgerEntry.objects.get_or_create(
+                                    reference=f"KILL-REWARD-{submission.pk}",
+                                    defaults={
+                                        "tournament": submission.tournament,
+                                        "player": submission.player,
+                                        "registration": submission.registration,
+                                        "entry_type": TournamentLedgerEntry.EntryType.REWARD,
+                                        "currency": TournamentLedgerEntry.Currency.DIAMONDS,
+                                        "quantity": int(submission.approved_reward),
+                                        "amount_inr": submission.approved_reward,
+                                        "status": TournamentLedgerEntry.Status.COMPLETED,
+                                        "description": "AI-verified BR kill reward",
+                                    },
+                                )
+                        submission.save(update_fields=[
+                            "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
+                            "ai_review_notes", "proposed_reward", "approved_kills",
+                            "approved_reward", "status", "reviewed_at",
+                        ])
+                    if auto_approved:
+                        messages.success(
+                            request,
+                            f"AI ne high-confidence UID-matched evidence verify ki. {proposed_kills} kills ke liye {int(submission.approved_reward)} Diamonds wallet mein add hue."
+                            if proposed_kills else "AI ne UID match aur 0 kills high confidence se verify kiye; koi Diamonds add nahi hue.",
+                        )
+                    else:
+                        messages.info(
+                            request,
+                            "Evidence save ho gaya. AI confidence/UID match automatic award ke liye sufficient nahi tha; admin review queue mein rahega.",
+                        )
                 except AIReviewError as exc:
                     messages.warning(
                         request,
@@ -436,6 +483,12 @@ def review_kill_submission(request, submission_id):
             "approved_kills", "proposed_reward", "approved_reward",
             "admin_notes", "reviewed_at", "status",
         ])
+        if submission.tournament.mode == Tournament.Mode.BR and submission.approved_reward > 0:
+            from apps.social.models import PlayerShopWallet
+            shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=submission.player)
+            shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
+            shop_wallet.diamonds += int(submission.approved_reward)
+            shop_wallet.save(update_fields=("diamonds", "updated_at"))
 
     messages.success(
         request,

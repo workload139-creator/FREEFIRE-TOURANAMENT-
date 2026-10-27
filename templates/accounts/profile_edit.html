@@ -1,11 +1,25 @@
 {% extends "base.html" %}
 {% block title %}Edit Profile | FF Arena{% endblock %}
+{% block extra_css %}
+<style>
+.profile-page.player-register-section{max-width:850px;margin:36px auto 60px;padding:0 18px;color:#f7fbff}
+.player-register-card{background:linear-gradient(145deg,#101b29,#080d15)!important;border:1px solid rgba(72,255,155,.25)!important;border-radius:22px!important;box-shadow:0 20px 55px rgba(0,0,0,.28)}
+.player-register-card h1{color:#f7fbff}.player-register-card>p{color:#b9c6d5}
+.profile-form input,.profile-form select,.profile-form textarea{width:100%;padding:12px;border-radius:9px;border:1px solid #344456;background:#080d15;color:#f7fbff}
+.profile-form input:focus,.profile-form select:focus,.profile-form textarea:focus{outline:2px solid rgba(72,255,155,.25);border-color:#48ff9b}
+.profile-form select option{background:#080d15;color:#f7fbff}
+.profile-form .helptext,.profile-form .helptext p{color:#9eafc2;font-size:12px}
+.profile-form button{border:0;border-radius:10px;padding:12px 18px;background:linear-gradient(135deg,#48ff9b,#19d879);color:#04120a;font-weight:900;cursor:pointer}
+.profile-notice{padding:13px 15px;margin:15px 0;border:1px solid rgba(72,255,155,.2);border-radius:12px;background:rgba(72,255,155,.06);color:#c9d7e4}
+@media(max-width:560px){.player-register-card{padding:18px!important}}
+</style>
+{% endblock %}
 {% block content %}
 <section class="profile-page player-register-section"><div class="profile-panel player-register-card"><h1>Edit Profile</h1><p>Personal details ko update karein.</p>
-<div class="profile-notice"><strong>Prize payout details:</strong> Winning prize manually aapki di hui UPI ID ya uploaded UPI QR par bheja ja sakta hai. Kam-se-kam ek detail add karein, aur ensure karein ki QR/UPI aapka hi ho.</div>
+<div class="profile-notice"><strong>Wallet payout:</strong> UPI ID withdrawal ke waqt Wallet section mein add karein. Profile mein UPI ID, QR image ya mobile number dene ki zaroorat nahi hai.</div>
 <form method="post" enctype="multipart/form-data" class="profile-form">{% csrf_token %}
 {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
 {% if form.non_field_errors %}<div class="profile-errors">{{ form.non_field_errors }}</div>{% endif %}
-{% for field in form %}<p class="register-field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.name == "upi_qr_code" %}<span class="helptext">JPG, PNG ya WebP; maximum 2 MB. Apna UPI QR hi upload karein.</span>{% endif %}{% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}{% for error in field.errors %}<span class="profile-errors">{{ error }}</span>{% endfor %}</p>{% endfor %}
+{% for field in form %}<p class="register-field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}{% for error in field.errors %}<span class="profile-errors">{{ error }}</span>{% endfor %}</p>{% endfor %}
 <button type="submit" class="btn-primary">Save Profile</button> <a href="{% url 'accounts:profile' %}">Cancel</a></form></div></section>
 {% endblock %}

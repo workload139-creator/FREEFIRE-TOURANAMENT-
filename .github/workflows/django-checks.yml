@@ -2,9 +2,9 @@ name: Django checks
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/required-player-upi-withdrawals, feature/fan-tokens-tournament-ledger]
   pull_request:
-    branches: [main]
+    branches: [main, fix/required-player-upi-withdrawals]
   workflow_dispatch:
 
 jobs:

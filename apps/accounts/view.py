@@ -49,7 +49,7 @@ def register_view(request):
                     )
                 messages.success(
                     request,
-                    f"Account successfully created! Aapka username: {final_username}. Email verified hai; phone aur Free Fire UID verification abhi pending hain.",
+                    f"Account successfully created! Aapka username: {final_username}. Email verified hai; Free Fire UID tournament registration ke waqt verify hogi.",
                 )
                 return redirect("accounts:profile")
             except IntegrityError:
@@ -63,12 +63,6 @@ def register_view(request):
 def login_view(request):
     next_url = request.POST.get("next") or request.GET.get("next", "")
     if request.user.is_authenticated:
-        if not (request.user.upi_id or "").strip() and not request.user.upi_qr_code:
-            messages.info(request, "Prize receive karne ke liye apni UPI ID ya QR code profile mein add karein.")
-            target = reverse("accounts:profile_edit")
-            if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
-                target += "?next=" + quote(next_url, safe="")
-            return redirect(target)
         if next_url and url_has_allowed_host_and_scheme(
             next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
         ):
@@ -81,12 +75,6 @@ def login_view(request):
             user = form.get_user()
             login(request, user)
             messages.success(request, "Login successful!")
-            if not (user.upi_id or "").strip() and not user.upi_qr_code:
-                messages.info(request, "Prize receive karne ke liye apni UPI ID ya QR code profile mein add karein.")
-                target = reverse("accounts:profile_edit")
-                if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
-                    target += "?next=" + quote(next_url, safe="")
-                return redirect(target)
             if next_url and url_has_allowed_host_and_scheme(
                 next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
             ):
@@ -171,7 +159,9 @@ from .models import Wallet, WalletTransaction, WithdrawalRequest
 @login_required
 def wallet_view(request):
     wallet, created = Wallet.objects.get_or_create(user=request.user)
-    from apps.social.models import PlayerShopWallet, DailySpin
+    from apps.social.models import PlayerShopWallet, DailySpin, FanTokenAward, CurrencyGift
+    from apps.tournaments.models import TournamentLedgerEntry
+    from django.db.models import Q
     shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=request.user)
     last_spin = DailySpin.objects.filter(user=request.user).order_by("-spun_at").first()
     next_spin_at = last_spin.spun_at + __import__("datetime").timedelta(hours=24) if last_spin else None
@@ -184,6 +174,9 @@ def wallet_view(request):
         "withdrawal_requests": withdrawal_requests,
         "deposit_requests": wallet.deposit_requests.all()[:10],
         "shop_wallet": shop_wallet,
+        "fan_token_awards": FanTokenAward.objects.filter(user=request.user)[:20],
+        "fan_token_gifts": CurrencyGift.objects.filter(Q(sender=request.user) | Q(recipient=request.user))[:20],
+        "fan_token_tournament_entries": TournamentLedgerEntry.objects.filter(player=request.user, currency="fan_tokens")[:20],
         "last_spin": last_spin,
         "next_spin_at": next_spin_at,
         "spin_available": spin_available,
