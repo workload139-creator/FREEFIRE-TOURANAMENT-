@@ -6,6 +6,7 @@ from .validators import validate_history_video, validate_history_images
 
 
 class RegistrationForm(forms.Form):
+    verification_photo = forms.ImageField(required=False, label="Live selfie photo (Girls vs Boys verification)", widget=forms.FileInput(attrs={"accept": "image/*", "capture": "user", "class": "camera-selfie-input"}), help_text="Girls vs Boys tournament ke liye camera se clear selfie lein. Photo sirf admin verification ke liye hai.")
     profile_uid = forms.CharField(
         label="Website Profile UID", max_length=20, strip=True,
         widget=forms.TextInput(attrs={"inputmode": "numeric", "placeholder": "Apna website Profile UID enter karein"}),
@@ -33,12 +34,28 @@ class RegistrationForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.user = user
         self.tournament = tournament
+        if tournament is not None and tournament.gender_category == "girls_vs_boys":
+            self.fields["verification_photo"].required = True
+        else:
+            self.fields.pop("verification_photo", None)
         if user is not None and not self.is_bound:
             self.initial["profile_uid"] = str(user.pk)
         if tournament is not None and tournament.entry_fee <= 0:
             self.fields["payment_reference"].required = False
         elif tournament is not None:
             self.fields["payment_reference"].required = True
+
+    def clean_verification_photo(self):
+        photo = self.cleaned_data.get("verification_photo")
+        if photo:
+            if photo.size > 5 * 1024 * 1024:
+                raise forms.ValidationError("Selfie photo 5 MB se chhoti honi chahiye.")
+            content_type = getattr(photo, "content_type", "")
+            if content_type and content_type not in ("image/jpeg", "image/png", "image/webp"):
+                raise forms.ValidationError("JPG, PNG ya WebP selfie upload karein.")
+        if self.tournament is not None and self.tournament.gender_category == "girls_vs_boys" and not photo:
+            raise forms.ValidationError("Girls vs Boys tournament ke liye camera selfie zaroori hai.")
+        return photo
 
     def clean_profile_uid(self):
         value = self.cleaned_data["profile_uid"].strip()
