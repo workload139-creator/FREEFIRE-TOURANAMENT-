@@ -339,6 +339,7 @@ def kill_submission(request, registration_id):
                         and submitted_uid == registration.free_fire_uid
                         and registration.tournament.mode == Tournament.Mode.BR
                         and ai_result["confidence"] == "high"
+                        and int(ai_result["proposed_kills"] or 0) >= settings.MINIMUM_VERIFIED_KILLS
                     )
                     proposed_kills = int(ai_result["proposed_kills"] or 0)
                     if auto_approved and proposed_kills > 0:
@@ -469,7 +470,7 @@ def review_kill_submission(request, submission_id):
             return redirect("tournaments:admin_kill_review")
 
         submission.approved_kills = approved_kills
-        if submission.tournament.mode == Tournament.Mode.BR and approved_kills > 0:
+        if submission.tournament.mode == Tournament.Mode.BR and approved_kills >= settings.MINIMUM_VERIFIED_KILLS:
             submission.proposed_reward = Decimal(approved_kills) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
         else:
             submission.proposed_reward = Decimal("0.00")
