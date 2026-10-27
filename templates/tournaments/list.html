@@ -4,7 +4,7 @@
 <section class="tournament-page" id="tournaments">
   <div class="tournament-heading">
     <p>FREE FIRE ESPORTS</p><h1>Choose Your Tournament</h1>
-    <span>BR aur VS tournaments alag sections mein.</span>
+    <span>BR, CS formats aur gender tournaments — har event ka apna page, fee, status aur leaderboard.</span>
   </div>
   {% for section_title, section_note, section_tournaments in sections %}
   {% endfor %}
@@ -17,7 +17,7 @@
     </div>
   </section>
   <section class="mode-section">
-    <div class="mode-heading"><span class="mode-label">CLASH SQUAD</span><h2>VS Tournaments</h2><p>1v1, 2v2, 3v3 aur 4v4 matches alag list mein.</p></div>
+    <div class="mode-heading"><span class="mode-label">CS · CLASH SQUAD</span><h2>CS Tournaments</h2><p>1v1, 2v2, 3v3 aur 4v4 formats. Har tournament ki registration aur leaderboard alag hai.</p></div>
     <div class="tournament-grid">
     {% for tournament in vs_tournaments %}
       {% include "tournaments/_tournament_card.html" with tournament=tournament %}
@@ -26,6 +26,6 @@
   </section>
 </section>
 <style>
-.tournament-page{max-width:1150px;margin:35px auto;padding:20px}.tournament-heading{text-align:center;margin-bottom:35px}.tournament-heading>p{color:#ff6b35;font-weight:bold;letter-spacing:3px}.tournament-heading h1{margin:8px 0;font-size:clamp(28px,5vw,44px)}.mode-section{margin:34px 0}.mode-heading{margin-bottom:18px}.mode-heading h2{margin:7px 0}.mode-heading p{color:#aab3c2}.tournament-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}.tournament-card{padding:22px;border:1px solid #444;border-radius:16px;background:#171923;color:#fff}.mode-label{color:#ff895e;font-size:12px;font-weight:bold;letter-spacing:1px}.tournament-card h3{margin:12px 0}.tournament-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0}.tournament-stats div{padding:10px;background:#0e1119;border-radius:8px}.tournament-stats small,.tournament-stats strong{display:block}.tournament-stats small{color:#aab3c2;font-size:11px}.tournament-stats strong{margin-top:5px}
+.tournament-page{max-width:1150px;margin:35px auto;padding:20px}.tournament-heading{text-align:center;margin-bottom:35px}.tournament-heading>p{color:#ff6b35;font-weight:bold;letter-spacing:3px}.tournament-heading h1{margin:8px 0;font-size:clamp(28px,5vw,44px)}.mode-section{margin:34px 0}.mode-heading{margin-bottom:18px}.mode-heading h2{margin:7px 0}.mode-heading p{color:#aab3c2}.tournament-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}.tournament-card{padding:22px;border:1px solid #444;border-radius:16px;background:#171923;color:#fff}.mode-label{color:#ff895e;font-size:12px;font-weight:bold;letter-spacing:1px}.gender-chip{display:inline-flex;padding:5px 10px;border-radius:999px;border:1px solid rgba(100,255,180,.35);background:rgba(20,180,110,.1);color:#a9ffd1;font-size:12px;font-weight:800}.tournament-card h3{margin:12px 0}.tournament-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0}.tournament-stats div{padding:10px;background:#0e1119;border-radius:8px}.tournament-stats small,.tournament-stats strong{display:block}.tournament-stats small{color:#aab3c2;font-size:11px}.tournament-stats strong{margin-top:5px}
 </style>
 {% endblock %}
