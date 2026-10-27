@@ -2,32 +2,77 @@
 {% load i18n static %}
 {% block content %}
 <style>
-.ff-admin-guide{background:#151922;border:1px solid #343b49;border-radius:14px;padding:22px;margin:0 0 24px;color:#f4f6fb}
-.ff-admin-guide h2{color:#ff9c38;margin:0 0 8px;font-size:22px}
-.ff-admin-guide p{color:#cbd2df;margin:6px 0 14px}
-.ff-admin-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:13px}
-.ff-admin-card{background:#202633;border:1px solid #3b4557;border-radius:11px;padding:16px}
-.ff-admin-card h3{margin:0 0 8px;color:#fff;font-size:16px}
-.ff-admin-card p{font-size:13px;line-height:1.55;margin:0 0 12px}
-.ff-admin-card a{display:inline-block;background:#ff8a24;color:#151515!important;font-weight:700;padding:9px 12px;border-radius:7px;text-decoration:none}
-.ff-admin-card a:hover{background:#ffb15f}
-.ff-admin-note{margin-top:16px;background:#302719;border-left:4px solid #ff9c38;padding:12px 14px;color:#ffe2b8;border-radius:5px;line-height:1.55}
+:root{--ff-bg:#101521;--ff-card:#1a2333;--ff-line:#35435a;--ff-text:#f4f7ff;--ff-muted:#b7c4d9;--ff-orange:#ff9a35;--ff-cyan:#7ee9e0;--ff-purple:#b7a3ff}
+.ff-control{color:var(--ff-text);background:linear-gradient(145deg,#141b29,#101521);border:1px solid var(--ff-line);border-radius:18px;padding:22px;margin:0 0 22px;box-shadow:0 18px 44px #0002}
+.ff-control h2{margin:0 0 7px;font-size:23px;color:#fff}.ff-control>p{margin:0 0 18px;color:var(--ff-muted);line-height:1.6}
+.ff-group{margin:22px 0}.ff-group-title{display:flex;align-items:center;gap:9px;margin:0 0 12px;font-size:18px;color:#fff}.ff-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.ff-card{background:linear-gradient(145deg,#202b3e,#182131);border:1px solid #ffffff18;border-radius:13px;padding:16px;min-width:0}
+.ff-card h3{font-size:15px;margin:0 0 7px;color:#fff}.ff-card p{font-size:13px;line-height:1.55;color:var(--ff-muted);margin:0 0 13px}
+.ff-card a{display:inline-block;background:var(--ff-orange);color:#161923!important;font-weight:850;padding:9px 12px;border-radius:8px;text-decoration:none;margin:3px 4px 0 0}.ff-card a.alt{background:#29374c;color:#e9f4ff!important;border:1px solid #53647d}
+.ff-chip{display:inline-block;border:1px solid #ffffff20;border-radius:99px;padding:4px 8px;margin:2px;font-size:11px;color:#e8efff}
+.ff-ai{border-color:#8f7cff77;background:radial-gradient(circle at top right,#332c60,#151b2a 65%)}.ff-ai h3{color:#d3c7ff}.ff-note{padding:13px 15px;border-radius:10px;background:#302719;border-left:4px solid var(--ff-orange);color:#ffe3ba;line-height:1.6;font-size:13px}
+.ff-order{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 18px}.ff-order span{background:#222e41;border:1px solid #3d4c65;border-radius:9px;padding:9px 11px;color:#e5edfa;font-size:12px}
+@media(max-width:600px){.ff-control{padding:14px}.ff-grid{grid-template-columns:1fr}}
 </style>
-<div class="ff-admin-guide">
-  <h2>FF Tournament — Admin Control Room</h2>
-  <p><strong>Yahin se kaam shuru karein.</strong> Neeche har kaam ka alag button aur step diya hai. Pehle tournament banayein, phir registration/payment verify karein, match chalayein, aur end mein result/prize complete karein.</p>
-  <div class="ff-admin-steps">
-    <div class="ff-admin-card"><h3>1. 🏆 Tournament banana</h3><p>Naya match/room banane ke liye. BR ya VS mode, 1v1–4v4 format, entry fee, prize, player limit aur start time bharein. Website par dikhane ke liye status <b>Upcoming</b> rakhein.</p><a href="/admin/tournaments/tournament/add/">+ Create Tournament</a></div>
-    <div class="ff-admin-card"><h3>2. 📋 Sabhi tournaments</h3><p>Banaye hue matches dekhein/edit karein. Match shuru karne ke liye tournament kholein aur status ko <b>Live</b> karein. Match khatam hone par status <b>Completed</b> karein.</p><a href="/admin/tournaments/tournament/">Manage Tournaments</a></div>
-    <div class="ff-admin-card"><h3>3. 👥 Player registration</h3><p>Har player ka naam, profile ID, Free Fire UID, contact, UPI/QR aur registration status dekhein. Kisi player ki poori detail ke liye uski row/ID par click karein.</p><a href="/admin/tournaments/registration/">Player Registrations</a></div>
-    <div class="ff-admin-card"><h3>4. 💳 Entry payment verify</h3><p>Registration open karein, UTR note karein aur apne UPI/bank statement mein asal payment check karein. Phir list par wapas aakar checkbox select karein → <b>Action</b> → <b>Verify UTR against actual UPI/bank receipt and confirm entry</b> → Go.</p><a href="/admin/tournaments/registration/">Verify Payments</a></div>
-    <div class="ff-admin-card"><h3>5. 🎮 Room ID / Password</h3><p>Tournament edit karein, Room Details mein Room ID aur password bharein. Sirf eligible paid players ko share karein; phir registration list mein room/ready status dekhein.</p><a href="/admin/tournaments/tournament/">Room & Match Setup</a></div>
-    <div class="ff-admin-card"><h3>6. 🎥 Kill proof + AI review</h3><p>Player ki video aur dono screenshots kholein. Registered UID se match karein. AI result sirf suggestion hai; approved kills/reward aur final status aapko evidence dekhkar set karna hai.</p><a href="/admin/tournaments/killsubmission/">Review Kill Evidence</a></div>
-    <div class="ff-admin-card"><h3>7. 🥇 Winner & prize</h3><p>Tournament edit karein, Winner UID bharein, matching verified player aur prize pool check karein. Actual UPI transfer ke baad real unique UTR enter karein; phir tournament list mein select karke winner prize action chalayein.</p><a href="/admin/tournaments/tournament/">Winner / Prize</a></div>
-    <div class="ff-admin-card"><h3>8. 💸 Kill reward payout</h3><p>Kill submission kholein, final kills/reward approve karein. Asal UPI transfer karne ke baad payout reference bharein; list par action se Paid record karein.</p><a href="/admin/tournaments/killsubmission/">Kill Reward Payout</a></div>
-    <div class="ff-admin-card"><h3>9. ↩️ Cancel / refund</h3><p>Sirf cancellation confirm hone par tournament list select karein → Action → <b>Cancel tournament and refund registered players</b>. Manual UPI refund ka record karne se pehle asal transfer aur unique UTR verify karein.</p><a href="/admin/tournaments/tournament/">Cancel / Refund</a></div>
+<div class="ff-control">
+ <h2>🔥 FF Arena — Admin Control Room</h2>
+ <p>Har kaam alag rakha gaya hai. Pehle category kholein, pending requests verify karein, phir match readiness aur result complete karein. Sirf button dabane se payment verify nahi hota—asal UPI/bank receipt zaroor check karein.</p>
+ <div class="ff-order"><span>1 · Tournament category</span><span>2 · Entry payment</span><span>3 · Player verification</span><span>4 · Match / Room</span><span>5 · AI + Human review</span><span>6 · Winner / Prize</span></div>
+
+ <section class="ff-group">
+  <h3 class="ff-group-title">🏆 A. Tournament categories — har format alag</h3>
+  <div class="ff-grid">
+   <div class="ff-card"><h3>🪂 Battle Royale (BR)</h3><p>BR rooms, player list, kill evidence, BR leaderboard aur BR prize actions.</p><a href="/admin/tournaments/tournament/?mode__exact=BR">BR Tournaments</a><a class="alt" href="/admin/tournaments/registration/?tournament__mode__exact=BR">BR Registrations</a></div>
+   <div class="ff-card"><h3>⚔️ CS / VS</h3><p>Clash Squad 1v1, 2v2, 3v3 aur 4v4 matches. Format ko tournament form mein select karein.</p><a href="/admin/tournaments/tournament/?mode__exact=VS">CS / VS Tournaments</a><a class="alt" href="/admin/tournaments/registration/?tournament__mode__exact=VS">CS / VS Registrations</a></div>
+   <div class="ff-card"><h3>👦 Boys Only</h3><p>Boys category ke registrations aur player profile category check karein.</p><a href="/admin/tournaments/tournament/?gender_category__exact=boys">Boys Tournaments</a><a class="alt" href="/admin/tournaments/registration/?tournament__gender_category__exact=boys">Boys Registrations</a></div>
+   <div class="ff-card"><h3>👧 Girls Only</h3><p>Girls-only event ki registrations alag dekhein.</p><a href="/admin/tournaments/tournament/?gender_category__exact=girls">Girls Tournaments</a><a class="alt" href="/admin/tournaments/registration/?tournament__gender_category__exact=girls">Girls Registrations</a></div>
+   <div class="ff-card"><h3>🆚 Girls vs Boys</h3><p>Is category ki selfie/player verification ko manually review karein; photo apne aap identity confirm nahi karti.</p><a href="/admin/tournaments/tournament/?gender_category__exact=girls_vs_boys">Girls vs Boys Tournaments</a><a class="alt" href="/admin/tournaments/registration/?tournament__gender_category__exact=girls_vs_boys">Verify Registrations</a></div>
+   <div class="ff-card"><h3>➕ Create / Manage</h3><p>Naya event banayein, entry fee, prize pool, mode, gender category, capacity aur start time set karein.</p><a href="/admin/tournaments/tournament/add/">+ Create Tournament</a><a class="alt" href="/admin/tournaments/tournament/">All Tournaments</a></div>
   </div>
-  <div class="ff-admin-note"><b>Important:</b> Website abhi payment ko apne aap UPI se transfer nahi karti. Payment/Prize/Refund ko tabhi verified ya paid mark karein jab bank/UPI app mein transaction sach mein dikh raha ho. AI bhi final judge nahi hai. Tournament start karna ho to <b>Manage Tournaments → tournament title → Schedule & Status → Status = Live → Save</b>.</div>
+ </section>
+
+ <section class="ff-group">
+  <h3 class="ff-group-title">💳 B. Entry payments — UPI, Diamonds, Coins alag</h3>
+  <div class="ff-grid">
+   <div class="ff-card"><h3>🏦 Tournament UPI Entry</h3><p>Pending UTR check karein. UPI app/bank receipt se amount aur unique UTR match hone ke baad hi confirm karein.</p><a href="/admin/tournaments/registration/?payment_method__exact=upi&payment_verified__exact=0">Review UPI Entries</a></div>
+   <div class="ff-card"><h3>💎 Diamond Entry Audit</h3><p>Sirf Diamond se paid tournament registrations dekhein. Used Diamond amount aur payment status audit karein.</p><a href="/admin/tournaments/registration/?payment_method__exact=diamonds">Diamond Registrations</a></div>
+   <div class="ff-card"><h3>🪙 Coin Entry Audit</h3><p>Coin entry registrations aur deducted coin quantity alag dekhein.</p><a href="/admin/tournaments/registration/?payment_method__exact=coins">Coin Registrations</a></div>
+   <div class="ff-card"><h3>💎 Buy Diamonds — payment verify</h3><p>Shop mein Diamond pack ke UTR/screenshot ko bank receipt se verify karke hi Diamonds credit karein.</p><a href="/admin/social/shoppaymentrequest/?product__exact=diamonds&status__exact=pending">Pending Diamond Buys</a><a class="alt" href="/admin/social/shoppaymentrequest/?product__exact=diamonds">All Diamond Payments</a></div>
+   <div class="ff-card"><h3>🪙 Buy Coins — payment verify</h3><p>Coin pack payment requests alag queue mein. Payment verified hone se pehle Coins credit na karein.</p><a href="/admin/social/shoppaymentrequest/?product__exact=coins&status__exact=pending">Pending Coin Buys</a><a class="alt" href="/admin/social/shoppaymentrequest/?product__exact=coins">All Coin Payments</a></div>
+   <div class="ff-card"><h3>👛 Currency balances</h3><p>Player ke Diamonds aur Coins balance ka audit. Balance manually change karte waqt reason/records maintain karein.</p><a href="/admin/social/playershopwallet/">Diamond & Coin Wallets</a></div>
+  </div>
+ </section>
+
+ <section class="ff-group">
+  <h3 class="ff-group-title">🧾 C. Player verification & match operations</h3>
+  <div class="ff-grid">
+   <div class="ff-card"><h3>👥 All Registrations</h3><p>Website profile ID, Free Fire UID, category, selfie, payment method aur ready status check karein.</p><a href="/admin/tournaments/registration/">All Player Registrations</a></div>
+   <div class="ff-card"><h3>🎮 Room ID / Password</h3><p>Tournament kholkar Room ID aur password set karein. LIVE karne par eligible players ko YES/NO confirmation bheja jayega.</p><a href="/admin/tournaments/tournament/">Room & Match Setup</a></div>
+   <div class="ff-card"><h3>⏳ Ready / Refund Review</h3><p>Player ne 60 seconds mein confirm kiya ya nahi, aur refund flag/reference ko check karein.</p><a href="/admin/tournaments/registration/?status__exact=waiting_ready">Waiting for YES/NO</a><a class="alt" href="/admin/tournaments/registration/?refund_processed__exact=0">Refund Review</a></div>
+   <div class="ff-card"><h3>🔵 FF Tick payments</h3><p>Tick subscription ki payment request verify/reject karein.</p><a href="/admin/social/ffticksubscription/">FF Tick Verification</a></div>
+  </div>
+ </section>
+
+ <section class="ff-group">
+  <h3 class="ff-group-title">🤖 D. AI Assessment & admin helper</h3>
+  <div class="ff-grid">
+   <div class="ff-card ff-ai"><h3>🤖 AI Kill Evidence Assessment</h3><p>Pending video + two screenshots ko AI review karein. AI UID match, suggested kills, confidence aur notes deta hai—final approval aapka hoga.</p><a href="/admin/tournaments/killsubmission/?status__exact=pending">Open Pending AI Reviews</a><a class="alt" href="/admin/tournaments/killsubmission/">All Kill Evidence</a></div>
+   <div class="ff-card ff-ai"><h3>🧠 AI setup / status</h3><p>Automatic AI assessment ke liye Render Environment mein <b>OPENAI_API_KEY</b> set honi chahiye. Video frame extraction ke liye project ka <b>imageio-ffmpeg</b> dependency bhi deploy honi chahiye. Key ke bina AI action error dega.</p><a href="https://dashboard.render.com/">Open Render Dashboard</a></div>
+   <div class="ff-card"><h3>🧑‍⚖️ Human final review</h3><p>UID, video aur dono screenshots manually compare karein. AI suggestion ko blindly approve na karein; approved kills/reward aur notes save karein.</p><a href="/admin/tournaments/killsubmission/?ai_uid_matches__exact=0">UID Mismatch Queue</a><a class="alt" href="/admin/tournaments/killsubmission/?ai_confidence__exact=low">Low Confidence Queue</a></div>
+  </div>
+ </section>
+
+ <section class="ff-group">
+  <h3 class="ff-group-title">🥇 E. Winners, prizes & refunds — category-wise</h3>
+  <div class="ff-grid">
+   <div class="ff-card"><h3>🏆 BR Winner / Kill Reward</h3><p>BR tournament ke winner UID, kill reward aur payout reference alag verify karein.</p><a href="/admin/tournaments/tournament/?mode__exact=BR">BR Winner & Prize</a><a class="alt" href="/admin/tournaments/killsubmission/?tournament__mode__exact=BR">BR Kill Rewards</a></div>
+   <div class="ff-card"><h3>⚔️ CS / VS Winner</h3><p>Har VS tournament ka result aur prize pool usi tournament par set karein. Winner payment ko manually verify karein.</p><a href="/admin/tournaments/tournament/?mode__exact=VS">CS / VS Winner & Prize</a></div>
+   <div class="ff-card"><h3>👧 Girls vs Boys Result</h3><p>Category-specific tournament result, winner aur prize details ko separate event record mein maintain karein.</p><a href="/admin/tournaments/tournament/?gender_category__exact=girls_vs_boys">Girls vs Boys Prizes</a></div>
+   <div class="ff-card"><h3>↩️ Cancel / Refund</h3><p>Tournament cancel action sirf sahi selected events par chalayein. UPI refund manually send karke real UTR record karein.</p><a href="/admin/tournaments/tournament/">Tournament Cancellation</a><a class="alt" href="/admin/tournaments/registration/?refund_processed__exact=0">Refund Tracking</a></div>
+  </div>
+ </section>
+
+ <div class="ff-note"><b>Important:</b> Shop purchase payment aur tournament entry payment alag records hain. UPI payments manually bank/UPI receipt se verify honge; Diamonds/Coins sirf successful Shop verification ke baad credit hon. AI is waqt evidence assessment feature hai, full admin chat assistant nahi. AI assessment chalane ke liye API key/dependencies configure aur test karna zaroori hai. Real-money prize/refund transfers website apne aap nahi bhejti.</div>
 </div>
 {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
 {% endblock %}
