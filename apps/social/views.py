@@ -268,7 +268,9 @@ def player_profile(request, user_id):
     return render(request, "social/player_profile.html", {
         "player": target, "followers_count": followers_count,
         "following_count": following_count, "is_following": is_following,
-        "is_friend": is_friend,\n        "posts": PhotoPost.objects.filter(author=target, is_hidden=False)[:12],\n        "has_ff_tick": FFTickSubscription.objects.filter(user=target, status=FFTickSubscription.Status.ACTIVE, expires_at__gt=__import__("django.utils.timezone", fromlist=["now"]).now()).exists(),
+        "is_friend": is_friend,
+        "posts": PhotoPost.objects.filter(author=target, is_hidden=False)[:12],
+        "has_ff_tick": FFTickSubscription.objects.filter(user=target, status=FFTickSubscription.Status.ACTIVE, expires_at__gt=__import__("django.utils.timezone", fromlist=["now"]).now()).exists(),
     })
 
 @login_required
