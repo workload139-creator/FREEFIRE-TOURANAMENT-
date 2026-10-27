@@ -146,7 +146,7 @@ def reject_currency_withdrawals(modeladmin, request, queryset):
 
 @admin.register(CurrencyWithdrawalRequest)
 class CurrencyWithdrawalAdmin(admin.ModelAdmin):
-    list_display = ("user", "currency", "quantity", "amount_inr", "upi_id", "status", "payout_reference", "created_at")
+    list_display = ("user", "currency", "quantity", "amount_inr", "upi_id", "upi_qr_code", "status", "payout_reference", "created_at")
     list_filter = ("status", "currency", "created_at")
     search_fields = ("user__username", "upi_id", "payout_reference")
     readonly_fields = ("created_at", "processed_at", "processed_by")
