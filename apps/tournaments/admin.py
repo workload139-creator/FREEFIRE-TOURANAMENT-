@@ -991,6 +991,10 @@ def mark_winner_prizes_paid(modeladmin, request, queryset):
         modeladmin.message_user(request, f"{skipped} winner prize(s) skipped: check winner UID, saved UPI/QR, real unique UTR and Admin Wallet ledger balance.", messages.WARNING)
 
 
+# This later admin definition supersedes the earlier TournamentAdmin.
+if admin.site.is_registered(Tournament):
+    admin.site.unregister(Tournament)
+
 @admin.register(Tournament)
 class TournamentAdmin(admin.ModelAdmin):
     form = TournamentAdminForm
@@ -1301,6 +1305,10 @@ def mark_manual_upi_refunds_paid(modeladmin, request, queryset):
     if skipped:
         modeladmin.message_user(request, f"{skipped} refund(s) skipped: verify payment/status, enter unique real UTR, and check Admin Wallet ledger balance.", messages.WARNING)
 
+
+# This later admin definition supersedes the earlier RegistrationAdmin.
+if admin.site.is_registered(Registration):
+    admin.site.unregister(Registration)
 
 @admin.register(Registration)
 class RegistrationAdmin(admin.ModelAdmin):
