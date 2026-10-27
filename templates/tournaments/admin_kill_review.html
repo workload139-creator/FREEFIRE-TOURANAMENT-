@@ -4,7 +4,7 @@
 <section class="container" style="max-width:1200px;margin:35px auto;padding:20px">
     <h1>Admin — Kill Evidence Review{% if selected_tournament_id %} · Tournament #{{ selected_tournament_id }}{% endif %}</h1>
     {% if selected_tournament_id %}<p><a href="{% url 'tournaments:admin_kill_review' %}">View all tournaments</a></p>{% endif %}
-    <p>Har submission ki video aur dono screenshots manually check karo. Sirf BR Mode mein minimum 2 admin-verified kills par har kill ke ₹5 milenge (2 kills = ₹10; 1 ya 0 kills = ₹0). VS Mode par yeh kill-reward rule apply nahi hota. Reward AI suggest kar sakta hai, lekin final kill count admin approve karega. Eligible reward player ki saved UPI ID/QR par manually bhejein, phir Kill Submission admin page mein real UTR/reference daal kar “Mark selected BR prizes PAID” action use karein. Sirf action click karna payment nahi bhejta.</p>
+    <p>Video aur dono screenshots manually check karein. AI sirf kills suggest karta hai; final confirmation admin karega. Minimum 2 verified kills par approved kill count ke hisaab se configured rate ke mutabik Diamonds shop wallet mein credit honge. Yeh Diamonds hain, INR/UPI cash payout nahi. UID mismatch, fake/edited evidence ya unclear video ho to approve na karein.</p>
     {% for submission in submissions %}
     <article class="tournament-card" style="padding:22px;margin:18px 0;border-radius:14px">
         <h2>{{ submission.player.username }} — {{ submission.tournament.title }}</h2>
@@ -27,7 +27,7 @@
             <label for="notes-{{ submission.id }}">Admin notes</label>
             <textarea id="notes-{{ submission.id }}" name="admin_notes" rows="2"></textarea>
             <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px">
-                <button class="button button-primary" type="submit" name="decision" value="approve">Approve Kills (Manual UPI Payout Later)</button>
+                <button class="button button-primary" type="submit" name="decision" value="approve">Confirm Kills &amp; Credit Diamonds</button>
                 <button class="button button-outline" type="submit" name="decision" value="reject">Reject Submission</button>
             </div>
         </form>
