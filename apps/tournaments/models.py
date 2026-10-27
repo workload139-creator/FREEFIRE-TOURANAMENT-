@@ -182,11 +182,11 @@ class Registration(models.Model):
     payment_verified = models.BooleanField(default=False)
     payment_method = models.CharField(
         max_length=12,
-        choices=(("upi", "UPI payment"), ("diamonds", "Diamonds"), ("coins", "Coins"), ("free", "Free entry")),
+        choices=(("upi", "UPI payment"), ("diamonds", "Diamonds"), ("coins", "Coins"), ("fan_tokens", "Fan Tokens"), ("free", "Free entry")),
         default="upi",
         db_index=True,
     )
-    currency_amount = models.PositiveIntegerField(default=0, help_text="Amount of Diamonds or Coins consumed for entry.")
+    currency_amount = models.PositiveIntegerField(default=0, help_text="Amount of Diamonds, Coins, or Fan Tokens consumed for entry.")
     # Player-entered UPI UTR; registration stays pending until admin checks actual receipt.
     payment_reference = models.CharField(max_length=100, blank=True, default="", db_index=True)
     payment_submitted_at = models.DateTimeField(null=True, blank=True)
