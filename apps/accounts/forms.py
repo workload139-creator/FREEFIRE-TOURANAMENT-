@@ -110,7 +110,7 @@ class CurrencyWithdrawalRequestForm(forms.Form):
 class ProfileUpdateForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ("username", "email", "gender", "profile_photo")
+        fields = ("username", "email", "gender", "profile_photo", "profile_visibility")
         widgets = {
             "username": forms.TextInput(attrs={"autocomplete": "username"}),
             "email": forms.EmailInput(attrs={"autocomplete": "email"}),
@@ -125,6 +125,8 @@ class ProfileUpdateForm(forms.ModelForm):
         self.fields["email"].label = "Email address"
         self.fields["profile_photo"].label = "Profile photo"
         self.fields["profile_photo"].required = False
+        self.fields["profile_visibility"].label = "Profile / Player ID visibility"
+        self.fields["profile_visibility"].help_text = "Public: players can view your profile. Private: follow first to view your profile."
 
     def clean_username(self):
         username = self.cleaned_data["username"].strip()
