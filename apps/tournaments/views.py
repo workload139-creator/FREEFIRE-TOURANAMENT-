@@ -94,16 +94,18 @@ def tournament_register(request, tournament_id):
         shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=request.user)
         return render(request, "tournaments/register.html", {"tournament": tournament, "form": RegistrationForm(user=request.user, tournament=tournament), "upi_payment_uri": build_entry_payment_uri(tournament), "qr_image_url": build_entry_qr_url(tournament), "shop_wallet": shop_wallet})
 
-    if tournament.entry_fee > Decimal("0.00") and not build_entry_payment_uri(tournament):
-        messages.error(request, "Tournament payment abhi configured nahi hai. Admin ko Render Environment mein valid FF_ARENA_UPI_ID set karna hoga.")
-        return redirect("tournaments:detail", tournament_id=tournament.pk)
-
     if request.method != "POST":
         return redirect("tournaments:list")
 
     form = RegistrationForm(request.POST, request.FILES, user=request.user, tournament=tournament)
+    payment_method = request.POST.get("payment_method", "upi")
+    if payment_method == "upi" and tournament.entry_fee > Decimal("0.00") and not build_entry_payment_uri(tournament):
+        messages.error(request, "UPI payment abhi configured nahi hai. Diamonds ya Coins available hon to unse register karein.")
+        return redirect("tournaments:detail", tournament_id=tournament.pk)
     if not form.is_valid():
-        return render(request, "tournaments/register.html", {"tournament": tournament, "form": form, "upi_payment_uri": build_entry_payment_uri(tournament), "qr_image_url": build_entry_qr_url(tournament)})
+        from apps.social.models import PlayerShopWallet
+        shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=request.user)
+        return render(request, "tournaments/register.html", {"tournament": tournament, "form": form, "upi_payment_uri": build_entry_payment_uri(tournament), "qr_image_url": build_entry_qr_url(tournament), "shop_wallet": shop_wallet})
 
     try:
         registration = create_pending_registration(
