@@ -22,9 +22,10 @@
       <textarea id="messageBody" name="body" rows="2" maxlength="2000" placeholder="Message likho..." required></textarea>
       <button class="button button-primary" type="submit">Send</button>
     </form>
-    <p class="community-note">Messages text-only hain. Respectful raho; harassment ko report kar sakte ho.</p>
+    <form method="post" class="gift-composer">{% csrf_token %}<input type="hidden" name="action" value="gift"><strong>🎁 Send a friend a gift</strong><div class="gift-row"><select name="currency" aria-label="Gift currency"><option value="diamonds">💎 Diamonds</option><option value="coins">🪙 Coins</option></select><input type="number" name="quantity" min="1" max="10000" required placeholder="Amount"><button class="button button-outline" type="submit">Send Gift</button></div><small>Gift balance transfer hota hai aur dono ke balance mein record hota hai. <a href="{% url 'social:shop' %}">Open Shop</a></small></form><p class="community-note">Respectful raho; harassment ko report kar sakte ho.</p>
   </section>
 </section>
+.gift-composer{margin-top:15px;padding:15px;border-radius:13px;background:#17152a;border:1px solid #a88cff44;display:grid;gap:10px}.gift-row{display:flex;gap:8px;flex-wrap:wrap}.gift-row select,.gift-row input{min-width:0;padding:10px;border-radius:8px;border:1px solid #394154;background:#090d16;color:#fff}.gift-row input{flex:1}.gift-composer small{color:#aab5c7}.gift-composer a{color:#d3b9ff}</style>
 {% endblock %}
 {% block extra_js %}
 <script>
