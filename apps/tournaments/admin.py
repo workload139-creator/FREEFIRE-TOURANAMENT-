@@ -705,7 +705,7 @@ def run_ai_review_for_selected(modeladmin, request, queryset):
             proposed_kills = int(result["proposed_kills"] or 0)
             auto_approved = False  # AI assessment is advisory; only explicit admin confirmation awards Diamonds.
             selected.proposed_reward = (
-                Decimal(proposed_kills) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
+                Decimal(proposed_kills) * Decimal(str(settings.DIAMONDS_PER_APPROVED_KILL))
                 if auto_approved and proposed_kills > 0 else Decimal("0.00")
             )
             if auto_approved:
@@ -1485,7 +1485,7 @@ def run_ai_review_for_selected(modeladmin, request, queryset):
                 and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS
             )
             selected.proposed_reward = (
-                Decimal(proposed_kills) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
+                Decimal(proposed_kills) * Decimal(str(settings.DIAMONDS_PER_APPROVED_KILL))
                 if auto_approved and proposed_kills > 0 else Decimal("0.00")
             )
             if auto_approved:
@@ -1692,13 +1692,21 @@ class KillSubmissionAdmin(admin.ModelAdmin):
             encoded,
         )
 
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        if db_field.name == "proposed_reward":
+            kwargs["label"] = "AI Suggested Diamonds"
+        elif db_field.name == "approved_reward":
+            kwargs["label"] = "Admin-approved Diamonds"
+        return super().formfield_for_dbfield(db_field, request, **kwargs)
+
     def has_add_permission(self, request):
         return False
 
     def has_delete_permission(self, request, obj=None):
         return False
 
-    actions = (run_ai_review_for_selected, mark_selected_prizes_paid,)
+    # Kill rewards are non-cash Diamonds; cash withdrawals are managed separately.
+    actions = (run_ai_review_for_selected,)
 
 
 @admin.action(description="Retry LIVE email notifications for selected Unlimited Tournaments")
