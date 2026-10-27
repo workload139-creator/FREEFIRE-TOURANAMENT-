@@ -415,29 +415,6 @@ def ff_tick_view(request):
 
 
 
-    from django.utils import timezone
-    current = FFTickSubscription.objects.filter(
-        user=request.user, status=FFTickSubscription.Status.ACTIVE, expires_at__gt=timezone.now()
-    ).first()
-    latest = FFTickSubscription.objects.filter(user=request.user).first()
-    if request.method == "POST":
-        reference = request.POST.get("payment_reference", "").strip()[:100]
-        screenshot = request.FILES.get("payment_screenshot")
-        if not reference:
-            messages.error(request, "Payment ke baad real UPI UTR/reference bharein.")
-        elif not screenshot:
-            messages.error(request, "Payment screenshot upload karna zaroori hai.")
-        elif screenshot.size > 5 * 1024 * 1024 or getattr(screenshot, "content_type", "") not in ("image/jpeg", "image/png", "image/webp"):
-            messages.error(request, "Screenshot JPG/PNG/WebP ho aur 5 MB se chhota ho.")
-        elif FFTickSubscription.objects.filter(payment_reference=reference).exclude(status=FFTickSubscription.Status.REJECTED).exists():
-            messages.error(request, "Ye payment reference pehle submit ho chuka hai.")
-        else:
-            FFTickSubscription.objects.create(user=request.user, amount=100, duration_months=3, payment_reference=reference, payment_screenshot=screenshot)
-            messages.success(request, "FF Tick request admin ko bhej di. Payment verify hone ke baad hi badge active hoga.")
-            return redirect("social:ff_tick")
-    return render(request, "social/ff_tick.html", {"current": current, "latest": latest, "payment_qr_data_uri": _shop_payment_qr_data_uri()})
-
-
 @login_required
 def shop_view(request):
     from decimal import Decimal
