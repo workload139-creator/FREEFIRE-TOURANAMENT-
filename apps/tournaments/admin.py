@@ -171,16 +171,20 @@ def mark_winner_prizes_paid(modeladmin, request, queryset):
 @admin.register(Tournament)
 class TournamentAdmin(admin.ModelAdmin):
     form = TournamentAdminForm
-    list_display = (
-        "title", "mode", "vs_format", "gender_category", "entry_fee", "prize_pool",
-        "max_players", "start_time", "status", "is_unlimited_br",
-        "auto_reopen", "winner_prize_paid",
-    )
-    list_filter = ("mode", "vs_format", "gender_category", "status", "start_time")
+    # Keep the overview short; operational details live inside each tournament workspace.
+    list_display = ("title", "mode", "vs_format", "start_time", "status", "open_dashboard")
+    list_filter = ("mode", "status", "start_time")
     search_fields = ("title", "description")
     ordering = ("start_time",)
     inlines = (RegistrationInline,)
     actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid,)
+
+    @admin.display(description="Tournament Control", ordering="title")
+    def open_dashboard(self, obj):
+        from django.utils.html import format_html
+        from django.urls import reverse
+        url = reverse("tournaments:admin_tournament_dashboard", args=[obj.pk])
+        return format_html('<a class="button" href="{}">Open dashboard →</a>', url)
     readonly_fields = ("series_root", "winner_prize_paid", "kill_prize_distributed", "kill_prize_pool", "kill_prize_reference", "winner_payout_destination", "winner_payout_qr")
 
     def save_model(self, request, obj, form, change):
