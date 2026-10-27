@@ -5,20 +5,13 @@
 {% block content %}
 <section class="container wallet-page" style="max-width:960px;margin:40px auto;padding:20px">
     <div class="wallet-hero">
-        <span class="wallet-kicker">FF ARENA · WALLET NOTICE</span>
+        <span class="wallet-kicker">FF ARENA · PLAYER VAULT</span>
         <h1>My Wallet</h1>
-        <p class="wallet-subtitle">Wallet services are currently unavailable</p>
-        <div class="wallet-status"><span class="wallet-status-dot"></span> WALLET INACTIVE · VIEW ONLY</div>
+        <p class="wallet-subtitle">Your player wallet</p>
+        <div class="wallet-status"><span class="wallet-status-dot"></span> PLAYER VAULT</div>
     </div>
 
-    <div class="wallet-notice" role="status">
-        <div class="wallet-notice-icon">!</div>
-        <div>
-            <h2>Wallet abhi active nahi hai</h2>
-            <p>Filhaal FF Arena par wallet deposit, wallet balance add karna aur UPI withdrawal/redeem service available nahi hai. Is page par dikhne wala balance ya purane records wallet service active hone ka confirmation nahi hain.</p>
-            <p><strong>Kripya abhi wallet mein paise deposit na karein aur nayi withdrawal request submit na karein.</strong> Kisi purani pending request ke liye payment dobara na bhejein; support/admin se status confirm karein.</p>
-        </div>
-    </div>
+    <div class="wallet-quick-shop"><span>💎</span><div><strong>Diamond & Coin Vault</strong><p>Shop balances are separate from the INR wallet.</p></div><a href="{% url 'social:shop' %}">Open Shop →</a></div>
 
     <div class="wallet-balance-card">
         <div>
@@ -26,10 +19,10 @@
             <p class="wallet-id">{{ wallet.wallet_id }}</p>
         </div>
         <div class="wallet-balance">
-            <span class="wallet-muted-label">Displayed balance · not available to use</span>
+            <span class="wallet-muted-label">INR wallet record</span>
             <strong>₹{{ wallet.balance }}</strong>
         </div>
-        <span class="wallet-readonly">READ ONLY</span>
+        <span class="wallet-readonly"></span>
     </div>
 
     <div class="wallet-action-row">
@@ -41,7 +34,7 @@
     <div class="wallet-history-heading">
         <span class="wallet-kicker">ACCOUNT RECORDS</span>
         <h2>Previous Deposit Requests</h2>
-        <p>These are historical request records only. Wallet service is currently inactive.</p>
+        <p>Previous deposit request records.</p>
     </div>
     {% for deposit in deposit_requests %}
         <div class="wallet-record">
@@ -89,4 +82,5 @@
         <p class="wallet-empty">Abhi koi transaction nahi hai.</p>
     {% endfor %}
 </section>
+<style>.wallet-page{color:#f4f7ff}.wallet-hero{padding:28px;border-radius:22px;background:radial-gradient(circle at 90% 0,#304d79,#111827 60%);border:1px solid #67d7ff44}.wallet-kicker{font-size:11px;letter-spacing:2px;color:#77e7df;font-weight:900}.wallet-hero h1{font-size:clamp(30px,5vw,44px);margin:8px 0}.wallet-subtitle{color:#bdc9dc}.wallet-status{display:inline-flex;padding:8px 12px;border:1px solid #6ce6c355;border-radius:99px;color:#7bf0d0;font-size:12px;font-weight:900}.wallet-balance-card{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;margin:18px 0;padding:22px;border-radius:18px;background:linear-gradient(120deg,#171d30,#101721);border:1px solid #ffffff18}.wallet-muted-label{font-size:12px;color:#aab8cb}.wallet-balance strong{font-size:30px;color:#7bf0d0}.wallet-action-row{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0}.wallet-action-row a{padding:12px 16px;border-radius:10px;text-decoration:none;font-weight:900;background:#1c2739;color:#e9f2ff;border:1px solid #ffffff1c}.wallet-action-row a.button-primary{background:linear-gradient(100deg,#71e8d0,#9b8cff);color:#101525;border:0}.wallet-quick-shop{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:16px 0;padding:16px;border:1px solid #70e8d155;border-radius:14px;background:linear-gradient(110deg,#112b2a,#15192a)}.wallet-quick-shop>span{font-size:30px}.wallet-quick-shop div{flex:1}.wallet-quick-shop p{margin:4px 0;color:#aebfd0;font-size:13px}.wallet-quick-shop a{color:#79eed4;font-weight:900;text-decoration:none}.wallet-record{margin:10px 0;padding:15px;border-radius:12px;background:#111925;border:1px solid #ffffff12}.wallet-record-top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.wallet-record-status{color:#7cebd4}.wallet-record small,.wallet-history-heading p,.wallet-empty{color:#aab8cb}.wallet-record p{color:#c4d0e0}@media(max-width:600px){.wallet-page{margin:16px auto!important;padding:12px!important}.wallet-hero{padding:20px}}</style>
 {% endblock %}
