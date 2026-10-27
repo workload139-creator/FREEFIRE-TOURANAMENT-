@@ -32,7 +32,7 @@
       <article class="player-row compact">
         <div class="player-avatar">{% if person.profile_photo %}<img src="{{ person.profile_photo.url }}" alt="{{ person.username }}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">{% else %}{{ person.username|first|upper }}{% endif %}</div>
         <div class="player-info"><strong><a href="{% url 'social:player_profile' person.pk %}">{{ person.username }}</a></strong><small>{% if person.profile_visibility == "public" %}FF-{{ person.pk|stringformat:"06d" }} · {% endif %}{% if person.profile_visibility == "private" %}Private{% else %}Public{% endif %} · {% if person.is_online %}<span class="online-label">Online</span>{% else %}Offline{% endif %}</small></div>
-        <div class="player-actions"><form method="post" action="{% url 'social:toggle_follow' person.pk %}">{% csrf_token %}<button class="button button-primary" type="submit">＋ Follow</button></form></div>
+        <div class="player-actions"><form method="post" action="{% url 'social:toggle_follow' person.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{% url 'social:player_profile' person.pk %}"><button class="button button-primary" type="submit">＋ Follow</button></form></div>
       </article>
       {% empty %}<p class="muted">Abhi naye players nahi mile. Search use karo.</p>{% endfor %}
     </div>
