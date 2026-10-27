@@ -85,33 +85,55 @@ class RegistrationInline(admin.TabularInline):
     extra = 0
     show_change_link = True
     fields = (
-        "player", "free_fire_uid", "payment_method", "currency_amount",
-        "entry_fee_paid", "payment_reference", "payment_verified",
-        "status", "verification_photo", "room_details_sent",
-        "ready_deadline", "ready_confirmed_at", "refund_processed",
-        "refund_reference", "registered_at",
-    )
-    readonly_fields = (
-        "player", "free_fire_uid", "payment_method", "currency_amount",
-        "entry_fee_paid", "payment_reference", "verification_photo",
+        "player", "player_contact", "player_payout_qr", "free_fire_uid",
+        "payment_method", "currency_amount", "entry_fee_paid",
+        "payment_reference", "payment_verified", "status", "verification_photo",
         "room_details_sent", "ready_deadline", "ready_confirmed_at",
         "refund_processed", "refund_reference", "registered_at",
     )
+    readonly_fields = (
+        "player", "player_contact", "player_payout_qr", "free_fire_uid",
+        "payment_method", "currency_amount", "entry_fee_paid", "payment_reference",
+        "verification_photo", "room_details_sent", "ready_deadline",
+        "ready_confirmed_at", "refund_processed", "refund_reference", "registered_at",
+    )
     can_delete = False
     ordering = ("registered_at",)
+
+    @admin.display(description="Player email / phone")
+    def player_contact(self, obj):
+        return f"{obj.player.email or 'No email'} · {getattr(obj.player, 'phone_number', '') or 'No phone'}"
+
+    @admin.display(description="Player UPI QR")
+    def player_payout_qr(self, obj):
+        photo = getattr(obj.player, "upi_qr_code", None)
+        if not photo:
+            return "No payout QR uploaded in profile"
+        try:
+            return format_html(
+                '<a href="{}" target="_blank" rel="noopener"><img src="{}" width="76" height="76" style="object-fit:contain;background:#fff;padding:4px;border-radius:6px" alt="Player payout UPI QR"></a>',
+                photo.url, photo.url,
+            )
+        except (ValueError, OSError):
+            return "UPI QR uploaded but unavailable"
+
 
 class KillSubmissionInline(admin.TabularInline):
     model = KillSubmission
     extra = 0
     show_change_link = True
     fields = (
-        "player", "registered_uid", "free_fire_uid", "ai_proposed_kills",
-        "ai_confidence", "ai_uid_matches", "approved_kills", "proposed_reward",
-        "approved_reward", "status", "admin_notes", "submitted_at",
+        "player", "registered_uid", "free_fire_uid", "history_video",
+        "history_image_one", "history_image_two", "ai_proposed_kills",
+        "ai_confidence", "ai_uid_matches", "ai_review_notes", "approved_kills",
+        "proposed_reward", "approved_reward", "status", "admin_notes",
+        "payout_reference", "payout_status", "payout_paid_at", "submitted_at",
     )
     readonly_fields = (
-        "player", "registered_uid", "free_fire_uid", "ai_proposed_kills",
-        "ai_confidence", "ai_uid_matches", "proposed_reward", "submitted_at",
+        "player", "registered_uid", "free_fire_uid", "history_video",
+        "history_image_one", "history_image_two", "ai_proposed_kills",
+        "ai_confidence", "ai_uid_matches", "ai_review_notes", "proposed_reward",
+        "payout_status", "payout_paid_at", "submitted_at",
     )
     can_delete = False
     ordering = ("-submitted_at",)
