@@ -298,8 +298,9 @@ def admin_tournament_dashboard(request, tournament_id):
 @require_POST
 def admin_cancel_tournament(request, tournament_id):
     tournament = get_object_or_404(Tournament, pk=tournament_id)
+    was_cancelled = tournament.status == Tournament.Status.CANCELLED
     refunded, message = cancel_tournament_and_refund(tournament.pk)
-    if tournament.status == Tournament.Status.CANCELLED:
+    if was_cancelled:
         messages.warning(request, f"{message} External UPI refunds, if any, still require a real transfer and reference.")
     else:
         messages.success(request, f"{message} External UPI refunds, if any, still require a real transfer and reference.")
