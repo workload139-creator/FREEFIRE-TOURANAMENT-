@@ -55,7 +55,7 @@
                 <a class="button button-outline" href="{% url 'social:shop' %}">💎 No Coins / Diamonds? Open Shop</a>
             </section>
             <div id="upiPaymentFields">
-            {% if tournament.entry_fee > 0 and form.payment_method.value == "upi" %}
+            {% if tournament.entry_fee > 0 %}
             {% if upi_payment_uri %}
             <section class="profile-notice tournament-payment-panel" style="margin:18px 0;padding:20px;border:1px solid #38d9a9;border-radius:16px;background:#0d1718;color:#fff">
                 <h2 style="margin-top:0">🔐 Pay Entry Fee: ₹{{ tournament.entry_fee }}</h2>
