@@ -222,7 +222,6 @@ def send_room_details(request, tournament_id):
             room_details_sent=True,
             ready_deadline=now + timedelta(minutes=10),
             ready_confirmed_at=None,
-            room_details_sent=True,
         )
 
     messages.success(request, "Room details set ho gayi. Eligible paid players ko 10 minute ke andar YES confirm karna hoga.")
