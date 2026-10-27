@@ -25,7 +25,29 @@ from .services import process_expired_ready_registrations, mark_not_playing_and_
 import qrcode
 
 
+def cleanup_expired_kill_evidence():
+    """Delete uploaded evidence files after 12 hours, retaining review/audit metadata."""
+    cutoff = timezone.now() - timedelta(hours=12)
+    expired = KillSubmission.objects.filter(submitted_at__lte=cutoff).only(
+        "id", "history_video", "history_image_one", "history_image_two"
+    )
+    for submission in expired.iterator():
+        changed = []
+        for field_name in ("history_video", "history_image_one", "history_image_two"):
+            field_file = getattr(submission, field_name)
+            if field_file and field_file.name:
+                try:
+                    field_file.delete(save=False)
+                except (OSError, ValueError):
+                    pass
+                setattr(submission, field_name, "")
+                changed.append(field_name)
+        if changed:
+            submission.save(update_fields=changed)
+
+
 def tournament_list(request):
+    cleanup_expired_kill_evidence()
     process_expired_ready_registrations()
     tournaments = Tournament.objects.filter(
         status__in=[Tournament.Status.UPCOMING, Tournament.Status.LIVE, Tournament.Status.COMPLETED]
@@ -293,6 +315,7 @@ def admin_tournament_dashboard(request, tournament_id):
 
 @login_required
 def my_registrations(request):
+    cleanup_expired_kill_evidence()
     process_expired_ready_registrations()
     registrations = Registration.objects.filter(player=request.user).select_related("tournament")
     return render(request, "tournaments/my_registrations.html", {"registrations": registrations})
@@ -415,6 +438,7 @@ def kill_submission(request, registration_id):
 @login_required
 @user_passes_test(lambda user: user.is_staff)
 def admin_kill_review(request):
+    cleanup_expired_kill_evidence()
     submissions = KillSubmission.objects.filter(
         status=KillSubmission.Status.PENDING
     ).select_related("player", "tournament", "registration")
