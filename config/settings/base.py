@@ -171,7 +171,8 @@ MINIMUM_DEPOSIT = 10
 MAX_PLAYER_WALLET_BALANCE = 5000
 MINIMUM_WITHDRAWAL = 10
 
-REWARD_PER_APPROVED_KILL = 5
+REWARD_PER_APPROVED_KILL = 5  # Legacy INR prize calculation; not used for Diamond awards.
+DIAMONDS_PER_APPROVED_KILL = int(os.getenv("DIAMONDS_PER_APPROVED_KILL", "5"))
 MINIMUM_VERIFIED_KILLS = 2
 
 # Brevo API sends mail over HTTPS, including Django password-reset emails.
