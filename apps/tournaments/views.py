@@ -156,8 +156,8 @@ def confirm_playing(request, registration_id):
             player=request.user,
         )
         if registration.status != Registration.Status.WAITING_READY or not registration.payment_verified:
-            messages.error(request, "Is registration ki confirmation available nahi hai.")
-            return redirect("tournaments:list")
+            messages.error(request, "Is registration ki confirmation available nahi hai ya deadline khatam ho chuki hai.")
+            return redirect("tournaments:player_room", registration_id=registration.pk)
         if not registration.room_details_sent or not registration.tournament.room_id:
             messages.error(request, "Room details abhi available nahi hain.")
             return redirect("tournaments:list")
