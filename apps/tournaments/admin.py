@@ -12,7 +12,7 @@ from apps.accounts.models import (
     AdminWalletTransaction,
     WalletTransaction,
 )
-from .models import KillSubmission, Registration, Tournament
+from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry
 from .services import cancel_tournament_and_refund
 
 
@@ -799,3 +799,14 @@ class KillSubmissionAdmin(admin.ModelAdmin):
         return False
 
     actions = (run_ai_review_for_selected, mark_selected_prizes_paid,)
+
+
+@admin.register(TournamentLedgerEntry)
+class TournamentLedgerEntryAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "tournament", "player", "entry_type", "currency", "quantity", "amount_inr", "status", "reference")
+    list_filter = ("tournament", "entry_type", "currency", "status", "created_at")
+    search_fields = ("tournament__title", "player__username", "reference", "description")
+    date_hierarchy = "created_at"
+    list_select_related = ("tournament", "player", "registration")
+    readonly_fields = ("created_at",)
+    ordering = ("-created_at",)
