@@ -450,6 +450,8 @@ def admin_kill_review(request):
         "ai_model": os.getenv("OPENAI_KILL_REVIEW_MODEL", "gpt-4.1-mini").strip(),
         "ai_openai_configured": bool(os.getenv("OPENAI_API_KEY", "").strip()),
         "ai_compatible_configured": bool(os.getenv("KILL_REVIEW_BASE_URL", "").strip()),
+        "diamonds_per_kill": int(settings.REWARD_PER_APPROVED_KILL),
+        "minimum_verified_kills": int(settings.MINIMUM_VERIFIED_KILLS),
     })
 
 
