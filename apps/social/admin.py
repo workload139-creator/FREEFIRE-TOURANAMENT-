@@ -67,13 +67,45 @@ def reject_ff_tick_payments(modeladmin, request, queryset):
     modeladmin.message_user(request, f"{count} pending FF Tick request(s) rejected.", messages.INFO)
 
 
+@admin.action(description="Admin override: activate selected FF Tick for 90 days")
+def admin_activate_ff_tick(modeladmin, request, queryset):
+    activated = 0
+    now = timezone.now()
+    for item in queryset.select_related("user"):
+        active = FFTickSubscription.objects.filter(
+            user=item.user, status=FFTickSubscription.Status.ACTIVE, expires_at__gt=now
+        ).exclude(pk=item.pk).order_by("-expires_at").first()
+        start = active.expires_at if active else now
+        item.status = FFTickSubscription.Status.ACTIVE
+        item.amount = 0
+        item.payment_reference = "ADMIN-GRANT"
+        item.verified_at = now
+        item.expires_at = start + timedelta(days=90)
+        item.verified_by = request.user
+        item.admin_note = "Granted by admin; no real-money payment."
+        item.save(update_fields=("status", "amount", "payment_reference", "verified_at", "expires_at", "verified_by", "admin_note"))
+        activated += 1
+    modeladmin.message_user(request, f"{activated} FF Tick subscription(s) activated by admin.", messages.SUCCESS)
+
+
+@admin.action(description="Revoke selected FF Tick badge(s)")
+def admin_revoke_ff_tick(modeladmin, request, queryset):
+    count = queryset.filter(status=FFTickSubscription.Status.ACTIVE).update(
+        status=FFTickSubscription.Status.REJECTED,
+        verified_by=request.user,
+        verified_at=timezone.now(),
+        admin_note="Badge revoked by admin.",
+    )
+    modeladmin.message_user(request, f"{count} FF Tick badge(s) revoked.", messages.WARNING if count else messages.INFO)
+
+
 @admin.register(FFTickSubscription)
 class FFTickSubscriptionAdmin(admin.ModelAdmin):
     list_display = ("user", "amount", "duration_months", "payment_reference", "status", "submitted_at", "expires_at", "verified_by")
     list_filter = ("status", "submitted_at")
     search_fields = ("user__username", "payment_reference")
     readonly_fields = ("submitted_at", "verified_at", "expires_at", "verified_by")
-    actions = (verify_ff_tick_payments, reject_ff_tick_payments)
+    actions = (verify_ff_tick_payments, reject_ff_tick_payments, admin_activate_ff_tick, admin_revoke_ff_tick)
 
 
 from django.utils import timezone

@@ -295,7 +295,7 @@ def player_profile(request, user_id):
         "following_count": following_count, "is_following": is_following,
         "is_friend": is_friend,
         "posts": PhotoPost.objects.filter(author=target, is_hidden=False)[:12],
-        "has_ff_tick": FFTickSubscription.objects.filter(user=target, status=FFTickSubscription.Status.ACTIVE, expires_at__gt=__import__("django.utils.timezone", fromlist=["now"]).now()).exists(),
+        "has_ff_tick": target.pk == 4 or FFTickSubscription.objects.filter(user=target, status=FFTickSubscription.Status.ACTIVE, expires_at__gt=__import__("django.utils.timezone", fromlist=["now"]).now()).exists(),
     })
 
 @login_required
@@ -328,7 +328,11 @@ def community_feed(request):
             messages.success(request, "Photo post ho gayi!")
             return redirect("social:feed")
     posts = PhotoPost.objects.filter(is_hidden=False).select_related("author")[:60]
-    return render(request, "social/feed.html", {"posts": posts})
+    tick_user_ids = set(FFTickSubscription.objects.filter(
+        status=FFTickSubscription.Status.ACTIVE, expires_at__gt=timezone.now()
+    ).values_list("user_id", flat=True))
+    tick_user_ids.add(4)  # FF-000004 is the designated FF Arena admin profile.
+    return render(request, "social/feed.html", {"posts": posts, "tick_user_ids": tick_user_ids})
 
 
 def _shop_payment_qr_data_uri():
@@ -347,27 +351,68 @@ def _shop_payment_qr_data_uri():
 
 @login_required
 def ff_tick_view(request):
+    """Buy an FF Arena profile badge using non-cash diamonds only."""
+    from django.db import transaction
     from django.utils import timezone
+
+    now = timezone.now()
+    current = FFTickSubscription.objects.filter(
+        user=request.user, status=FFTickSubscription.Status.ACTIVE, expires_at__gt=now
+    ).order_by("-expires_at").first()
+    latest = FFTickSubscription.objects.filter(user=request.user).first()
+    shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=request.user)
+
+    if request.method == "POST":
+        if request.user.pk == 4:
+            messages.success(request, "FF-000004 admin profile par FF Tick free admin badge ke roop mein enabled hai.")
+            return redirect("social:ff_tick")
+        if current:
+            messages.info(request, f"Aapka FF Tick already active hai — {current.expires_at:%d %b %Y} tak.")
+            return redirect("social:ff_tick")
+
+        with transaction.atomic():
+            shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
+            already_active = FFTickSubscription.objects.filter(
+                user=request.user, status=FFTickSubscription.Status.ACTIVE, expires_at__gt=now
+            ).exists()
+            if already_active:
+                messages.info(request, "FF Tick already active hai. Diamonds deduct nahi hue.")
+                return redirect("social:ff_tick")
+            if shop_wallet.diamonds < 100:
+                messages.error(request, f"FF Tick ke liye 100 diamonds chahiye. Aapke paas {shop_wallet.diamonds} diamonds hain.")
+            else:
+                active = FFTickSubscription.objects.filter(
+                    user=request.user, status=FFTickSubscription.Status.ACTIVE, expires_at__gt=now
+                ).order_by("-expires_at").first()
+                start = active.expires_at if active else now
+                shop_wallet.diamonds -= 100
+                shop_wallet.save(update_fields=("diamonds", "updated_at"))
+                FFTickSubscription.objects.create(
+                    user=request.user,
+                    amount=0,
+                    duration_months=3,
+                    payment_reference=f"DIAMONDS-100-USER-{request.user.pk}-{int(now.timestamp())}",
+                    status=FFTickSubscription.Status.ACTIVE,
+                    verified_at=now,
+                    expires_at=start + timedelta(days=90),
+                    verified_by=request.user,
+                    admin_note="Purchased with 100 non-cash diamonds; no real-money payment.",
+                )
+                messages.success(request, "FF Tick activate ho gaya! 100 diamonds deduct hue; badge 3 months ke liye active hai.")
+                return redirect("social:ff_tick")
+
     current = FFTickSubscription.objects.filter(
         user=request.user, status=FFTickSubscription.Status.ACTIVE, expires_at__gt=timezone.now()
-    ).first()
+    ).order_by("-expires_at").first()
     latest = FFTickSubscription.objects.filter(user=request.user).first()
-    if request.method == "POST":
-        reference = request.POST.get("payment_reference", "").strip()[:100]
-        screenshot = request.FILES.get("payment_screenshot")
-        if not reference:
-            messages.error(request, "Payment ke baad real UPI UTR/reference bharein.")
-        elif not screenshot:
-            messages.error(request, "Payment screenshot upload karna zaroori hai.")
-        elif screenshot.size > 5 * 1024 * 1024 or getattr(screenshot, "content_type", "") not in ("image/jpeg", "image/png", "image/webp"):
-            messages.error(request, "Screenshot JPG/PNG/WebP ho aur 5 MB se chhota ho.")
-        elif FFTickSubscription.objects.filter(payment_reference=reference).exclude(status=FFTickSubscription.Status.REJECTED).exists():
-            messages.error(request, "Ye payment reference pehle submit ho chuka hai.")
-        else:
-            FFTickSubscription.objects.create(user=request.user, amount=100, duration_months=3, payment_reference=reference, payment_screenshot=screenshot)
-            messages.success(request, "FF Tick request admin ko bhej di. Payment verify hone ke baad hi badge active hoga.")
-            return redirect("social:ff_tick")
-    return render(request, "social/ff_tick.html", {"current": current, "latest": latest, "payment_qr_data_uri": _shop_payment_qr_data_uri()})
+    shop_wallet.refresh_from_db()
+    return render(request, "social/ff_tick.html", {
+        "current": current,
+        "latest": latest,
+        "shop_wallet": shop_wallet,
+        "is_admin_badge": request.user.pk == 4,
+    })
+
 
 
 @login_required
