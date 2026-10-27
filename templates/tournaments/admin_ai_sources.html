@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}AI Sources & Diagnostics | FF Tournament{% endblock %}
+{% block content %}
+<section class="container" style="max-width:1000px;margin:28px auto;padding:18px">
+  <header class="tournament-card" style="padding:22px;border-radius:16px">
+    <h1>⚙️ AI Sources & Diagnostics</h1>
+    <p>Yeh page Render Environment ki configuration status dikhata hai. Secret API keys kabhi page par show nahi hoti. Values change karne ke liye Render → service → Environment mein variables set karein.</p>
+    <nav style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0">
+      <a class="button button-outline" href="{% url 'tournaments:admin_ai_assessments' %}">AI Assessment Queue</a>
+      <a class="button button-outline" href="{% url 'tournaments:admin_kill_review' %}">Manual Admin Review</a>
+    </nav>
+  </header>
+  <article class="tournament-card" style="padding:22px;margin:16px 0;border-radius:14px">
+    <h2>Provider readiness</h2>
+    <p><strong>Current mode:</strong> {{ provider }} {% if dual_mode %}— dual-provider mode{% else %}— automatic awards remain disabled unless dual mode is configured{% endif %}</p>
+    <p><strong>OpenAI model:</strong> {{ openai_model }} · <strong>OPENAI_API_KEY:</strong> {{ openai_key_configured|yesno:"Configured,MISSING" }}</p>
+    <p><strong>Open-source vision model:</strong> {{ open_source_model }} · <strong>KILL_REVIEW_BASE_URL:</strong> {{ open_source_endpoint_configured|yesno:"Configured,MISSING" }} · <strong>KILL_REVIEW_API_KEY:</strong> {{ open_source_key_configured|yesno:"Configured,Not set (may be okay for private keyless endpoint)" }}</p>
+    <h3>Required Render Environment variables</h3>
+    <ul>
+      <li><code>KILL_REVIEW_PROVIDER=dual</code></li>
+      <li><code>OPENAI_API_KEY</code> = your OpenAI API key</li>
+      <li><code>OPENAI_KILL_REVIEW_MODEL=gpt-4.1-mini</code></li>
+      <li><code>KILL_REVIEW_BASE_URL</code> = reachable OpenAI-compatible vision API endpoint for your open-source model</li>
+      <li><code>OLLAMA_KILL_REVIEW_MODEL=gemma4</code> (or the exact model available at that endpoint)</li>
+      <li><code>KILL_REVIEW_API_KEY</code> = endpoint key if required; may be blank for a secured keyless endpoint</li>
+    </ul>
+    <p><strong>Reward rule:</strong> {{ diamonds_per_kill }} Diamonds per verified kill · minimum {{ minimum_kills }} kills.</p>
+    <p><strong>Important:</strong> An open-source model name alone does not run a model. The endpoint must be online and support vision/image inputs. If either AI fails, the submission stays pending for admin review; no automatic Diamonds.</p>
+  </article>
+</section>
+{% endblock %}
