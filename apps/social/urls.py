@@ -7,7 +7,8 @@ app_name = "social"
 urlpatterns = [
     path("", views.friends_home, name="home"),
     path("feed/", views.community_feed, name="feed"),
-    path("ff-tick/", views.ff_tick_view, name="ff_tick"),\n    path("shop/", views.shop_view, name="shop"),
+    path("ff-tick/", views.ff_tick_view, name="ff_tick"),
+    path("shop/", views.shop_view, name="shop"),
     path("follow/<int:user_id>/", views.toggle_follow, name="toggle_follow"),
     path("player/<int:user_id>/", views.player_profile, name="player_profile"),
     path("followers/", views.follow_lists, {"list_type": "followers"}, name="followers"),
