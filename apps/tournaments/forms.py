@@ -24,6 +24,13 @@ class RegistrationForm(forms.Form):
         }),
     )
 
+    payment_method = forms.ChoiceField(
+        label="Entry payment method",
+        choices=(("upi", "UPI / INR"), ("diamonds", "💎 Diamonds"), ("coins", "🪙 Coins")),
+        initial="upi",
+        widget=forms.RadioSelect,
+    )
+
     payment_reference = forms.CharField(
         label="UPI UTR / Transaction Reference", min_length=6, max_length=50, required=False,
         widget=forms.TextInput(attrs={"autocomplete": "off", "placeholder": "Payment ke baad UTR / reference number"}),
@@ -40,10 +47,7 @@ class RegistrationForm(forms.Form):
             self.fields.pop("verification_photo", None)
         if user is not None and not self.is_bound:
             self.initial["profile_uid"] = str(user.pk)
-        if tournament is not None and tournament.entry_fee <= 0:
-            self.fields["payment_reference"].required = False
-        elif tournament is not None:
-            self.fields["payment_reference"].required = True
+        self.fields["payment_reference"].required = False
 
     def clean_verification_photo(self):
         photo = self.cleaned_data.get("verification_photo")
@@ -65,9 +69,10 @@ class RegistrationForm(forms.Form):
 
     def clean_payment_reference(self):
         value = self.cleaned_data.get("payment_reference", "").strip()
-        if self.tournament is not None and self.tournament.entry_fee > 0:
+        method = self.data.get("payment_method", "upi") if self.is_bound else self.initial.get("payment_method", "upi")
+        if self.tournament is not None and self.tournament.entry_fee > 0 and method == "upi":
             if not value or not value.replace("-", "").isalnum() or len(value) < 6:
-                raise forms.ValidationError("Payment ke baad valid UTR/reference (kam-se-kam 6 letters/numbers) daalein.")
+                raise forms.ValidationError("UPI select kiya hai to payment ke baad valid UTR/reference daalein.")
             if Registration.objects.filter(payment_reference__iexact=value).exists():
                 raise forms.ValidationError("Ye UTR pehle submit ho chuka hai. Apna original transaction reference check karein.")
         return value
