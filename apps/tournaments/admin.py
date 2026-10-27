@@ -444,7 +444,7 @@ class RegistrationAdmin(admin.ModelAdmin):
         "entry_fee_paid", "payment_method", "currency_amount", "payment_verified", "status", "room_details_sent",
         "refund_processed", "registered_at",
     )
-    list_filter = ("status", "payment_verified", "refund_processed", "player__gender", "tournament__gender_category", "tournament__mode", "tournament")
+    list_filter = ("payment_method", "status", "payment_verified", "refund_processed", "player__gender", "tournament__gender_category", "tournament__mode", "tournament")
     search_fields = (
         "free_fire_uid", "payment_reference", "player__username",
         "player__email", "player__phone_number", "tournament__title",
@@ -650,7 +650,7 @@ class KillSubmissionAdmin(admin.ModelAdmin):
         "player_upi_id", "payout_qr", "status", "ai_proposed_kills", "approved_kills", "approved_reward",
         "payout_reference", "payout_status", "payout_paid_at", "ai_confidence", "ai_uid_matches", "submitted_at",
     )
-    list_filter = ("status", "payout_status", "tournament", "submitted_at")
+    list_filter = ("status", "payout_status", "ai_confidence", "ai_uid_matches", "tournament__mode", "tournament__gender_category", "tournament", "submitted_at")
     search_fields = ("player__username", "tournament__title", "registered_uid", "free_fire_uid", "payout_reference")
     readonly_fields = (
         "registration", "player", "tournament", "registered_uid", "free_fire_uid",
