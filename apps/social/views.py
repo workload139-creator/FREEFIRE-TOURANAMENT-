@@ -6,7 +6,7 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from .models import Follow, FriendRequest, UserBlock, UserReport
+from .models import Follow, FriendRequest, UserBlock, UserReport, PhotoPost, FFTickSubscription
 
 User = get_user_model()
 
@@ -268,7 +268,7 @@ def player_profile(request, user_id):
     return render(request, "social/player_profile.html", {
         "player": target, "followers_count": followers_count,
         "following_count": following_count, "is_following": is_following,
-        "is_friend": is_friend,
+        "is_friend": is_friend,\n        "posts": PhotoPost.objects.filter(author=target, is_hidden=False)[:12],\n        "has_ff_tick": FFTickSubscription.objects.filter(user=target, status=FFTickSubscription.Status.ACTIVE, expires_at__gt=__import__("django.utils.timezone", fromlist=["now"]).now()).exists(),
     })
 
 @login_required
@@ -282,3 +282,48 @@ def follow_lists(request, list_type="followers"):
         people = [link.follower for link in links]
         title = "Followers"
     return render(request, "social/follows.html", {"people": people, "title": title, "list_type": list_type})
+
+
+@login_required
+def community_feed(request):
+    from django.utils import timezone
+    if request.method == "POST":
+        photo = request.FILES.get("photo")
+        caption = request.POST.get("caption", "").strip()[:180]
+        if not photo:
+            messages.error(request, "Photo upload karna zaroori hai.")
+        elif photo.size > 5 * 1024 * 1024:
+            messages.error(request, "Photo 5 MB se chhoti honi chahiye.")
+        elif getattr(photo, "content_type", "") not in ("image/jpeg", "image/png", "image/webp"):
+            messages.error(request, "Sirf JPG, PNG ya WebP photo upload karein.")
+        else:
+            PhotoPost.objects.create(author=request.user, photo=photo, caption=caption)
+            messages.success(request, "Photo post ho gayi!")
+            return redirect("social:feed")
+    posts = PhotoPost.objects.filter(is_hidden=False).select_related("author")[:60]
+    return render(request, "social/feed.html", {"posts": posts})
+
+
+@login_required
+def ff_tick_view(request):
+    from django.utils import timezone
+    current = FFTickSubscription.objects.filter(
+        user=request.user, status=FFTickSubscription.Status.ACTIVE, expires_at__gt=timezone.now()
+    ).first()
+    latest = FFTickSubscription.objects.filter(user=request.user).first()
+    if request.method == "POST":
+        reference = request.POST.get("payment_reference", "").strip()[:100]
+        screenshot = request.FILES.get("payment_screenshot")
+        if not reference:
+            messages.error(request, "Payment ke baad real UPI UTR/reference bharein.")
+        elif not screenshot:
+            messages.error(request, "Payment screenshot upload karna zaroori hai.")
+        elif screenshot.size > 5 * 1024 * 1024 or getattr(screenshot, "content_type", "") not in ("image/jpeg", "image/png", "image/webp"):
+            messages.error(request, "Screenshot JPG/PNG/WebP ho aur 5 MB se chhota ho.")
+        elif FFTickSubscription.objects.filter(payment_reference=reference).exclude(status=FFTickSubscription.Status.REJECTED).exists():
+            messages.error(request, "Ye payment reference pehle submit ho chuka hai.")
+        else:
+            FFTickSubscription.objects.create(user=request.user, amount=100, duration_months=3, payment_reference=reference, payment_screenshot=screenshot)
+            messages.success(request, "FF Tick request admin ko bhej di. Payment verify hone ke baad hi badge active hoga.")
+            return redirect("social:ff_tick")
+    return render(request, "social/ff_tick.html", {"current": current, "latest": latest})
