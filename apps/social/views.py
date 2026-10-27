@@ -239,6 +239,7 @@ from .models import Follow
 
 @login_required
 @require_POST
+@transaction.atomic
 def toggle_follow(request, user_id):
     target = get_object_or_404(User, pk=user_id)
     if target.pk == request.user.pk:
@@ -262,6 +263,7 @@ def toggle_follow(request, user_id):
                 )
                 if created:
                     wallet, _ = PlayerShopWallet.objects.get_or_create(user=target)
+                    wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
                     wallet.fan_tokens += 1
                     wallet.save(update_fields=["fan_tokens", "updated_at"])
                     awarded += 1
