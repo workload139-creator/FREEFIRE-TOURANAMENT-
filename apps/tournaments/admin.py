@@ -39,6 +39,7 @@ class TournamentAdminForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if not self.instance.pk:
             self.initial["status"] = Tournament.Status.UPCOMING
+        self.fields["gender_category"].required = False
         self.fields["status"].help_text = (
             "Website par dikhane aur registration kholne ke liye "
             "'Upcoming' select karein. Draft tournaments public list mein nahi dikhte."
@@ -54,6 +55,8 @@ class TournamentAdminForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
+        if not cleaned.get("gender_category"):
+            cleaned["gender_category"] = Tournament.GenderCategory.OPEN
         if cleaned.get("mode") == Tournament.Mode.BR and cleaned.get("vs_format"):
             self.add_error("vs_format", "BR tournament ke liye CS/VS format khaali rakhein.")
         if cleaned.get("mode") == Tournament.Mode.VS and not cleaned.get("vs_format"):
