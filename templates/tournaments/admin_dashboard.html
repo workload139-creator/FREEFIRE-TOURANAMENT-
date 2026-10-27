@@ -67,7 +67,11 @@
             <tr>
                 <td>{{ item.player.username }} / #{{ item.player_id }}</td>
                 <td>{{ item.registered_uid }}{% if item.free_fire_uid != item.registered_uid %}<span class="text-danger"> (UID mismatch)</span>{% endif %}</td>
-                <td><a href="{{ item.history_video.url }}" target="_blank" rel="noopener">Video</a> · <a href="{{ item.history_image_one.url }}" target="_blank" rel="noopener">Screenshot 1</a> · <a href="{{ item.history_image_two.url }}" target="_blank" rel="noopener">Screenshot 2</a></td>
+                <td>
+                    {% if item.history_video %}<a href="{{ item.history_video.url }}" target="_blank" rel="noopener">Video</a>{% else %}No video{% endif %}
+                    · {% if item.history_image_one %}<a href="{{ item.history_image_one.url }}" target="_blank" rel="noopener">Screenshot 1</a>{% else %}No screenshot 1{% endif %}
+                    · {% if item.history_image_two %}<a href="{{ item.history_image_two.url }}" target="_blank" rel="noopener">Screenshot 2</a>{% else %}No screenshot 2{% endif %}
+                </td>
                 <td>{{ item.ai_proposed_kills|default_if_none:"—" }}</td>
                 <td>{{ item.approved_kills|default_if_none:"Pending" }}</td>
                 <td>₹{{ item.approved_reward }}</td>
