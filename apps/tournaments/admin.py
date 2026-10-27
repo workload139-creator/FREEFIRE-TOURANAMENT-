@@ -230,7 +230,9 @@ class TournamentAdmin(admin.ModelAdmin):
     list_filter = ("mode", "vs_format", "gender_category", "status", "start_time")
     search_fields = ("title", "description")
     ordering = ("start_time",)
-    inlines = (RegistrationInline, KillSubmissionInline)
+    # Keep tournament setup separate from registrations and kill evidence.
+    # Those have their own admin sections so adding/editing a tournament stays manageable.
+    inlines = ()
     actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid,)
     readonly_fields = (
         "tournament_control_panel", "series_root", "winner_prize_paid",
@@ -328,6 +330,19 @@ class TournamentAdmin(admin.ModelAdmin):
             "Check SMTP provider logs for final delivery.",
             level=messages.SUCCESS,
         )
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        # Never bulk-delete tournament records: they can have payment/refund audit trails.
+        actions.pop("delete_selected", None)
+        return actions
+
+    def has_delete_permission(self, request, obj=None):
+        if obj is not None:
+            # Keep financial/registration history intact. Empty tournaments can still be deleted.
+            if obj.registrations.exists() or TournamentLedgerEntry.objects.filter(tournament=obj).exists():
+                return False
+        return super().has_delete_permission(request, obj)
 
     def get_readonly_fields(self, request, obj=None):
         fields = list(super().get_readonly_fields(request, obj))
