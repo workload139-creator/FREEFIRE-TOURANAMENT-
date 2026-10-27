@@ -16,7 +16,7 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-<button type="button" class="ff-sound-toggle" id="ffSoundToggle" aria-pressed="false" aria-label="Enable FF Arena sound effects"><span class="ff-sound-icon" aria-hidden="true">♫</span><span class="ff-sound-label">SOUND OFF</span></button>
+<button type="button" class="ff-sound-toggle" id="ffSoundToggle" aria-pressed="false" aria-label="Enable optional lightweight sound effects"><span class="ff-sound-icon" aria-hidden="true">♫</span><span class="ff-sound-label">SOUND OFF</span></button>
 <header class="site-header">
     <div class="nav-container">
         <a href="{% url 'home' %}" class="brand" aria-label="FF Arena home">
@@ -27,6 +27,7 @@
         <nav class="main-nav" id="mainNav">
             <a href="{% url 'home' %}">Home</a>
             <a href="{% url 'tournaments:list' %}">Tournaments</a>
+            <a href="{% url 'tournaments:list' %}#cs-tournaments">CS</a>
             <a href="{% url 'tournaments:results' %}">Results</a>
             <a href="{% url 'assistant' %}">FF Assistant</a>
             {% if user.is_authenticated %}
