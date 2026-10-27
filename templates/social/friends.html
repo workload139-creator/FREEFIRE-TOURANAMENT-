@@ -21,7 +21,7 @@
     {% for result in search_results %}
       <article class="player-row">
         <div class="player-avatar">{{ result.user.username|first|upper }}</div>
-        <div class="player-info"><strong>{{ result.user.username }}</strong><small>Player ID: FF-{{ result.user.pk|stringformat:"06d" }} · {% if result.user.is_online %}<span class="online-label">Online</span>{% else %}Offline{% endif %}</small></div>
+        <div class="player-info"><strong><a href="{% url 'social:player_profile' result.user.pk %}">{{ result.user.username }}</a></strong><small>Player ID: FF-{{ result.user.pk|stringformat:"06d" }} · {% if result.user.is_online %}<span class="online-label">Online</span>{% else %}Offline{% endif %}</small></div>
         <div class="player-actions">
           <form method="post" action="{% url 'social:toggle_follow' result.user.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{% url 'social:home' %}?q={{ search_query|urlencode }}"><button class="button button-outline" type="submit">{% if result.is_following %}Unfollow{% else %}Follow{% endif %}</button></form>
           {% if result.is_friend %}
@@ -46,7 +46,7 @@
       {% for person in suggestions %}
       <article class="player-row compact">
         <div class="player-avatar">{% if person.profile_photo %}<img src="{{ person.profile_photo.url }}" alt="{{ person.username }}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">{% else %}{{ person.username|first|upper }}{% endif %}</div>
-        <div class="player-info"><strong>{{ person.username }}</strong><small>Player ID: FF-{{ person.pk|stringformat:"06d" }} · {% if person.is_online %}<span class="online-label">Online</span>{% else %}Offline{% endif %}</small></div>
+        <div class="player-info"><strong><a href="{% url 'social:player_profile' person.pk %}">{{ person.username }}</a></strong><small>Player ID: FF-{{ person.pk|stringformat:"06d" }} · {% if person.is_online %}<span class="online-label">Online</span>{% else %}Offline{% endif %}</small></div>
         <div class="player-actions">
           <form method="post" action="{% url 'social:toggle_follow' person.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{% url 'social:home' %}"><button class="button button-primary" type="submit">Follow / Add</button></form>
         </div>
@@ -67,7 +67,7 @@
       {% for friend in friends %}
       <article class="player-row compact">
         <div class="player-avatar">{{ friend.username|first|upper }}</div>
-        <div class="player-info"><strong>{{ friend.username }}</strong><small>FF-{{ friend.pk|stringformat:"06d" }} · {% if friend.is_online %}<span class="online-label">Online</span>{% else %}Offline{% endif %}</small></div>
+        <div class="player-info"><strong><a href="{% url 'social:player_profile' friend.pk %}">{{ friend.username }}</a></strong><small>FF-{{ friend.pk|stringformat:"06d" }} · {% if friend.is_online %}<span class="online-label">Online</span>{% else %}Offline{% endif %}</small></div>
         <div class="player-actions">
           <a class="button button-primary" href="{% url 'chat:open' friend.pk %}">Chat</a>
           <form method="post" action="{% url 'social:remove_friend' friend.pk %}">{% csrf_token %}<button class="button button-outline" type="submit">Remove</button></form>
