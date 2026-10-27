@@ -26,7 +26,7 @@
         <a class="profile-stat" href="{% url 'social:followers' %}"><span>Followers</span><strong>{{ followers_count }}</strong></a>
         <a class="profile-stat" href="{% url 'social:following' %}"><span>Following</span><strong>{{ following_count }}</strong></a>
       </div>
-      <h3>Community & FF Tick</h3><div class="profile-actions"><a class="primary" href="{% url 'social:feed' %}">Photo Feed</a><a href="{% url 'social:ff_tick' %}">FF Tick · ₹100 / 3 months</a></div><p class="profile-contact-note">Only photo posts allowed. FF Tick activates after manual admin payment verification.</p><h3>Profile & Community</h3>
+      <h3>Community & FF Tick</h3><div class="profile-actions"><a class="primary" href="{% url 'social:feed' %}">Photo Feed</a><a href="{% url 'social:ff_tick' %}">FF Tick · ₹100 / 3 months</a><a href="{% url 'social:shop' %}">💎 Diamond & Coin Shop</a></div><p class="profile-contact-note">Only photo posts allowed. FF Tick activates after manual admin payment verification.</p><h3>Profile & Community</h3>
       <div class="profile-actions">
         <a class="primary" href="{% url 'accounts:profile_edit' %}">Edit Profile</a>
         <a href="{% url 'social:home' %}">Find Players</a>
