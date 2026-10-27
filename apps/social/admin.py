@@ -28,6 +28,7 @@ class UserReportAdmin(admin.ModelAdmin):
 
 
 from django.utils import timezone
+from datetime import timedelta
 
 
 @admin.register(PhotoPost)
@@ -50,7 +51,7 @@ def verify_ff_tick_payments(modeladmin, request, queryset):
         start = active.expires_at if active else now
         item.status = FFTickSubscription.Status.ACTIVE
         item.verified_at = now
-        item.expires_at = start + timezone.timedelta(days=90)
+        item.expires_at = start + timedelta(days=90)
         item.verified_by = request.user
         item.save(update_fields=("status", "verified_at", "expires_at", "verified_by"))
         approved += 1
