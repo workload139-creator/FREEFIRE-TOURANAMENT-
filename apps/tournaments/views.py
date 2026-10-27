@@ -333,23 +333,50 @@ def kill_submission(request, registration_id):
                     submission.ai_confidence = ai_result["confidence"][:10]
                     submission.ai_uid_matches = ai_result["uid_matches"]
                     submission.ai_review_notes = ai_result["reason"]
-                    if (
+                    auto_approved = (
                         ai_result["proposed_kills"] is not None
                         and ai_result["uid_matches"] is True
                         and submitted_uid == registration.free_fire_uid
                         and registration.tournament.mode == Tournament.Mode.BR
-                    ):
-                        proposed_kills = int(ai_result["proposed_kills"])
-                        if proposed_kills >= settings.MINIMUM_VERIFIED_KILLS:
-                            submission.proposed_reward = Decimal(proposed_kills) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
-                    submission.save(update_fields=[
-                        "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
-                        "ai_review_notes", "proposed_reward",
-                    ])
-                    messages.success(
-                        request,
-                        "Evidence submit ho gaya. AI ka result sirf proposal hai; admin final review karega.",
+                        and ai_result["confidence"] == "high"
                     )
+                    proposed_kills = int(ai_result["proposed_kills"] or 0)
+                    if auto_approved and proposed_kills > 0:
+                        # ₹5 per verified kill converts to 5 Diamonds at ₹1 per Diamond.
+                        submission.proposed_reward = Decimal(proposed_kills) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
+                    with transaction.atomic():
+                        submission = KillSubmission.objects.select_for_update().get(pk=submission.pk)
+                        submission.ai_proposed_kills = ai_result["proposed_kills"]
+                        submission.ai_confidence = ai_result["confidence"][:10]
+                        submission.ai_uid_matches = ai_result["uid_matches"]
+                        submission.ai_review_notes = ai_result["reason"]
+                        if auto_approved:
+                            from apps.social.models import PlayerShopWallet
+                            submission.approved_kills = proposed_kills
+                            submission.approved_reward = submission.proposed_reward
+                            submission.status = KillSubmission.Status.APPROVED
+                            submission.reviewed_at = timezone.now()
+                            if proposed_kills > 0:
+                                shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=submission.player)
+                                shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
+                                shop_wallet.diamonds += int(submission.approved_reward)
+                                shop_wallet.save(update_fields=("diamonds", "updated_at"))
+                        submission.save(update_fields=[
+                            "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
+                            "ai_review_notes", "proposed_reward", "approved_kills",
+                            "approved_reward", "status", "reviewed_at",
+                        ])
+                    if auto_approved:
+                        messages.success(
+                            request,
+                            f"AI ne high-confidence UID-matched evidence verify ki. {proposed_kills} kills ke liye {int(submission.approved_reward)} Diamonds wallet mein add hue."
+                            if proposed_kills else "AI ne UID match aur 0 kills high confidence se verify kiye; koi Diamonds add nahi hue.",
+                        )
+                    else:
+                        messages.info(
+                            request,
+                            "Evidence save ho gaya. AI confidence/UID match automatic award ke liye sufficient nahi tha; admin review queue mein rahega.",
+                        )
                 except AIReviewError as exc:
                     messages.warning(
                         request,
