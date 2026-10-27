@@ -16,11 +16,40 @@ from .models import (
 from .services import credit_verified_deposit
 
 
+@admin.action(description="Set FF-000004 demo balances to 10,000 each (non-cash test currency)")
+def set_ff000004_demo_balances(modeladmin, request, queryset):
+    from django.db import transaction
+    from apps.social.models import PlayerShopWallet
+
+    target = queryset.filter(pk=4).first()
+    if target is None:
+        modeladmin.message_user(
+            request,
+            "Select the account with internal user ID 4 (expected FF-000004). No balances changed.",
+            messages.WARNING,
+        )
+        return
+
+    with transaction.atomic():
+        wallet, _ = PlayerShopWallet.objects.select_for_update().get_or_create(user=target)
+        wallet.diamonds = 10000
+        wallet.coins = 10000
+        wallet.fan_tokens = 10000
+        wallet.save(update_fields=("diamonds", "coins", "fan_tokens", "updated_at"))
+
+    modeladmin.message_user(
+        request,
+        f"Demo balances set for {target.username} (FF-000004): 10,000 diamonds, 10,000 coins and 10,000 Fan Tokens. These are non-cash test balances.",
+        messages.SUCCESS,
+    )
+
+
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
     list_display = ("username", "gender", "profile_visibility", "phone_number", "free_fire_uid", "upi_id", "upi_verified", "phone_verified", "uid_verified", "is_active")
     search_fields = ("username", "phone_number", "free_fire_uid")
     list_filter = ("gender", "phone_verified", "uid_verified", "is_active", "is_staff")
+    actions = (set_ff000004_demo_balances,)
     fieldsets = UserAdmin.fieldsets + (
         ("Player Details", {"fields": (
             "phone_number", "gender", "profile_visibility", "phone_verified", "free_fire_uid",
