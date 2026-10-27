@@ -8,14 +8,11 @@ from .models import DepositRequest, User
 
 class PlayerRegistrationForm(UserCreationForm):
     email = forms.EmailField(required=True, label="Email Address")
-    phone_number = forms.CharField(max_length=15, required=True, label="Mobile Number")
-    upi_id = forms.CharField(max_length=100, required=True, label="Your UPI ID (required for prize payout)")
-    upi_qr_code = forms.ImageField(required=True, label="Upload your UPI QR code (required)")
 
     class Meta:
         model = User
         fields = (
-            "username", "email", "phone_number", "gender", "upi_id", "upi_qr_code",
+            "username", "email", "gender",
             "password1", "password2",
         )
 
@@ -67,14 +64,6 @@ class PlayerRegistrationForm(UserCreationForm):
         if "@" not in upi_id or any(char.isspace() for char in upi_id):
             raise forms.ValidationError("Valid UPI ID enter karein, jaise name@upi.")
         return upi_id
-
-    def clean(self):
-        cleaned = super().clean()
-        if not (cleaned.get("upi_id") or "").strip():
-            self.add_error("upi_id", "Account banane ke liye apni UPI ID dena zaroori hai.")
-        if not cleaned.get("upi_qr_code"):
-            self.add_error("upi_qr_code", "Account banane ke liye apna UPI QR code upload karna zaroori hai.")
-        return cleaned
 
     def clean_upi_qr_code(self):
         qr = self.cleaned_data.get("upi_qr_code")
@@ -132,7 +121,6 @@ class CurrencyWithdrawalRequestForm(forms.Form):
     )
     quantity = forms.IntegerField(min_value=1, label="Quantity to convert")
     upi_id = forms.CharField(max_length=100, label="UPI ID", widget=forms.TextInput(attrs={"placeholder": "yourname@upi"}))
-    upi_qr_code = forms.ImageField(required=True, label="Upload UPI QR code")
 
     def clean_upi_id(self):
         value = self.cleaned_data["upi_id"].strip()
@@ -140,19 +128,11 @@ class CurrencyWithdrawalRequestForm(forms.Form):
             raise forms.ValidationError("Valid UPI ID enter karein.")
         return value
 
-    def clean_upi_qr_code(self):
-        qr = self.cleaned_data.get("upi_qr_code")
-        if qr and qr.size > 2 * 1024 * 1024:
-            raise forms.ValidationError("UPI QR image 2 MB se chhoti honi chahiye.")
-        if qr and getattr(qr, "content_type", "") not in ("image/jpeg", "image/png", "image/webp"):
-            raise forms.ValidationError("UPI QR ke liye JPG, PNG ya WebP image upload karein.")
-        return qr
-
 
 class ProfileUpdateForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ("username", "email", "phone_number", "gender", "profile_photo", "upi_id", "upi_qr_code")
+        fields = ("username", "email", "gender", "profile_photo", "upi_id")
         widgets = {
             "username": forms.TextInput(attrs={"autocomplete": "username"}),
             "email": forms.EmailInput(attrs={"autocomplete": "email"}),
@@ -167,12 +147,9 @@ class ProfileUpdateForm(forms.ModelForm):
         self.fields["gender"].help_text = "Used to filter Boys-only and Girls-only tournaments."
         self.fields["username"].label = "Username / Player ID name"
         self.fields["email"].label = "Email address"
-        self.fields["phone_number"].label = "Mobile number"
         self.fields["profile_photo"].label = "Profile photo"
         self.fields["upi_id"].label = "UPI ID for tournament prize payout"
-        self.fields["upi_id"].required = True
-        self.fields["upi_qr_code"].label = "UPI QR code for prize payout (required if not already saved)"
-        self.fields["upi_qr_code"].required = not bool(self.instance and self.instance.pk and self.instance.upi_qr_code)
+        self.fields["upi_id"].required = False
         self.fields["profile_photo"].required = False
 
     def clean_username(self):
@@ -193,17 +170,6 @@ class ProfileUpdateForm(forms.ModelForm):
             raise forms.ValidationError("Ye email kisi aur account se linked hai.")
         return email
 
-    def clean_phone_number(self):
-        phone = self.cleaned_data["phone_number"].strip()
-        if not phone.isdigit() or not 10 <= len(phone) <= 15:
-            raise forms.ValidationError("10 se 15 digits ka valid mobile number enter karein.")
-        existing = User.objects.filter(phone_number=phone)
-        if self.instance and self.instance.pk:
-            existing = existing.exclude(pk=self.instance.pk)
-        if existing.exists():
-            raise forms.ValidationError("Ye mobile number kisi aur account se linked hai.")
-        return phone
-
     def clean_upi_id(self):
         upi_id = (self.cleaned_data.get("upi_id") or "").strip()
         if not upi_id:
@@ -211,14 +177,6 @@ class ProfileUpdateForm(forms.ModelForm):
         if "@" not in upi_id or any(char.isspace() for char in upi_id):
             raise forms.ValidationError("Valid UPI ID enter karein.")
         return upi_id
-
-    def clean_upi_qr_code(self):
-        qr = self.cleaned_data.get("upi_qr_code")
-        if qr and qr.size > 2 * 1024 * 1024:
-            raise forms.ValidationError("UPI QR image 2 MB se chhoti honi chahiye.")
-        if qr and hasattr(qr, "content_type") and qr.content_type not in ("image/jpeg", "image/png", "image/webp"):
-            raise forms.ValidationError("UPI QR ke liye JPG, PNG ya WebP image upload karein.")
-        return qr
 
     def clean_profile_photo(self):
         photo = self.cleaned_data.get("profile_photo")
