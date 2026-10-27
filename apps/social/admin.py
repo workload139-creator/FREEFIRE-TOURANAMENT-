@@ -1,4 +1,5 @@
 from django.contrib import admin, messages
+from django.utils.html import format_html
 
 from .models import FriendRequest, UserBlock, UserReport, PhotoPost, FFTickSubscription, PlayerShopWallet, ShopPaymentRequest, CurrencyWithdrawalRequest, DailySpin, FanTokenAward
 
@@ -184,12 +185,24 @@ def reject_currency_withdrawals(modeladmin, request, queryset):
 
 @admin.register(CurrencyWithdrawalRequest)
 class CurrencyWithdrawalAdmin(admin.ModelAdmin):
-    list_display = ("user", "currency", "quantity", "amount_inr", "upi_id", "upi_qr_code", "status", "payout_reference", "created_at")
+    list_display = ("user", "currency", "quantity", "amount_inr", "upi_id", "upi_qr_preview", "status", "payout_reference", "created_at")
     list_filter = ("status", "currency", "created_at")
     search_fields = ("user__username", "upi_id", "payout_reference")
-    readonly_fields = ("user", "currency", "quantity", "amount_inr", "upi_id", "upi_qr_code", "status", "created_at", "processed_at", "processed_by")
-    fields = ("user", "currency", "quantity", "amount_inr", "upi_id", "upi_qr_code", "status", "payout_reference", "created_at", "processed_at", "processed_by")
+    readonly_fields = ("user", "currency", "quantity", "amount_inr", "upi_id", "upi_qr_code", "upi_qr_preview", "status", "created_at", "processed_at", "processed_by")
+    fields = ("user", "currency", "quantity", "amount_inr", "upi_id", "upi_qr_code", "upi_qr_preview", "status", "payout_reference", "created_at", "processed_at", "processed_by")
     actions = (mark_currency_withdrawals_paid, reject_currency_withdrawals)
+
+    @admin.display(description="Uploaded UPI QR preview")
+    def upi_qr_preview(self, obj):
+        if not obj or not obj.upi_qr_code:
+            return "Player did not upload a withdrawal QR."
+        try:
+            return format_html(
+                '<a href="{}" target="_blank" rel="noopener"><img src="{}" width="140" height="140" style="object-fit:contain;background:#fff;padding:6px;border-radius:8px" alt="Withdrawal UPI QR"></a>',
+                obj.upi_qr_code.url, obj.upi_qr_code.url,
+            )
+        except (ValueError, OSError):
+            return "QR uploaded but file is unavailable."
 
 
 @admin.register(DailySpin)
