@@ -63,12 +63,6 @@ def register_view(request):
 def login_view(request):
     next_url = request.POST.get("next") or request.GET.get("next", "")
     if request.user.is_authenticated:
-        if not (request.user.upi_id or "").strip() and not request.user.upi_qr_code:
-            messages.info(request, "Prize receive karne ke liye apni UPI ID ya QR code profile mein add karein.")
-            target = reverse("accounts:profile_edit")
-            if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
-                target += "?next=" + quote(next_url, safe="")
-            return redirect(target)
         if next_url and url_has_allowed_host_and_scheme(
             next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
         ):
@@ -81,12 +75,6 @@ def login_view(request):
             user = form.get_user()
             login(request, user)
             messages.success(request, "Login successful!")
-            if not (user.upi_id or "").strip() and not user.upi_qr_code:
-                messages.info(request, "Prize receive karne ke liye apni UPI ID ya QR code profile mein add karein.")
-                target = reverse("accounts:profile_edit")
-                if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
-                    target += "?next=" + quote(next_url, safe="")
-                return redirect(target)
             if next_url and url_has_allowed_host_and_scheme(
                 next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
             ):
