@@ -4,7 +4,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.accounts.models import AdminWallet, AdminWalletTransaction, Wallet, WalletTransaction
-from .models import Registration, Tournament
+from .models import Registration, Tournament, TournamentLedgerEntry
 
 
 @transaction.atomic
@@ -51,6 +51,20 @@ def mark_not_playing_and_refund(registration_id):
         registration.refund_processed_at = timezone.now()
         registration.refund_reference = f"REG-CURRENCY-REFUND-{registration.pk}"
         registration.save(update_fields=["status", "room_details_sent", "refund_processed", "refund_processed_at", "refund_reference", "updated_at"])
+        TournamentLedgerEntry.objects.get_or_create(
+            reference=registration.refund_reference,
+            defaults={
+                "tournament": registration.tournament,
+                "player": registration.player,
+                "registration": registration,
+                "entry_type": TournamentLedgerEntry.EntryType.REFUND,
+                "currency": registration.payment_method,
+                "quantity": registration.currency_amount,
+                "amount_inr": registration.entry_fee_paid,
+                "status": TournamentLedgerEntry.Status.COMPLETED,
+                "description": "Currency refunded after missed ready confirmation",
+            },
+        )
         return True, "Player marked NOT_PLAYING and currency refunded."
 
     amount = Decimal(str(registration.entry_fee_paid))
@@ -146,6 +160,20 @@ def cancel_tournament_and_refund(tournament_id):
             registration.refund_processed_at = timezone.now()
             registration.refund_reference = f"TOURNEY-CURRENCY-REFUND-{registration.pk}"
             registration.save(update_fields=["status", "refund_processed", "refund_processed_at", "refund_reference", "updated_at"])
+            TournamentLedgerEntry.objects.get_or_create(
+                reference=registration.refund_reference,
+                defaults={
+                    "tournament": tournament,
+                    "player": registration.player,
+                    "registration": registration,
+                    "entry_type": TournamentLedgerEntry.EntryType.REFUND,
+                    "currency": registration.payment_method,
+                    "quantity": registration.currency_amount,
+                    "amount_inr": registration.entry_fee_paid,
+                    "status": TournamentLedgerEntry.Status.COMPLETED,
+                    "description": "Currency refunded because tournament was cancelled",
+                },
+            )
             refunded += 1
             continue
         reference = f"TOURNEY-CANCEL-REFUND-{registration.pk}"
