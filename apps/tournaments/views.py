@@ -352,6 +352,10 @@ def kill_submission(request, registration_id):
                         submission.ai_review_notes = ai_result["reason"]
                         if auto_approved:
                             from apps.social.models import PlayerShopWallet
+                            submission.proposed_reward = (
+                                Decimal(proposed_kills) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
+                                if proposed_kills > 0 else Decimal("0.00")
+                            )
                             submission.approved_kills = proposed_kills
                             submission.approved_reward = submission.proposed_reward
                             submission.status = KillSubmission.Status.APPROVED
