@@ -1,7 +1,10 @@
 from datetime import timedelta
 from decimal import Decimal
 
+from django.conf import settings
+from django.core.mail import send_mail
 from django.db import transaction
+from django.urls import reverse
 from django.utils import timezone
 
 from .models import Registration, Tournament, TournamentLedgerEntry
@@ -9,6 +12,90 @@ from .models import Registration, Tournament, TournamentLedgerEntry
 
 class RegistrationError(Exception):
     """Raised when a tournament registration cannot proceed."""
+
+
+def send_unlimited_live_notifications(tournament_id):
+    """Email the admin and all verified entrants after a 49-player Unlimited round starts."""
+    tournament = Tournament.objects.filter(
+        pk=tournament_id, is_unlimited_br=True, status=Tournament.Status.LIVE
+    ).first()
+    if not tournament:
+        return
+
+    registrations = list(
+        Registration.objects.filter(
+            tournament=tournament,
+            payment_verified=True,
+            refund_processed=False,
+            status__in=[
+                Registration.Status.CONFIRMED,
+                Registration.Status.WAITING_READY,
+                Registration.Status.READY,
+            ],
+        ).select_related("player").order_by("registered_at")
+    )
+    admin_recipients = []
+    configured_admin = getattr(settings, "TOURNAMENT_ADMIN_EMAIL", "").strip()
+    if configured_admin:
+        admin_recipients.append(configured_admin)
+    for entry in getattr(settings, "ADMINS", []):
+        email = (entry[1] or "").strip()
+        if email and email not in admin_recipients:
+            admin_recipients.append(email)
+
+    tournament_url = settings.SITE_URL + reverse("tournaments:detail", args=[tournament.pk])
+    subject = f"FF Arena Unlimited Tournament is LIVE: {tournament.title}"
+    admin_message = (
+        f"Unlimited Tournament is now LIVE.\n\n"
+        f"Name: {tournament.title}\n"
+        f"Players: {len(registrations)}/{tournament.max_players}\n"
+        f"Entry fee: INR {tournament.entry_fee}\n"
+        f"Started at: {timezone.localtime(timezone.now()).strftime('%d %b %Y, %I:%M %p')}\n"
+        f"Tournament page: {tournament_url}\n"
+    )
+    success_count = 0
+    failure_count = 0
+    for recipient in admin_recipients:
+        try:
+            success_count += send_mail(
+                subject, admin_message, settings.DEFAULT_FROM_EMAIL, [recipient],
+                fail_silently=False,
+            )
+        except Exception:
+            failure_count += 1
+
+    for registration in registrations:
+        email = (registration.player.email or "").strip()
+        if not email:
+            failure_count += 1
+            continue
+        player_message = (
+            f"Hi {registration.player.username},\n\n"
+            f"Your Unlimited Tournament, {tournament.title}, is now LIVE!\n"
+            f"Your Free Fire UID: {registration.free_fire_uid}\n"
+            f"Entry fee paid by: {registration.get_payment_method_display()}\n"
+            f"Players: {len(registrations)}/{tournament.max_players}\n\n"
+            f"Open tournament page: {tournament_url}\n\n"
+            "Room ID/password will be shared only through the website when the admin enables access.\n"
+        )
+        try:
+            success_count += send_mail(
+                subject, player_message, settings.DEFAULT_FROM_EMAIL, [email],
+                fail_silently=False,
+            )
+        except Exception:
+            failure_count += 1
+
+    expected_count = len(registrations) + len(admin_recipients)
+    tournament.live_notification_status = (
+        "sent" if failure_count == 0 and success_count >= expected_count
+        else ("partial" if success_count else "failed")
+    )
+    if success_count:
+        tournament.live_notification_sent_at = timezone.now()
+    tournament.save(update_fields=[
+        "live_notification_sent_at", "live_notification_status", "updated_at",
+    ])
 
 
 @transaction.atomic
@@ -116,9 +203,12 @@ def create_pending_registration(*, tournament_id, player, free_fire_uid, payment
             payment_verified=True,
             status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
         ).count()
-        if active_count >= tournament.max_players:
+        if active_count >= tournament.max_players and tournament.status != Tournament.Status.LIVE:
             tournament.status = Tournament.Status.LIVE
             tournament.save(update_fields=["status", "updated_at"])
+            transaction.on_commit(
+                lambda tournament_id=tournament.pk: send_unlimited_live_notifications(tournament_id)
+            )
             root_id = tournament.series_root_id or tournament.pk
             root = Tournament.objects.select_for_update().get(pk=root_id)
             if root.auto_reopen:
