@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}AI Assessment Queue | FF Tournament{% endblock %}
+{% block content %}
+<section class="container" style="max-width:1180px;margin:28px auto;padding:18px">
+  <header class="tournament-card" style="padding:22px;border-radius:16px">
+    <h1>🤖 AI Assessment Queue</h1>
+    <p>Website evidence checks ke baad OpenAI aur configured open-source model ka result yahan dekhein. Sirf dono ke high-confidence agreement, exact UID match, valid video/screenshots aur minimum kills par automatic Diamonds credit hota hai. Baaki submissions Admin Review mein jayengi.</p>
+    <nav style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0">
+      <a class="button button-outline" href="{% url 'tournaments:admin_kill_review' %}">Manual Admin Review</a>
+      <a class="button button-outline" href="{% url 'tournaments:admin_ai_sources' %}">AI Sources / Diagnostics</a>
+    </nav>
+    <p><strong>Pending:</strong> {{ pending_count }} · <strong>Approved:</strong> {{ approved_count }} · <strong>Rejected:</strong> {{ rejected_count }}</p>
+    <form method="get" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <label for="status">Filter status</label>
+      <select id="status" name="status">
+        <option value="">All statuses</option>
+        {% for value,label in status_choices %}<option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+      <button class="button button-primary" type="submit">Filter</button>
+    </form>
+  </header>
+  {% for item in submissions %}
+  <article class="tournament-card" style="padding:18px;margin:16px 0;border-radius:14px">
+    <h2>Submission #{{ item.pk }} · {{ item.player.username }} · {{ item.tournament.title }}</h2>
+    <p><strong>Status:</strong> {{ item.get_status_display }} · <strong>UID:</strong> registered {{ item.registered_uid }} / submitted {{ item.free_fire_uid }}</p>
+    <p><strong>Website UID equality:</strong> {% if item.registered_uid == item.free_fire_uid and item.registered_uid == item.registration.free_fire_uid %}Pass{% else %}FAIL{% endif %} · <strong>AI UID match:</strong> {{ item.ai_uid_matches|yesno:"Yes,No,Unknown" }}</p>
+    <p><strong>AI proposed kills:</strong> {{ item.ai_proposed_kills|default_if_none:"Not available" }} · <strong>Confidence:</strong> {{ item.ai_confidence|default:"Unknown" }} · <strong>Suggested/approved Diamonds:</strong> {{ item.approved_reward|default:item.proposed_reward|floatformat:0 }}</p>
+    <p><strong>AI reason / mistake:</strong><br>{{ item.ai_review_notes|default:"Assessment not run yet." }}</p>
+    <p><strong>Admin correction notes:</strong> {{ item.admin_notes|default:"None" }}</p>
+    {% if item.status == "pending" %}<a class="button button-primary" href="{% url 'tournaments:admin_kill_review' %}?submission={{ item.pk }}">Open Admin Review / Revise</a>{% endif %}
+  </article>
+  {% empty %}<p class="tournament-card" style="padding:20px">No assessments found.</p>{% endfor %}
+</section>
+{% endblock %}
