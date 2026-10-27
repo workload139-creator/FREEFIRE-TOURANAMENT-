@@ -229,7 +229,7 @@ def cancel_tournament_and_refund(tournament_id):
 
 @transaction.atomic
 def process_expired_ready_registrations(limit=500):
-    """Refund and mark players who missed the 60-second room confirmation window."""
+    """Mark players who missed the 10-minute room confirmation window."""
     now = timezone.now()
     registration_ids = list(
         Registration.objects.filter(
