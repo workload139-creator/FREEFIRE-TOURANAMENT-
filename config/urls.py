@@ -18,11 +18,6 @@ urlpatterns = [
         serve,
         {"document_root": settings.MEDIA_ROOT / "player_profiles"},
     ),
-    re_path(
-        r"^media/player_upi_qr/(?P<path>.*)$",
-        serve,
-        {"document_root": settings.MEDIA_ROOT / "player_upi_qr"},
-    ),
     path("health/", health_check, name="health_check"),
     path("terms/", terms, name="terms"),
     path("privacy/", privacy_policy, name="privacy_policy"),
