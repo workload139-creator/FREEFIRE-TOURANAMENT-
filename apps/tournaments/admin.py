@@ -703,16 +703,16 @@ class KillSubmissionAdmin(admin.ModelAdmin):
             "description": "Video aur dono screenshots ko open karke match history, kills aur UID visually check karein.",
             "fields": ("history_video", "history_image_one", "history_image_two"),
         }),
-        ("3. AI Initial Review — suggestion only", {
-            "description": "Pehle row checkbox select karke Actions → Run / retry AI review chala sakte hain. Iske liye Render Environment mein OPENAI_API_KEY aur video frame extraction ke liye imageio-ffmpeg/FFmpeg chahiye. AI sirf proposal hai; final decision admin karega.",
+        ("3. AI Review & automatic Diamond reward", {
+            "description": "Player upload par AI review automatic chalta hai. High-confidence UID match par BR ke har verified kill ke ₹5 equivalent Diamonds automatically credit hote hain. Low confidence, UID mismatch, or AI failure cases pending rehte hain; row checkbox select karke Actions → Run / retry AI review chala sakte hain. Render mein OPENAI_API_KEY aur imageio-ffmpeg/FFmpeg chahiye.",
             "fields": ("ai_proposed_kills", "ai_confidence", "ai_uid_matches", "ai_review_notes", "proposed_reward"),
         }),
-        ("4. Admin Final Decision — REQUIRED", {
-            "description": "Evidence dekhne ke baad approved kills, approved reward, status aur admin notes yahan set karein.",
+        ("4. Manual fallback — only unclear cases", {
+            "description": "Sirf low-confidence/unclear evidence ko inspect karke approved kills, approved reward, status aur admin notes set karein. BR reward Diamonds mein player ke shop wallet mein credit hota hai; UPI payout ke liye alag withdrawal request chahiye.",
             "fields": ("approved_kills", "approved_reward", "status", "admin_notes"),
         }),
-        ("5. Prize Payout Tracking", {
-            "description": "Prize ko manually UPI se bhejne ke baad real UTR/reference enter karein, phir list action se Paid mark karein.",
+        ("5. Legacy payout fields", {
+            "description": "Purane manual UPI prize records ke liye ye fields rakhe gaye hain. Naye AI kill rewards Diamonds ke roop mein credit hote hain; actual INR withdrawal Currency Withdrawal queue mein handle karein.",
             "fields": ("payout_reference", "payout_status", "payout_paid_at"),
         }),
         ("Submission timestamps", {"fields": ("submitted_at", "reviewed_at")}),
