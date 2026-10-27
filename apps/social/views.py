@@ -347,27 +347,58 @@ def _shop_payment_qr_data_uri():
 
 @login_required
 def ff_tick_view(request):
+    """Activate the platform's own FF Tick using non-cash Diamonds, never UPI/QR."""
+    from datetime import timedelta
+    from django.db import transaction
     from django.utils import timezone
+
+    now = timezone.now()
+    current = FFTickSubscription.objects.filter(
+        user=request.user, status=FFTickSubscription.Status.ACTIVE, expires_at__gt=now
+    ).order_by("-expires_at").first()
+    latest = FFTickSubscription.objects.filter(user=request.user).first()
+
+    if request.method == "POST":
+        if current:
+            messages.info(request, f"FF Tick pehle se active hai: {current.expires_at:%d %b %Y} tak.")
+            return redirect("social:ff_tick")
+
+        with transaction.atomic():
+            wallet, _ = PlayerShopWallet.objects.get_or_create(user=request.user)
+            wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
+            cost = 100  # 100 non-cash Diamonds = 3 months of FF Arena's own badge
+            if wallet.diamonds < cost:
+                messages.error(request, "FF Tick ke liye 100 Diamonds chahiye. Diamond Shop se lo ya eligible tournament rewards se kamao.")
+            else:
+                active = FFTickSubscription.objects.select_for_update().filter(
+                    user=request.user,
+                    status=FFTickSubscription.Status.ACTIVE,
+                    expires_at__gt=now,
+                ).order_by("-expires_at").first()
+                if active:
+                    messages.info(request, f"FF Tick already active hai: {active.expires_at:%d %b %Y} tak.")
+                else:
+                    wallet.diamonds -= cost
+                    wallet.save(update_fields=("diamonds", "updated_at"))
+                    FFTickSubscription.objects.create(
+                        user=request.user,
+                        amount=0,
+                        duration_months=3,
+                        payment_reference="",
+                        payment_screenshot="",
+                        status=FFTickSubscription.Status.ACTIVE,
+                        verified_at=now,
+                        expires_at=now + timedelta(days=90),
+                    )
+                    messages.success(request, "✓ FF Tick 3 months ke liye activate ho gaya. 100 Diamonds use hue.")
+                    return redirect("social:ff_tick")
+
     current = FFTickSubscription.objects.filter(
         user=request.user, status=FFTickSubscription.Status.ACTIVE, expires_at__gt=timezone.now()
-    ).first()
+    ).order_by("-expires_at").first()
     latest = FFTickSubscription.objects.filter(user=request.user).first()
-    if request.method == "POST":
-        reference = request.POST.get("payment_reference", "").strip()[:100]
-        screenshot = request.FILES.get("payment_screenshot")
-        if not reference:
-            messages.error(request, "Payment ke baad real UPI UTR/reference bharein.")
-        elif not screenshot:
-            messages.error(request, "Payment screenshot upload karna zaroori hai.")
-        elif screenshot.size > 5 * 1024 * 1024 or getattr(screenshot, "content_type", "") not in ("image/jpeg", "image/png", "image/webp"):
-            messages.error(request, "Screenshot JPG/PNG/WebP ho aur 5 MB se chhota ho.")
-        elif FFTickSubscription.objects.filter(payment_reference=reference).exclude(status=FFTickSubscription.Status.REJECTED).exists():
-            messages.error(request, "Ye payment reference pehle submit ho chuka hai.")
-        else:
-            FFTickSubscription.objects.create(user=request.user, amount=100, duration_months=3, payment_reference=reference, payment_screenshot=screenshot)
-            messages.success(request, "FF Tick request admin ko bhej di. Payment verify hone ke baad hi badge active hoga.")
-            return redirect("social:ff_tick")
-    return render(request, "social/ff_tick.html", {"current": current, "latest": latest, "payment_qr_data_uri": _shop_payment_qr_data_uri()})
+    wallet, _ = PlayerShopWallet.objects.get_or_create(user=request.user)
+    return render(request, "social/ff_tick.html", {"current": current, "latest": latest, "shop_wallet": wallet})
 
 
 @login_required
