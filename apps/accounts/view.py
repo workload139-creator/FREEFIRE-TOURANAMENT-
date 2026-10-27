@@ -49,7 +49,7 @@ def register_view(request):
                     )
                 messages.success(
                     request,
-                    f"Account successfully created! Aapka username: {final_username}. Email verified hai; phone aur Free Fire UID verification abhi pending hain.",
+                    f"Account successfully created! Aapka username: {final_username}. Email verified hai; Free Fire UID tournament registration ke waqt verify hogi.",
                 )
                 return redirect("accounts:profile")
             except IntegrityError:
