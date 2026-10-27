@@ -162,7 +162,7 @@ def confirm_playing(request, registration_id):
             messages.error(request, "Room details abhi available nahi hain.")
             return redirect("tournaments:list")
         if not registration.ready_deadline or timezone.now() >= registration.ready_deadline:
-            messages.error(request, "Confirmation ka 60-second time khatam ho gaya. Admin se contact karein.")
+            messages.error(request, "Confirmation ke 10 minute khatam ho gaye. Admin se contact karein.")
             return redirect("tournaments:player_room", registration_id=registration.pk)
 
         registration.status = Registration.Status.READY
@@ -203,11 +203,8 @@ def send_room_details(request, tournament_id):
 
     with transaction.atomic():
         tournament = get_object_or_404(Tournament.objects.select_for_update(), pk=tournament_id)
-        allowed_statuses = [Tournament.Status.UPCOMING]
-        if tournament.is_unlimited_br:
-            allowed_statuses.append(Tournament.Status.LIVE)
-        if tournament.status not in allowed_statuses:
-            messages.error(request, "Is tournament status mein room details set nahi kar sakte.")
+        if tournament.status != Tournament.Status.LIVE:
+            messages.error(request, "Room details sirf tournament LIVE hone ke baad release ki ja sakti hain.")
             return redirect("tournaments:admin_room_page", tournament_id=tournament_id)
 
         tournament.room_id = room_id
@@ -223,10 +220,12 @@ def send_room_details(request, tournament_id):
         eligible.update(
             status=Registration.Status.WAITING_READY,
             room_details_sent=True,
-            ready_deadline=now + timedelta(seconds=60),
+            ready_deadline=now + timedelta(minutes=10),
+            ready_confirmed_at=None,
+            room_details_sent=True,
         )
 
-    messages.success(request, "Room details set ho gayi. Eligible paid players ko 60 seconds ke andar YES confirm karna hoga.")
+    messages.success(request, "Room details set ho gayi. Eligible paid players ko 10 minute ke andar YES confirm karna hoga.")
     return redirect("tournaments:admin_room_page", tournament_id=tournament_id)
 
 
