@@ -38,15 +38,13 @@ def mark_not_playing_and_refund(registration_id):
         ])
         return True, "Player marked NOT_PLAYING; actual UPI refund is pending admin transfer and UTR entry."
 
-    if registration.payment_method in ("diamonds", "coins") and registration.currency_amount > 0:
+    if registration.payment_method in ("diamonds", "coins", "fan_tokens") and registration.currency_amount > 0:
         from apps.social.models import PlayerShopWallet
         shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=registration.player)
         shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
-        if registration.payment_method == "diamonds":
-            shop_wallet.diamonds += registration.currency_amount
-        else:
-            shop_wallet.coins += registration.currency_amount
-        shop_wallet.save(update_fields=["diamonds", "coins", "updated_at"])
+        field = {"diamonds": "diamonds", "coins": "coins", "fan_tokens": "fan_tokens"}[registration.payment_method]
+        setattr(shop_wallet, field, getattr(shop_wallet, field) + registration.currency_amount)
+        shop_wallet.save(update_fields=["diamonds", "coins", "fan_tokens", "updated_at"])
         registration.status = Registration.Status.NOT_PLAYING
         registration.room_details_sent = False
         registration.refund_processed = True
