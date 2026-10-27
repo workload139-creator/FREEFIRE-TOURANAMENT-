@@ -104,6 +104,6 @@
     </div>
 
     <a href="{% url 'tournaments:admin_room_page' tournament.id %}" class="btn btn-primary mt-3">Manage Room Details</a>
-    <a href="/admin/apps/tournaments/registration/" class="btn btn-outline-secondary mt-3">Open Registration Admin</a>
+    <a href="/admin/tournaments/registration/?tournament__id__exact={{ tournament.id }}" class="btn btn-outline-secondary mt-3">Open Registration Admin</a>
 </div>
 {% endblock %}
