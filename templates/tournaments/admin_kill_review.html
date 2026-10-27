@@ -1,39 +1,103 @@
 {% extends "base.html" %}
-{% block title %}Kill Review | FF Arena{% endblock %}
+{% block title %}Admin Kill Review | FF Tournament{% endblock %}
 {% block content %}
-<section class="container" style="max-width:1200px;margin:35px auto;padding:20px">
-    <h1>Admin — Kill Evidence Review{% if selected_tournament_id %} · Tournament #{{ selected_tournament_id }}{% endif %}</h1>
-    {% if selected_tournament_id %}<p><a href="{% url 'tournaments:admin_kill_review' %}">View all tournaments</a></p>{% endif %}
-    <p>Video aur dono screenshots manually check karein. AI sirf kills suggest karta hai; final confirmation admin karega. Minimum 2 verified kills par approved kill count ke hisaab se configured rate ke mutabik Diamonds shop wallet mein credit honge. Yeh Diamonds hain, INR/UPI cash payout nahi. UID mismatch, fake/edited evidence ya unclear video ho to approve na karein.</p>
-    {% for submission in submissions %}
-    <article class="tournament-card" style="padding:22px;margin:18px 0;border-radius:14px">
-        <h2>{{ submission.player.username }} — {{ submission.tournament.title }}</h2>
-        {% if submission.player.profile_photo %}<p><a href="{{ submission.player.profile_photo.url }}" target="_blank" rel="noopener"><img src="{{ submission.player.profile_photo.url }}" width="100" height="100" style="object-fit:cover;border-radius:12px" alt="Player profile photo"></a></p>{% else %}<p>Player profile photo: not uploaded</p>{% endif %}
-        <p>Registration UID: <strong>{{ submission.registered_uid }}</strong> · Submitted UID: <strong>{{ submission.free_fire_uid }}</strong></p>
-        <p>Submitted: {{ submission.submitted_at|date:"d M Y, h:i A" }}</p>
-        <p><strong>Prize payout details:</strong> {{ submission.player.upi_id|default:"UPI ID not saved" }} {% if submission.player.upi_qr_code %}· <a href="{{ submission.player.upi_qr_code.url }}" target="_blank" rel="noopener">Open player UPI QR</a>{% else %}· No uploaded UPI QR{% endif %}</p>
-        <p><strong>AI proposed kills:</strong> {{ submission.ai_proposed_kills|default_if_none:"Not available" }} · <strong>Confidence:</strong> {{ submission.ai_confidence|default:"N/A" }} · <strong>AI UID match:</strong> {{ submission.ai_uid_matches|yesno:"Yes,No,Unknown" }}</p>
-        {% if submission.ai_review_notes %}<p><strong>AI notes:</strong> {{ submission.ai_review_notes }}</p>{% endif %}
-        {% if submission.ai_uid_matches == False %}<p class="message error">AI ko UID mismatch ka doubt hai. Files ko carefully verify karo.</p>{% endif %}
-        <ul>
-            <li>{% if submission.history_video %}<a href="{{ submission.history_video.url }}" target="_blank" rel="noopener">Open match-history video</a>{% else %}Video missing{% endif %}</li>
-            <li>{% if submission.history_image_one %}<a href="{{ submission.history_image_one.url }}" target="_blank" rel="noopener">Open screenshot 1</a>{% else %}Screenshot 1 missing{% endif %}</li>
-            <li>{% if submission.history_image_two %}<a href="{{ submission.history_image_two.url }}" target="_blank" rel="noopener">Open screenshot 2</a>{% else %}Screenshot 2 missing{% endif %}</li>
-        </ul>
-        <form method="post" action="{% url 'tournaments:review_kill_submission' submission.id %}">
-            {% csrf_token %}
-            <label for="approved-kills-{{ submission.id }}">Admin-approved kills</label>
-            <input id="approved-kills-{{ submission.id }}" type="number" name="approved_kills" min="0" max="99" value="{{ submission.ai_proposed_kills|default_if_none:'' }}">
-            <label for="notes-{{ submission.id }}">Admin notes</label>
-            <textarea id="notes-{{ submission.id }}" name="admin_notes" rows="2"></textarea>
-            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px">
-                <button class="button button-primary" type="submit" name="decision" value="approve">Confirm Kills &amp; Credit Diamonds</button>
-                <button class="button button-outline" type="submit" name="decision" value="reject">Reject Submission</button>
-            </div>
-        </form>
-    </article>
-    {% empty %}
-    <div class="tournament-card" style="padding:24px"><p>Abhi koi pending submission nahi hai.</p></div>
-    {% endfor %}
+<section class="container" style="max-width:1120px;margin:28px auto;padding:18px">
+  <header class="tournament-card" style="padding:22px;border-radius:16px;margin-bottom:20px">
+    <h1 style="margin-top:0">🎯 Admin Kill Review</h1>
+    <p>Yahin evidence check, AI retry aur final confirmation manage karein. AI ka result sirf suggestion hai; Diamonds tabhi milenge jab admin verified kills confirm kare.</p>
+    <p><strong>AI provider:</strong> {{ ai_provider }} · <strong>Model:</strong> {{ ai_model }}</p>
+    <p><strong>OpenAI key configured:</strong> {{ ai_openai_configured|yesno:"Yes,No" }} · <strong>Compatible vision endpoint configured:</strong> {{ ai_compatible_configured|yesno:"Yes,No" }}</p>
+    <p><strong>Reward rule:</strong> Minimum {{ minimum_verified_kills }} verified kills; {{ diamonds_per_kill }} Diamonds per approved kill. Example: 3 kills = {{ diamonds_per_kill|add:diamonds_per_kill|add:diamonds_per_kill }} Diamonds. Diamonds are not cash/UPI money.</p>
+    {% if selected_tournament_id %}<p><a href="{% url 'tournaments:admin_kill_review' %}">View all pending submissions</a></p>{% endif %}
+  </header>
+
+  {% for submission in submissions %}
+  <article class="tournament-card" style="padding:22px;margin:20px 0;border-radius:16px">
+    <h2 style="margin-top:0">Submission #{{ submission.pk }} — {{ submission.player.username }}</h2>
+    <p><strong>Current status:</strong> {{ submission.get_status_display }} · <strong>Submitted:</strong> {{ submission.submitted_at|date:"d M Y, h:i A" }}</p>
+
+    <section style="padding:16px;border:1px solid var(--border-color, #777);border-radius:12px;margin:14px 0">
+      <h3>1. Player profile and tournament</h3>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+        {% if submission.player.profile_photo %}
+          <a href="{{ submission.player.profile_photo.url }}" target="_blank" rel="noopener"><img src="{{ submission.player.profile_photo.url }}" alt="Player profile photo" style="width:92px;height:92px;object-fit:cover;border-radius:12px"></a>
+        {% else %}<p>Profile photo not uploaded.</p>{% endif %}
+        <div>
+          <p><strong>Username:</strong> {{ submission.player.username }} · <strong>Profile ID:</strong> {{ submission.player_id }}</p>
+          <p><strong>Email:</strong> {{ submission.player.email|default:"Not provided" }} · <strong>Phone:</strong> {{ submission.player.phone_number|default:"Not provided" }}</p>
+          <p><strong>Tournament:</strong> {{ submission.tournament.title }} · <strong>Mode:</strong> {{ submission.tournament.get_mode_display }}{% if submission.tournament.vs_format %} ({{ submission.tournament.vs_format }}){% endif %}</p>
+          <p><strong>Entry fee:</strong> ₹{{ submission.registration.entry_fee_paid }} · <strong>Payment verified:</strong> {{ submission.registration.payment_verified|yesno:"Yes,No" }}</p>
+          <p><strong>Registered UID:</strong> {{ submission.registered_uid }} · <strong>Submitted UID:</strong> {{ submission.free_fire_uid }}</p>
+        </div>
+      </div>
+    </section>
+
+    <section style="padding:16px;border:1px solid var(--border-color, #777);border-radius:12px;margin:14px 0">
+      <h3>2. AI assessment</h3>
+      <p><strong>AI proposed kills:</strong> {{ submission.ai_proposed_kills|default_if_none:"Not available" }} · <strong>Confidence:</strong> {{ submission.ai_confidence|default:"Unknown" }} · <strong>AI UID match:</strong> {{ submission.ai_uid_matches|yesno:"Yes,No,Unknown" }}</p>
+      <p><strong>AI review notes/error:</strong><br>{{ submission.ai_review_notes|default:"AI has not returned a result yet." }}</p>
+      <p><strong>Suggested reward:</strong> {{ submission.proposed_reward|floatformat:0 }} Diamonds (only if the evidence and UID are accepted; final count is set below).</p>
+      <form method="post" action="{% url 'tournaments:retry_ai_kill_review' submission.id %}" style="margin-top:12px">
+        {% csrf_token %}
+        <button class="button button-outline" type="submit">Run / Retry AI Review</button>
+      </form>
+      <p><small>If retry fails with “Video duration could not be verified”, upload a playable original match-history clip around 15–30 seconds. A random Google video is not valid proof of this player's kills.</small></p>
+    </section>
+
+    <section style="padding:16px;border:1px solid var(--border-color, #777);border-radius:12px;margin:14px 0">
+      <h3>3. Match evidence — open and inspect</h3>
+      {% if submission.history_video %}
+        <p><a href="{{ submission.history_video.url }}" target="_blank" rel="noopener">Open video in a new tab</a></p>
+        <video controls preload="metadata" style="display:block;width:100%;max-width:720px;max-height:420px;background:#111;border-radius:10px">
+          <source src="{{ submission.history_video.url }}">
+          Your browser cannot play this video. Use the open-video link above.
+        </video>
+      {% else %}<p>Video missing.</p>{% endif %}
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:16px">
+        <div style="max-width:320px;flex:1;min-width:220px">
+          <h4>Match-history screenshot 1</h4>
+          {% if submission.history_image_one %}
+            <a href="{{ submission.history_image_one.url }}" target="_blank" rel="noopener"><img src="{{ submission.history_image_one.url }}" alt="Match-history screenshot one" style="width:100%;max-width:320px;height:auto;border-radius:10px"></a>
+            <p><a href="{{ submission.history_image_one.url }}" target="_blank" rel="noopener">Open full screenshot</a></p>
+          {% else %}<p>Screenshot missing.</p>{% endif %}
+        </div>
+        <div style="max-width:320px;flex:1;min-width:220px">
+          <h4>Match-history screenshot 2</h4>
+          {% if submission.history_image_two %}
+            <a href="{{ submission.history_image_two.url }}" target="_blank" rel="noopener"><img src="{{ submission.history_image_two.url }}" alt="Match-history screenshot two" style="width:100%;max-width:320px;height:auto;border-radius:10px"></a>
+            <p><a href="{{ submission.history_image_two.url }}" target="_blank" rel="noopener">Open full screenshot</a></p>
+          {% else %}<p>Screenshot missing.</p>{% endif %}
+        </div>
+      </div>
+    </section>
+
+    <section style="padding:16px;border:1px solid var(--border-color, #777);border-radius:12px;margin:14px 0">
+      <h3>4. Player payout profile (for separate cash withdrawal)</h3>
+      <p><strong>UPI ID:</strong> {{ submission.player.upi_id|default:"Not saved in profile" }}</p>
+      {% if submission.player.upi_qr_code %}
+        <a href="{{ submission.player.upi_qr_code.url }}" target="_blank" rel="noopener"><img src="{{ submission.player.upi_qr_code.url }}" alt="Player UPI QR" style="width:150px;height:150px;object-fit:contain;background:#fff;padding:6px;border-radius:10px"></a>
+      {% else %}<p>UPI QR not uploaded.</p>{% endif %}
+      <p>Kill-confirmation Diamonds go to the player's shop wallet. This button does not send cash to UPI.</p>
+    </section>
+
+    <section style="padding:16px;border:1px solid var(--border-color, #777);border-radius:12px;margin:14px 0">
+      <h3>5. Final admin decision</h3>
+      <form method="post" action="{% url 'tournaments:review_kill_submission' submission.id %}">
+        {% csrf_token %}
+        <label for="approved-kills-{{ submission.id }}"><strong>Verified kills (count only what the real evidence proves)</strong></label>
+        <input id="approved-kills-{{ submission.id }}" type="number" name="approved_kills" min="0" max="99" value="{{ submission.ai_proposed_kills|default_if_none:'' }}" style="display:block;max-width:240px;width:100%;margin:8px 0 14px">
+        <label for="notes-{{ submission.id }}"><strong>Admin notes</strong></label>
+        <textarea id="notes-{{ submission.id }}" name="admin_notes" rows="3" style="display:block;width:100%;margin:8px 0 14px" placeholder="Evidence reviewed, UID check, reason for decision..."></textarea>
+        <p>Confirmation awards {{ diamonds_per_kill }} Diamonds per kill if at least {{ minimum_verified_kills }} kills are verified. UID must match registration. Confirm only after checking the actual video and screenshots.</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <button class="button button-primary" type="submit" name="decision" value="approve">Confirm Kills &amp; Credit Diamonds</button>
+          <button class="button button-outline" type="submit" name="decision" value="reject">Reject Submission</button>
+        </div>
+      </form>
+    </section>
+  </article>
+  {% empty %}
+    <div class="tournament-card" style="padding:24px;border-radius:14px"><p>No pending kill submissions right now.</p></div>
+  {% endfor %}
 </section>
 {% endblock %}
