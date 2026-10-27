@@ -1,6 +1,6 @@
 from django.contrib import admin, messages
 
-from .models import FriendRequest, UserBlock, UserReport, PhotoPost, FFTickSubscription, PlayerShopWallet, ShopPaymentRequest, CurrencyWithdrawalRequest
+from .models import FriendRequest, UserBlock, UserReport, PhotoPost, FFTickSubscription, PlayerShopWallet, ShopPaymentRequest, CurrencyWithdrawalRequest, DailySpin
 
 
 @admin.register(FriendRequest)
@@ -151,3 +151,15 @@ class CurrencyWithdrawalAdmin(admin.ModelAdmin):
     search_fields = ("user__username", "upi_id", "payout_reference")
     readonly_fields = ("created_at", "processed_at", "processed_by")
     actions = (mark_currency_withdrawals_paid, reject_currency_withdrawals)
+
+
+@admin.register(DailySpin)
+class DailySpinAdmin(admin.ModelAdmin):
+    list_display = ("user", "currency", "quantity", "spun_at")
+    list_filter = ("currency", "spun_at")
+    search_fields = ("user__username",)
+    readonly_fields = ("user", "currency", "quantity", "spun_at")
+    def has_add_permission(self, request):
+        return False
+    def has_change_permission(self, request, obj=None):
+        return False
