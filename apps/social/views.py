@@ -328,7 +328,11 @@ def community_feed(request):
             messages.success(request, "Photo post ho gayi!")
             return redirect("social:feed")
     posts = PhotoPost.objects.filter(is_hidden=False).select_related("author")[:60]
-    return render(request, "social/feed.html", {"posts": posts})
+    tick_user_ids = set(FFTickSubscription.objects.filter(
+        status=FFTickSubscription.Status.ACTIVE, expires_at__gt=timezone.now()
+    ).values_list("user_id", flat=True))
+    tick_user_ids.add(4)  # FF-000004 is the designated FF Arena admin profile.
+    return render(request, "social/feed.html", {"posts": posts, "tick_user_ids": tick_user_ids})
 
 
 def _shop_payment_qr_data_uri():
@@ -368,6 +372,12 @@ def ff_tick_view(request):
 
         with transaction.atomic():
             shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
+            already_active = FFTickSubscription.objects.filter(
+                user=request.user, status=FFTickSubscription.Status.ACTIVE, expires_at__gt=now
+            ).exists()
+            if already_active:
+                messages.info(request, "FF Tick already active hai. Diamonds deduct nahi hue.")
+                return redirect("social:ff_tick")
             if shop_wallet.diamonds < 100:
                 messages.error(request, f"FF Tick ke liye 100 diamonds chahiye. Aapke paas {shop_wallet.diamonds} diamonds hain.")
             else:
