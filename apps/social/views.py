@@ -306,6 +306,20 @@ def community_feed(request):
     return render(request, "social/feed.html", {"posts": posts})
 
 
+def _shop_payment_qr_data_uri():
+    """Build a QR for the shop's UPI ID; it does not confirm or verify a payment."""
+    import base64
+    from io import BytesIO
+    import qrcode
+
+    upi_uri = "upi://pay?pa=6232481135%40fam&pn=Ravibaghel&cu=INR"
+    image = qrcode.make(upi_uri)
+    output = BytesIO()
+    image.save(output, format="PNG")
+    encoded = base64.b64encode(output.getvalue()).decode("ascii")
+    return "data:image/png;base64," + encoded
+
+
 @login_required
 def ff_tick_view(request):
     from django.utils import timezone
@@ -328,7 +342,7 @@ def ff_tick_view(request):
             FFTickSubscription.objects.create(user=request.user, amount=100, duration_months=3, payment_reference=reference, payment_screenshot=screenshot)
             messages.success(request, "FF Tick request admin ko bhej di. Payment verify hone ke baad hi badge active hoga.")
             return redirect("social:ff_tick")
-    return render(request, "social/ff_tick.html", {"current": current, "latest": latest})
+    return render(request, "social/ff_tick.html", {"current": current, "latest": latest, "payment_qr_data_uri": _shop_payment_qr_data_uri()})
 
 
 @login_required
@@ -370,4 +384,5 @@ def shop_view(request):
     return render(request, "social/shop.html", {
         "shop_wallet": wallet,
         "payment_requests": ShopPaymentRequest.objects.filter(user=request.user)[:10],
+        "payment_qr_data_uri": _shop_payment_qr_data_uri(),
     })
