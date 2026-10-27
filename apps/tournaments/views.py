@@ -70,6 +70,12 @@ def build_entry_qr_url(tournament):
 def tournament_register(request, tournament_id):
     process_expired_ready_registrations()
     tournament = get_object_or_404(Tournament, pk=tournament_id)
+    if tournament.gender_category == Tournament.GenderCategory.BOYS and request.user.gender != "boy":
+        messages.error(request, "Yeh Boys Only tournament hai. Profile mein Boy category select karne wale players hi join kar sakte hain.")
+        return redirect("tournaments:detail", tournament_id=tournament.pk)
+    if tournament.gender_category == Tournament.GenderCategory.GIRLS and request.user.gender != "girl":
+        messages.error(request, "Yeh Girls Only tournament hai. Profile mein Girl category select karne wale players hi join kar sakte hain.")
+        return redirect("tournaments:detail", tournament_id=tournament.pk)
     if not (request.user.upi_id or "").strip() and not request.user.upi_qr_code:
         messages.info(request, "Tournament join karne se pehle prize receive karne ke liye apni UPI ID ya QR profile mein add karein.")
         target = reverse("accounts:profile_edit") + "?next=" + quote(request.path, safe="")
