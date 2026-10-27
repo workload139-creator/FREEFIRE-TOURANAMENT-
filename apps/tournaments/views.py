@@ -18,6 +18,7 @@ from apps.accounts.models import Wallet, WalletTransaction, AdminWallet, AdminWa
 from .forms import KillSubmissionForm, RegistrationForm
 from .ai_review import AIReviewError, analyze_kill_evidence
 from .registration_services import RegistrationError, create_pending_registration
+from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry
 from .services import process_expired_ready_registrations, mark_not_playing_and_refund
 
@@ -220,7 +221,7 @@ def send_room_details(request, tournament_id):
         eligible.update(
             status=Registration.Status.WAITING_READY,
             room_details_sent=True,
-            ready_deadline=now + timedelta(minutes=10),
+            ready_deadline=now + timedelta(seconds=PLAYER_CONFIRMATION_TIMEOUT_SECONDS),
             ready_confirmed_at=None,
         )
 
