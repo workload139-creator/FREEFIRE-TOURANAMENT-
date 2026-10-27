@@ -4,7 +4,7 @@
 <section class="community-page chat-page">
   <div class="chat-topbar">
     <a class="text-link" href="{% url 'chat:home' %}">← All chats</a>
-    <div class="chat-person"><div class="player-avatar">{{ other.username|first|upper }}</div><div><h1>{{ other.username }} {% if other.is_online %}<span class="online-dot" aria-label="Online"></span>{% endif %}</h1><small>Player ID: FF-{{ other.pk|stringformat:"06d" }} · {% if other.is_online %}Online{% else %}Offline{% endif %}</small></div></div>
+    <div class="chat-person"><div class="player-avatar">{% if other.profile_photo %}<img src="{{ other.profile_photo.url }}" alt="{{ other.username }} profile photo" style="width:100%;height:100%;object-fit:cover;border-radius:50%">{% else %}{{ other.username|first|upper }}{% endif %}</div><div><h1>{{ other.username }} {% if other.is_online %}<span class="online-dot" aria-label="Online"></span>{% endif %}</h1><small>Player ID: FF-{{ other.pk|stringformat:"06d" }} · {% if other.is_online %}Online{% else %}Offline{% endif %}</small></div></div>
     <button type="button" class="button button-outline" id="refreshChat">Refresh</button>
   </div>
   <section class="community-panel conversation-panel">
