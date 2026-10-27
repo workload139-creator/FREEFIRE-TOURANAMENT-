@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{{ player.username }} · Player Profile | FF Arena{% endblock %}
+{% block content %}
+<section class="public-player-page">
+  <a class="back-link" href="{% url 'social:home' %}">← Back to players</a>
+  <article class="public-player-card">
+    <div class="public-player-cover"><span>FF ARENA · PLAYER CARD</span></div>
+    <div class="public-player-main">
+      <div class="public-player-avatar">{% if player.profile_photo %}<img src="{{ player.profile_photo.url }}" alt="Profile photo of {{ player.username }}">{% else %}{{ player.username|first|upper }}{% endif %}</div>
+      <div class="public-player-identity">
+        <span class="public-player-label">PUBLIC PLAYER PROFILE</span>
+        <h1>{{ player.username }}</h1>
+        <p>Player ID: <strong>FF-{{ player.pk|stringformat:"06d" }}</strong></p>
+        <p class="public-category">Player category: {{ player.get_gender_display|default:"Not selected" }}</p>
+      </div>
+    </div>
+    <div class="public-player-stats">
+      <div><span>Followers</span><strong>{{ followers_count }}</strong></div>
+      <div><span>Following</span><strong>{{ following_count }}</strong></div>
+      <div><span>Member since</span><strong>{{ player.date_joined|date:"M Y" }}</strong></div>
+    </div>
+    <div class="public-player-actions">
+      <form method="post" action="{% url 'social:toggle_follow' player.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{% url 'social:player_profile' player.pk %}"><button class="button button-primary" type="submit">{% if is_following %}Unfollow player{% else %}＋ Follow player{% endif %}</button></form>
+      {% if is_friend %}<a class="button button-outline" href="{% url 'chat:open' player.pk %}">Private message</a>{% else %}<span class="public-player-hint">Follow each other to unlock private chat.</span>{% endif %}
+      <a class="button button-outline" href="{% url 'social:report_user' player.pk %}">Report player</a>
+    </div>
+    <div class="public-privacy-note"><strong>🔒 Personal details protected</strong><p>Yahan sirf public player information dikhayi jaati hai. Email, mobile number, UPI/payment details, password, verification data aur private account information dusre players ko nahi dikhte. Free Fire UID bhi yahan display nahi hoti.</p></div>
+  </article>
+</section>
+<style>
+.public-player-page{max-width:850px;margin:35px auto 70px;padding:0 18px;color:#f7f9ff}.back-link{display:inline-block;margin-bottom:16px;color:#a9ffd1;text-decoration:none;font-weight:800}.public-player-card{overflow:hidden;border:1px solid #55ffb52b;border-radius:22px;background:linear-gradient(145deg,#101b29,#080d15);box-shadow:0 22px 65px #0005}.public-player-cover{min-height:150px;display:flex;align-items:flex-end;padding:20px;background:linear-gradient(90deg,#06110ee8,#08101b70),url("https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1500&q=85") center/cover;border-bottom:2px solid #55ffb5}.public-player-cover span{font-size:11px;letter-spacing:3px;font-weight:950;color:#9dffce}.public-player-main{display:flex;align-items:center;gap:20px;padding:24px 28px}.public-player-avatar{width:100px;height:100px;flex:0 0 100px;border:3px solid #55ffb5;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:#07110e;font-size:36px;font-weight:1000;color:#a5ffd0}.public-player-avatar img{width:100%;height:100%;object-fit:cover}.public-player-label{font-size:10px;letter-spacing:2px;color:#9fffc9;font-weight:950}.public-player-identity h1{font-size:clamp(25px,5vw,38px);margin:7px 0}.public-player-identity p{margin:5px 0;color:#b9c5d5}.public-player-identity p strong{color:#ffd778}.public-category{font-size:13px}.public-player-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:0 28px 22px}.public-player-stats div{padding:15px;background:#060b12;border:1px solid #ffffff12;border-radius:12px}.public-player-stats span,.public-player-stats strong{display:block}.public-player-stats span{font-size:12px;color:#9eafc2}.public-player-stats strong{font-size:21px;margin-top:5px}.public-player-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:0 28px 24px}.public-player-actions form{margin:0}.public-player-actions .button{display:inline-flex;align-items:center;justify-content:center;padding:11px 14px;border-radius:9px;text-decoration:none;font-weight:800}.public-player-hint{font-size:12px;color:#b6c2d2}.public-privacy-note{margin:0 28px 28px;padding:16px;border:1px solid #55ffb52b;border-radius:12px;background:#55ffb50b}.public-privacy-note strong{color:#a8ffd1}.public-privacy-note p{margin:8px 0 0;color:#b5c3d4;font-size:13px;line-height:1.7}@media(max-width:560px){.public-player-main{align-items:flex-start;flex-direction:column;padding:20px}.public-player-avatar{width:82px;height:82px;flex-basis:82px}.public-player-stats{padding:0 20px 20px;gap:7px}.public-player-stats div{padding:10px}.public-player-stats span{font-size:11px}.public-player-stats strong{font-size:17px}.public-player-actions{padding:0 20px 20px}.public-privacy-note{margin:0 20px 20px}}
+</style>
+{% endblock %}
