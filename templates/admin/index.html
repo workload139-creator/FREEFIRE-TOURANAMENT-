@@ -11,7 +11,7 @@
 .ff-card a{display:inline-block;background:var(--ff-orange);color:#161923!important;font-weight:850;padding:9px 12px;border-radius:8px;text-decoration:none;margin:3px 4px 0 0}.ff-card a.alt{background:#29374c;color:#e9f4ff!important;border:1px solid #53647d}
 .ff-chip{display:inline-block;border:1px solid #ffffff20;border-radius:99px;padding:4px 8px;margin:2px;font-size:11px;color:#e8efff}
 .ff-ai{border-color:#8f7cff77;background:radial-gradient(circle at top right,#332c60,#151b2a 65%)}.ff-ai h3{color:#d3c7ff}.ff-note{padding:13px 15px;border-radius:10px;background:#302719;border-left:4px solid var(--ff-orange);color:#ffe3ba;line-height:1.6;font-size:13px}
-.ff-order{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 18px}.ff-order span{background:#222e41;border:1px solid #3d4c65;border-radius:9px;padding:9px 11px;color:#e5edfa;font-size:12px}
+.ff-order{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 18px}.ff-order span{background:#222e41;border:1px solid #3d4c65;border-radius:9px;padding:9px 11px;color:#e5edfa;font-size:12px}\n.ff-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 22px;position:sticky;top:8px;z-index:5;padding:9px;background:#101521ed;border:1px solid var(--ff-line);border-radius:12px;backdrop-filter:blur(8px)}\n.ff-tabs a{display:inline-block;padding:9px 12px;border-radius:8px;background:#29374c;color:#f4f7ff!important;text-decoration:none;font-size:12px;font-weight:800;border:1px solid #53647d}\n.ff-tabs a:first-child{background:var(--ff-orange);color:#161923!important;border-color:var(--ff-orange)}\n.ff-edit-room{scroll-margin-top:85px}.ff-group{scroll-margin-top:85px}
 @media(max-width:600px){.ff-control{padding:14px}.ff-grid{grid-template-columns:1fr}}
 </style>
 <div class="ff-control">
@@ -19,7 +19,26 @@
  <p>Har kaam alag rakha gaya hai. Pehle category kholein, pending requests verify karein, phir match readiness aur result complete karein. Sirf button dabane se payment verify nahi hota—asal UPI/bank receipt zaroor check karein.</p>
  <div class="ff-order"><span>1 · Tournament category</span><span>2 · Entry payment</span><span>3 · Player verification</span><span>4 · Match / Room</span><span>5 · AI kill verification + Diamonds</span><span>6 · Withdrawal payment verification</span></div>
 
- <section class="ff-group">
+ <nav class="ff-tabs" aria-label="Admin quick tabs">
+  <a href="#ff-edit-room">✏️ Edit / Room Setup</a>
+  <a href="#ff-categories">🏆 Categories</a>
+  <a href="#ff-payments">💳 Payments</a>
+  <a href="#ff-players">👥 Players / Ready</a>
+  <a href="#ff-ai">🤖 AI Review</a>
+  <a href="#ff-prizes">🥇 Winners / Refunds</a>
+ </nav>
+
+ <section class="ff-group ff-edit-room" id="ff-edit-room">
+  <h3 class="ff-group-title">✏️ Edit Tournament / Room ID / Password — dedicated tab</h3>
+  <div class="ff-grid">
+   <div class="ff-card"><h3>📝 Edit an existing tournament</h3><p>Yahan se tournament list kholein. Jis event ko badalna hai uske <b>title</b> par click karein, fields update karein aur neeche <b>Save</b> dabayein.</p><a href="/admin/tournaments/tournament/">Open Edit Tournament List</a></div>
+   <div class="ff-card"><h3>🎮 Set or change Room ID / Password</h3><p>Tournament title kholkar <b>Room ID</b> aur <b>Room Password</b> fields update karein, phir Save karein. LIVE karne se pehle dono fields bharna zaroori hai. Room details eligible players ko hi milengi.</p><a href="/admin/tournaments/tournament/">Edit Room Details</a></div>
+   <div class="ff-card"><h3>🚦 Status safely change karein</h3><p>Naya event banate waqt <b>Upcoming</b> rakhein. Room credentials set karne ke baad hi <b>LIVE</b> karein. LIVE status par eligible players ko YES/NO confirmation email bhejne ki koshish hoti hai.</p><a href="/admin/tournaments/tournament/add/">Create Tournament</a><a class="alt" href="/admin/tournaments/tournament/">Manage Existing</a></div>
+   <div class="ff-card"><h3>🛡️ Delete / Cancel safety</h3><p>Jis tournament mein registrations ya ledger/payment records hain, uska hard-delete band hai taaki player/payment history na mite. Aise event ke liye cancellation/refund workflow use karein. Sirf empty tournament delete ho sakta hai.</p><a href="/admin/tournaments/tournament/">Check Tournament List</a></div>
+  </div>
+ </section>
+
+ <section class="ff-group" id="ff-categories">
   <h3 class="ff-group-title">🏆 A. Tournament categories — har format alag</h3>
   <div class="ff-grid">
    <div class="ff-card"><h3>🪂 Battle Royale (BR)</h3><p>BR rooms, player list, kill evidence, BR leaderboard aur BR prize actions.</p><a href="/admin/tournaments/tournament/?mode__exact=BR">BR Tournaments</a><a class="alt" href="/admin/tournaments/registration/?tournament__mode__exact=BR">BR Registrations</a></div>
@@ -31,7 +50,7 @@
   </div>
  </section>
 
- <section class="ff-group">
+ <section class="ff-group" id="ff-payments">
   <h3 class="ff-group-title">💳 B. Entry payments — UPI, Diamonds, Coins alag</h3>
   <div class="ff-grid">
    <div class="ff-card"><h3>🏦 Tournament UPI Entry</h3><p>Pending UTR check karein. UPI app/bank receipt se amount aur unique UTR match hone ke baad hi confirm karein.</p><a href="/admin/tournaments/registration/?payment_method__exact=upi&payment_verified__exact=0">Review UPI Entries</a></div>
@@ -43,7 +62,7 @@
   </div>
  </section>
 
- <section class="ff-group">
+ <section class="ff-group" id="ff-players">
   <h3 class="ff-group-title">🧾 C. Player verification & match operations</h3>
   <div class="ff-grid">
    <div class="ff-card"><h3>👥 All Registrations</h3><p>Website profile ID, Free Fire UID, category, selfie, payment method aur ready status check karein.</p><a href="/admin/tournaments/registration/">All Player Registrations</a></div>
@@ -53,7 +72,7 @@
   </div>
  </section>
 
- <section class="ff-group">
+ <section class="ff-group" id="ff-ai">
   <h3 class="ff-group-title">🤖 D. AI Assessment & admin helper</h3>
   <div class="ff-grid">
    <div class="ff-card ff-ai"><h3>🤖 AI Kill Evidence → Diamonds</h3><p>Video + 2 screenshots aur registered UID AI check karta hai. High-confidence UID match par ₹5 per kill ke hisaab se Diamonds automatic credit hote hain. Low-confidence cases admin review mein rehte hain.</p><a href="/admin/tournaments/killsubmission/?status__exact=pending">Open Pending AI Reviews</a><a class="alt" href="/admin/tournaments/killsubmission/">All Kill Evidence</a></div>
@@ -62,7 +81,7 @@
   </div>
  </section>
 
- <section class="ff-group">
+ <section class="ff-group" id="ff-prizes">
   <h3 class="ff-group-title">🥇 E. Winners, prizes & refunds — category-wise</h3>
   <div class="ff-grid">
    <div class="ff-card"><h3>🏆 BR Winner / Kill Reward</h3><p>BR tournament ke winner UID, kill reward aur payout reference alag verify karein.</p><a href="/admin/tournaments/tournament/?mode__exact=BR">BR Winner & Prize</a><a class="alt" href="/admin/tournaments/killsubmission/?tournament__mode__exact=BR">BR Kill Rewards</a></div>
