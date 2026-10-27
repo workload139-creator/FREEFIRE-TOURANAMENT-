@@ -35,7 +35,8 @@ def tournament_list(request):
         {
             "tournaments": tournaments,
             "br_tournaments": tournaments.filter(mode=Tournament.Mode.BR),
-            "vs_tournaments": tournaments.filter(mode=Tournament.Mode.VS),
+            "vs_tournaments": tournaments.filter(mode=Tournament.Mode.VS).exclude(gender_category=Tournament.GenderCategory.GIRLS_VS_BOYS),
+            "girls_vs_boys_tournaments": tournaments.filter(gender_category=Tournament.GenderCategory.GIRLS_VS_BOYS),
         },
     )
 
