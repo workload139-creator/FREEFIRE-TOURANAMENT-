@@ -103,6 +103,40 @@ def send_unlimited_live_notifications(tournament_id):
 
 
 @transaction.atomic
+def maybe_start_unlimited_tournament(tournament_id):
+    """Start a 49-player Unlimited BR round once all 49 entries are confirmed and paid."""
+    tournament = Tournament.objects.select_for_update().get(pk=tournament_id)
+    if not tournament.is_unlimited_br or not tournament.auto_start_at_capacity or tournament.status != Tournament.Status.UPCOMING:
+        return False
+
+    active_count = Registration.objects.filter(
+        tournament=tournament,
+        payment_verified=True,
+        status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
+    ).count()
+    if active_count < 49:
+        return False
+
+    tournament.status = Tournament.Status.LIVE
+    tournament.save(update_fields=["status", "updated_at"])
+    transaction.on_commit(lambda tournament_id=tournament.pk: send_unlimited_live_notifications(tournament_id))
+
+    root_id = tournament.series_root_id or tournament.pk
+    root = Tournament.objects.select_for_update().get(pk=root_id)
+    if root.auto_reopen:
+        next_round_number = root.series_rounds.count() + 2
+        Tournament.objects.create(
+            title=f"{root.title} - Round {next_round_number}"[:120],
+            mode=Tournament.Mode.BR, vs_format="", description=root.description,
+            entry_fee=Decimal("10.00"), prize_pool=root.prize_pool, max_players=49,
+            start_time=timezone.now() + timedelta(minutes=10),
+            status=Tournament.Status.UPCOMING, is_unlimited_br=True,
+            auto_start_at_capacity=True, auto_reopen=root.auto_reopen, series_root=root,
+        )
+    return True
+
+
+@transaction.atomic
 def create_pending_registration(*, tournament_id, player, free_fire_uid, payment_reference="", payment_method="upi"):
     tournament = Tournament.objects.select_for_update().get(pk=tournament_id)
 
@@ -200,29 +234,7 @@ def create_pending_registration(*, tournament_id, player, free_fire_uid, payment
         reference=reference or f"REG-ENTRY-{registration.pk}",
         description="Tournament entry payment",
     )
-    # Start a BR round at 49 registrations, then optionally open a fresh round.
+    # Wallet entries start immediately at capacity; UPI entries start after admin verifies payment.
     if tournament.is_unlimited_br and tournament.auto_start_at_capacity:
-        active_count = Registration.objects.filter(
-            tournament=tournament,
-            payment_verified=True,
-            status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
-        ).count()
-        if active_count >= tournament.max_players and tournament.status != Tournament.Status.LIVE:
-            tournament.status = Tournament.Status.LIVE
-            tournament.save(update_fields=["status", "updated_at"])
-            transaction.on_commit(
-                lambda tournament_id=tournament.pk: send_unlimited_live_notifications(tournament_id)
-            )
-            root_id = tournament.series_root_id or tournament.pk
-            root = Tournament.objects.select_for_update().get(pk=root_id)
-            if root.auto_reopen:
-                next_round_number = root.series_rounds.count() + 2
-                Tournament.objects.create(
-                    title=f"{root.title} - Round {next_round_number}"[:120],
-                    mode=Tournament.Mode.BR, vs_format="", description=root.description,
-                    entry_fee=root.entry_fee, prize_pool=root.prize_pool, max_players=49,
-                    start_time=timezone.now() + timedelta(minutes=10),
-                    status=Tournament.Status.UPCOMING, is_unlimited_br=True,
-                    auto_start_at_capacity=True, auto_reopen=root.auto_reopen, series_root=root,
-                )
+        maybe_start_unlimited_tournament(tournament.pk)
     return registration
