@@ -99,12 +99,25 @@ class CurrencyWithdrawalRequestForm(forms.Form):
         label="UPI ID",
         widget=forms.TextInput(attrs={"placeholder": "yourname@upi"}),
     )
+    upi_qr_code = forms.ImageField(
+        required=True,
+        label="Your UPI QR Code image (required)",
+        help_text="Apne UPI app ka QR screenshot/image upload karein (JPG, PNG, WebP; max 5 MB).",
+    )
 
     def clean_upi_id(self):
         value = self.cleaned_data["upi_id"].strip()
         if "@" not in value or any(char.isspace() for char in value):
             raise forms.ValidationError("Valid UPI ID enter karein.")
         return value
+
+    def clean_upi_qr_code(self):
+        image = self.cleaned_data["upi_qr_code"]
+        if image.size > 5 * 1024 * 1024:
+            raise forms.ValidationError("UPI QR image 5 MB se chhoti honi chahiye.")
+        if getattr(image, "content_type", "") not in ("image/jpeg", "image/png", "image/webp"):
+            raise forms.ValidationError("UPI QR ke liye JPG, PNG ya WebP image upload karein.")
+        return image
 
 
 class ProfileUpdateForm(forms.ModelForm):
