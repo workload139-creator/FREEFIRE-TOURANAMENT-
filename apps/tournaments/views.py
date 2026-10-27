@@ -28,7 +28,9 @@ import qrcode
 def cleanup_expired_kill_evidence():
     """Delete uploaded evidence files after 12 hours, retaining review/audit metadata."""
     cutoff = timezone.now() - timedelta(hours=12)
-    expired = KillSubmission.objects.filter(submitted_at__lte=cutoff).only(
+    expired = KillSubmission.objects.filter(submitted_at__lte=cutoff).exclude(
+        status=KillSubmission.Status.PENDING
+    ).only(
         "id", "history_video", "history_image_one", "history_image_two"
     )
     for submission in expired.iterator():
@@ -444,7 +446,53 @@ def admin_kill_review(request):
     return render(request, "tournaments/admin_kill_review.html", {
         "submissions": submissions,
         "selected_tournament_id": tournament_id or "",
+        "ai_provider": os.getenv("KILL_REVIEW_PROVIDER", "openai").strip().lower(),
+        "ai_model": os.getenv("OPENAI_KILL_REVIEW_MODEL", "gpt-4.1-mini").strip(),
+        "ai_openai_configured": bool(os.getenv("OPENAI_API_KEY", "").strip()),
+        "ai_compatible_configured": bool(os.getenv("KILL_REVIEW_BASE_URL", "").strip()),
     })
+
+
+@login_required
+@user_passes_test(lambda user: user.is_staff)
+@require_POST
+def retry_ai_kill_review(request, submission_id):
+    submission = get_object_or_404(
+        KillSubmission.objects.select_related("registration", "player", "tournament"),
+        pk=submission_id,
+    )
+    if submission.status != KillSubmission.Status.PENDING:
+        messages.error(request, "Sirf pending submission ka AI review dobara chala sakte hain.")
+        return redirect("tournaments:admin_kill_review")
+
+    try:
+        result = analyze_kill_evidence(submission)
+        submission.ai_proposed_kills = result["proposed_kills"]
+        submission.ai_confidence = result["confidence"][:10]
+        submission.ai_uid_matches = result["uid_matches"]
+        submission.ai_review_notes = result["reason"]
+        proposed = result["proposed_kills"]
+        uid_ok = (
+            result["uid_matches"] is True
+            and submission.free_fire_uid == submission.registered_uid
+            and submission.registered_uid == submission.registration.free_fire_uid
+        )
+        if proposed is not None and proposed >= settings.MINIMUM_VERIFIED_KILLS and uid_ok:
+            submission.proposed_reward = Decimal(proposed) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
+        else:
+            submission.proposed_reward = Decimal("0.00")
+        # AI results are suggestions only; do not approve or credit Diamonds here.
+        submission.save(update_fields=[
+            "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
+            "ai_review_notes", "proposed_reward",
+        ])
+        messages.success(request, "AI review dobara chal gaya. Result neeche check karo; Diamonds sirf admin confirmation par milenge.")
+    except Exception as exc:
+        submission.ai_review_notes = f"AI review failed ({exc.__class__.__name__}): {str(exc).strip()[:850]}"
+        submission.save(update_fields=["ai_review_notes"])
+        messages.error(request, f"AI review abhi fail hua: {str(exc).strip()[:250]}")
+
+    return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
 
 
 @login_required
