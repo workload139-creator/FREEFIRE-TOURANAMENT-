@@ -1,5 +1,24 @@
 {% extends "base.html" %}
-{% block title %}Tournament Room | FF Arena<script>
+{% block title %}Tournament Room | FF Arena{% endblock %}
+{% block content %}
+<section class="container" style="max-width:800px;margin:35px auto;padding:20px">
+ <div class="tournament-card" style="padding:24px;border-radius:16px"><h1>🎮 Tournament Room</h1><h2>{{ tournament.title }}</h2><p><strong>Free Fire UID:</strong> {{ registration.free_fire_uid }}</p><p><strong>Status:</strong> {{ registration.get_status_display }}</p></div>
+ {% if registration.status == "waiting_ready" and registration.payment_verified %}
+ <div class="tournament-card" style="padding:24px;margin-top:20px;border-radius:16px"><h2>⚠️ Confirm Before Entering</h2><p>Match join karne ke liye <strong>10 minute ke andar YES</strong> dabao. Room ID aur password sirf YES confirm karne ke baad dikhenge.</p><p><strong>Confirmation deadline:</strong> {{ registration.ready_deadline|date:"d M Y, h:i:s A" }}</p>
+ <p><strong>Time left:</strong> <span id="readyCountdown" data-deadline="{{ registration.ready_deadline|date:'c' }}">10:00</span></p>
+ <form method="post" action="{% url 'tournaments:confirm_playing' registration.id %}" style="display:inline-block">{% csrf_token %}<button type="submit" class="btn-primary">YES, I AM PLAYING</button></form>
+ <form method="post" action="{% url 'tournaments:decline_playing' registration.id %}" style="display:inline-block;margin-top:10px">{% csrf_token %}<button type="submit" class="button button-outline">NO, I CAN'T PLAY</button></form>
+ <p class="help-text">10 minute mein YES na kiya ya NO chuna, to aap NOT PLAYING mark honge aur leaderboard se hataye jayenge. Direct UPI payment ka refund admin ko actual UPI transfer karke process karna hoga.</p></div>
+ {% elif registration.status == "ready" and can_view_room %}
+ <div class="tournament-card" style="padding:24px;margin-top:20px;border-radius:16px"><h2>🔥 Room Details — Confirmed Player</h2><p><strong>Room ID:</strong> {{ tournament.room_id }}</p><p><strong>Room Password:</strong> {{ tournament.room_password }}</p><p class="message success">Aapki participation confirm ho gayi hai. Ab game room join karein. Match se eliminate hone ke baad kill evidence submit karein.</p>
+ <a class="btn-primary" style="display:inline-block;margin-top:14px" href="{% url 'tournaments:kill_submission' registration.id %}">🎯 KILL VERIFY — Submit Video + 2 Screenshots</a>
+ <p class="help-text">Apni registered Free Fire UID hi use karein. AI evidence ko check karke proposal admin ko bhejega; final approval aur payout admin karega.</p></div>
+ {% elif registration.status == "not_playing" %}<p class="message error">Aap NOT PLAYING mark ho chuke hain. Room access band hai. Agar entry fee UPI se di thi, refund ki actual transfer status admin se confirm karein.</p>
+ {% elif not registration.payment_verified %}<p class="message warning">Payment verify nahi hui hai. Admin ke payment verify karne ke baad hi participation confirmation aur room access milega.</p>
+ {% else %}<p class="message">Room details abhi available nahi hain. Admin ke tournament room details release karne ka wait karein.</p>{% endif %}
+ <a href="{% url 'tournaments:my_registrations' %}">← My Registrations</a>
+</section>
+<script>
 (function () {
   const timer = document.getElementById("readyCountdown");
   if (!timer) return;
@@ -21,23 +40,4 @@
   window.setInterval(tick, 1000);
 })();
 </script>
-{% endblock %}
-{% block content %}
-<section class="container" style="max-width:800px;margin:35px auto;padding:20px">
- <div class="tournament-card" style="padding:24px;border-radius:16px"><h1>🎮 Tournament Room</h1><h2>{{ tournament.title }}</h2><p><strong>Free Fire UID:</strong> {{ registration.free_fire_uid }}</p><p><strong>Status:</strong> {{ registration.get_status_display }}</p></div>
- {% if registration.status == "waiting_ready" and registration.payment_verified %}
- <div class="tournament-card" style="padding:24px;margin-top:20px;border-radius:16px"><h2>⚠️ Confirm Before Entering</h2><p>Match join karne ke liye <strong>10 minute ke andar YES</strong> dabao. Room ID aur password sirf YES confirm karne ke baad dikhenge.</p><p><strong>Confirmation deadline:</strong> {{ registration.ready_deadline|date:"d M Y, h:i:s A" }}</p>
- <p><strong>Time left:</strong> <span id="readyCountdown" data-deadline="{{ registration.ready_deadline|date:'c' }}">10:00</span></p>
- <form method="post" action="{% url 'tournaments:confirm_playing' registration.id %}" style="display:inline-block">{% csrf_token %}<button type="submit" class="btn-primary">YES, I AM PLAYING</button></form>
- <form method="post" action="{% url 'tournaments:decline_playing' registration.id %}" style="display:inline-block;margin-top:10px">{% csrf_token %}<button type="submit" class="button button-outline">NO, I CAN'T PLAY</button></form>
- <p class="help-text">10 minute mein YES na kiya ya NO chuna, to aap NOT PLAYING mark honge aur leaderboard se hataye jayenge. Direct UPI payment ka refund admin ko actual UPI transfer karke process karna hoga.</p></div>
- {% elif registration.status == "ready" and can_view_room %}
- <div class="tournament-card" style="padding:24px;margin-top:20px;border-radius:16px"><h2>🔥 Room Details — Confirmed Player</h2><p><strong>Room ID:</strong> {{ tournament.room_id }}</p><p><strong>Room Password:</strong> {{ tournament.room_password }}</p><p class="message success">Aapki participation confirm ho gayi hai. Ab game room join karein. Match se eliminate hone ke baad kill evidence submit karein.</p>
- <a class="btn-primary" style="display:inline-block;margin-top:14px" href="{% url 'tournaments:kill_submission' registration.id %}">🎯 KILL VERIFY — Submit Video + 2 Screenshots</a>
- <p class="help-text">Apni registered Free Fire UID hi use karein. AI evidence ko check karke proposal admin ko bhejega; final approval aur payout admin karega.</p></div>
- {% elif registration.status == "not_playing" %}<p class="message error">Aap NOT PLAYING mark ho chuke hain. Room access band hai. Agar entry fee UPI se di thi, refund ki actual transfer status admin se confirm karein.</p>
- {% elif not registration.payment_verified %}<p class="message warning">Payment verify nahi hui hai. Admin ke payment verify karne ke baad hi participation confirmation aur room access milega.</p>
- {% else %}<p class="message">Room details abhi available nahi hain. Admin ke tournament room details release karne ka wait karein.</p>{% endif %}
- <a href="{% url 'tournaments:my_registrations' %}">← My Registrations</a>
-</section>
 {% endblock %}
