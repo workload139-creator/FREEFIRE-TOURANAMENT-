@@ -1,11 +1,13 @@
 {% extends "base.html" %}
 {% block title %}{{ tournament.title }} | FF Arena{% endblock %}
 {% block content %}
-<section class="container" style="max-width:850px;margin:40px auto;padding:20px">
+<section class="container tournament-detail-page" style="max-width:850px;margin:40px auto;padding:20px">
   <a href="{% url 'tournaments:list' %}">← All Tournaments</a>
+  <div style="margin:14px 0;padding:12px 16px;border:1px solid rgba(72,255,155,.25);border-radius:12px;background:linear-gradient(120deg,rgba(72,255,155,.08),rgba(255,70,88,.08))"><strong>{{ tournament.get_status_display }}</strong> · {{ tournament.get_gender_category_display }} · Registration, payment verification, room access and leaderboard are tied to this tournament.</div>
   <h1>{{ tournament.title }}</h1>
   <p>{{ tournament.description|default:"Tournament ki details yahan dikhengi." }}</p>
-  <p><strong>Mode:</strong> {{ tournament.get_mode_display }}{% if tournament.mode == "VS" %} — {{ tournament.get_vs_format_display }}{% endif %}</p>
+  <p><strong>Mode:</strong> {% if tournament.mode == "VS" %}CS / Clash Squad{% else %}Battle Royale (BR){% endif %}{% if tournament.mode == "VS" %} — {{ tournament.get_vs_format_display }}{% endif %}</p>
+  <p><strong>Player Category:</strong> {{ tournament.get_gender_category_display }}</p>
   <p><strong>Entry Fee:</strong> ₹{{ tournament.entry_fee }}</p>
   <p><strong>Prize Pool:</strong> ₹{{ tournament.prize_pool }}</p>
   <p><strong>Players:</strong> {{ tournament.confirmed_players_count }}/{{ tournament.max_players }}</p>
