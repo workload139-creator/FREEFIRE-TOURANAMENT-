@@ -169,6 +169,9 @@ class Registration(models.Model):
 
     free_fire_uid = models.CharField(max_length=30)
 
+    # Required at form level for Girls vs Boys events; visible to admins only.
+    verification_photo = models.ImageField(upload_to="tournament_verification/", blank=True, null=True, help_text="Private registration selfie for admin review in Girls vs Boys tournaments.")
+
     entry_fee_paid = models.DecimalField(
         max_digits=8,
         decimal_places=2,
