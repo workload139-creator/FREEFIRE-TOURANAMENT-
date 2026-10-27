@@ -96,6 +96,8 @@ class Tournament(models.Model):
     is_unlimited_br = models.BooleanField(default=False)
     auto_start_at_capacity = models.BooleanField(default=False)
     auto_reopen = models.BooleanField(default=False)
+    live_notification_sent_at = models.DateTimeField(null=True, blank=True)
+    live_notification_status = models.CharField(max_length=20, default="pending", db_index=True)
     series_root = models.ForeignKey(
         "self", on_delete=models.SET_NULL, null=True, blank=True,
         related_name="series_rounds",
@@ -142,6 +144,15 @@ class Tournament(models.Model):
     @property
     def is_full(self):
         return self.confirmed_players_count >= self.max_players
+
+
+class UnlimitedTournament(Tournament):
+    """Separate admin section for the repeating 49-player BR tournament series."""
+
+    class Meta:
+        proxy = True
+        verbose_name = "Unlimited Tournament"
+        verbose_name_plural = "Unlimited Tournaments"
 
 
 class Registration(models.Model):
