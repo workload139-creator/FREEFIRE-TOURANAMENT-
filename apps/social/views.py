@@ -331,13 +331,14 @@ def community_feed(request):
     return render(request, "social/feed.html", {"posts": posts})
 
 
-def _shop_payment_qr_data_uri():
-    """Build a QR for the shop's UPI ID; it does not confirm or verify a payment."""
+def _shop_payment_qr_data_uri(payee_name="Ravibaghel"):
+    """Build a QR for the shop UPI ID; a QR is not proof of a completed payment."""
     import base64
     from io import BytesIO
+    from urllib.parse import quote
     import qrcode
 
-    upi_uri = "upi://pay?pa=6232481135%40fam&pn=Ravibaghel&cu=INR"
+    upi_uri = f"upi://pay?pa=6232481135%40fam&pn={quote(payee_name)}&cu=INR"
     image = qrcode.make(upi_uri)
     output = BytesIO()
     image.save(output, format="PNG")
@@ -410,7 +411,8 @@ def shop_view(request):
     return render(request, "social/shop.html", {
         "shop_wallet": wallet,
         "payment_requests": ShopPaymentRequest.objects.filter(user=request.user)[:10],
-        "payment_qr_data_uri": _shop_payment_qr_data_uri(),
+        "diamond_payment_qr_data_uri": _shop_payment_qr_data_uri("Ravi Baghel"),
+        "coin_payment_qr_data_uri": _shop_payment_qr_data_uri("Ravibaghel"),
     })
 
 
