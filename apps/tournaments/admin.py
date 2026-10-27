@@ -305,7 +305,7 @@ class TournamentAdmin(admin.ModelAdmin):
                         f"Entry fee: INR {registration.entry_fee_paid}\n\n"
                         "Open the secure tournament page and press YES if you want to play, "
                         "or NO if you cannot play. Room ID/password are shown only after YES. "
-                        "Please respond within 10 minutes. If you press NO or do not respond, "
+                        "Please respond within 5 minutes. If you press NO or do not respond, "
                         "you will be marked NOT PLAYING. If your entry was paid directly by UPI, "
                         "the admin must send the real refund and record its UTR; the website "
                         "cannot transfer money automatically.\n\n"
@@ -323,7 +323,7 @@ class TournamentAdmin(admin.ModelAdmin):
 
         self.message_user(
             request,
-            f"Tournament is LIVE. {len(eligible_ids)} verified player(s) were queued for YES/NO for 10 minutes; "
+            f"Tournament is LIVE. {len(eligible_ids)} verified player(s) were queued for YES/NO for 5 minutes; "
             f"emails successfully handed to SMTP: {sent}, players without email: {missing_email}. "
             "Check SMTP provider logs for final delivery.",
             level=messages.SUCCESS,
