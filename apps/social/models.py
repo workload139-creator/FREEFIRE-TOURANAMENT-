@@ -158,3 +158,88 @@ class FFTickSubscription(models.Model):
 
     def __str__(self):
         return f"FF Tick - {self.user} - {self.status}"
+
+
+class PlayerShopWallet(models.Model):
+    """Separate non-cash balances; never mixed with the INR wallet."""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="shop_wallet")
+    diamonds = models.PositiveIntegerField(default=0)
+    coins = models.PositiveIntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user} · {self.diamonds} diamonds / {self.coins} coins"
+
+
+class ShopPaymentRequest(models.Model):
+    class Product(models.TextChoices):
+        DIAMONDS = "diamonds", "Diamonds"
+        COINS = "coins", "Coins"
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending verification"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="shop_payment_requests")
+    product = models.CharField(max_length=12, choices=Product.choices)
+    quantity = models.PositiveIntegerField()
+    amount = models.DecimalField(max_digits=8, decimal_places=2)
+    payment_reference = models.CharField(max_length=100)
+    payment_screenshot = models.ImageField(upload_to="shop_payments/")
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="reviewed_shop_payments")
+    admin_note = models.CharField(max_length=250, blank=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return f"{self.user} · {self.quantity} {self.product} · {self.status}"
+
+
+class CurrencyGift(models.Model):
+    class Currency(models.TextChoices):
+        DIAMONDS = "diamonds", "Diamonds"
+        COINS = "coins", "Coins"
+
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="sent_currency_gifts")
+    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="received_currency_gifts")
+    currency = models.CharField(max_length=12, choices=Currency.choices)
+    quantity = models.PositiveIntegerField()
+    conversation_id = models.PositiveBigIntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return f"{self.sender} gifted {self.quantity} {self.currency} to {self.recipient}"
+
+
+class CurrencyWithdrawalRequest(models.Model):
+    class Currency(models.TextChoices):
+        DIAMONDS = "diamonds", "Diamonds"
+        COINS = "coins", "Coins"
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending manual UPI payout"
+        PAID = "paid", "Paid"
+        REJECTED = "rejected", "Rejected and refunded"
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="currency_withdrawals")
+    currency = models.CharField(max_length=12, choices=Currency.choices)
+    quantity = models.PositiveIntegerField()
+    amount_inr = models.DecimalField(max_digits=8, decimal_places=2)
+    upi_id = models.CharField(max_length=100)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING, db_index=True)
+    payout_reference = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+    processed_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="processed_currency_withdrawals")
+
+    class Meta:
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return f"{self.user} · {self.quantity} {self.currency} · {self.status}"
