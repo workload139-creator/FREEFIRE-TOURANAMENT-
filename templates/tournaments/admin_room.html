@@ -3,8 +3,9 @@
 
 {% block content %}
 <div class="container py-4">
-    <h2>Free Fire — Send Room Details</h2>
-    <p>Room ID aur password sirf eligible players ko confirmation ke liye bheje jayenge.</p>
+    <h2>Free Fire — Room & Ready Check</h2>
+    <p><strong>Tournament:</strong> {{ tournament.title }} · <strong>Status:</strong> {{ tournament.get_status_display }}</p>
+    <p>Room ID/password sirf tournament LIVE hone ke baad ready-check ke liye release honge. Player YES confirm karega to hi room details dikhengi.</p>
 
     {% if messages %}
         {% for message in messages %}
@@ -12,6 +13,7 @@
         {% endfor %}
     {% endif %}
 
+    {% if tournament.status == "live" %}
     <form method="post"
           action="{% url 'tournaments:send_room_details' tournament.id %}">
         {% csrf_token %}
@@ -29,8 +31,12 @@
         </div>
 
         <button type="submit" class="btn btn-primary">
-            Send Room Details
+            Release Room Details & Start 10-Minute Confirmation
         </button>
     </form>
+    {% else %}
+    <div class="alert alert-warning">Pehle tournament ko Django Admin mein LIVE karo. Isse pehle room details players ko release nahi hongi.</div>
+    {% endif %}
+    <p><a href="{% url 'tournaments:admin_tournament_dashboard' tournament.id %}">← Back to this tournament's control panel</a></p>
 </div>
 {% endblock %}
