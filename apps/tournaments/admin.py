@@ -747,8 +747,11 @@ def run_ai_review_for_selected(modeladmin, request, queryset):
                     "ai_review_notes", "proposed_reward",
                 ])
             reviewed += 1
-        except (AIReviewError, OSError, ValueError) as exc:
-            selected.ai_review_notes = f"AI review failed: {str(exc)[:900]}"
+        except Exception as exc:
+            # Keep the submission pending and store a useful diagnostic for the admin.
+            # Do not expose API keys or request headers in the saved error message.
+            error_text = str(exc).strip() or exc.__class__.__name__
+            selected.ai_review_notes = f"AI review failed ({exc.__class__.__name__}): {error_text[:850]}"
             selected.save(update_fields=["ai_review_notes"])
             failed += 1
 
@@ -771,7 +774,7 @@ class KillSubmissionAdmin(admin.ModelAdmin):
     list_display = (
         "id", "player", "player_profile_id", "tournament", "registered_uid", "free_fire_uid",
         "player_upi_id", "payout_qr", "status", "ai_proposed_kills", "approved_kills", "approved_reward",
-        "payout_reference", "payout_status", "payout_paid_at", "ai_confidence", "ai_uid_matches", "submitted_at",
+        "payout_reference", "payout_status", "payout_paid_at", "ai_confidence", "ai_uid_matches", "ai_review_notes", "submitted_at",
     )
     list_filter = ("status", "payout_status", "ai_confidence", "ai_uid_matches", "tournament__mode", "tournament__gender_category", "tournament", "submitted_at")
     search_fields = ("player__username", "tournament__title", "registered_uid", "free_fire_uid", "payout_reference")
