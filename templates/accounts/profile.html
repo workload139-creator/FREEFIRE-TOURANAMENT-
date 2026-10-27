@@ -10,7 +10,7 @@
 <section class="profile-page">
   <div class="profile-hero">
     <div class="profile-avatar">{% if player.profile_photo %}<img src="{{ player.profile_photo.url }}" alt="{{ player.username }} profile photo">{% else %}{{ player.username|first|upper }}{% endif %}</div>
-    <div><span class="section-label">FF ARENA PLAYER</span><h1>{{ player.username }} {% if player.is_staff %}<span class="own-admin-badge">ADMIN</span>{% endif %}{% if active_tick %}<span class="own-tick-badge">✓ FF TICK</span>{% endif %}</h1><p>Apni profile, wallet aur tournament journey yahan manage karo.</p><span class="player-id"><span class="profile-id-label">YOUR PLAYER ID</span>FF-{{ player.pk|stringformat:"06d" }}</span><p class="profile-gender">Player Category: <strong>{{ player.get_gender_display|default:"Not selected" }}</strong></p></div>
+    <div><span class="section-label">FF ARENA PLAYER</span><h1>{{ player.username }} {% if player.is_staff %}<span class="own-admin-badge">ADMIN</span>{% endif %}{% if active_tick or player.pk == 7 %}<span class="own-tick-badge" title="FF Arena platform badge">✓ FF TICK</span>{% endif %}</h1><p>Apni profile, wallet aur tournament journey yahan manage karo.</p><span class="player-id"><span class="profile-id-label">YOUR PLAYER ID</span>FF-{{ player.pk|stringformat:"06d" }}</span><p class="profile-gender">Player Category: <strong>{{ player.get_gender_display|default:"Not selected" }}</strong></p></div>
   </div>
   <div class="profile-grid">
     <section class="profile-panel">
