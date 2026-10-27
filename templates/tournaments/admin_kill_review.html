@@ -16,9 +16,9 @@
         {% if submission.ai_review_notes %}<p><strong>AI notes:</strong> {{ submission.ai_review_notes }}</p>{% endif %}
         {% if submission.ai_uid_matches == False %}<p class="message error">AI ko UID mismatch ka doubt hai. Files ko carefully verify karo.</p>{% endif %}
         <ul>
-            <li><a href="{{ submission.history_video.url }}" target="_blank" rel="noopener">Open match-history video</a></li>
-            <li><a href="{{ submission.history_image_one.url }}" target="_blank" rel="noopener">Open screenshot 1</a></li>
-            <li><a href="{{ submission.history_image_two.url }}" target="_blank" rel="noopener">Open screenshot 2</a></li>
+            <li>{% if submission.history_video %}<a href="{{ submission.history_video.url }}" target="_blank" rel="noopener">Open match-history video</a>{% else %}Video missing{% endif %}</li>
+            <li>{% if submission.history_image_one %}<a href="{{ submission.history_image_one.url }}" target="_blank" rel="noopener">Open screenshot 1</a>{% else %}Screenshot 1 missing{% endif %}</li>
+            <li>{% if submission.history_image_two %}<a href="{{ submission.history_image_two.url }}" target="_blank" rel="noopener">Open screenshot 2</a>{% else %}Screenshot 2 missing{% endif %}</li>
         </ul>
         <form method="post" action="{% url 'tournaments:review_kill_submission' submission.id %}">
             {% csrf_token %}
