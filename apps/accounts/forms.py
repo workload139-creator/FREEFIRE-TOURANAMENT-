@@ -9,7 +9,7 @@ from .models import DepositRequest, User
 class PlayerRegistrationForm(UserCreationForm):
     email = forms.EmailField(required=True, label="Email Address")
     phone_number = forms.CharField(max_length=15, required=True, label="Mobile Number")
-    upi_id = forms.CharField(max_length=100, required=False, label="UPI ID for tournament prize payout (enter UPI ID or upload QR)")
+    upi_id = forms.CharField(max_length=100, required=True, label="Your UPI ID (required for prize payout)")
     upi_qr_code = forms.ImageField(required=True, label="Upload your UPI QR code (required)")
 
     class Meta:
@@ -62,12 +62,16 @@ class PlayerRegistrationForm(UserCreationForm):
 
     def clean_upi_id(self):
         upi_id = (self.cleaned_data.get("upi_id") or "").strip()
-        if upi_id and ("@" not in upi_id or any(char.isspace() for char in upi_id)):
+        if not upi_id:
+            raise forms.ValidationError("Apni UPI ID dena zaroori hai.")
+        if "@" not in upi_id or any(char.isspace() for char in upi_id):
             raise forms.ValidationError("Valid UPI ID enter karein, jaise name@upi.")
         return upi_id
 
     def clean(self):
         cleaned = super().clean()
+        if not (cleaned.get("upi_id") or "").strip():
+            self.add_error("upi_id", "Account banane ke liye apni UPI ID dena zaroori hai.")
         if not cleaned.get("upi_qr_code"):
             self.add_error("upi_qr_code", "Account banane ke liye apna UPI QR code upload karna zaroori hai.")
         return cleaned
@@ -166,9 +170,9 @@ class ProfileUpdateForm(forms.ModelForm):
         self.fields["phone_number"].label = "Mobile number"
         self.fields["profile_photo"].label = "Profile photo"
         self.fields["upi_id"].label = "UPI ID for tournament prize payout"
-        self.fields["upi_id"].required = False
-        self.fields["upi_qr_code"].label = "UPI QR code for prize payout"
-        self.fields["upi_qr_code"].required = False
+        self.fields["upi_id"].required = True
+        self.fields["upi_qr_code"].label = "UPI QR code for prize payout (required if not already saved)"
+        self.fields["upi_qr_code"].required = not bool(self.instance and self.instance.pk and self.instance.upi_qr_code)
         self.fields["profile_photo"].required = False
 
     def clean_username(self):
@@ -202,7 +206,9 @@ class ProfileUpdateForm(forms.ModelForm):
 
     def clean_upi_id(self):
         upi_id = (self.cleaned_data.get("upi_id") or "").strip()
-        if upi_id and ("@" not in upi_id or any(char.isspace() for char in upi_id)):
+        if not upi_id:
+            raise forms.ValidationError("Apni UPI ID dena zaroori hai.")
+        if "@" not in upi_id or any(char.isspace() for char in upi_id):
             raise forms.ValidationError("Valid UPI ID enter karein.")
         return upi_id
 
