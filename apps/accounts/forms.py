@@ -15,7 +15,7 @@ class PlayerRegistrationForm(UserCreationForm):
     class Meta:
         model = User
         fields = (
-            "username", "email", "phone_number", "upi_id", "upi_qr_code",
+            "username", "email", "phone_number", "gender", "upi_id", "upi_qr_code",
             "password1", "password2",
         )
 
@@ -23,6 +23,9 @@ class PlayerRegistrationForm(UserCreationForm):
         super().__init__(*args, **kwargs)
         # A non-model field is added here so ModelForm's Meta.fields whitelist
         # does not accidentally remove the required legal-consent checkbox.
+        self.fields["gender"].label = "Player category"
+        self.fields["gender"].required = True
+        self.fields["gender"].help_text = "Choose Boy or Girl. This is used to show eligible gender-based tournaments."
         self.fields["accept_terms"] = forms.BooleanField(
             required=True,
             label="I agree to the Terms & Conditions and Privacy Policy",
@@ -122,7 +125,7 @@ class WithdrawalRequestForm(forms.Form):
 class ProfileUpdateForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ("username", "email", "phone_number", "profile_photo", "upi_id", "upi_qr_code")
+        fields = ("username", "email", "phone_number", "gender", "profile_photo", "upi_id", "upi_qr_code")
         widgets = {
             "username": forms.TextInput(attrs={"autocomplete": "username"}),
             "email": forms.EmailInput(attrs={"autocomplete": "email"}),
@@ -132,6 +135,9 @@ class ProfileUpdateForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.user = kwargs.get("instance")
         super().__init__(*args, **kwargs)
+        self.fields["gender"].label = "Player category (Boy/Girl)"
+        self.fields["gender"].required = True
+        self.fields["gender"].help_text = "Used to filter Boys-only and Girls-only tournaments."
         self.fields["username"].label = "Username / Player ID name"
         self.fields["email"].label = "Email address"
         self.fields["phone_number"].label = "Mobile number"
