@@ -243,3 +243,21 @@ class CurrencyWithdrawalRequest(models.Model):
 
     def __str__(self):
         return f"{self.user} · {self.quantity} {self.currency} · {self.status}"
+
+
+class DailySpin(models.Model):
+    """Auditable daily free reward; one reward record per successful spin."""
+    class Currency(models.TextChoices):
+        DIAMONDS = "diamonds", "Diamonds"
+        COINS = "coins", "Coins"
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="daily_spins")
+    currency = models.CharField(max_length=12, choices=Currency.choices)
+    quantity = models.PositiveSmallIntegerField()
+    spun_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ("-spun_at",)
+
+    def __str__(self):
+        return f"{self.user} · {self.quantity} {self.currency} · {self.spun_at}"
