@@ -356,14 +356,7 @@ def kill_submission(request, registration_id):
                     submission.ai_confidence = ai_result["confidence"][:10]
                     submission.ai_uid_matches = ai_result["uid_matches"]
                     submission.ai_review_notes = ai_result["reason"]
-                    auto_approved = (
-                        ai_result["proposed_kills"] is not None
-                        and ai_result["uid_matches"] is True
-                        and submitted_uid == registration.free_fire_uid
-                        and registration.tournament.mode == Tournament.Mode.BR
-                        and ai_result["confidence"] == "high"
-                        and int(ai_result["proposed_kills"] or 0) >= settings.MINIMUM_VERIFIED_KILLS
-                    )
+                    auto_approved = False  # AI only proposes; admin confirmation credits Diamonds.
                     proposed_kills = int(ai_result["proposed_kills"] or 0)
                     if auto_approved and proposed_kills > 0:
                         # ₹5 per verified kill converts to 5 Diamonds at ₹1 per Diamond.
@@ -445,6 +438,9 @@ def admin_kill_review(request):
     tournament_id = request.GET.get("tournament")
     if tournament_id and str(tournament_id).isdigit():
         submissions = submissions.filter(tournament_id=int(tournament_id))
+    submission_id = request.GET.get("submission")
+    if submission_id and str(submission_id).isdigit():
+        submissions = submissions.filter(pk=int(submission_id))
     return render(request, "tournaments/admin_kill_review.html", {
         "submissions": submissions,
         "selected_tournament_id": tournament_id or "",
@@ -494,8 +490,9 @@ def review_kill_submission(request, submission_id):
             return redirect("tournaments:admin_kill_review")
 
         submission.approved_kills = approved_kills
-        if submission.tournament.mode == Tournament.Mode.BR and approved_kills >= settings.MINIMUM_VERIFIED_KILLS:
-            submission.proposed_reward = Decimal(approved_kills) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
+        reward_per_kill = Decimal(str(settings.REWARD_PER_APPROVED_KILL))
+        if approved_kills >= settings.MINIMUM_VERIFIED_KILLS:
+            submission.proposed_reward = Decimal(approved_kills) * reward_per_kill
         else:
             submission.proposed_reward = Decimal("0.00")
         submission.approved_reward = submission.proposed_reward
@@ -506,16 +503,33 @@ def review_kill_submission(request, submission_id):
             "approved_kills", "proposed_reward", "approved_reward",
             "admin_notes", "reviewed_at", "status",
         ])
-        if submission.tournament.mode == Tournament.Mode.BR and submission.approved_reward > 0:
+
+        # Diamonds are non-cash. Credit once after explicit admin confirmation for BR and VS.
+        if submission.approved_reward > 0:
             from apps.social.models import PlayerShopWallet
-            shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=submission.player)
-            shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
-            shop_wallet.diamonds += int(submission.approved_reward)
-            shop_wallet.save(update_fields=("diamonds", "updated_at"))
+            ledger_reference = f"KILL-REWARD-{submission.pk}"
+            if not TournamentLedgerEntry.objects.filter(reference=ledger_reference).exists():
+                shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=submission.player)
+                shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
+                diamond_quantity = int(submission.approved_reward)
+                shop_wallet.diamonds += diamond_quantity
+                shop_wallet.save(update_fields=("diamonds", "updated_at"))
+                TournamentLedgerEntry.objects.create(
+                    reference=ledger_reference,
+                    tournament=submission.tournament,
+                    player=submission.player,
+                    registration=submission.registration,
+                    entry_type=TournamentLedgerEntry.EntryType.REWARD,
+                    currency=TournamentLedgerEntry.Currency.DIAMONDS,
+                    quantity=diamond_quantity,
+                    amount_inr=submission.approved_reward,
+                    status=TournamentLedgerEntry.Status.COMPLETED,
+                    description=f"Admin-confirmed kill reward: {approved_kills} kills",
+                )
 
     messages.success(
         request,
-        f"Kill evidence review complete: {approved_kills} kills approved. Eligible BR reward ₹{submission.approved_reward} calculate hua. Ab admin ko player ki saved UPI ID/QR par manually payout karke real UTR admin panel mein enter karna hoga; review approval se payment nahi hota.",
+        f"Admin confirmation complete: {approved_kills} kills approved; {int(submission.approved_reward)} Diamonds credited to the player shop wallet. Diamonds are not an automatic INR/UPI payout.",
     )
     return redirect("tournaments:admin_kill_review")
 
