@@ -221,6 +221,7 @@ class CurrencyGift(models.Model):
     class Currency(models.TextChoices):
         DIAMONDS = "diamonds", "Diamonds"
         COINS = "coins", "Coins"
+        FAN_TOKENS = "fan_tokens", "Fan Tokens"
 
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="sent_currency_gifts")
     recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="received_currency_gifts")
