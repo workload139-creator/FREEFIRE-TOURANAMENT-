@@ -47,7 +47,15 @@
                 {% for error in form.free_fire_uid.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
                 <small class="help-text">UID yahan enter karein. Isi tournament UID se leaderboard aur kill evidence match hoga.</small>
             </div>
-            {% if tournament.entry_fee > 0 %}
+            <section class="entry-currency-choice">
+                <h2>Choose Entry Payment</h2>
+                <p>Your balance: <strong>💎 {{ shop_wallet.diamonds|default:0 }} Diamonds</strong> · <strong>🪙 {{ shop_wallet.coins|default:0 }} Coins</strong></p>
+                <div class="form-group"><label>{{ form.payment_method.label }}</label>{{ form.payment_method }}{% for error in form.payment_method.errors %}<small class="error-text">{{ error }}</small>{% endfor %}</div>
+                <p class="help-text">Rate: 1 Diamond = ₹1 entry value · 10 Coins = ₹1 entry value. ₹{{ tournament.entry_fee }} entry = {{ tournament.entry_fee|floatformat:0 }} Diamonds or {{ tournament.entry_fee|floatformat:0 }}0 Coins when the fee is a whole rupee.</p>
+                <a class="button button-outline" href="{% url 'social:shop' %}">💎 No Coins / Diamonds? Open Shop</a>
+            </section>
+            <div id="upiPaymentFields">
+            {% if tournament.entry_fee > 0 and form.payment_method.value == "upi" %}
             {% if upi_payment_uri %}
             <section class="profile-notice tournament-payment-panel" style="margin:18px 0;padding:20px;border:1px solid #38d9a9;border-radius:16px;background:#0d1718;color:#fff">
                 <h2 style="margin-top:0">🔐 Pay Entry Fee: ₹{{ tournament.entry_fee }}</h2>
@@ -77,6 +85,7 @@
             {% else %}
             <div class="profile-notice"><p>Yeh free tournament hai; registration submit karne par confirm ho jayegi.</p></div>
             {% endif %}
+            </div>
             <button type="submit" class="btn-primary" {% if tournament.entry_fee > 0 and not upi_payment_uri %}disabled aria-disabled="true"{% endif %}>{% if tournament.entry_fee > 0 %}SUBMIT PAYMENT &amp; REGISTER{% else %}REGISTER FREE{% endif %}</button>
         </form>
     </div>
@@ -84,6 +93,10 @@
 {% if tournament.entry_fee > 0 and upi_payment_uri %}
 <script>
 document.addEventListener("DOMContentLoaded", () => {
+ const upiFields=document.getElementById("upiPaymentFields");
+ const radios=document.querySelectorAll('input[name="payment_method"]');
+ function syncPaymentMethod(){const chosen=document.querySelector('input[name="payment_method"]:checked');if(upiFields)upiFields.hidden=!!chosen&&chosen.value!=="upi";}
+ radios.forEach(r=>r.addEventListener("change",syncPaymentMethod));syncPaymentMethod();
  const qr=document.getElementById("entryPaymentQr"), status=document.getElementById("qrActionMessage");
  const download=document.getElementById("downloadEntryQr"), share=document.getElementById("shareEntryQr");
  if(!qr||!status||!download||!share)return;
@@ -93,4 +106,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 {% endif %}
+<style>
+.entry-currency-choice{margin:18px 0;padding:20px;border:1px solid #8a7dff88;border-radius:18px;background:radial-gradient(circle at top right,#262c55,#101723 72%);color:#f5f7ff;box-shadow:0 16px 40px #0004}.entry-currency-choice h2{margin-top:0}.entry-currency-choice p{color:#d2ddf0}.entry-currency-choice ul{list-style:none;padding:0;display:flex;gap:14px;flex-wrap:wrap}.entry-currency-choice li{padding:10px 14px;border-radius:10px;background:#202943}.entry-currency-choice a{display:inline-block;margin-top:8px;color:#90f6e0;font-weight:900}#upiPaymentFields[hidden]{display:none!important}
+</style>
 {% endblock %}
