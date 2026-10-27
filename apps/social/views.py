@@ -422,3 +422,63 @@ def daily_spin(request):
 
     messages.success(request, f"🎉 Daily Spin reward: +{quantity} {currency.title()}! Come back after 24 hours for another spin.")
     return redirect("accounts:wallet")
+
+
+
+@login_required
+def currency_withdrawal_view(request):
+    """Submit a manual-review request to convert shop currency to INR."""
+    from decimal import Decimal
+
+    wallet, _ = PlayerShopWallet.objects.get_or_create(user=request.user)
+    if request.method == "POST":
+        form = CurrencyWithdrawalRequestForm(request.POST, request.FILES)
+        if form.is_valid():
+            currency = form.cleaned_data["currency"]
+            quantity = form.cleaned_data["quantity"]
+            upi_id = form.cleaned_data["upi_id"]
+            qr = form.cleaned_data["upi_qr_code"]
+            # Rates match the current shop packs: 1 diamond = ₹1; 10 coins = ₹1.
+            amount = Decimal(quantity) if currency == "diamonds" else Decimal(quantity) / Decimal("10")
+            if amount < Decimal("10.00"):
+                form.add_error("quantity", "Minimum withdrawal ₹10 hai: 10 diamonds ya 100 coins.")
+            else:
+                with transaction.atomic():
+                    wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
+                    pending = CurrencyWithdrawalRequest.objects.filter(
+                        user=request.user, status=CurrencyWithdrawalRequest.Status.PENDING
+                    ).exists()
+                    if pending:
+                        form.add_error(None, "Aapki ek currency withdrawal request pehle se pending hai.")
+                    elif currency == "diamonds" and wallet.diamonds < quantity:
+                        form.add_error("quantity", "Aapke paas itne diamonds nahi hain.")
+                    elif currency == "coins" and wallet.coins < quantity:
+                        form.add_error("quantity", "Aapke paas itne coins nahi hain.")
+                    else:
+                        CurrencyWithdrawalRequest.objects.create(
+                            user=request.user,
+                            currency=currency,
+                            quantity=quantity,
+                            amount_inr=amount,
+                            upi_id=upi_id,
+                            upi_qr_code=qr,
+                        )
+                        if currency == "diamonds":
+                            wallet.diamonds -= quantity
+                            wallet.save(update_fields=("diamonds", "updated_at"))
+                        else:
+                            wallet.coins -= quantity
+                            wallet.save(update_fields=("coins", "updated_at"))
+                        messages.success(
+                            request,
+                            f"₹{amount:.2f} ki withdrawal request admin review ke liye bhej di. Actual UPI transfer aur verification ke baad hi payout complete hoga."
+                        )
+                        return redirect("social:currency_withdrawal")
+    else:
+        form = CurrencyWithdrawalRequestForm(initial={"upi_id": request.user.upi_id})
+    requests = CurrencyWithdrawalRequest.objects.filter(user=request.user)[:20]
+    return render(request, "social/currency_withdrawal.html", {
+        "form": form,
+        "shop_wallet": wallet,
+        "withdrawal_requests": requests,
+    })
