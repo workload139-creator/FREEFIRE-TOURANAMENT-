@@ -4,9 +4,12 @@ from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from datetime import timedelta
+import random
 from django.views.decorators.http import require_POST
 
-from .models import Follow, FriendRequest, UserBlock, UserReport, PhotoPost, FFTickSubscription, PlayerShopWallet, ShopPaymentRequest, CurrencyWithdrawalRequest
+from .models import Follow, FriendRequest, UserBlock, UserReport, PhotoPost, FFTickSubscription, PlayerShopWallet, ShopPaymentRequest, CurrencyWithdrawalRequest, DailySpin
 
 User = get_user_model()
 
@@ -386,3 +389,36 @@ def shop_view(request):
         "payment_requests": ShopPaymentRequest.objects.filter(user=request.user)[:10],
         "payment_qr_data_uri": _shop_payment_qr_data_uri(),
     })
+
+
+@login_required
+@require_POST
+def daily_spin(request):
+    """One database-backed free spin per 24 hours; rewards are small and non-cash."""
+    with transaction.atomic():
+        wallet, _ = PlayerShopWallet.objects.get_or_create(user=request.user)
+        wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
+        last_spin = DailySpin.objects.filter(user=request.user).order_by("-spun_at").first()
+        now = timezone.now()
+        if last_spin and now < last_spin.spun_at + timedelta(hours=24):
+            available_at = last_spin.spun_at + timedelta(hours=24)
+            wait_seconds = max(0, int((available_at - now).total_seconds()))
+            hours, remainder = divmod(wait_seconds, 3600)
+            minutes = remainder // 60
+            messages.info(request, f"Daily Spin already used. Next spin in about {hours}h {minutes}m.")
+            return redirect("accounts:wallet")
+
+        # Only the requested small rewards are possible.
+        if random.choice((True, False)):
+            currency = DailySpin.Currency.DIAMONDS
+            quantity = random.choice((1, 2))
+            wallet.diamonds += quantity
+        else:
+            currency = DailySpin.Currency.COINS
+            quantity = random.choice((5, 10, 15, 20, 25))
+            wallet.coins += quantity
+        wallet.save(update_fields=("diamonds", "coins", "updated_at"))
+        DailySpin.objects.create(user=request.user, currency=currency, quantity=quantity)
+
+    messages.success(request, f"🎉 Daily Spin reward: +{quantity} {currency.title()}! Come back after 24 hours for another spin.")
+    return redirect("accounts:wallet")
