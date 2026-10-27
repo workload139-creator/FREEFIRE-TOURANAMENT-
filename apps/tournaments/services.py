@@ -4,7 +4,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.accounts.models import AdminWallet, AdminWalletTransaction, Wallet, WalletTransaction
-from .models import Registration, Tournament
+from .models import Registration, Tournament, TournamentLedgerEntry
 
 
 @transaction.atomic
@@ -38,21 +38,33 @@ def mark_not_playing_and_refund(registration_id):
         ])
         return True, "Player marked NOT_PLAYING; actual UPI refund is pending admin transfer and UTR entry."
 
-    if registration.payment_method in ("diamonds", "coins") and registration.currency_amount > 0:
+    if registration.payment_method in ("diamonds", "coins", "fan_tokens") and registration.currency_amount > 0:
         from apps.social.models import PlayerShopWallet
         shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=registration.player)
         shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
-        if registration.payment_method == "diamonds":
-            shop_wallet.diamonds += registration.currency_amount
-        else:
-            shop_wallet.coins += registration.currency_amount
-        shop_wallet.save(update_fields=["diamonds", "coins", "updated_at"])
+        field = {"diamonds": "diamonds", "coins": "coins", "fan_tokens": "fan_tokens"}[registration.payment_method]
+        setattr(shop_wallet, field, getattr(shop_wallet, field) + registration.currency_amount)
+        shop_wallet.save(update_fields=["diamonds", "coins", "fan_tokens", "updated_at"])
         registration.status = Registration.Status.NOT_PLAYING
         registration.room_details_sent = False
         registration.refund_processed = True
         registration.refund_processed_at = timezone.now()
         registration.refund_reference = f"REG-CURRENCY-REFUND-{registration.pk}"
         registration.save(update_fields=["status", "room_details_sent", "refund_processed", "refund_processed_at", "refund_reference", "updated_at"])
+        TournamentLedgerEntry.objects.get_or_create(
+            reference=registration.refund_reference,
+            defaults={
+                "tournament": registration.tournament,
+                "player": registration.player,
+                "registration": registration,
+                "entry_type": TournamentLedgerEntry.EntryType.REFUND,
+                "currency": registration.payment_method,
+                "quantity": registration.currency_amount,
+                "amount_inr": registration.entry_fee_paid,
+                "status": TournamentLedgerEntry.Status.COMPLETED,
+                "description": "Currency refunded after missed ready confirmation",
+            },
+        )
         return True, "Player marked NOT_PLAYING and currency refunded."
 
     amount = Decimal(str(registration.entry_fee_paid))
@@ -136,20 +148,32 @@ def cancel_tournament_and_refund(tournament_id):
                 "refund_reference", "updated_at",
             ])
             continue
-        if registration.payment_method in ("diamonds", "coins") and registration.currency_amount > 0:
+        if registration.payment_method in ("diamonds", "coins", "fan_tokens") and registration.currency_amount > 0:
             from apps.social.models import PlayerShopWallet
             shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=registration.player)
             shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
-            if registration.payment_method == "diamonds":
-                shop_wallet.diamonds += registration.currency_amount
-            else:
-                shop_wallet.coins += registration.currency_amount
-            shop_wallet.save(update_fields=["diamonds", "coins", "updated_at"])
+            field = {"diamonds": "diamonds", "coins": "coins", "fan_tokens": "fan_tokens"}[registration.payment_method]
+            setattr(shop_wallet, field, getattr(shop_wallet, field) + registration.currency_amount)
+            shop_wallet.save(update_fields=["diamonds", "coins", "fan_tokens", "updated_at"])
             registration.status = Registration.Status.CANCELLED
             registration.refund_processed = True
             registration.refund_processed_at = timezone.now()
             registration.refund_reference = f"TOURNEY-CURRENCY-REFUND-{registration.pk}"
             registration.save(update_fields=["status", "refund_processed", "refund_processed_at", "refund_reference", "updated_at"])
+            TournamentLedgerEntry.objects.get_or_create(
+                reference=registration.refund_reference,
+                defaults={
+                    "tournament": tournament,
+                    "player": registration.player,
+                    "registration": registration,
+                    "entry_type": TournamentLedgerEntry.EntryType.REFUND,
+                    "currency": registration.payment_method,
+                    "quantity": registration.currency_amount,
+                    "amount_inr": registration.entry_fee_paid,
+                    "status": TournamentLedgerEntry.Status.COMPLETED,
+                    "description": "Currency refunded because tournament was cancelled",
+                },
+            )
             refunded += 1
             continue
         reference = f"TOURNEY-CANCEL-REFUND-{registration.pk}"

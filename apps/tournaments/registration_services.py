@@ -1,14 +1,139 @@
 from datetime import timedelta
 from decimal import Decimal
 
+from django.conf import settings
+from django.core.mail import send_mail
 from django.db import transaction
+from django.urls import reverse
 from django.utils import timezone
 
-from .models import Registration, Tournament
+from .models import Registration, Tournament, TournamentLedgerEntry
 
 
 class RegistrationError(Exception):
     """Raised when a tournament registration cannot proceed."""
+
+
+def send_unlimited_live_notifications(tournament_id):
+    """Email the admin and all verified entrants after a 49-player Unlimited round starts."""
+    tournament = Tournament.objects.filter(
+        pk=tournament_id, is_unlimited_br=True, status=Tournament.Status.LIVE
+    ).first()
+    if not tournament:
+        return
+
+    registrations = list(
+        Registration.objects.filter(
+            tournament=tournament,
+            payment_verified=True,
+            refund_processed=False,
+            status__in=[
+                Registration.Status.CONFIRMED,
+                Registration.Status.WAITING_READY,
+                Registration.Status.READY,
+            ],
+        ).select_related("player").order_by("registered_at")
+    )
+    admin_recipients = []
+    configured_admin = getattr(settings, "TOURNAMENT_ADMIN_EMAIL", "").strip()
+    if configured_admin:
+        admin_recipients.append(configured_admin)
+    for entry in getattr(settings, "ADMINS", []):
+        email = (entry[1] or "").strip()
+        if email and email not in admin_recipients:
+            admin_recipients.append(email)
+    if not admin_recipients:
+        sender_email = (settings.DEFAULT_FROM_EMAIL or "").strip()
+        if sender_email and "@" in sender_email:
+            admin_recipients.append(sender_email)
+
+    tournament_url = settings.SITE_URL + reverse("tournaments:detail", args=[tournament.pk])
+    subject = f"FF Arena Unlimited Tournament is LIVE: {tournament.title}"
+    admin_message = (
+        f"Unlimited Tournament is now LIVE.\n\n"
+        f"Name: {tournament.title}\n"
+        f"Players: {len(registrations)}/{tournament.max_players}\n"
+        f"Entry fee: INR {tournament.entry_fee}\n"
+        f"Started at: {timezone.localtime(timezone.now()).strftime('%d %b %Y, %I:%M %p')}\n"
+        f"Tournament page: {tournament_url}\n"
+    )
+    success_count = 0
+    failure_count = 0
+    for recipient in admin_recipients:
+        try:
+            success_count += send_mail(
+                subject, admin_message, settings.DEFAULT_FROM_EMAIL, [recipient],
+                fail_silently=False,
+            )
+        except Exception:
+            failure_count += 1
+
+    for registration in registrations:
+        email = (registration.player.email or "").strip()
+        if not email:
+            failure_count += 1
+            continue
+        player_message = (
+            f"Hi {registration.player.username},\n\n"
+            f"Your Unlimited Tournament, {tournament.title}, is now LIVE!\n"
+            f"Your Free Fire UID: {registration.free_fire_uid}\n"
+            f"Entry fee paid by: {registration.get_payment_method_display()}\n"
+            f"Players: {len(registrations)}/{tournament.max_players}\n\n"
+            f"Open tournament page: {tournament_url}\n\n"
+            "Room ID/password will be shared only through the website when the admin enables access.\n"
+        )
+        try:
+            success_count += send_mail(
+                subject, player_message, settings.DEFAULT_FROM_EMAIL, [email],
+                fail_silently=False,
+            )
+        except Exception:
+            failure_count += 1
+
+    expected_count = len(registrations) + len(admin_recipients)
+    tournament.live_notification_status = (
+        "sent" if failure_count == 0 and success_count >= expected_count
+        else ("partial" if success_count else "failed")
+    )
+    if success_count:
+        tournament.live_notification_sent_at = timezone.now()
+    tournament.save(update_fields=[
+        "live_notification_sent_at", "live_notification_status", "updated_at",
+    ])
+
+
+@transaction.atomic
+def maybe_start_unlimited_tournament(tournament_id):
+    """Start a 49-player Unlimited BR round once all 49 entries are confirmed and paid."""
+    tournament = Tournament.objects.select_for_update().get(pk=tournament_id)
+    if not tournament.is_unlimited_br or not tournament.auto_start_at_capacity or tournament.status != Tournament.Status.UPCOMING:
+        return False
+
+    active_count = Registration.objects.filter(
+        tournament=tournament,
+        payment_verified=True,
+        status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
+    ).count()
+    if active_count < 49:
+        return False
+
+    tournament.status = Tournament.Status.LIVE
+    tournament.save(update_fields=["status", "updated_at"])
+    transaction.on_commit(lambda tournament_id=tournament.pk: send_unlimited_live_notifications(tournament_id))
+
+    root_id = tournament.series_root_id or tournament.pk
+    root = Tournament.objects.select_for_update().get(pk=root_id)
+    if root.auto_reopen:
+        next_round_number = root.series_rounds.count() + 2
+        Tournament.objects.create(
+            title=f"{root.title} - Round {next_round_number}"[:120],
+            mode=Tournament.Mode.BR, vs_format="", description=root.description,
+            entry_fee=Decimal("10.00"), prize_pool=root.prize_pool, max_players=49,
+            start_time=timezone.now() + timedelta(minutes=10),
+            status=Tournament.Status.UPCOMING, is_unlimited_br=True,
+            auto_start_at_capacity=True, auto_reopen=root.auto_reopen, series_root=root,
+        )
+    return True
 
 
 @transaction.atomic
@@ -64,6 +189,21 @@ def create_pending_registration(*, tournament_id, player, free_fire_uid, payment
         registration_status = Registration.Status.CONFIRMED
         payment_verified = True
         reference = ""
+    elif payment_method == "fan_tokens":
+        # One Fan Token equals ₹1 of tournament entry value; tokens are non-cash and non-withdrawable.
+        if fee != fee.to_integral_value():
+            raise RegistrationError("Fan Token entry ke liye fee poore rupees mein honi chahiye.")
+        currency_amount = int(fee)
+        from apps.social.models import PlayerShopWallet
+        shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=player)
+        shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
+        if shop_wallet.fan_tokens < currency_amount:
+            raise RegistrationError("NO_FAN_TOKENS")
+        shop_wallet.fan_tokens -= currency_amount
+        shop_wallet.save(update_fields=["fan_tokens", "updated_at"])
+        registration_status = Registration.Status.CONFIRMED
+        payment_verified = True
+        reference = ""
     else:
         if not reference or len(reference) < 6:
             raise RegistrationError("Payment ke baad UTR/reference number zaroor daalein.")
@@ -85,26 +225,16 @@ def create_pending_registration(*, tournament_id, player, free_fire_uid, payment
         currency_amount=currency_amount,
         status=registration_status,
     )
-    # Start a BR round at 49 registrations, then optionally open a fresh round.
+    TournamentLedgerEntry.objects.create(
+        tournament=tournament, player=player, registration=registration,
+        entry_type=TournamentLedgerEntry.EntryType.ENTRY,
+        currency={"upi": "inr", "diamonds": "diamonds", "coins": "coins", "fan_tokens": "fan_tokens", "free": "inr"}[registration.payment_method],
+        quantity=currency_amount, amount_inr=fee,
+        status=TournamentLedgerEntry.Status.PENDING if not payment_verified else TournamentLedgerEntry.Status.COMPLETED,
+        reference=reference or f"REG-ENTRY-{registration.pk}",
+        description="Tournament entry payment",
+    )
+    # Wallet entries start immediately at capacity; UPI entries start after admin verifies payment.
     if tournament.is_unlimited_br and tournament.auto_start_at_capacity:
-        active_count = Registration.objects.filter(
-            tournament=tournament,
-            payment_verified=True,
-            status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
-        ).count()
-        if active_count >= tournament.max_players:
-            tournament.status = Tournament.Status.LIVE
-            tournament.save(update_fields=["status", "updated_at"])
-            root_id = tournament.series_root_id or tournament.pk
-            root = Tournament.objects.select_for_update().get(pk=root_id)
-            if root.auto_reopen:
-                next_round_number = root.series_rounds.count() + 2
-                Tournament.objects.create(
-                    title=f"{root.title} - Round {next_round_number}"[:120],
-                    mode=Tournament.Mode.BR, vs_format="", description=root.description,
-                    entry_fee=root.entry_fee, prize_pool=root.prize_pool, max_players=49,
-                    start_time=timezone.now() + timedelta(minutes=10),
-                    status=Tournament.Status.UPCOMING, is_unlimited_br=True,
-                    auto_start_at_capacity=True, auto_reopen=root.auto_reopen, series_root=root,
-                )
+        maybe_start_unlimited_tournament(tournament.pk)
     return registration

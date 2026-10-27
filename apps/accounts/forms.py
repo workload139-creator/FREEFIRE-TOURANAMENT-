@@ -18,8 +18,6 @@ class PlayerRegistrationForm(UserCreationForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # A non-model field is added here so ModelForm's Meta.fields whitelist
-        # does not accidentally remove the required legal-consent checkbox.
         self.fields["gender"].label = "Player category"
         self.fields["gender"].required = True
         self.fields["gender"].help_text = "Choose Boy or Girl. This is used to show eligible gender-based tournaments."
@@ -33,7 +31,6 @@ class PlayerRegistrationForm(UserCreationForm):
         if not User.objects.filter(username__iexact=username).exists():
             return username
 
-        # Keep the player's chosen name as a base and add a unique numeric suffix.
         base = username[:147]
         number = 2
         while True:
@@ -48,30 +45,6 @@ class PlayerRegistrationForm(UserCreationForm):
         if User.objects.filter(email__iexact=email).exists():
             raise forms.ValidationError("Ye email pehle se registered hai.")
         return email
-
-    def clean_phone_number(self):
-        phone = self.cleaned_data["phone_number"].strip()
-        if not phone.isdigit() or not 10 <= len(phone) <= 15:
-            raise forms.ValidationError("Sahi mobile number enter karein.")
-        if User.objects.filter(phone_number=phone).exists():
-            raise forms.ValidationError("Ye mobile number pehle se registered hai.")
-        return phone
-
-    def clean_upi_id(self):
-        upi_id = (self.cleaned_data.get("upi_id") or "").strip()
-        if not upi_id:
-            raise forms.ValidationError("Apni UPI ID dena zaroori hai.")
-        if "@" not in upi_id or any(char.isspace() for char in upi_id):
-            raise forms.ValidationError("Valid UPI ID enter karein, jaise name@upi.")
-        return upi_id
-
-    def clean_upi_qr_code(self):
-        qr = self.cleaned_data.get("upi_qr_code")
-        if qr and qr.size > 2 * 1024 * 1024:
-            raise forms.ValidationError("UPI QR image 2 MB se chhoti honi chahiye.")
-        if qr and hasattr(qr, "content_type") and qr.content_type not in ("image/jpeg", "image/png", "image/webp", "image/jpg"):
-            raise forms.ValidationError("UPI QR ke liye JPG, PNG ya WebP image upload karein.")
-        return qr
 
 
 class DepositRequestForm(forms.ModelForm):
@@ -114,13 +87,18 @@ class WithdrawalRequestForm(forms.Form):
             raise forms.ValidationError("Valid UPI ID enter karein.")
         return upi_id
 
+
 class CurrencyWithdrawalRequestForm(forms.Form):
     currency = forms.ChoiceField(
         choices=(("diamonds", "Diamonds"), ("coins", "Coins")),
         label="Currency to withdraw",
     )
     quantity = forms.IntegerField(min_value=1, label="Quantity to convert")
-    upi_id = forms.CharField(max_length=100, label="UPI ID", widget=forms.TextInput(attrs={"placeholder": "yourname@upi"}))
+    upi_id = forms.CharField(
+        max_length=100,
+        label="UPI ID",
+        widget=forms.TextInput(attrs={"placeholder": "yourname@upi"}),
+    )
 
     def clean_upi_id(self):
         value = self.cleaned_data["upi_id"].strip()
@@ -132,15 +110,13 @@ class CurrencyWithdrawalRequestForm(forms.Form):
 class ProfileUpdateForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ("username", "email", "gender", "profile_photo", "upi_id")
+        fields = ("username", "email", "gender", "profile_photo", "profile_visibility")
         widgets = {
             "username": forms.TextInput(attrs={"autocomplete": "username"}),
             "email": forms.EmailInput(attrs={"autocomplete": "email"}),
-            "phone_number": forms.TextInput(attrs={"autocomplete": "tel", "inputmode": "numeric"}),
         }
 
     def __init__(self, *args, **kwargs):
-        self.user = kwargs.get("instance")
         super().__init__(*args, **kwargs)
         self.fields["gender"].label = "Player category (Boy/Girl)"
         self.fields["gender"].required = True
@@ -148,9 +124,9 @@ class ProfileUpdateForm(forms.ModelForm):
         self.fields["username"].label = "Username / Player ID name"
         self.fields["email"].label = "Email address"
         self.fields["profile_photo"].label = "Profile photo"
-        self.fields["upi_id"].label = "UPI ID for tournament prize payout"
-        self.fields["upi_id"].required = False
         self.fields["profile_photo"].required = False
+        self.fields["profile_visibility"].label = "Profile / Player ID visibility"
+        self.fields["profile_visibility"].help_text = "Public: players can view your profile. Private: follow first to view your profile."
 
     def clean_username(self):
         username = self.cleaned_data["username"].strip()
@@ -169,14 +145,6 @@ class ProfileUpdateForm(forms.ModelForm):
         if existing.exists():
             raise forms.ValidationError("Ye email kisi aur account se linked hai.")
         return email
-
-    def clean_upi_id(self):
-        upi_id = (self.cleaned_data.get("upi_id") or "").strip()
-        if not upi_id:
-            return ""
-        if "@" not in upi_id or any(char.isspace() for char in upi_id):
-            raise forms.ValidationError("Valid UPI ID enter karein.")
-        return upi_id
 
     def clean_profile_photo(self):
         photo = self.cleaned_data.get("profile_photo")

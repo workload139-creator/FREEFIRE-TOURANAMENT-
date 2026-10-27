@@ -159,7 +159,9 @@ from .models import Wallet, WalletTransaction, WithdrawalRequest
 @login_required
 def wallet_view(request):
     wallet, created = Wallet.objects.get_or_create(user=request.user)
-    from apps.social.models import PlayerShopWallet, DailySpin
+    from apps.social.models import PlayerShopWallet, DailySpin, FanTokenAward, CurrencyGift
+    from apps.tournaments.models import TournamentLedgerEntry
+    from django.db.models import Q
     shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=request.user)
     last_spin = DailySpin.objects.filter(user=request.user).order_by("-spun_at").first()
     next_spin_at = last_spin.spun_at + __import__("datetime").timedelta(hours=24) if last_spin else None
@@ -172,6 +174,9 @@ def wallet_view(request):
         "withdrawal_requests": withdrawal_requests,
         "deposit_requests": wallet.deposit_requests.all()[:10],
         "shop_wallet": shop_wallet,
+        "fan_token_awards": FanTokenAward.objects.filter(user=request.user)[:20],
+        "fan_token_gifts": CurrencyGift.objects.filter(Q(sender=request.user) | Q(recipient=request.user))[:20],
+        "fan_token_tournament_entries": TournamentLedgerEntry.objects.filter(player=request.user, currency="fan_tokens")[:20],
         "last_spin": last_spin,
         "next_spin_at": next_spin_at,
         "spin_available": spin_available,

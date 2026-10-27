@@ -165,10 +165,28 @@ class PlayerShopWallet(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="shop_wallet")
     diamonds = models.PositiveIntegerField(default=0)
     coins = models.PositiveIntegerField(default=0)
+    fan_tokens = models.PositiveIntegerField(default=0, help_text="Non-cash tokens earned for every 10 followers; cannot be withdrawn.")
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.user} · {self.diamonds} diamonds / {self.coins} coins"
+        return f"{self.user} · {self.diamonds} diamonds / {self.coins} coins / {self.fan_tokens} Fan Tokens"
+
+
+class FanTokenAward(models.Model):
+    """One auditable award per follower milestone, preventing repeat farming."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="fan_token_awards")
+    follower_milestone = models.PositiveIntegerField(help_text="Follower count milestone, in multiples of 10.")
+    quantity = models.PositiveSmallIntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        constraints = [
+            models.UniqueConstraint(fields=("user", "follower_milestone"), name="social_unique_fan_token_milestone"),
+        ]
+
+    def __str__(self):
+        return f"{self.user} · {self.quantity} Fan Token(s) at {self.follower_milestone} followers"
 
 
 class ShopPaymentRequest(models.Model):
@@ -203,6 +221,7 @@ class CurrencyGift(models.Model):
     class Currency(models.TextChoices):
         DIAMONDS = "diamonds", "Diamonds"
         COINS = "coins", "Coins"
+        FAN_TOKENS = "fan_tokens", "Fan Tokens"
 
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="sent_currency_gifts")
     recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="received_currency_gifts")

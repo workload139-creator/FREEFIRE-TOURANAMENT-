@@ -1,3 +1,4 @@
+from datetime import timedelta
 from decimal import Decimal
 
 from django import forms
@@ -12,7 +13,7 @@ from apps.accounts.models import (
     AdminWalletTransaction,
     WalletTransaction,
 )
-from .models import KillSubmission, Registration, Tournament
+from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry, UnlimitedTournament
 from .services import cancel_tournament_and_refund
 
 
@@ -372,6 +373,9 @@ def verify_entry_payments(modeladmin, request, queryset):
             registration.payment_verified = True
             registration.status = Registration.Status.CONFIRMED
             registration.save(update_fields=["payment_verified", "status", "updated_at"])
+            if registration.tournament.is_unlimited_br:
+                from .registration_services import maybe_start_unlimited_tournament
+                maybe_start_unlimited_tournament(registration.tournament_id)
             verified_count += 1
 
     if verified_count:
@@ -799,3 +803,69 @@ class KillSubmissionAdmin(admin.ModelAdmin):
         return False
 
     actions = (run_ai_review_for_selected, mark_selected_prizes_paid,)
+
+
+@admin.action(description="Retry LIVE email notifications for selected Unlimited Tournaments")
+def retry_unlimited_live_notifications(modeladmin, request, queryset):
+    from .registration_services import send_unlimited_live_notifications
+
+    attempted = 0
+    for tournament in queryset.filter(status=Tournament.Status.LIVE).exclude(live_notification_status="sent"):
+        send_unlimited_live_notifications(tournament.pk)
+        attempted += 1
+    modeladmin.message_user(
+        request,
+        f"Email retry attempted for {attempted} LIVE Unlimited Tournament(s). Check notification status and email provider delivery.",
+        level=messages.INFO,
+    )
+
+
+@admin.register(UnlimitedTournament)
+class UnlimitedTournamentAdmin(TournamentAdmin):
+    """Separate admin menu for the repeating 49-player Unlimited BR series."""
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).filter(is_unlimited_br=True)
+
+    def save_model(self, request, obj, form, change):
+        obj.is_unlimited_br = True
+        obj.auto_start_at_capacity = True
+        obj.mode = Tournament.Mode.BR
+        obj.vs_format = ""
+        obj.max_players = 49
+        obj.entry_fee = Decimal("10.00")
+        if not change:
+            obj.auto_reopen = True
+            obj.status = Tournament.Status.UPCOMING
+            if not obj.start_time or obj.start_time <= timezone.now():
+                obj.start_time = timezone.now() + timedelta(minutes=10)
+        super().save_model(request, obj, form, change)
+
+    @admin.display(description="Players", ordering="start_time")
+    def confirmed_players_count_display(self, obj):
+        return f"{obj.paid_players_count}/49"
+
+    list_filter = ("status", "auto_reopen", "live_notification_status", "start_time")
+    list_display = (
+        "title", "entry_fee", "confirmed_players_count_display", "start_time",
+        "status", "auto_reopen", "live_notification_status",
+    )
+    search_fields = ("title", "description")
+    ordering = ("-created_at",)
+    actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid, retry_unlimited_live_notifications)
+    readonly_fields = (
+        "series_root", "winner_prize_paid", "kill_prize_distributed",
+        "kill_prize_pool", "kill_prize_reference", "live_notification_sent_at",
+        "live_notification_status", "winner_payout_destination", "winner_payout_qr",
+    )
+
+
+@admin.register(TournamentLedgerEntry)
+class TournamentLedgerEntryAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "tournament", "player", "entry_type", "currency", "quantity", "amount_inr", "status", "reference")
+    list_filter = ("tournament", "entry_type", "currency", "status", "created_at")
+    search_fields = ("tournament__title", "player__username", "reference", "description")
+    date_hierarchy = "created_at"
+    list_select_related = ("tournament", "player", "registration")
+    readonly_fields = ("created_at",)
+    ordering = ("-created_at",)

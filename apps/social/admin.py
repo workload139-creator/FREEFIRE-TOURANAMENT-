@@ -1,6 +1,6 @@
 from django.contrib import admin, messages
 
-from .models import FriendRequest, UserBlock, UserReport, PhotoPost, FFTickSubscription, PlayerShopWallet, ShopPaymentRequest, CurrencyWithdrawalRequest, DailySpin
+from .models import FriendRequest, UserBlock, UserReport, PhotoPost, FFTickSubscription, PlayerShopWallet, ShopPaymentRequest, CurrencyWithdrawalRequest, DailySpin, FanTokenAward
 
 
 @admin.register(FriendRequest)
@@ -184,3 +184,11 @@ class DailySpinAdmin(admin.ModelAdmin):
         return False
     def has_change_permission(self, request, obj=None):
         return False
+
+
+@admin.register(FanTokenAward)
+class FanTokenAwardAdmin(admin.ModelAdmin):
+    list_display = ("user", "follower_milestone", "quantity", "created_at")
+    list_filter = ("follower_milestone", "created_at")
+    search_fields = ("user__username", "user__email")
+    readonly_fields = ("user", "follower_milestone", "quantity", "created_at")

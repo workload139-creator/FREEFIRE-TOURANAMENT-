@@ -9,7 +9,7 @@ from datetime import timedelta
 import random
 from django.views.decorators.http import require_POST
 
-from .models import Follow, FriendRequest, UserBlock, UserReport, PhotoPost, FFTickSubscription, PlayerShopWallet, ShopPaymentRequest, CurrencyWithdrawalRequest, DailySpin
+from .models import Follow, FriendRequest, UserBlock, UserReport, PhotoPost, FFTickSubscription, PlayerShopWallet, ShopPaymentRequest, CurrencyWithdrawalRequest, DailySpin, FanTokenAward
 from apps.accounts.forms import CurrencyWithdrawalRequestForm
 
 User = get_user_model()
@@ -239,6 +239,7 @@ from .models import Follow
 
 @login_required
 @require_POST
+@transaction.atomic
 def toggle_follow(request, user_id):
     target = get_object_or_404(User, pk=user_id)
     if target.pk == request.user.pk:
@@ -252,7 +253,24 @@ def toggle_follow(request, user_id):
             messages.success(request, f"Ab aap {target.username} ko follow nahi karte.")
         else:
             Follow.objects.create(follower=request.user, following=target)
-            messages.success(request, f"Aap ab {target.username} ko follow kar rahe hain.")
+            # Grant one Fan Token at each new 10-follower milestone, exactly once.
+            follower_count = Follow.objects.filter(following=target).count()
+            awarded = 0
+            for milestone in range(10, (follower_count // 10) * 10 + 1, 10):
+                _, created = FanTokenAward.objects.get_or_create(
+                    user=target, follower_milestone=milestone,
+                    defaults={"quantity": 1},
+                )
+                if created:
+                    wallet, _ = PlayerShopWallet.objects.get_or_create(user=target)
+                    wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
+                    wallet.fan_tokens += 1
+                    wallet.save(update_fields=["fan_tokens", "updated_at"])
+                    awarded += 1
+            if awarded:
+                messages.success(request, f"Aap ab {target.username} ko follow kar rahe hain. Unhe {awarded} Fan Token mila — har 10 followers par 1 token!")
+            else:
+                messages.success(request, f"Aap ab {target.username} ko follow kar rahe hain.")
     return redirect(request.POST.get("next") or "social:home")
 
 
@@ -268,6 +286,9 @@ def player_profile(request, user_id):
     followers_count = Follow.objects.filter(following=target).count()
     following_count = Follow.objects.filter(follower=target).count()
     is_following = Follow.objects.filter(follower=request.user, following=target).exists()
+    if getattr(target, "profile_visibility", "public") == "private" and not is_following:
+        messages.info(request, "Ye private profile hai. Pehle player ko follow karein, phir profile dekh sakte hain.")
+        return redirect("social:home")
     is_friend = _are_friends(request.user, target)
     return render(request, "social/player_profile.html", {
         "player": target, "followers_count": followers_count,

@@ -18,7 +18,7 @@ from apps.accounts.models import Wallet, WalletTransaction, AdminWallet, AdminWa
 from .forms import KillSubmissionForm, RegistrationForm
 from .ai_review import AIReviewError, analyze_kill_evidence
 from .registration_services import RegistrationError, create_pending_registration
-from .models import KillSubmission, Registration, Tournament
+from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry
 from .services import process_expired_ready_registrations, mark_not_playing_and_refund
 
 import qrcode
@@ -34,9 +34,10 @@ def tournament_list(request):
         "tournaments/list.html",
         {
             "tournaments": tournaments,
-            "br_tournaments": tournaments.filter(mode=Tournament.Mode.BR),
+            "unlimited_tournaments": tournaments.filter(is_unlimited_br=True),
+            "br_tournaments": tournaments.filter(mode=Tournament.Mode.BR, is_unlimited_br=False),
             "vs_tournaments": tournaments.filter(mode=Tournament.Mode.VS).exclude(gender_category=Tournament.GenderCategory.GIRLS_VS_BOYS),
-            "girls_vs_boys_tournaments": tournaments.filter(gender_category=Tournament.GenderCategory.GIRLS_VS_BOYS),
+            "girls_vs_boys_tournaments": tournaments.filter(gender_category=Tournament.GenderCategory.GIRLS_VS_BOYS, is_unlimited_br=False),
         },
     )
 
@@ -111,9 +112,9 @@ def tournament_register(request, tournament_id):
             payment_method=form.cleaned_data.get("payment_method", "upi"),
         )
     except RegistrationError as exc:
-        if str(exc) in ("NO_COINS", "NO_DIAMONDS"):
-            label = "Coins" if str(exc) == "NO_COINS" else "Diamonds"
-            messages.warning(request, f"No {label} / not enough {label}. Shop se {label} lein, phir tournament join karein.")
+        if str(exc) in ("NO_COINS", "NO_DIAMONDS", "NO_FAN_TOKENS"):
+            label = {"NO_COINS": "Coins", "NO_DIAMONDS": "Diamonds", "NO_FAN_TOKENS": "Fan Tokens"}[str(exc)]
+            messages.warning(request, f"No {label} / not enough {label}. Shop ya follower milestones se {label} hasil karein, phir tournament join karein.")
             return redirect("social:shop")
         form.add_error(None, str(exc))
         from apps.social.models import PlayerShopWallet
@@ -135,7 +136,7 @@ def tournament_register(request, tournament_id):
         registration.verification_photo = form.cleaned_data["verification_photo"]
         registration.save(update_fields=["verification_photo"])
 
-    if registration.payment_method in ("diamonds", "coins"):
+    if registration.payment_method in ("diamonds", "coins", "fan_tokens"):
         messages.success(request, f"Tournament registration confirmed. {registration.currency_amount} {registration.get_payment_method_display()} use hue.")
     elif tournament.entry_fee > Decimal("0.00"):
         messages.info(request, "Payment UTR submit ho gaya. Registration tabhi confirm hogi jab admin aapki payment apne UPI/bank statement se verify karega.")
@@ -366,6 +367,20 @@ def kill_submission(request, registration_id):
                                 shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
                                 shop_wallet.diamonds += int(submission.approved_reward)
                                 shop_wallet.save(update_fields=("diamonds", "updated_at"))
+                                TournamentLedgerEntry.objects.get_or_create(
+                                    reference=f"KILL-REWARD-{submission.pk}",
+                                    defaults={
+                                        "tournament": submission.tournament,
+                                        "player": submission.player,
+                                        "registration": submission.registration,
+                                        "entry_type": TournamentLedgerEntry.EntryType.REWARD,
+                                        "currency": TournamentLedgerEntry.Currency.DIAMONDS,
+                                        "quantity": int(submission.approved_reward),
+                                        "amount_inr": submission.approved_reward,
+                                        "status": TournamentLedgerEntry.Status.COMPLETED,
+                                        "description": "AI-verified BR kill reward",
+                                    },
+                                )
                         submission.save(update_fields=[
                             "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
                             "ai_review_notes", "proposed_reward", "approved_kills",
