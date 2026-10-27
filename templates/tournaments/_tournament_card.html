@@ -1,5 +1,6 @@
 <article class="tournament-card">
-  <span class="mode-label">{{ tournament.get_mode_display }}</span><h3>{{ tournament.title }}</h3>
+  <span class="mode-label">{% if tournament.mode == "VS" %}CS / CLASH SQUAD{% else %}BATTLE ROYALE{% endif %}</span><h3>{{ tournament.title }}</h3>
+  <p class="gender-chip">{{ tournament.get_gender_category_display }}</p>
   <p>{{ tournament.description|default:"Join the battle!" }}</p>
   {% if tournament.mode == "VS" %}<p>Format: {{ tournament.get_vs_format_display|default:"VS Match" }}</p>{% endif %}
   <div class="tournament-stats">
