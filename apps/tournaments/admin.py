@@ -703,15 +703,7 @@ def run_ai_review_for_selected(modeladmin, request, queryset):
             selected.ai_uid_matches = result["uid_matches"]
             selected.ai_review_notes = result["reason"]
             proposed_kills = int(result["proposed_kills"] or 0)
-            auto_approved = (
-                result["proposed_kills"] is not None
-                and result["uid_matches"] is True
-                and selected.free_fire_uid == selected.registered_uid
-                and selected.registered_uid == selected.registration.free_fire_uid
-                and selected.tournament.mode == Tournament.Mode.BR
-                and result["confidence"] == "high"
-                and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS
-            )
+            auto_approved = False  # AI assessment is advisory; only explicit admin confirmation awards Diamonds.
             selected.proposed_reward = (
                 Decimal(proposed_kills) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
                 if auto_approved and proposed_kills > 0 else Decimal("0.00")
@@ -759,7 +751,7 @@ def run_ai_review_for_selected(modeladmin, request, queryset):
     if reviewed:
         modeladmin.message_user(
             request,
-            f"AI review completed for {reviewed} submission(s). High-confidence UID matches were approved and credited in Diamonds automatically; other cases remain pending for manual review.",
+            f"AI assessment saved for {reviewed} submission(s). Review each item and explicitly confirm approved kills to credit Diamonds.",
             messages.SUCCESS,
         )
     if failed:
@@ -1571,8 +1563,13 @@ class KillSubmissionAdmin(admin.ModelAdmin):
     list_display = (
         "id", "player", "player_profile_id", "tournament", "registered_uid", "free_fire_uid",
         "player_upi_id", "payout_qr", "status", "ai_proposed_kills", "approved_kills", "approved_reward",
-        "payout_reference", "payout_status", "payout_paid_at", "ai_confidence", "ai_uid_matches", "ai_review_notes", "submitted_at",
+        "payout_reference", "payout_status", "payout_paid_at", "ai_confidence", "ai_uid_matches", "ai_review_notes", "submitted_at", "open_manual_review",
     )
+    @admin.display(description="Admin Review")
+    def open_manual_review(self, obj):
+        url = reverse("tournaments:admin_kill_review") + f"?submission={obj.pk}"
+        return format_html('<a class="button" href="{}">Open Review &amp; Confirm</a>', url)
+
     list_filter = ("status", "payout_status", "ai_confidence", "ai_uid_matches", "tournament__mode", "tournament__gender_category", "tournament", "submitted_at")
     search_fields = ("player__username", "tournament__title", "registered_uid", "free_fire_uid", "payout_reference")
     readonly_fields = (
