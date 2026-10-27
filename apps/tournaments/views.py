@@ -362,7 +362,7 @@ def kill_submission(request, registration_id):
                     proposed_kills = int(ai_result["proposed_kills"] or 0)
                     if auto_approved and proposed_kills > 0:
                         # ₹5 per verified kill converts to 5 Diamonds at ₹1 per Diamond.
-                        submission.proposed_reward = Decimal(proposed_kills) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
+                        submission.proposed_reward = Decimal(proposed_kills) * Decimal(str(settings.DIAMONDS_PER_APPROVED_KILL))
                     with transaction.atomic():
                         submission = KillSubmission.objects.select_for_update().get(pk=submission.pk)
                         submission.ai_proposed_kills = ai_result["proposed_kills"]
@@ -372,7 +372,7 @@ def kill_submission(request, registration_id):
                         if auto_approved:
                             from apps.social.models import PlayerShopWallet
                             submission.proposed_reward = (
-                                Decimal(proposed_kills) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
+                                Decimal(proposed_kills) * Decimal(str(settings.DIAMONDS_PER_APPROVED_KILL))
                                 if proposed_kills > 0 else Decimal("0.00")
                             )
                             submission.approved_kills = proposed_kills
@@ -450,7 +450,7 @@ def admin_kill_review(request):
         "ai_model": os.getenv("OPENAI_KILL_REVIEW_MODEL", "gpt-4.1-mini").strip(),
         "ai_openai_configured": bool(os.getenv("OPENAI_API_KEY", "").strip()),
         "ai_compatible_configured": bool(os.getenv("KILL_REVIEW_BASE_URL", "").strip()),
-        "diamonds_per_kill": int(settings.REWARD_PER_APPROVED_KILL),
+        "diamonds_per_kill": int(settings.DIAMONDS_PER_APPROVED_KILL),
         "minimum_verified_kills": int(settings.MINIMUM_VERIFIED_KILLS),
     })
 
@@ -480,7 +480,7 @@ def retry_ai_kill_review(request, submission_id):
             and submission.registered_uid == submission.registration.free_fire_uid
         )
         if proposed is not None and proposed >= settings.MINIMUM_VERIFIED_KILLS and uid_ok:
-            submission.proposed_reward = Decimal(proposed) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
+            submission.proposed_reward = Decimal(proposed) * Decimal(str(settings.DIAMONDS_PER_APPROVED_KILL))
         else:
             submission.proposed_reward = Decimal("0.00")
         # AI results are suggestions only; do not approve or credit Diamonds here.
@@ -540,7 +540,7 @@ def review_kill_submission(request, submission_id):
             return redirect("tournaments:admin_kill_review")
 
         submission.approved_kills = approved_kills
-        reward_per_kill = Decimal(str(settings.REWARD_PER_APPROVED_KILL))
+        reward_per_kill = Decimal(str(settings.DIAMONDS_PER_APPROVED_KILL))
         if approved_kills >= settings.MINIMUM_VERIFIED_KILLS:
             submission.proposed_reward = Decimal(approved_kills) * reward_per_kill
         else:
@@ -572,9 +572,9 @@ def review_kill_submission(request, submission_id):
                     entry_type=TournamentLedgerEntry.EntryType.REWARD,
                     currency=TournamentLedgerEntry.Currency.DIAMONDS,
                     quantity=diamond_quantity,
-                    amount_inr=submission.approved_reward,
+                    amount_inr=Decimal("0.00"),
                     status=TournamentLedgerEntry.Status.COMPLETED,
-                    description=f"Admin-confirmed kill reward: {approved_kills} kills",
+                    description=f"Admin-confirmed Diamond award: {diamond_quantity} Diamonds for {approved_kills} kills",
                 )
 
     messages.success(
