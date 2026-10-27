@@ -438,7 +438,6 @@ def currency_withdrawal_view(request):
             currency = form.cleaned_data["currency"]
             quantity = form.cleaned_data["quantity"]
             upi_id = form.cleaned_data["upi_id"]
-            qr = form.cleaned_data["upi_qr_code"]
             # Rates match the current shop packs: 1 diamond = ₹1; 10 coins = ₹1.
             amount = Decimal(quantity) if currency == "diamonds" else Decimal(quantity) / Decimal("10")
             if amount < Decimal("10.00"):
@@ -462,7 +461,6 @@ def currency_withdrawal_view(request):
                             quantity=quantity,
                             amount_inr=amount,
                             upi_id=upi_id,
-                            upi_qr_code=qr,
                         )
                         if currency == "diamonds":
                             wallet.diamonds -= quantity
