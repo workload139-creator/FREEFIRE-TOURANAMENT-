@@ -284,6 +284,9 @@ def player_profile(request, user_id):
     followers_count = Follow.objects.filter(following=target).count()
     following_count = Follow.objects.filter(follower=target).count()
     is_following = Follow.objects.filter(follower=request.user, following=target).exists()
+    if getattr(target, "profile_visibility", "public") == "private" and not is_following:
+        messages.info(request, "Ye private profile hai. Pehle player ko follow karein, phir profile dekh sakte hain.")
+        return redirect("social:home")
     is_friend = _are_friends(request.user, target)
     return render(request, "social/player_profile.html", {
         "player": target, "followers_count": followers_count,
