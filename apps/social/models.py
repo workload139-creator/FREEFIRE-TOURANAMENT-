@@ -232,6 +232,7 @@ class CurrencyWithdrawalRequest(models.Model):
     quantity = models.PositiveIntegerField()
     amount_inr = models.DecimalField(max_digits=8, decimal_places=2)
     upi_id = models.CharField(max_length=100)
+    upi_qr_code = models.ImageField(upload_to="currency_withdrawal_qr/", blank=True, null=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING, db_index=True)
     payout_reference = models.CharField(max_length=100, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
