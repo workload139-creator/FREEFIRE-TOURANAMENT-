@@ -17,7 +17,7 @@
 <div class="ff-control">
  <h2>🔥 FF Arena — Admin Control Room</h2>
  <p>Har kaam alag rakha gaya hai. Pehle category kholein, pending requests verify karein, phir match readiness aur result complete karein. Sirf button dabane se payment verify nahi hota—asal UPI/bank receipt zaroor check karein.</p>
- <div class="ff-order"><span>1 · Tournament category</span><span>2 · Entry payment</span><span>3 · Player verification</span><span>4 · Match / Room</span><span>5 · AI + Human review</span><span>6 · Winner / Prize</span></div>
+ <div class="ff-order"><span>1 · Tournament category</span><span>2 · Entry payment</span><span>3 · Player verification</span><span>4 · Match / Room</span><span>5 · AI kill verification + Diamonds</span><span>6 · Withdrawal payment verification</span></div>
 
  <section class="ff-group">
   <h3 class="ff-group-title">🏆 A. Tournament categories — har format alag</h3>
@@ -56,9 +56,9 @@
  <section class="ff-group">
   <h3 class="ff-group-title">🤖 D. AI Assessment & admin helper</h3>
   <div class="ff-grid">
-   <div class="ff-card ff-ai"><h3>🤖 AI Kill Evidence Assessment</h3><p>Pending video + two screenshots ko AI review karein. AI UID match, suggested kills, confidence aur notes deta hai—final approval aapka hoga.</p><a href="/admin/tournaments/killsubmission/?status__exact=pending">Open Pending AI Reviews</a><a class="alt" href="/admin/tournaments/killsubmission/">All Kill Evidence</a></div>
-   <div class="ff-card ff-ai"><h3>🧠 AI setup / status</h3><p>Automatic AI assessment ke liye Render Environment mein <b>OPENAI_API_KEY</b> set honi chahiye. Video frame extraction ke liye project ka <b>imageio-ffmpeg</b> dependency bhi deploy honi chahiye. Key ke bina AI action error dega.</p><a href="https://dashboard.render.com/">Open Render Dashboard</a></div>
-   <div class="ff-card"><h3>🧑‍⚖️ Human final review</h3><p>UID, video aur dono screenshots manually compare karein. AI suggestion ko blindly approve na karein; approved kills/reward aur notes save karein.</p><a href="/admin/tournaments/killsubmission/?ai_uid_matches__exact=0">UID Mismatch Queue</a><a class="alt" href="/admin/tournaments/killsubmission/?ai_confidence__exact=low">Low Confidence Queue</a></div>
+   <div class="ff-card ff-ai"><h3>🤖 AI Kill Evidence → Diamonds</h3><p>Video + 2 screenshots aur registered UID AI check karta hai. High-confidence UID match par ₹5 per kill ke hisaab se Diamonds automatic credit hote hain. Low-confidence cases admin review mein rehte hain.</p><a href="/admin/tournaments/killsubmission/?status__exact=pending">Open Pending AI Reviews</a><a class="alt" href="/admin/tournaments/killsubmission/">All Kill Evidence</a></div>
+   <div class="ff-card ff-ai"><h3>🧠 AI setup / status</h3><p>Automatic kill verification ke liye Render Environment mein <b>OPENAI_API_KEY</b> aur video frame extraction ke liye <b>imageio-ffmpeg</b> chahiye. AI sirf high-confidence UID match par automatic Diamonds deta hai; unclear evidence ko automatic reward nahi milta.</p><a href="https://dashboard.render.com/">Open Render Dashboard</a></div>
+   <div class="ff-card"><h3>🧑‍⚖️ Low-confidence review</h3><p>UID mismatch, low confidence ya AI failure wale cases manually inspect karein. Manual approval par bhi approved BR kills ke Diamonds wallet mein credit hote hain.</p><a href="/admin/tournaments/killsubmission/?ai_uid_matches__exact=0">UID Mismatch Queue</a><a class="alt" href="/admin/tournaments/killsubmission/?ai_confidence__exact=low">Low Confidence Queue</a></div>
   </div>
  </section>
 
