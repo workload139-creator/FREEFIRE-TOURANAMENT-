@@ -347,6 +347,64 @@ def _shop_payment_qr_data_uri():
 
 @login_required
 def ff_tick_view(request):
+    """Buy an FF Arena profile badge using non-cash diamonds only."""
+    from django.db import transaction
+    from django.utils import timezone
+
+    now = timezone.now()
+    current = FFTickSubscription.objects.filter(
+        user=request.user, status=FFTickSubscription.Status.ACTIVE, expires_at__gt=now
+    ).order_by("-expires_at").first()
+    latest = FFTickSubscription.objects.filter(user=request.user).first()
+    shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=request.user)
+
+    if request.method == "POST":
+        if request.user.pk == 4:
+            messages.success(request, "FF-000004 admin profile par FF Tick free admin badge ke roop mein enabled hai.")
+            return redirect("social:ff_tick")
+        if current:
+            messages.info(request, f"Aapka FF Tick already active hai — {current.expires_at:%d %b %Y} tak.")
+            return redirect("social:ff_tick")
+
+        with transaction.atomic():
+            shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
+            if shop_wallet.diamonds < 100:
+                messages.error(request, f"FF Tick ke liye 100 diamonds chahiye. Aapke paas {shop_wallet.diamonds} diamonds hain.")
+            else:
+                active = FFTickSubscription.objects.filter(
+                    user=request.user, status=FFTickSubscription.Status.ACTIVE, expires_at__gt=now
+                ).order_by("-expires_at").first()
+                start = active.expires_at if active else now
+                shop_wallet.diamonds -= 100
+                shop_wallet.save(update_fields=("diamonds", "updated_at"))
+                FFTickSubscription.objects.create(
+                    user=request.user,
+                    amount=0,
+                    duration_months=3,
+                    payment_reference=f"DIAMONDS-100-USER-{request.user.pk}-{int(now.timestamp())}",
+                    status=FFTickSubscription.Status.ACTIVE,
+                    verified_at=now,
+                    expires_at=start + timedelta(days=90),
+                    verified_by=request.user,
+                    admin_note="Purchased with 100 non-cash diamonds; no real-money payment.",
+                )
+                messages.success(request, "FF Tick activate ho gaya! 100 diamonds deduct hue; badge 3 months ke liye active hai.")
+                return redirect("social:ff_tick")
+
+    current = FFTickSubscription.objects.filter(
+        user=request.user, status=FFTickSubscription.Status.ACTIVE, expires_at__gt=timezone.now()
+    ).order_by("-expires_at").first()
+    latest = FFTickSubscription.objects.filter(user=request.user).first()
+    shop_wallet.refresh_from_db()
+    return render(request, "social/ff_tick.html", {
+        "current": current,
+        "latest": latest,
+        "shop_wallet": shop_wallet,
+        "is_admin_badge": request.user.pk == 4,
+    })
+
+
+
     from django.utils import timezone
     current = FFTickSubscription.objects.filter(
         user=request.user, status=FFTickSubscription.Status.ACTIVE, expires_at__gt=timezone.now()
