@@ -27,6 +27,7 @@
           <p><strong>Email:</strong> {{ submission.player.email|default:"Not provided" }} · <strong>Phone:</strong> {{ submission.player.phone_number|default:"Not provided" }}</p>
           <p><strong>Tournament:</strong> {{ submission.tournament.title }} · <strong>Mode:</strong> {{ submission.tournament.get_mode_display }}{% if submission.tournament.vs_format %} ({{ submission.tournament.vs_format }}){% endif %}</p>
           <p><strong>Entry fee:</strong> ₹{{ submission.registration.entry_fee_paid }} · <strong>Payment verified:</strong> {{ submission.registration.payment_verified|yesno:"Yes,No" }}</p>
+          <p><strong>Current Diamonds balance:</strong> {% if submission.player.shop_wallet %}{{ submission.player.shop_wallet.diamonds }}{% else %}0{% endif %}</p>
           <p><strong>Registered UID:</strong> {{ submission.registered_uid }} · <strong>Submitted UID:</strong> {{ submission.free_fire_uid }}</p>
         </div>
       </div>
