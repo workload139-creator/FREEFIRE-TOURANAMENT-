@@ -455,7 +455,7 @@ def review_kill_submission(request, submission_id):
             return redirect("tournaments:admin_kill_review")
 
         submission.approved_kills = approved_kills
-        if submission.tournament.mode == Tournament.Mode.BR and approved_kills >= settings.MINIMUM_VERIFIED_KILLS:
+        if submission.tournament.mode == Tournament.Mode.BR and approved_kills > 0:
             submission.proposed_reward = Decimal(approved_kills) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
         else:
             submission.proposed_reward = Decimal("0.00")
@@ -467,6 +467,12 @@ def review_kill_submission(request, submission_id):
             "approved_kills", "proposed_reward", "approved_reward",
             "admin_notes", "reviewed_at", "status",
         ])
+        if submission.tournament.mode == Tournament.Mode.BR and submission.approved_reward > 0:
+            from apps.social.models import PlayerShopWallet
+            shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=submission.player)
+            shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
+            shop_wallet.diamonds += int(submission.approved_reward)
+            shop_wallet.save(update_fields=("diamonds", "updated_at"))
 
     messages.success(
         request,
