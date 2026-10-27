@@ -385,10 +385,11 @@ def shop_view(request):
                 quantity = int(request.POST.get("quantity", "0"))
             except (TypeError, ValueError):
                 quantity = 0
-            # Fixed packs only: ₹10 = 10 diamonds OR 100 coins.
+            # Fixed packs only. Diamonds and coins are virtual, non-cash shop items.
             packs = {("diamonds", 10): Decimal("10.00"), ("diamonds", 50): Decimal("50.00"),
-                     ("diamonds", 100): Decimal("100.00"), ("coins", 100): Decimal("10.00"),
-                     ("coins", 500): Decimal("50.00"), ("coins", 1000): Decimal("100.00")}
+                     ("diamonds", 100): Decimal("100.00"), ("diamonds", 500): Decimal("500.00"),
+                     ("coins", 100): Decimal("10.00"), ("coins", 500): Decimal("50.00"),
+                     ("coins", 1000): Decimal("100.00")}
             amount = packs.get((product, quantity))
             reference = request.POST.get("payment_reference", "").strip()[:100]
             screenshot = request.FILES.get("payment_screenshot")
