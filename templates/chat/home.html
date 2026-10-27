@@ -5,8 +5,8 @@
   <div class="community-hero">
     <span class="eyebrow">PRIVATE MESSAGES</span>
     <h1>Your Chats</h1>
-    <p>Sirf accepted friends ke saath private conversation.</p>
-    <a class="button button-primary" href="{% url 'social:home' %}">Find Friends</a>
+    <p>Follow kiye gaye players ke saath private conversation. Normal chat free aur unlimited hai.</p>
+    <a class="button button-primary" href="{% url 'social:home' %}">Find Players</a>
   </div>
   <section class="community-panel chat-list-panel">
     {% for row in chat_rows %}
@@ -16,7 +16,7 @@
         <div class="chat-meta">{% if row.unread_count %}<span class="count-pill">{{ row.unread_count }}</span>{% endif %}<small>FF-{{ row.other.pk|stringformat:"06d" }}</small></div>
       </a>
     {% empty %}
-      <div class="empty-state"><h2>No chats yet</h2><p>Player ID search karke friend request bhejo. Accept hone ke baad Chat button dikh jayega.</p><a class="button button-primary" href="{% url 'social:home' %}">Find Players</a></div>
+      <div class="empty-state"><h2>No chats yet</h2><p>Players page par kisi ko follow karo. Chat shuru karne ke liye follow karna kaafi hai; friend request ki zaroorat nahi.</p><a class="button button-primary" href="{% url 'social:home' %}">Find Players</a></div>
     {% endfor %}
   </section>
 </section>
