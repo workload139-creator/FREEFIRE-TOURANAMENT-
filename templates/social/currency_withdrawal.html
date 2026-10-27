@@ -10,13 +10,13 @@
   </header>
   <section style="margin:18px 0;padding:22px;border-radius:16px;background:#111827;border:1px solid #ffffff20">
     <h2>Withdrawal request</h2>
-    <form method="post" enctype="multipart/form-data">
+    <form method="post" >
       {% csrf_token %}
       {% if form.non_field_errors %}<div style="color:#ff9e9e">{{ form.non_field_errors }}</div>{% endif %}
       {% for field in form %}
         <p style="margin:16px 0"><label for="{{ field.id_for_label }}" style="display:block;font-weight:800;margin-bottom:6px">{{ field.label }}</label>{{ field }}{% for error in field.errors %}<span style="display:block;color:#ff9e9e">{{ error }}</span>{% endfor %}</p>
       {% endfor %}
-      <p style="color:#bdc9dc">UPI ID aur QR dono zaroori hain. QR JPG/PNG/WebP ho aur 2 MB se chhota ho. Admin actual payout manually verify karega.</p>
+      <p style="color:#bdc9dc">Withdrawal ke liye valid UPI ID dein. Request submit hone par currency turant deduct hogi aur admin actual UPI payment ke baad hi PAID confirm karega.</p>
       <button type="submit" class="btn-primary">Submit Withdrawal Request</button>
     </form>
   </section>
@@ -25,7 +25,7 @@
       <article style="margin:10px 0;padding:15px;border-radius:12px;background:#111827;border:1px solid #ffffff18">
         <strong>{{ item.quantity }} {{ item.get_currency_display }} → ₹{{ item.amount_inr }}</strong>
         <p>UPI: {{ item.upi_id }} · Status: {{ item.get_status_display }}</p>
-        {% if item.upi_qr_code %}<p>Uploaded QR: <a href="{{ item.upi_qr_code.url }}" target="_blank" rel="noopener">View QR</a></p>{% endif %}
+        
         {% if item.payout_reference %}<p>Admin payout reference: {{ item.payout_reference }}</p>{% endif %}
         <small>{{ item.created_at|date:"d M Y, h:i A" }}</small>
       </article>
