@@ -86,7 +86,7 @@
             <div class="profile-notice"><p>Yeh free tournament hai; registration submit karne par confirm ho jayegi.</p></div>
             {% endif %}
             </div>
-            <button type="submit" class="btn-primary" {% if tournament.entry_fee > 0 and not upi_payment_uri %}disabled aria-disabled="true"{% endif %}>{% if tournament.entry_fee > 0 %}SUBMIT PAYMENT &amp; REGISTER{% else %}REGISTER FREE{% endif %}</button>
+            <button type="submit" class="btn-primary" >{% if tournament.entry_fee > 0 %}SUBMIT PAYMENT &amp; REGISTER{% else %}REGISTER FREE{% endif %}</button>
         </form>
     </div>
 </section>
