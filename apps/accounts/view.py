@@ -170,23 +170,24 @@ from .models import Wallet, WalletTransaction, WithdrawalRequest
 
 @login_required
 def wallet_view(request):
-    wallet, created = Wallet.objects.get_or_create(
-        user=request.user,
-    )
-
+    wallet, created = Wallet.objects.get_or_create(user=request.user)
+    from apps.social.models import PlayerShopWallet, DailySpin
+    shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=request.user)
+    last_spin = DailySpin.objects.filter(user=request.user).order_by("-spun_at").first()
+    next_spin_at = last_spin.spun_at + __import__("datetime").timedelta(hours=24) if last_spin else None
+    spin_available = not last_spin or __import__("django.utils.timezone", fromlist=["now"]).now() >= next_spin_at
     transactions = wallet.transactions.all()[:50]
     withdrawal_requests = WithdrawalRequest.objects.filter(wallet=wallet)[:10]
-
-    return render(
-        request,
-        "accounts/wallet.html",
-        {
-            "wallet": wallet,
-            "transactions": transactions,
-            "withdrawal_requests": withdrawal_requests,
-            "deposit_requests": wallet.deposit_requests.all()[:10],
-        },
-    )
+    return render(request, "accounts/wallet.html", {
+        "wallet": wallet,
+        "transactions": transactions,
+        "withdrawal_requests": withdrawal_requests,
+        "deposit_requests": wallet.deposit_requests.all()[:10],
+        "shop_wallet": shop_wallet,
+        "last_spin": last_spin,
+        "next_spin_at": next_spin_at,
+        "spin_available": spin_available,
+    })
 
 
 
