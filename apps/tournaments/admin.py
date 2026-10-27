@@ -84,10 +84,21 @@ class RegistrationInline(admin.TabularInline):
     model = Registration
     extra = 0
     show_change_link = True
-    readonly_fields = (
-        "registered_at", "updated_at", "ready_confirmed_at",
-        "refund_processed_at",
+    fields = (
+        "player", "free_fire_uid", "payment_method", "currency_amount",
+        "entry_fee_paid", "payment_reference", "payment_verified",
+        "status", "verification_photo", "room_details_sent",
+        "ready_deadline", "ready_confirmed_at", "refund_processed",
+        "refund_reference", "registered_at",
     )
+    readonly_fields = (
+        "player", "free_fire_uid", "payment_method", "currency_amount",
+        "entry_fee_paid", "payment_reference", "verification_photo",
+        "room_details_sent", "ready_deadline", "ready_confirmed_at",
+        "refund_processed", "refund_reference", "registered_at",
+    )
+    can_delete = False
+    ordering = ("registered_at",)
 
 
 
