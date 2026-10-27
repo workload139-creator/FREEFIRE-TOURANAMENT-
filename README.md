@@ -64,7 +64,7 @@ Open `http://127.0.0.1:8000/`; the admin site is at `http://127.0.0.1:8000/admin
 
 ## Room confirmation and refunds
 
-The admin sets room details only for verified registrations. Players can see them only after payment verification and must press YES within 10 minutes. Cancellation/refund actions should be reviewed carefully because real UPI transfers require manual reconciliation. To process expired confirmations, run:
+The admin sets room details only for verified registrations. Players can see them only after payment verification and must press YES within 5 minutes. Cancellation/refund actions should be reviewed carefully because real UPI transfers require manual reconciliation. To process expired confirmations, run:
 
 ```powershell
 python manage.py process_expired_confirmations
