@@ -111,9 +111,9 @@ def tournament_register(request, tournament_id):
             payment_method=form.cleaned_data.get("payment_method", "upi"),
         )
     except RegistrationError as exc:
-        if str(exc) in ("NO_COINS", "NO_DIAMONDS"):
-            label = "Coins" if str(exc) == "NO_COINS" else "Diamonds"
-            messages.warning(request, f"No {label} / not enough {label}. Shop se {label} lein, phir tournament join karein.")
+        if str(exc) in ("NO_COINS", "NO_DIAMONDS", "NO_FAN_TOKENS"):
+            label = {"NO_COINS": "Coins", "NO_DIAMONDS": "Diamonds", "NO_FAN_TOKENS": "Fan Tokens"}[str(exc)]
+            messages.warning(request, f"No {label} / not enough {label}. Shop ya follower milestones se {label} hasil karein, phir tournament join karein.")
             return redirect("social:shop")
         form.add_error(None, str(exc))
         from apps.social.models import PlayerShopWallet
@@ -135,7 +135,7 @@ def tournament_register(request, tournament_id):
         registration.verification_photo = form.cleaned_data["verification_photo"]
         registration.save(update_fields=["verification_photo"])
 
-    if registration.payment_method in ("diamonds", "coins"):
+    if registration.payment_method in ("diamonds", "coins", "fan_tokens"):
         messages.success(request, f"Tournament registration confirmed. {registration.currency_amount} {registration.get_payment_method_display()} use hue.")
     elif tournament.entry_fee > Decimal("0.00"):
         messages.info(request, "Payment UTR submit ho gaya. Registration tabhi confirm hogi jab admin aapki payment apne UPI/bank statement se verify karega.")
