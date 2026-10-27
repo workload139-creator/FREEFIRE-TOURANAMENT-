@@ -100,6 +100,22 @@ class RegistrationInline(admin.TabularInline):
     can_delete = False
     ordering = ("registered_at",)
 
+class KillSubmissionInline(admin.TabularInline):
+    model = KillSubmission
+    extra = 0
+    show_change_link = True
+    fields = (
+        "player", "registered_uid", "free_fire_uid", "ai_proposed_kills",
+        "ai_confidence", "ai_uid_matches", "approved_kills", "proposed_reward",
+        "approved_reward", "status", "admin_notes", "submitted_at",
+    )
+    readonly_fields = (
+        "player", "registered_uid", "free_fire_uid", "ai_proposed_kills",
+        "ai_confidence", "ai_uid_matches", "proposed_reward", "submitted_at",
+    )
+    can_delete = False
+    ordering = ("-submitted_at",)
+
 
 
 @admin.action(description="Cancel tournament and refund registered players")
@@ -190,7 +206,7 @@ class TournamentAdmin(admin.ModelAdmin):
     list_filter = ("mode", "vs_format", "gender_category", "status", "start_time")
     search_fields = ("title", "description")
     ordering = ("start_time",)
-    inlines = (RegistrationInline,)
+    inlines = (RegistrationInline, KillSubmissionInline)
     actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid,)
     readonly_fields = ("series_root", "winner_prize_paid", "kill_prize_distributed", "kill_prize_pool", "kill_prize_reference", "winner_payout_destination", "winner_payout_qr")
 
