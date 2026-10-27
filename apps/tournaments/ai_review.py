@@ -276,9 +276,11 @@ def analyze_kill_evidence(submission):
     """
     mode = os.getenv("KILL_REVIEW_PROVIDER", "openai").strip().lower()
     if mode != "dual":
-        return _analyze_with_provider(
+        result = _analyze_with_provider(
             submission, mode, os.getenv("OPENAI_KILL_REVIEW_MODEL", "gpt-4.1-mini")
         )
+        result["dual_agreement"] = False
+        return result
 
     primary_model = os.getenv("OPENAI_KILL_REVIEW_MODEL", "gpt-4.1-mini").strip()
     secondary_model = os.getenv("OLLAMA_KILL_REVIEW_MODEL", "gemma4").strip()
@@ -303,6 +305,7 @@ def analyze_kill_evidence(submission):
         and secondary["confidence"] == "high"
     )
     chosen = dict(primary)
+    chosen["dual_agreement"] = agrees
     if not agrees:
         chosen["confidence"] = "low"
     chosen["uid_matches"] = (
