@@ -710,6 +710,7 @@ def run_ai_review_for_selected(modeladmin, request, queryset):
                 and selected.registered_uid == selected.registration.free_fire_uid
                 and selected.tournament.mode == Tournament.Mode.BR
                 and result["confidence"] == "high"
+                and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS
             )
             selected.proposed_reward = (
                 Decimal(proposed_kills) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
