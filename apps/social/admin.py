@@ -88,22 +88,39 @@ class PlayerShopWalletAdmin(admin.ModelAdmin):
 
 @admin.action(description="Verify real UPI payment and credit selected shop pack")
 def approve_shop_payments(modeladmin, request, queryset):
+    # PostgreSQL requires select_for_update() to run inside transaction.atomic().
+    # Lock the pending request and wallet, then credit and mark approved together.
+    from django.db import transaction
+    from django.db.models import F
+
     approved = skipped = 0
-    for item in queryset.select_for_update().select_related("user"):
-        if item.status != ShopPaymentRequest.Status.PENDING:
-            skipped += 1
-            continue
-        wallet, _ = PlayerShopWallet.objects.get_or_create(user=item.user)
-        if item.product == ShopPaymentRequest.Product.DIAMONDS:
-            PlayerShopWallet.objects.filter(pk=wallet.pk).update(diamonds=__import__("django.db.models", fromlist=["F"]).F("diamonds") + item.quantity)
-        else:
-            PlayerShopWallet.objects.filter(pk=wallet.pk).update(coins=__import__("django.db.models", fromlist=["F"]).F("coins") + item.quantity)
-        item.status = ShopPaymentRequest.Status.APPROVED
-        item.reviewed_at = timezone.now()
-        item.reviewed_by = request.user
-        item.save(update_fields=("status", "reviewed_at", "reviewed_by"))
-        approved += 1
-    modeladmin.message_user(request, f"{approved} shop payment(s) verified and credited. Check bank/UPI receipt first; {skipped} skipped.", messages.SUCCESS if approved else messages.WARNING)
+    with transaction.atomic():
+        for item_id in queryset.values_list("pk", flat=True):
+            item = ShopPaymentRequest.objects.select_for_update().select_related("user").filter(pk=item_id).first()
+            if item is None or item.status != ShopPaymentRequest.Status.PENDING:
+                skipped += 1
+                continue
+            if not item.payment_reference.strip() or not item.payment_screenshot:
+                skipped += 1
+                continue
+            wallet, _ = PlayerShopWallet.objects.get_or_create(user=item.user)
+            wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
+            if item.product == ShopPaymentRequest.Product.DIAMONDS:
+                wallet.diamonds = F("diamonds") + item.quantity
+                wallet.save(update_fields=("diamonds", "updated_at"))
+            else:
+                wallet.coins = F("coins") + item.quantity
+                wallet.save(update_fields=("coins", "updated_at"))
+            item.status = ShopPaymentRequest.Status.APPROVED
+            item.reviewed_at = timezone.now()
+            item.reviewed_by = request.user
+            item.save(update_fields=("status", "reviewed_at", "reviewed_by"))
+            approved += 1
+    modeladmin.message_user(
+        request,
+        f"{approved} shop payment(s) credited once after verification; {skipped} skipped. Verify the actual received transaction in bank/UPI, not just the screenshot.",
+        messages.SUCCESS if approved else messages.WARNING,
+    )
 
 
 @admin.action(description="Reject selected pending shop payments")
@@ -117,7 +134,8 @@ class ShopPaymentRequestAdmin(admin.ModelAdmin):
     list_display = ("user", "product", "quantity", "amount", "payment_reference", "status", "created_at", "reviewed_by")
     list_filter = ("status", "product", "created_at")
     search_fields = ("user__username", "payment_reference")
-    readonly_fields = ("created_at", "reviewed_at", "reviewed_by")
+    readonly_fields = ("user", "product", "quantity", "amount", "payment_reference", "payment_screenshot", "created_at", "reviewed_at", "reviewed_by")
+    fields = ("user", "product", "quantity", "amount", "payment_reference", "payment_screenshot", "status", "admin_note", "created_at", "reviewed_at", "reviewed_by")
     actions = (approve_shop_payments, reject_shop_payments)
 
 
