@@ -77,11 +77,6 @@ def tournament_register(request, tournament_id):
     if tournament.gender_category == Tournament.GenderCategory.GIRLS and request.user.gender != "girl":
         messages.error(request, "Yeh Girls Only tournament hai. Profile mein Girl category select karne wale players hi join kar sakte hain.")
         return redirect("tournaments:detail", tournament_id=tournament.pk)
-    if not (request.user.upi_id or "").strip() and not request.user.upi_qr_code:
-        messages.info(request, "Tournament join karne se pehle prize receive karne ke liye apni UPI ID ya QR profile mein add karein.")
-        target = reverse("accounts:profile_edit") + "?next=" + quote(request.path, safe="")
-        return redirect(target)
-
     if request.method == "GET":
         time_closed = tournament.start_time <= timezone.now() and not tournament.is_unlimited_br
         if tournament.status != Tournament.Status.UPCOMING or time_closed or tournament.is_full:
