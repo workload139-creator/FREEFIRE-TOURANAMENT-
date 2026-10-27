@@ -42,6 +42,10 @@ def send_unlimited_live_notifications(tournament_id):
         email = (entry[1] or "").strip()
         if email and email not in admin_recipients:
             admin_recipients.append(email)
+    if not admin_recipients:
+        sender_email = (settings.DEFAULT_FROM_EMAIL or "").strip()
+        if sender_email and "@" in sender_email:
+            admin_recipients.append(sender_email)
 
     tournament_url = settings.SITE_URL + reverse("tournaments:detail", args=[tournament.pk])
     subject = f"FF Arena Unlimited Tournament is LIVE: {tournament.title}"
