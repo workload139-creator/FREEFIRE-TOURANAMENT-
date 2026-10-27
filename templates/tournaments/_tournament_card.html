@@ -1,13 +1,15 @@
-<article class="tournament-card">
-  <span class="mode-label">{% if tournament.mode == "VS" %}CS / CLASH SQUAD{% else %}BATTLE ROYALE{% endif %}</span><h3>{{ tournament.title }}</h3>
+<article class="tournament-card{% if tournament.gender_category == 'girls_vs_boys' %} gvb-card{% endif %}">
+  <span class="mode-label">{% if tournament.gender_category == "girls_vs_boys" %}💜 GIRLS VS BOYS SHOWDOWN{% elif tournament.mode == "VS" %}CS / CLASH SQUAD{% else %}BATTLE ROYALE{% endif %}</span>
+  <h3>{{ tournament.title }}</h3>
   <p class="gender-chip">{{ tournament.get_gender_category_display }}</p>
   <p>{{ tournament.description|default:"Join the battle!" }}</p>
   {% if tournament.mode == "VS" %}<p>Format: {{ tournament.get_vs_format_display|default:"VS Match" }}</p>{% endif %}
+  {% if tournament.gender_category == "girls_vs_boys" %}<p>📸 Registration selfie required · Admin review</p>{% endif %}
   <div class="tournament-stats">
     <div><small>Entry Fee</small><strong>₹{{ tournament.entry_fee }}</strong></div>
     <div><small>Prize Pool</small><strong>₹{{ tournament.prize_pool }}</strong></div>
     <div><small>Players</small><strong>{{ tournament.confirmed_players_count }}/{{ tournament.max_players }}</strong></div>
   </div>
   <p>Status: {{ tournament.get_status_display }}</p><p>Start: {{ tournament.start_time|date:"d M Y, h:i A" }}</p>
-  <div style="display:flex;gap:10px;flex-wrap:wrap"><a class="button button-primary" href="{% url 'tournaments:detail' tournament.id %}">View / Register</a><a class="button button-outline" href="{% url 'tournaments:leaderboard' tournament.id %}">Leaderboard</a></div>
+  <div><a class="button button-primary" href="{% url 'tournaments:detail' tournament.id %}">View / Register</a><a class="button button-outline" href="{% url 'tournaments:leaderboard' tournament.id %}">Leaderboard</a></div>
 </article>
