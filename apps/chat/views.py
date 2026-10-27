@@ -20,10 +20,10 @@ def _blocked_either_way(first, second):
     ).exists()
 
 
-def _are_friends(first, second):
-    # Private chat is allowed only for mutual followers.
-    return Follow.objects.filter(follower=first, following=second).exists() and Follow.objects.filter(
-        follower=second, following=first
+def _can_chat(first, second):
+    # One follow is enough to start a chat; the followed player can reply.
+    return Follow.objects.filter(
+        Q(follower=first, following=second) | Q(follower=second, following=first)
     ).exists()
 
 
@@ -35,7 +35,7 @@ def chat_home(request):
     chat_rows = []
     for conversation in conversations:
         other = conversation.other_user(request.user)
-        if not other or _blocked_either_way(request.user, other) or not _are_friends(request.user, other):
+        if not other or _blocked_either_way(request.user, other) or not _can_chat(request.user, other):
             continue
         last_message = conversation.messages.order_by("-created_at", "-pk").first()
         unread_count = conversation.messages.filter(
@@ -53,8 +53,8 @@ def chat_home(request):
 @login_required
 def open_chat(request, user_id):
     other = get_object_or_404(User, pk=user_id)
-    if other.pk == request.user.pk or _blocked_either_way(request.user, other) or not _are_friends(request.user, other):
-        messages.error(request, "Private chat ke liye pehle ek-doosre ko follow karein. Blocked players chat nahi kar sakte.")
+    if other.pk == request.user.pk or _blocked_either_way(request.user, other) or not Follow.objects.filter(follower=request.user, following=other).exists():
+        messages.error(request, "Chat shuru karne ke liye pehle player ko follow karein. Blocked players chat nahi kar sakte.")
         return redirect("social:home")
 
     first, second = sorted((request.user, other), key=lambda user: user.pk)
@@ -72,7 +72,7 @@ def conversation_detail(request, conversation_id):
     other = conversation.other_user(request.user)
     if not other:
         return redirect("chat:home")
-    if _blocked_either_way(request.user, other) or not _are_friends(request.user, other):
+    if _blocked_either_way(request.user, other) or not _can_chat(request.user, other):
         messages.error(request, "Ye chat ab available nahi hai.")
         return redirect("chat:home")
 
@@ -134,7 +134,7 @@ def conversation_detail(request, conversation_id):
 def poll_messages(request, conversation_id):
     conversation = get_object_or_404(Conversation.objects.select_related("user_one", "user_two"), pk=conversation_id)
     other = conversation.other_user(request.user)
-    if not other or _blocked_either_way(request.user, other) or not _are_friends(request.user, other):
+    if not other or _blocked_either_way(request.user, other) or not _can_chat(request.user, other):
         return JsonResponse({"error": "Chat unavailable."}, status=403)
 
     try:
