@@ -373,6 +373,9 @@ def verify_entry_payments(modeladmin, request, queryset):
             registration.payment_verified = True
             registration.status = Registration.Status.CONFIRMED
             registration.save(update_fields=["payment_verified", "status", "updated_at"])
+            if registration.tournament.is_unlimited_br:
+                from .registration_services import maybe_start_unlimited_tournament
+                maybe_start_unlimited_tournament(registration.tournament_id)
             verified_count += 1
 
     if verified_count:
