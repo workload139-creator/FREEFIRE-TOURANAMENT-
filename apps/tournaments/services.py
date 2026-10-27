@@ -135,19 +135,9 @@ def cancel_tournament_and_refund(tournament_id):
     refunded = 0
     registrations = Registration.objects.select_for_update().filter(tournament=tournament)
     for registration in registrations:
-        if registration.refund_processed or registration.entry_fee_paid <= 0:
+        if registration.refund_processed:
             continue
-        if registration.payment_reference:
-            # New direct-UPI registrations require a real external refund; do not mint wallet balance.
-            registration.status = Registration.Status.CANCELLED
-            registration.room_details_sent = False
-            registration.refund_processed = False
-            registration.refund_reference = ""
-            registration.save(update_fields=[
-                "status", "room_details_sent", "refund_processed",
-                "refund_reference", "updated_at",
-            ])
-            continue
+        # Non-cash currencies must be refunded even when INR entry_fee_paid is zero.
         if registration.payment_method in ("diamonds", "coins", "fan_tokens") and registration.currency_amount > 0:
             from apps.social.models import PlayerShopWallet
             shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=registration.player)
@@ -175,6 +165,19 @@ def cancel_tournament_and_refund(tournament_id):
                 },
             )
             refunded += 1
+            continue
+        if registration.entry_fee_paid <= 0:
+            continue
+        if registration.payment_reference:
+            # New direct-UPI registrations require a real external refund; do not mint wallet balance.
+            registration.status = Registration.Status.CANCELLED
+            registration.room_details_sent = False
+            registration.refund_processed = False
+            registration.refund_reference = ""
+            registration.save(update_fields=[
+                "status", "room_details_sent", "refund_processed",
+                "refund_reference", "updated_at",
+            ])
             continue
         reference = f"TOURNEY-CANCEL-REFUND-{registration.pk}"
         existing = WalletTransaction.objects.filter(reference=reference).first()
