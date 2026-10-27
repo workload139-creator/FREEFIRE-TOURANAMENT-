@@ -8,7 +8,7 @@
       <a class="button button-outline" href="{% url 'tournaments:admin_ai_assessments' %}">AI Assessment Queue</a>
       <a class="button button-outline" href="{% url 'tournaments:admin_ai_sources' %}">AI Sources / Diagnostics</a>
     </nav>
-    <p>Yahin evidence check, AI retry aur final confirmation manage karein. AI ka result sirf suggestion hai; Diamonds tabhi milenge jab admin verified kills confirm kare.</p>
+    <p>Yahin evidence check, AI retry aur manual revision manage karein. Dono AI high-confidence par agree karein aur saare website checks pass hon to Diamonds automatically credit honge; warna submission admin review mein rahegi.</p>
     <p><strong>AI provider:</strong> {{ ai_provider }} · <strong>Model:</strong> {{ ai_model }}</p>
     <p><strong>OpenAI key configured:</strong> {{ ai_openai_configured|yesno:"Yes,No" }} · <strong>Compatible vision endpoint configured:</strong> {{ ai_compatible_configured|yesno:"Yes,No" }}</p>
     <p><strong>Reward rule:</strong> Minimum {{ minimum_verified_kills }} verified kills; {{ diamonds_per_kill }} Diamonds per approved kill. Example: 3 kills = {{ diamonds_per_kill|add:diamonds_per_kill|add:diamonds_per_kill }} Diamonds. Diamonds are not cash/UPI money.</p>
