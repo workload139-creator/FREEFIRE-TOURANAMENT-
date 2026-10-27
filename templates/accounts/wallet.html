@@ -86,6 +86,7 @@
     <div class="wallet-history-heading"><h2>Fan Token History</h2><p>Follower milestone rewards and gifts sent/received. Fan Tokens cannot be withdrawn.</p></div>
     {% for award in fan_token_awards %}<div class="wallet-record"><div class="wallet-record-top"><strong>✨ +{{ award.quantity }} Fan Token(s) earned</strong><span class="wallet-record-status">Follower milestone {{ award.follower_milestone }}</span></div><small>{{ award.created_at|date:"d M Y, h:i A" }}</small></div>{% endfor %}
     {% for gift in fan_token_gifts %}{% if gift.currency == "fan_tokens" %}<div class="wallet-record"><div class="wallet-record-top"><strong>✨ {{ gift.quantity }} Fan Token(s) {% if gift.sender_id == user.pk %}sent to {{ gift.recipient.username }}{% else %}received from {{ gift.sender.username }}{% endif %}</strong><span class="wallet-record-status">Gift</span></div><small>{{ gift.created_at|date:"d M Y, h:i A" }}</small></div>{% endif %}{% endfor %}
+    {% for entry in fan_token_tournament_entries %}<div class="wallet-record"><div class="wallet-record-top"><strong>✨ {{ entry.quantity }} Fan Token(s) · {{ entry.get_entry_type_display }}</strong><span class="wallet-record-status">{{ entry.get_status_display }}</span></div><small>{{ entry.created_at|date:"d M Y, h:i A" }}</small>{% if entry.description %}<p>{{ entry.description }}</p>{% endif %}</div>{% endfor %}
     <div class="wallet-history-heading">
         <h2>Transaction History</h2>
     </div>
