@@ -38,6 +38,23 @@ def mark_not_playing_and_refund(registration_id):
         ])
         return True, "Player marked NOT_PLAYING; actual UPI refund is pending admin transfer and UTR entry."
 
+    if registration.payment_method in ("diamonds", "coins") and registration.currency_amount > 0:
+        from apps.social.models import PlayerShopWallet
+        shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=registration.player)
+        shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
+        if registration.payment_method == "diamonds":
+            shop_wallet.diamonds += registration.currency_amount
+        else:
+            shop_wallet.coins += registration.currency_amount
+        shop_wallet.save(update_fields=["diamonds", "coins", "updated_at"])
+        registration.status = Registration.Status.NOT_PLAYING
+        registration.room_details_sent = False
+        registration.refund_processed = True
+        registration.refund_processed_at = timezone.now()
+        registration.refund_reference = f"REG-CURRENCY-REFUND-{registration.pk}"
+        registration.save(update_fields=["status", "room_details_sent", "refund_processed", "refund_processed_at", "refund_reference", "updated_at"])
+        return True, "Player marked NOT_PLAYING and currency refunded."
+
     amount = Decimal(str(registration.entry_fee_paid))
     if amount > 0:
         reference = f"REG-REFUND-{registration.pk}"
@@ -118,6 +135,22 @@ def cancel_tournament_and_refund(tournament_id):
                 "status", "room_details_sent", "refund_processed",
                 "refund_reference", "updated_at",
             ])
+            continue
+        if registration.payment_method in ("diamonds", "coins") and registration.currency_amount > 0:
+            from apps.social.models import PlayerShopWallet
+            shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=registration.player)
+            shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
+            if registration.payment_method == "diamonds":
+                shop_wallet.diamonds += registration.currency_amount
+            else:
+                shop_wallet.coins += registration.currency_amount
+            shop_wallet.save(update_fields=["diamonds", "coins", "updated_at"])
+            registration.status = Registration.Status.CANCELLED
+            registration.refund_processed = True
+            registration.refund_processed_at = timezone.now()
+            registration.refund_reference = f"TOURNEY-CURRENCY-REFUND-{registration.pk}"
+            registration.save(update_fields=["status", "refund_processed", "refund_processed_at", "refund_reference", "updated_at"])
+            refunded += 1
             continue
         reference = f"TOURNEY-CANCEL-REFUND-{registration.pk}"
         existing = WalletTransaction.objects.filter(reference=reference).first()
