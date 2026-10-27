@@ -134,7 +134,9 @@ class ShopPaymentRequestAdmin(admin.ModelAdmin):
     list_display = ("user", "product", "quantity", "amount", "payment_reference", "status", "created_at", "reviewed_by")
     list_filter = ("status", "product", "created_at")
     search_fields = ("user__username", "payment_reference")
-    readonly_fields = ("created_at", "reviewed_at", "reviewed_by")
+    # Submitted payment evidence is visible and immutable during admin review.
+    readonly_fields = ("user", "product", "quantity", "amount", "payment_reference", "payment_screenshot", "created_at", "reviewed_at", "reviewed_by")
+    fields = ("user", "product", "quantity", "amount", "payment_reference", "payment_screenshot", "status", "admin_note", "created_at", "reviewed_at", "reviewed_by")
     actions = (approve_shop_payments, reject_shop_payments)
 
 
