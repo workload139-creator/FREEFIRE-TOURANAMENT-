@@ -457,6 +457,44 @@ def admin_kill_review(request):
 
 @login_required
 @user_passes_test(lambda user: user.is_staff)
+def ai_assessment_dashboard(request):
+    """Separate staff page for all AI assessment results and items needing manual revision."""
+    submissions = KillSubmission.objects.select_related(
+        "player", "tournament", "registration"
+    ).order_by("-submitted_at")
+    status_filter = request.GET.get("status", "").strip()
+    if status_filter in dict(KillSubmission.Status.choices):
+        submissions = submissions.filter(status=status_filter)
+    return render(request, "tournaments/admin_ai_assessments.html", {
+        "submissions": submissions[:250],
+        "status_filter": status_filter,
+        "status_choices": KillSubmission.Status.choices,
+        "pending_count": KillSubmission.objects.filter(status=KillSubmission.Status.PENDING).count(),
+        "approved_count": KillSubmission.objects.filter(status=KillSubmission.Status.APPROVED).count(),
+        "rejected_count": KillSubmission.objects.filter(status=KillSubmission.Status.REJECTED).count(),
+    })
+
+
+@login_required
+@user_passes_test(lambda user: user.is_staff)
+def ai_source_settings(request):
+    """Separate diagnostics page; never reveal secret key values."""
+    provider = os.getenv("KILL_REVIEW_PROVIDER", "openai").strip().lower()
+    return render(request, "tournaments/admin_ai_sources.html", {
+        "provider": provider,
+        "openai_model": os.getenv("OPENAI_KILL_REVIEW_MODEL", "gpt-4.1-mini").strip(),
+        "open_source_model": os.getenv("OLLAMA_KILL_REVIEW_MODEL", "gemma4").strip(),
+        "openai_key_configured": bool(os.getenv("OPENAI_API_KEY", "").strip()),
+        "open_source_endpoint_configured": bool(os.getenv("KILL_REVIEW_BASE_URL", "").strip()),
+        "open_source_key_configured": bool(os.getenv("KILL_REVIEW_API_KEY", "").strip()),
+        "dual_mode": provider == "dual",
+        "diamonds_per_kill": int(settings.DIAMONDS_PER_APPROVED_KILL),
+        "minimum_kills": int(settings.MINIMUM_VERIFIED_KILLS),
+    })
+
+
+@login_required
+@user_passes_test(lambda user: user.is_staff)
 @require_POST
 def retry_ai_kill_review(request, submission_id):
     submission = get_object_or_404(
@@ -483,12 +521,81 @@ def retry_ai_kill_review(request, submission_id):
             submission.proposed_reward = Decimal(proposed) * Decimal(str(settings.DIAMONDS_PER_APPROVED_KILL))
         else:
             submission.proposed_reward = Decimal("0.00")
-        # AI results are suggestions only; do not approve or credit Diamonds here.
-        submission.save(update_fields=[
-            "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
-            "ai_review_notes", "proposed_reward",
-        ])
-        messages.success(request, "AI review dobara chal gaya. Result neeche check karo; Diamonds sirf admin confirmation par milenge.")
+        # Auto-award only when website file/duration checks pass, UID is exact,
+        # and both configured AI providers explicitly agree with high confidence.
+        dual_agreement = (
+            os.getenv("KILL_REVIEW_PROVIDER", "openai").strip().lower() == "dual"
+            and result["confidence"] == "high"
+            and result["uid_matches"] is True
+            and "BOTH AGREE" in result["reason"]
+        )
+        eligible = (
+            dual_agreement
+            and uid_ok
+            and proposed is not None
+            and proposed >= settings.MINIMUM_VERIFIED_KILLS
+            and submission.history_video
+            and submission.history_image_one
+            and submission.history_image_two
+        )
+        if eligible:
+            with transaction.atomic():
+                submission = KillSubmission.objects.select_for_update().select_related(
+                    "registration", "player", "tournament"
+                ).get(pk=submission.pk)
+                if submission.status == KillSubmission.Status.PENDING:
+                    from apps.social.models import PlayerShopWallet
+                    approved_reward = Decimal(proposed) * Decimal(str(settings.DIAMONDS_PER_APPROVED_KILL))
+                    ledger_reference = f"KILL-REWARD-{submission.pk}"
+                    if not TournamentLedgerEntry.objects.filter(reference=ledger_reference).exists():
+                        shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=submission.player)
+                        shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
+                        diamond_quantity = int(approved_reward)
+                        shop_wallet.diamonds += diamond_quantity
+                        shop_wallet.save(update_fields=("diamonds", "updated_at"))
+                        TournamentLedgerEntry.objects.create(
+                            reference=ledger_reference,
+                            tournament=submission.tournament,
+                            player=submission.player,
+                            registration=submission.registration,
+                            entry_type=TournamentLedgerEntry.EntryType.REWARD,
+                            currency=TournamentLedgerEntry.Currency.DIAMONDS,
+                            quantity=diamond_quantity,
+                            amount_inr=Decimal("0.00"),
+                            status=TournamentLedgerEntry.Status.COMPLETED,
+                            description=f"Dual-AI verified automatic reward: {diamond_quantity} Diamonds for {proposed} kills",
+                        )
+                    submission.approved_kills = proposed
+                    submission.proposed_reward = approved_reward
+                    submission.approved_reward = approved_reward
+                    submission.status = KillSubmission.Status.APPROVED
+                    submission.reviewed_at = timezone.now()
+                    submission.admin_notes = (
+                        "Automatically approved: website evidence checks passed, registered UID matched, "
+                        "and OpenAI plus configured open-source AI agreed at high confidence."
+                    )
+                    submission.save(update_fields=[
+                        "approved_kills", "proposed_reward", "approved_reward",
+                        "status", "reviewed_at", "admin_notes",
+                    ])
+            messages.success(request, f"Dual AI agree hua: {proposed} kills verify hue aur {int(submission.approved_reward)} Diamonds credit kiye gaye.")
+        else:
+            if not uid_ok:
+                issue = "UID mismatch: registered, submitted, aur AI UID match ko verify karein."
+            elif result["proposed_kills"] is None:
+                issue = "AI kills count confirm nahi kar saka; evidence admin ko manually check karna hoga."
+            elif result["confidence"] != "high" or not dual_agreement:
+                issue = "AI sources agree nahi hue, dual mode configured nahi hai, ya confidence high nahi hai. Manual admin review required."
+            elif proposed < settings.MINIMUM_VERIFIED_KILLS:
+                issue = f"Minimum {settings.MINIMUM_VERIFIED_KILLS} verified kills chahiye; admin evidence check kare."
+            else:
+                issue = "Website evidence validation complete nahi hui; admin evidence manually revise kare."
+            submission.ai_review_notes = (submission.ai_review_notes + "\\n\\nAUTOMATION CHECK: " + issue)[:2000]
+            submission.save(update_fields=[
+                "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
+                "ai_review_notes", "proposed_reward",
+            ])
+            messages.warning(request, "AI assessment complete, lekin auto-award ki shartein puri nahi hui. Mistake aur reason AI Assessment page par dekhein; Admin Review se manually revise karein.")
     except Exception as exc:
         submission.ai_review_notes = f"AI review failed ({exc.__class__.__name__}): {str(exc).strip()[:850]}"
         submission.save(update_fields=["ai_review_notes"])
