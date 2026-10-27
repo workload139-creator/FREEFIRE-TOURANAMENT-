@@ -16,6 +16,7 @@ class User(AbstractUser):
     phone_verified = models.BooleanField(default=False)
     profile_photo = models.ImageField(upload_to="player_profiles/", blank=True, null=True)
     gender = models.CharField(max_length=10, choices=(("boy", "Boy"), ("girl", "Girl")), blank=True, default="", db_index=True, help_text="Player-selected profile category used for gender-based tournaments.")
+    profile_visibility = models.CharField(max_length=10, choices=(("public", "Public"), ("private", "Private")), default="public", db_index=True, help_text="Private profiles are visible only to followers.")
 
     free_fire_uid = models.CharField(
         max_length=32, unique=True, null=True, blank=True
