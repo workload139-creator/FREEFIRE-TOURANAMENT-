@@ -3,7 +3,7 @@
 {% block content %}
 <section class="container" style="max-width:820px;margin:40px auto;padding:20px">
   <div class="tournament-card" style="padding:24px;border-radius:16px">
-    <p class="section-label">MATCH EVIDENCE · AI + ADMIN REVIEW</p>
+    <p class="section-label">MATCH EVIDENCE · AI KILL VERIFICATION</p>
     <h1>Submit Kill Proof</h1>
     <h2>{{ tournament.title }}</h2>
     <p><strong>Registered Free Fire UID:</strong> {{ registration.free_fire_uid }}</p>
@@ -12,14 +12,14 @@
       <li>Isi tournament ka match khelne ke baad apni gameplay/match-history ki playable video banayein. Video 15–30 seconds ki honi chahiye (recommended approx. 20 seconds).</li>
       <li>Game history ke 2 clear screenshots upload karein. UID aur kills padhne layak hon.</li>
       <li>Registered Free Fire UID bilkul wahi enter karein jo registration mein hai.</li>
-      <li>Submit karne ke baad system configured AI se video ke sampled frames aur screenshots ka initial analysis karne ki koshish karega.</li>
+      <li>Submit karne ke baad configured AI video ke sampled frames aur dono screenshots analyze karega. High-confidence result aur exact UID match par BR kill reward automatic Diamonds mein credit hoga.</li>
       <li>Apni submission ka status My Registrations mein dekhein. AI unavailable ho ya evidence unclear ho to admin manual review karega.</li>
     </ol>
     <div class="profile-notice" role="note">
-      <strong>Important:</strong> AI ka result final decision nahi hai. UID mismatch, unclear/edited evidence ya kills verify na hone par admin clarification maang sakta hai ya submission reject kar sakta hai. Prize sirf admin ke final approval ke baad process hoga. Upload karna apne aap prize guarantee nahi karta.
+      <strong>Important:</strong> AI sirf high-confidence result aur exact registered UID match par automatic reward deta hai. Low-confidence, unclear/edited evidence, UID mismatch ya AI error par automatic Diamonds nahi milenge; aise cases admin review queue mein jayenge. Upload karna reward guarantee nahi karta.
     </div>
     {% if tournament.mode == "BR" %}
-      <p><strong>BR reward:</strong> Reward tournament/admin-configured rules ke mutabik hoga. Minimum 2 admin-approved kills ki shart lagu ho sakti hai; final amount admin review aur tournament settings par depend karega. Is page par koi fixed ₹/kill rate guarantee nahi hai.</p>
+      <p><strong>BR reward:</strong> Har verified kill par ₹5 ke barabar 5 Diamonds milenge. High-confidence AI verification aur registered UID match par Diamonds automatically wallet mein add honge; unclear cases admin review mein rahenge.</p>
     {% else %}
       <p><strong>VS mode:</strong> Kill-proof submission se VS reward automatically calculate ya approve nahi hota. VS reward ke liye tournament ke rules follow karein.</p>
     {% endif %}
