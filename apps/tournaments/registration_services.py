@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
 
-from .models import Registration, Tournament
+from .models import Registration, Tournament, TournamentLedgerEntry
 
 
 class RegistrationError(Exception):
@@ -99,6 +99,15 @@ def create_pending_registration(*, tournament_id, player, free_fire_uid, payment
         payment_method=payment_method,
         currency_amount=currency_amount,
         status=registration_status,
+    )
+    TournamentLedgerEntry.objects.create(
+        tournament=tournament, player=player, registration=registration,
+        entry_type=TournamentLedgerEntry.EntryType.ENTRY,
+        currency={"upi": "inr", "diamonds": "diamonds", "coins": "coins", "fan_tokens": "fan_tokens", "free": "inr"}[registration.payment_method],
+        quantity=currency_amount, amount_inr=fee,
+        status=TournamentLedgerEntry.Status.PENDING if not payment_verified else TournamentLedgerEntry.Status.COMPLETED,
+        reference=reference or f"REG-ENTRY-{registration.pk}",
+        description="Tournament entry payment",
     )
     # Start a BR round at 49 registrations, then optionally open a fresh round.
     if tournament.is_unlimited_br and tournament.auto_start_at_capacity:
