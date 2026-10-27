@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
-from apps.social.models import Follow, UserBlock
+from apps.social.models import Follow, UserBlock, PlayerShopWallet, CurrencyGift
 from .models import Conversation, Message
 
 User = get_user_model()
@@ -77,6 +77,35 @@ def conversation_detail(request, conversation_id):
         return redirect("chat:home")
 
     if request.method == "POST":
+        action = request.POST.get("action", "message")
+        if action == "gift":
+            currency = request.POST.get("currency")
+            try:
+                quantity = int(request.POST.get("quantity", "0"))
+            except (TypeError, ValueError):
+                quantity = 0
+            if currency not in ("diamonds", "coins") or quantity < 1 or quantity > 10000:
+                messages.error(request, "Valid gift amount select karein (1–10000).")
+            else:
+                with transaction.atomic():
+                    sender_wallet, _ = PlayerShopWallet.objects.get_or_create(user=request.user)
+                    recipient_wallet, _ = PlayerShopWallet.objects.get_or_create(user=other)
+                    sender_wallet = PlayerShopWallet.objects.select_for_update().get(pk=sender_wallet.pk)
+                    recipient_wallet = PlayerShopWallet.objects.select_for_update().get(pk=recipient_wallet.pk)
+                    field = "diamonds" if currency == "diamonds" else "coins"
+                    if getattr(sender_wallet, field) < quantity:
+                        messages.error(request, "Gift bhejne ke liye aapka balance kaafi nahi hai. Shop check karein.")
+                    else:
+                        setattr(sender_wallet, field, getattr(sender_wallet, field) - quantity)
+                        setattr(recipient_wallet, field, getattr(recipient_wallet, field) + quantity)
+                        sender_wallet.save(update_fields=[field, "updated_at"])
+                        recipient_wallet.save(update_fields=[field, "updated_at"])
+                        CurrencyGift.objects.create(sender=request.user, recipient=other, currency=currency, quantity=quantity, conversation_id=conversation.pk)
+                        gift_label = "💎 diamonds" if currency == "diamonds" else "🪙 coins"
+                        Message.objects.create(conversation=conversation, sender=request.user, body=f"🎁 Sent {quantity} {gift_label} to {other.username}!")
+                        Conversation.objects.filter(pk=conversation.pk).update(updated_at=timezone.now())
+                        messages.success(request, "Gift chat mein bhej diya!")
+            return redirect("chat:conversation", conversation_id=conversation.pk)
         body = request.POST.get("body", "").strip()
         if not body:
             messages.error(request, "Khali message nahi bhej sakte.")
