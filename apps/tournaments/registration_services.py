@@ -12,7 +12,7 @@ class RegistrationError(Exception):
 
 
 @transaction.atomic
-def create_pending_registration(*, tournament_id, player, free_fire_uid, payment_reference=""):
+def create_pending_registration(*, tournament_id, player, free_fire_uid, payment_reference="", payment_method="upi"):
     tournament = Tournament.objects.select_for_update().get(pk=tournament_id)
 
     if tournament.status != Tournament.Status.UPCOMING:
@@ -30,16 +30,48 @@ def create_pending_registration(*, tournament_id, player, free_fire_uid, payment
 
     fee = tournament.entry_fee
     reference = str(payment_reference or "").strip()
-    if fee > Decimal("0.00"):
+    currency_amount = 0
+    if fee <= Decimal("0.00"):
+        payment_method = "free"
+        registration_status = Registration.Status.CONFIRMED
+        payment_verified = True
+    elif payment_method == "diamonds":
+        if fee != fee.to_integral_value():
+            raise RegistrationError("Diamond entry ke liye fee poore rupees mein honi chahiye. Admin se contact karein.")
+        currency_amount = int(fee)  # 1 diamond = ₹1 entry value
+        from apps.social.models import PlayerShopWallet
+        shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=player)
+        shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
+        if shop_wallet.diamonds < currency_amount:
+            raise RegistrationError("NO_DIAMONDS")
+        shop_wallet.diamonds -= currency_amount
+        shop_wallet.save(update_fields=["diamonds", "updated_at"])
+        registration_status = Registration.Status.CONFIRMED
+        payment_verified = True
+        reference = ""
+    elif payment_method == "coins":
+        coin_value = fee * Decimal("10")
+        if coin_value != coin_value.to_integral_value():
+            raise RegistrationError("Coin entry ke liye fee ₹0.10 ke multiples mein honi chahiye.")
+        currency_amount = int(coin_value)  # 10 coins = ₹1 entry value
+        from apps.social.models import PlayerShopWallet
+        shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=player)
+        shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
+        if shop_wallet.coins < currency_amount:
+            raise RegistrationError("NO_COINS")
+        shop_wallet.coins -= currency_amount
+        shop_wallet.save(update_fields=["coins", "updated_at"])
+        registration_status = Registration.Status.CONFIRMED
+        payment_verified = True
+        reference = ""
+    else:
         if not reference or len(reference) < 6:
             raise RegistrationError("Payment ke baad UTR/reference number zaroor daalein.")
         if Registration.objects.filter(payment_reference__iexact=reference).exists():
             raise RegistrationError("Ye UTR pehle submit ho chuka hai.")
         registration_status = Registration.Status.PENDING_PAYMENT
         payment_verified = False
-    else:
-        registration_status = Registration.Status.CONFIRMED
-        payment_verified = True
+        payment_method = "upi"
 
     registration = Registration.objects.create(
         tournament=tournament,
@@ -49,6 +81,8 @@ def create_pending_registration(*, tournament_id, player, free_fire_uid, payment
         payment_reference=reference,
         payment_submitted_at=timezone.now() if reference else None,
         payment_verified=payment_verified,
+        payment_method=payment_method,
+        currency_amount=currency_amount,
         status=registration_status,
     )
     # Start a BR round at 49 registrations, then optionally open a fresh round.
