@@ -253,6 +253,25 @@ def toggle_follow(request, user_id):
 
 
 @login_required
+def player_profile(request, user_id):
+    """Public player card; never expose private contact, payment, or UID fields."""
+    target = get_object_or_404(User, pk=user_id)
+    if target.pk == request.user.pk:
+        return redirect("accounts:profile")
+    if _blocked_either_way(request.user, target):
+        messages.info(request, "Ye player profile privacy settings ki wajah se available nahi hai.")
+        return redirect("social:home")
+    followers_count = Follow.objects.filter(following=target).count()
+    following_count = Follow.objects.filter(follower=target).count()
+    is_following = Follow.objects.filter(follower=request.user, following=target).exists()
+    is_friend = _are_friends(request.user, target)
+    return render(request, "social/player_profile.html", {
+        "player": target, "followers_count": followers_count,
+        "following_count": following_count, "is_following": is_following,
+        "is_friend": is_friend,
+    })
+
+@login_required
 def follow_lists(request, list_type="followers"):
     if list_type == "following":
         links = Follow.objects.filter(follower=request.user).select_related("following")
