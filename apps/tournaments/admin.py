@@ -1560,11 +1560,19 @@ class KillSubmissionAdmin(admin.ModelAdmin):
             f"Open-source key configured: {'yes' if os.getenv('KILL_REVIEW_API_KEY', '').strip() else 'no'}"
         )
 
+    # Keep the changelist compact; full evidence, player details, AI notes and payout data
+    # are grouped on the dedicated review page opened from the last column.
     list_display = (
-        "id", "player", "player_profile_id", "tournament", "registered_uid", "free_fire_uid",
-        "player_upi_id", "payout_qr", "status", "ai_proposed_kills", "approved_kills", "approved_reward",
-        "payout_reference", "payout_status", "payout_paid_at", "ai_confidence", "ai_uid_matches", "ai_review_notes", "submitted_at", "open_manual_review",
+        "id", "player", "tournament", "mode_label", "status",
+        "ai_proposed_kills", "approved_kills", "ai_confidence",
+        "submitted_at", "open_manual_review",
     )
+
+    @admin.display(description="Mode")
+    def mode_label(self, obj):
+        mode = obj.tournament.get_mode_display()
+        return f"{mode} ({obj.tournament.vs_format})" if obj.tournament.vs_format else mode
+
     @admin.display(description="Admin Review")
     def open_manual_review(self, obj):
         url = reverse("tournaments:admin_kill_review") + f"?submission={obj.pk}"
