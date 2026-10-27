@@ -98,12 +98,12 @@ def tournament_register(request, tournament_id):
     if request.method != "POST":
         return redirect("tournaments:list")
 
-    form = RegistrationForm(request.POST, user=request.user, tournament=tournament)
+    form = RegistrationForm(request.POST, request.FILES, user=request.user, tournament=tournament)
     if not form.is_valid():
         return render(request, "tournaments/register.html", {"tournament": tournament, "form": form, "upi_payment_uri": build_entry_payment_uri(tournament), "qr_image_url": build_entry_qr_url(tournament)})
 
     try:
-        create_pending_registration(
+        registration = create_pending_registration(
             tournament_id=tournament_id,
             player=request.user,
             free_fire_uid=form.cleaned_data["free_fire_uid"],
@@ -123,6 +123,10 @@ def tournament_register(request, tournament_id):
             "tournaments/register.html",
             {"tournament": tournament, "form": form, "upi_payment_uri": build_entry_payment_uri(tournament), "qr_image_url": build_entry_qr_url(tournament)},
         )
+
+    if form.cleaned_data.get("verification_photo"):
+        registration.verification_photo = form.cleaned_data["verification_photo"]
+        registration.save(update_fields=["verification_photo"])
 
     if tournament.entry_fee > Decimal("0.00"):
         messages.info(request, "Payment UTR submit ho gaya. Registration tabhi confirm hogi jab admin aapki payment apne UPI/bank statement se verify karega.")
