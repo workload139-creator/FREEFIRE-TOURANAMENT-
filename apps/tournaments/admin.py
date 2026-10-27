@@ -54,6 +54,10 @@ class TournamentAdminForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
+        if cleaned.get("mode") == Tournament.Mode.BR and cleaned.get("vs_format"):
+            self.add_error("vs_format", "BR tournament ke liye CS/VS format khaali rakhein.")
+        if cleaned.get("mode") == Tournament.Mode.VS and not cleaned.get("vs_format"):
+            self.add_error("vs_format", "CS/VS tournament ke liye 1v1, 2v2, 3v3 ya 4v4 format chunein.")
         if cleaned.get("is_unlimited_br"):
             if cleaned.get("mode") != Tournament.Mode.BR:
                 self.add_error("mode", "Unlimited series sirf Battle Royale (BR) mode mein ho sakti hai.")
@@ -164,11 +168,11 @@ def mark_winner_prizes_paid(modeladmin, request, queryset):
 class TournamentAdmin(admin.ModelAdmin):
     form = TournamentAdminForm
     list_display = (
-        "title", "mode", "vs_format", "entry_fee", "prize_pool",
+        "title", "mode", "vs_format", "gender_category", "entry_fee", "prize_pool",
         "max_players", "start_time", "status", "is_unlimited_br",
         "auto_reopen", "winner_prize_paid",
     )
-    list_filter = ("mode", "status", "start_time")
+    list_filter = ("mode", "vs_format", "gender_category", "status", "start_time")
     search_fields = ("title", "description")
     ordering = ("start_time",)
     inlines = (RegistrationInline,)
@@ -310,7 +314,7 @@ class TournamentAdmin(admin.ModelAdmin):
         return format_html('<img src="data:image/png;base64,{}" width="120" height="120" alt="Winner UPI payment QR" />', encoded)
 
     fieldsets = (
-        ("1. Tournament Details — kya ban raha hai?", {"description": "Title public tournament name hai. Description mein rules/time/instructions likhein. Mode mein BR (Battle Royale) ya VS (Clash Squad) chunein. VS select karne par 1v1/2v2/3v3/4v4 format chunein; BR mein VS format khaali rakhein.", "fields": ("title", "description", "mode", "vs_format")}),
+        ("1. Tournament Details — kya ban raha hai?", {"description": "Title public tournament name hai. Mode mein BR ya CS/VS chunein. CS/VS mein 1v1/2v2/3v3/4v4 format chunein. Gender Category se Open, Boys Only, Girls Only ya Girls vs Boys event banayein. Har saved tournament ka apna detail page hoga.", "fields": ("title", "description", "mode", "vs_format", "gender_category")}),
         ("2. Fees & Players — entry aur capacity", {"description": "Entry Fee player se li jane wali registration fee hai. Prize Pool tournament ka first-place prize hai; ise admin ke funds aur payout process ke mutabik set karein. Max Players room capacity hai (maximum 49). BR kill reward alag rule hai: minimum 2 approved kills ke baad ₹5 per approved kill; evidence aur admin approval zaroori hai.", "fields": ("entry_fee", "prize_pool", "max_players")}),
         ("3. Unlimited BR Series — optional", {"description": "Sirf unlimited BR series ke liye ON karein. Har round mein 49 players. Auto start capacity par round shuru karne ke liye hai; Auto reopen agla round khol sakta hai. Normal tournament ho to in options ko OFF rakhein.", "fields": ("is_unlimited_br", "auto_start_at_capacity", "auto_reopen", "series_root")}),
         ("4. Schedule & Status — publish / LIVE", {"description": "Start Time tournament ka scheduled time hai. Draft public list mein nahi dikhta; Upcoming se listing/registration khulti hai. LIVE karne se pehle Room Details section mein Room ID aur Password bharna zaroori hai. LIVE karne par verified paid players ko YES/NO confirmation email bhejne ki koshish hoti hai; email delivery SMTP setup par depend karti hai.", "fields": ("start_time", "status")}),
