@@ -22,6 +22,12 @@ class Tournament(models.Model):
         THREE_V_THREE = "3v3", "3 vs 3"
         FOUR_V_FOUR = "4v4", "4 vs 4"
 
+    class GenderCategory(models.TextChoices):
+        OPEN = "open", "Open to All"
+        BOYS = "boys", "Boys Only"
+        GIRLS = "girls", "Girls Only"
+        GIRLS_VS_BOYS = "girls_vs_boys", "Girls vs Boys"
+
     class Status(models.TextChoices):
         DRAFT = "draft", "Draft"
         UPCOMING = "upcoming", "Upcoming"
@@ -43,6 +49,11 @@ class Tournament(models.Model):
         choices=VSFormat.choices,
         blank=True,
         default="",
+    )
+
+    gender_category = models.CharField(
+        max_length=20, choices=GenderCategory.choices, default=GenderCategory.OPEN,
+        db_index=True, help_text="Choose Open, Boys Only, Girls Only, or Girls vs Boys event."
     )
 
     description = models.TextField(blank=True)
