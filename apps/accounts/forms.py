@@ -191,12 +191,6 @@ class ProfileUpdateForm(forms.ModelForm):
             raise forms.ValidationError("UPI QR ke liye JPG, PNG ya WebP image upload karein.")
         return qr
 
-    def clean(self):
-        cleaned = super().clean()
-        if not (cleaned.get("upi_id") or "").strip() and not cleaned.get("upi_qr_code"):
-            raise forms.ValidationError("Prize receive karne ke liye UPI ID ya UPI QR mein se kam-se-kam ek add karein.")
-        return cleaned
-
     def clean_profile_photo(self):
         photo = self.cleaned_data.get("profile_photo")
         if photo and photo.size > 2 * 1024 * 1024:
