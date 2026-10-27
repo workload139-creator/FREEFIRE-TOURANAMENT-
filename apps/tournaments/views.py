@@ -18,7 +18,7 @@ from apps.accounts.models import Wallet, WalletTransaction, AdminWallet, AdminWa
 from .forms import KillSubmissionForm, RegistrationForm
 from .ai_review import AIReviewError, analyze_kill_evidence
 from .registration_services import RegistrationError, create_pending_registration
-from .models import KillSubmission, Registration, Tournament
+from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry
 from .services import process_expired_ready_registrations, mark_not_playing_and_refund
 
 import qrcode
@@ -365,6 +365,20 @@ def kill_submission(request, registration_id):
                                 shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
                                 shop_wallet.diamonds += int(submission.approved_reward)
                                 shop_wallet.save(update_fields=("diamonds", "updated_at"))
+                                TournamentLedgerEntry.objects.get_or_create(
+                                    reference=f"KILL-REWARD-{submission.pk}",
+                                    defaults={
+                                        "tournament": submission.tournament,
+                                        "player": submission.player,
+                                        "registration": submission.registration,
+                                        "entry_type": TournamentLedgerEntry.EntryType.REWARD,
+                                        "currency": TournamentLedgerEntry.Currency.DIAMONDS,
+                                        "quantity": int(submission.approved_reward),
+                                        "amount_inr": submission.approved_reward,
+                                        "status": TournamentLedgerEntry.Status.COMPLETED,
+                                        "description": "AI-verified BR kill reward",
+                                    },
+                                )
                         submission.save(update_fields=[
                             "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
                             "ai_review_notes", "proposed_reward", "approved_kills",
