@@ -440,25 +440,25 @@ def mark_manual_upi_refunds_paid(modeladmin, request, queryset):
 @admin.register(Registration)
 class RegistrationAdmin(admin.ModelAdmin):
     list_display = (
-        "id", "tournament", "player", "player_profile_id", "free_fire_uid",
+        "id", "tournament", "player", "player_gender", "player_profile_id", "free_fire_uid", "verification_selfie",
         "entry_fee_paid", "payment_verified", "status", "room_details_sent",
         "refund_processed", "registered_at",
     )
-    list_filter = ("status", "payment_verified", "refund_processed", "tournament__mode", "tournament")
+    list_filter = ("status", "payment_verified", "refund_processed", "player__gender", "tournament__gender_category", "tournament__mode", "tournament")
     search_fields = (
         "free_fire_uid", "payment_reference", "player__username",
         "player__email", "player__phone_number", "tournament__title",
     )
     list_select_related = ("player", "tournament")
     readonly_fields = (
-        "player_profile_id", "player_email", "player_phone", "player_photo",
+        "player_profile_id", "player_gender", "verification_selfie", "player_email", "player_phone", "player_photo",
         "player_upi_destination", "player_wallet_balance",
         "registered_at", "updated_at", "ready_confirmed_at", "refund_processed_at",
     )
     fieldsets = (
         ("1. Tournament & Registration", {
-            "description": "Tournament, mode aur player ka registered Free Fire UID yahan check karein.",
-            "fields": ("tournament", "player", "free_fire_uid", "status"),
+            "description": "Tournament, mode, player category aur registered Free Fire UID check karein. Girls vs Boys event ki selfie review karein; photo automatic proof nahi hai.",
+            "fields": ("tournament", "player", "player_gender", "verification_selfie", "free_fire_uid", "status"),
         }),
         ("2. Player Contact & Payout Details", {
             "description": "Prize/refund ke liye player profile ki contact aur UPI details dekhein.",
@@ -479,6 +479,20 @@ class RegistrationAdmin(admin.ModelAdmin):
         ("Timestamps", {"fields": ("registered_at", "updated_at")}),
     )
     actions = (verify_entry_payments, mark_manual_upi_refunds_paid)
+
+    @admin.display(description="Player Category", ordering="player__gender")
+    def player_gender(self, obj):
+        return obj.player.get_gender_display() or "Not selected"
+
+    @admin.display(description="Registration Selfie")
+    def verification_selfie(self, obj):
+        photo = obj.verification_photo
+        if photo:
+            try:
+                return format_html('<a href="{}" target="_blank" rel="noopener"><img src="{}" width="100" height="100" style="object-fit:cover;border-radius:10px" alt="Private registration selfie"></a>', photo.url, photo.url)
+            except (ValueError, OSError):
+                return "Selfie uploaded but unavailable"
+        return "No registration selfie (not required for this event)"
 
     @admin.display(description="Player Profile ID", ordering="player__id")
     def player_profile_id(self, obj):
