@@ -4,9 +4,10 @@ from django.views.decorators.http import require_http_methods
 ANSWERS = [
     (("register", "account", "signup", "sign up"), "Account banane ke liye pehle email OTP verify karein, phir Register page par details bharein."),
     (("email", "otp", "gmail", "code"), "Registration email OTP 6 digits ka hota hai aur 10 minutes mein expire hota hai. Inbox ke saath Spam/Junk folder bhi check karein."),
-    (("br", "battle royale"), "BR tournaments Tournaments page ke Battle Royale section mein alag dikhte hain."),
-    (("vs", "1v1", "2v2", "3v3", "4v4", "clash squad"), "VS tournaments alag section mein hote hain. Tournament details par format, entry fee aur start time check karein."),
-    (("wallet", "deposit", "withdraw", "upi", "payment"), "Wallet transaction status check karein. Payment screenshot ya typed reference se akela automatic credit nahi hona chahiye; verification zaroori hai."),
+    (("girl", "girls", "boy", "boys", "gender"), "Profile/Edit Profile mein Boy ya Girl category set karein. Admin tournament banate waqt Open to All, Boys Only, Girls Only ya Girls vs Boys category chunta hai. Boys Only/Girls Only tournaments mein profile category match hona zaroori hai."),
+    (("br", "battle royale"), "BR tournaments Tournaments page ke Battle Royale section mein alag dikhte hain. Har card se tournament detail kholo, entry fee, prize pool, player capacity aur status check karo. Registration sirf Upcoming aur non-full tournament mein khulti hai."),
+    (("vs", "1v1", "2v2", "3v3", "4v4", "clash squad", "cs tournament"), "CS / Clash Squad tournaments Tournaments page ke alag CS section mein hote hain. Admin 1v1, 2v2, 3v3 ya 4v4 format chunta hai; har event ki fee, status, registration aur leaderboard usi event ke page par hote hain."),
+    (("wallet", "deposit", "withdraw", "upi", "payment", "utr"), "Wallet transaction status check karein. Deposit ₹10–₹5,000 ke beech hota hai. Payment UTR ko actual UPI/bank record se match karne ke baad admin credit/entry verify kare. Screenshot ya typed reference apne aap payment proof nahi hai. Winner/refund transfer manually karne ke baad real UTR record karein."),
     (("friend", "friends", "add friend"), "Friends page par player search karke friend request bhej sakte hain."),
     (("chat", "message"), "Private chat ke liye Messages page kholein. Apna password, OTP ya payment PIN kisi ko na bhejein."),
     (("follow", "followers", "following"), "Following/follower feature abhi full rollout mein nahi hai. Friend request aur following alag systems hote hain."),
