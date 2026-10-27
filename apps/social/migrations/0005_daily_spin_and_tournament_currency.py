@@ -6,7 +6,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
     dependencies = [
         ("social", "0004_merge_follow_and_shop"),
-        ("tournaments", "0006_manual_upi_prize_payout"),
+        ("tournaments", "0008_registration_verification_photo"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
