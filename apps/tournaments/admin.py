@@ -441,7 +441,7 @@ def mark_manual_upi_refunds_paid(modeladmin, request, queryset):
 class RegistrationAdmin(admin.ModelAdmin):
     list_display = (
         "id", "tournament", "player", "player_gender", "player_profile_id", "free_fire_uid", "verification_selfie",
-        "entry_fee_paid", "payment_verified", "status", "room_details_sent",
+        "entry_fee_paid", "payment_method", "currency_amount", "payment_verified", "status", "room_details_sent",
         "refund_processed", "registered_at",
     )
     list_filter = ("status", "payment_verified", "refund_processed", "player__gender", "tournament__gender_category", "tournament__mode", "tournament")
@@ -465,8 +465,8 @@ class RegistrationAdmin(admin.ModelAdmin):
             "fields": ("player_profile_id", "player_email", "player_phone", "player_photo", "player_upi_destination", "player_wallet_balance"),
         }),
         ("3. Entry Payment Verification", {
-            "description": "Payment app/bank statement mein amount aur UTR dono match karna zaroori hai. Phir list page par checkbox select karein → Actions → Verify UTR against actual UPI/bank receipt and confirm entry → Go. Yeh website gateway se automatic verification nahi hai.",
-            "fields": ("entry_fee_paid", "payment_reference", "payment_submitted_at", "payment_verified"),
+            "description": "UPI entries: actual UTR/bank receipt verify karein. Diamond/Coin entries: payment_method aur currency_amount audit karein; these were debited from the player's shop balance.",
+            "fields": ("entry_fee_paid", "payment_method", "currency_amount", "payment_reference", "payment_submitted_at", "payment_verified"),
         }),
         ("4. Match / Room Readiness", {
             "description": "Room ID/password sirf eligible paid players ko share karein. Ready deadline aur confirmation check karein.",
