@@ -163,7 +163,7 @@ def confirm_playing(request, registration_id):
             messages.error(request, "Room details abhi available nahi hain.")
             return redirect("tournaments:list")
         if not registration.ready_deadline or timezone.now() >= registration.ready_deadline:
-            messages.error(request, "Confirmation ke 10 minute khatam ho gaye. Admin se contact karein.")
+            messages.error(request, "Confirmation ke 5 minute khatam ho gaye. Admin se contact karein.")
             return redirect("tournaments:player_room", registration_id=registration.pk)
 
         registration.status = Registration.Status.READY
@@ -225,7 +225,7 @@ def send_room_details(request, tournament_id):
             ready_confirmed_at=None,
         )
 
-    messages.success(request, "Room details set ho gayi. Eligible paid players ko 10 minute ke andar YES confirm karna hoga.")
+    messages.success(request, "Room details set ho gayi. Eligible paid players ko 5 minute ke andar YES confirm karna hoga.")
     return redirect("tournaments:admin_room_page", tournament_id=tournament_id)
 
 
