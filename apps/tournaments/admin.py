@@ -7,6 +7,7 @@ from django.contrib import admin, messages
 from django.db import transaction
 from django.utils import timezone
 from django.utils.html import format_html
+from django.urls import reverse
 
 from apps.accounts.models import (
     AdminWallet,
@@ -221,16 +222,35 @@ def mark_winner_prizes_paid(modeladmin, request, queryset):
 class TournamentAdmin(admin.ModelAdmin):
     form = TournamentAdminForm
     list_display = (
-        "title", "mode", "vs_format", "gender_category", "entry_fee", "prize_pool",
-        "max_players", "start_time", "status", "is_unlimited_br",
-        "auto_reopen", "winner_prize_paid",
+        "title", "open_tournament_control", "mode", "vs_format", "gender_category",
+        "entry_fee", "prize_pool", "max_players", "start_time", "status",
+        "is_unlimited_br", "auto_reopen", "winner_prize_paid",
     )
     list_filter = ("mode", "vs_format", "gender_category", "status", "start_time")
     search_fields = ("title", "description")
     ordering = ("start_time",)
     inlines = (RegistrationInline, KillSubmissionInline)
     actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid,)
-    readonly_fields = ("series_root", "winner_prize_paid", "kill_prize_distributed", "kill_prize_pool", "kill_prize_reference", "winner_payout_destination", "winner_payout_qr")
+    readonly_fields = (
+        "tournament_control_panel", "series_root", "winner_prize_paid",
+        "kill_prize_distributed", "kill_prize_pool", "kill_prize_reference",
+        "winner_payout_destination", "winner_payout_qr",
+    )
+
+    @admin.display(description="Tournament Control")
+    def open_tournament_control(self, obj):
+        url = reverse("tournaments:admin_tournament_dashboard", args=[obj.pk])
+        return format_html('<a class="button" href="{}">Open control panel</a>', url)
+
+    @admin.display(description="Tournament Control Panel")
+    def tournament_control_panel(self, obj):
+        if not obj or not obj.pk:
+            return "Save this tournament first; then open its separate control panel."
+        url = reverse("tournaments:admin_tournament_dashboard", args=[obj.pk])
+        return format_html(
+            '<a class="button" href="{}">Open {} — full tournament process</a>',
+            url, obj.title,
+        )
 
     def save_model(self, request, obj, form, change):
         previous_status = None
@@ -367,7 +387,7 @@ class TournamentAdmin(admin.ModelAdmin):
         return format_html('<img src="data:image/png;base64,{}" width="120" height="120" alt="Winner UPI payment QR" />', encoded)
 
     fieldsets = (
-        ("1. Tournament Details — kya ban raha hai?", {"description": "Title public tournament name hai. Mode mein BR ya CS/VS chunein. CS/VS mein 1v1/2v2/3v3/4v4 format chunein. Gender Category se Open, Boys Only, Girls Only ya Girls vs Boys event banayein. Har saved tournament ka apna detail page hoga.", "fields": ("title", "description", "mode", "vs_format", "gender_category")}),
+        ("1. Tournament Details — kya ban raha hai?", {"description": "Title public tournament name hai. Mode mein BR ya CS/VS chunein. CS/VS mein 1v1/2v2/3v3/4v4 format chunein. Gender Category se Open, Boys Only, Girls Only ya Girls vs Boys event banayein. Har saved tournament ka apna alag control panel hai.", "fields": ("tournament_control_panel", "title", "description", "mode", "vs_format", "gender_category")}),
         ("2. Fees & Players — entry aur capacity", {"description": "Entry Fee player se li jane wali registration fee hai. Prize Pool tournament ka first-place prize hai; ise admin ke funds aur payout process ke mutabik set karein. Max Players room capacity hai (maximum 49). BR kill reward alag rule hai: har verified kill par ₹5 ke equivalent 5 Diamonds; evidence aur admin approval zaroori hai.", "fields": ("entry_fee", "prize_pool", "max_players")}),
         ("3. Unlimited BR Series — optional", {"description": "Sirf unlimited BR series ke liye ON karein. Har round mein 49 players. Auto start capacity par round shuru karne ke liye hai; Auto reopen agla round khol sakta hai. Normal tournament ho to in options ko OFF rakhein.", "fields": ("is_unlimited_br", "auto_start_at_capacity", "auto_reopen", "series_root")}),
         ("4. Schedule & Status — publish / LIVE", {"description": "Start Time tournament ka scheduled time hai. Draft public list mein nahi dikhta; Upcoming se listing/registration khulti hai. LIVE karne se pehle Room Details section mein Room ID aur Password bharna zaroori hai. LIVE karne par verified paid players ko YES/NO confirmation email bhejne ki koshish hoti hai; email delivery SMTP setup par depend karti hai.", "fields": ("start_time", "status")}),
@@ -903,9 +923,10 @@ class UnlimitedTournamentAdmin(TournamentAdmin):
     ordering = ("-created_at",)
     actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid, retry_unlimited_live_notifications)
     readonly_fields = (
-        "series_root", "winner_prize_paid", "kill_prize_distributed",
-        "kill_prize_pool", "kill_prize_reference", "live_notification_sent_at",
-        "live_notification_status", "winner_payout_destination", "winner_payout_qr",
+        "tournament_control_panel", "series_root", "winner_prize_paid",
+        "kill_prize_distributed", "kill_prize_pool", "kill_prize_reference",
+        "live_notification_sent_at", "live_notification_status",
+        "winner_payout_destination", "winner_payout_qr",
     )
 
 
