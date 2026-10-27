@@ -106,7 +106,8 @@ def profile_view(request):
     from apps.social.models import Follow
 
     return render(request, "accounts/profile.html", {
-        "player": request.user,\n        "active_tick": __import__("apps.social.models", fromlist=["FFTickSubscription"]).FFTickSubscription.objects.filter(user=request.user, status="active", expires_at__gt=__import__("django.utils.timezone", fromlist=["now"]).now()).first(),
+        "player": request.user,
+        "active_tick": __import__("apps.social.models", fromlist=["FFTickSubscription"]).FFTickSubscription.objects.filter(user=request.user, status="active", expires_at__gt=__import__("django.utils.timezone", fromlist=["now"]).now()).first(),
         "followers_count": Follow.objects.filter(following=request.user).count(),
         "following_count": Follow.objects.filter(follower=request.user).count(),
     })
