@@ -609,20 +609,50 @@ def run_ai_review_for_selected(modeladmin, request, queryset):
             selected.ai_confidence = result["confidence"][:10]
             selected.ai_uid_matches = result["uid_matches"]
             selected.ai_review_notes = result["reason"]
-            if (
+            proposed_kills = int(result["proposed_kills"] or 0)
+            auto_approved = (
                 result["proposed_kills"] is not None
                 and result["uid_matches"] is True
                 and selected.free_fire_uid == selected.registered_uid
+                and selected.registered_uid == selected.registration.free_fire_uid
                 and selected.tournament.mode == Tournament.Mode.BR
-                and int(result["proposed_kills"]) >= settings.MINIMUM_VERIFIED_KILLS
-            ):
-                selected.proposed_reward = Decimal(int(result["proposed_kills"])) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
+                and result["confidence"] == "high"
+            )
+            selected.proposed_reward = (
+                Decimal(proposed_kills) * Decimal(str(settings.REWARD_PER_APPROVED_KILL))
+                if auto_approved and proposed_kills > 0 else Decimal("0.00")
+            )
+            if auto_approved:
+                with transaction.atomic():
+                    locked = KillSubmission.objects.select_for_update().get(pk=selected.pk)
+                    if locked.status != KillSubmission.Status.PENDING:
+                        failed += 1
+                        continue
+                    locked.ai_proposed_kills = result["proposed_kills"]
+                    locked.ai_confidence = result["confidence"][:10]
+                    locked.ai_uid_matches = result["uid_matches"]
+                    locked.ai_review_notes = result["reason"]
+                    locked.proposed_reward = selected.proposed_reward
+                    locked.approved_kills = proposed_kills
+                    locked.approved_reward = locked.proposed_reward
+                    locked.status = KillSubmission.Status.APPROVED
+                    locked.reviewed_at = timezone.now()
+                    if proposed_kills > 0:
+                        from apps.social.models import PlayerShopWallet
+                        shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=locked.player)
+                        shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
+                        shop_wallet.diamonds += int(locked.approved_reward)
+                        shop_wallet.save(update_fields=("diamonds", "updated_at"))
+                    locked.save(update_fields=[
+                        "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
+                        "ai_review_notes", "proposed_reward", "approved_kills",
+                        "approved_reward", "status", "reviewed_at",
+                    ])
             else:
-                selected.proposed_reward = Decimal("0.00")
-            selected.save(update_fields=[
-                "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
-                "ai_review_notes", "proposed_reward",
-            ])
+                selected.save(update_fields=[
+                    "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
+                    "ai_review_notes", "proposed_reward",
+                ])
             reviewed += 1
         except (AIReviewError, OSError, ValueError) as exc:
             selected.ai_review_notes = f"AI review failed: {str(exc)[:900]}"
@@ -632,7 +662,7 @@ def run_ai_review_for_selected(modeladmin, request, queryset):
     if reviewed:
         modeladmin.message_user(
             request,
-            f"AI review completed for {reviewed} submission(s). Proposals only—open evidence and make the final decision manually.",
+            f"AI review completed for {reviewed} submission(s). High-confidence UID matches were approved and credited in Diamonds automatically; other cases remain pending for manual review.",
             messages.SUCCESS,
         )
     if failed:
