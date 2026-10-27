@@ -193,3 +193,6 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.getenv(
     "DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "noreply@ffarena.local"
 )
+
+TOURNAMENT_ADMIN_EMAIL = os.getenv("TOURNAMENT_ADMIN_EMAIL", "").strip()
+SITE_URL = os.getenv("SITE_URL", "https://freefire-touranament-74nr.onrender.com").rstrip("/")
