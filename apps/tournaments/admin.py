@@ -280,7 +280,7 @@ class TournamentAdmin(admin.ModelAdmin):
         Registration.objects.filter(pk__in=eligible_ids).update(
             status=Registration.Status.WAITING_READY,
             room_details_sent=True,
-            ready_deadline=now + timedelta(seconds=60),
+            ready_deadline=now + timedelta(minutes=10),
             ready_confirmed_at=None,
         )
 
@@ -295,7 +295,7 @@ class TournamentAdmin(admin.ModelAdmin):
                 room_url = request.build_absolute_uri(
                     reverse("tournaments:player_room", args=[registration.pk])
                 )
-                send_mail(
+                delivered = send_mail(
                     subject=f"FF Arena: {obj.title} is LIVE — confirm YES/NO",
                     message=(
                         f"Hi {player.username},\n\n"
@@ -304,7 +304,7 @@ class TournamentAdmin(admin.ModelAdmin):
                         f"Entry fee: INR {registration.entry_fee_paid}\n\n"
                         "Open the secure tournament page and press YES if you want to play, "
                         "or NO if you cannot play. Room ID/password are shown only after YES. "
-                        "Please respond within 60 seconds. If you press NO or do not respond, "
+                        "Please respond within 10 minutes. If you press NO or do not respond, "
                         "you will be marked NOT PLAYING. If your entry was paid directly by UPI, "
                         "the admin must send the real refund and record its UTR; the website "
                         "cannot transfer money automatically.\n\n"
@@ -312,18 +312,19 @@ class TournamentAdmin(admin.ModelAdmin):
                     ),
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[player.email],
-                    fail_silently=True,
+                    fail_silently=False,
                 )
-                sent += 1
+                sent += delivered
             except Exception:
-                # Email failure must not expose room credentials or stop the admin save.
+                # Keep the tournament LIVE, but report notification failure to the admin.
+                messages.warning(request, f"Email could not be sent to {player.email}. Check Render SMTP environment variables and provider logs.")
                 continue
 
         self.message_user(
             request,
-            f"Tournament is LIVE. {len(eligible_ids)} verified player(s) were queued for YES/NO; "
-            f"email attempts: {sent}, players without email: {missing_email}. "
-            "Check SMTP/Brevo configuration and email delivery logs.",
+            f"Tournament is LIVE. {len(eligible_ids)} verified player(s) were queued for YES/NO for 10 minutes; "
+            f"emails successfully handed to SMTP: {sent}, players without email: {missing_email}. "
+            "Check SMTP provider logs for final delivery.",
             level=messages.SUCCESS,
         )
 
