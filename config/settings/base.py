@@ -172,7 +172,7 @@ MAX_PLAYER_WALLET_BALANCE = 5000
 MINIMUM_WITHDRAWAL = 10
 
 REWARD_PER_APPROVED_KILL = 5
-MINIMUM_VERIFIED_KILLS = 1
+MINIMUM_VERIFIED_KILLS = 2
 
 # Brevo API sends mail over HTTPS, including Django password-reset emails.
 BREVO_API_KEY = os.getenv("BREVO_API_KEY", "").strip()
