@@ -18,12 +18,12 @@ from .services import credit_verified_deposit
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
-    list_display = ("username", "gender", "phone_number", "free_fire_uid", "upi_id", "upi_verified", "phone_verified", "uid_verified", "is_active")
+    list_display = ("username", "gender", "profile_visibility", "phone_number", "free_fire_uid", "upi_id", "upi_verified", "phone_verified", "uid_verified", "is_active")
     search_fields = ("username", "phone_number", "free_fire_uid")
     list_filter = ("gender", "phone_verified", "uid_verified", "is_active", "is_staff")
     fieldsets = UserAdmin.fieldsets + (
         ("Player Details", {"fields": (
-            "phone_number", "gender", "phone_verified", "free_fire_uid",
+            "phone_number", "gender", "profile_visibility", "phone_verified", "free_fire_uid",
             "uid_verified", "upi_id", "upi_qr_code", "upi_verified",
         )}),
     )
