@@ -107,11 +107,13 @@ def profile_edit_view(request):
     if request.method == "POST":
         form = ProfileUpdateForm(request.POST, request.FILES, instance=request.user)
         if form.is_valid():
-            form.save()
+            updated_user = form.save()
+            request.user.refresh_from_db()
             messages.success(request, "Player profile update ho gayi.")
             if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
                 return redirect(next_url)
             return redirect("accounts:profile")
+        messages.error(request, "Profile save nahi hui. Form ke upar dikh rahe red error message ko theek karke dobara save karein.")
     else:
         form = ProfileUpdateForm(instance=request.user)
     return render(request, "accounts/profile_edit.html", {"form": form, "player": request.user, "next": next_url})
