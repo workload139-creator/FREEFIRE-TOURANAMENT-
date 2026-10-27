@@ -64,6 +64,21 @@ def create_pending_registration(*, tournament_id, player, free_fire_uid, payment
         registration_status = Registration.Status.CONFIRMED
         payment_verified = True
         reference = ""
+    elif payment_method == "fan_tokens":
+        # One Fan Token equals ₹1 of tournament entry value; tokens are non-cash and non-withdrawable.
+        if fee != fee.to_integral_value():
+            raise RegistrationError("Fan Token entry ke liye fee poore rupees mein honi chahiye.")
+        currency_amount = int(fee)
+        from apps.social.models import PlayerShopWallet
+        shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=player)
+        shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
+        if shop_wallet.fan_tokens < currency_amount:
+            raise RegistrationError("NO_FAN_TOKENS")
+        shop_wallet.fan_tokens -= currency_amount
+        shop_wallet.save(update_fields=["fan_tokens", "updated_at"])
+        registration_status = Registration.Status.CONFIRMED
+        payment_verified = True
+        reference = ""
     else:
         if not reference or len(reference) < 6:
             raise RegistrationError("Payment ke baad UTR/reference number zaroor daalein.")
