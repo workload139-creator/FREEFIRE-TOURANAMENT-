@@ -200,6 +200,14 @@ def reject_currency_withdrawals(modeladmin, request, queryset):
 
 @admin.register(CurrencyWithdrawalRequest)
 class CurrencyWithdrawalAdmin(admin.ModelAdmin):
+    # Keep the work queue clean: only pending payouts show by default.
+    # Paid/rejected requests remain in the database and can be viewed using
+    # the Status filter, so the audit trail is never deleted.
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        if "status__exact" not in request.GET:
+            return queryset.filter(status=CurrencyWithdrawalRequest.Status.PENDING)
+        return queryset
     list_display = ("id", "player_id_display", "user", "currency", "quantity", "amount_inr", "upi_id", "upi_qr_preview", "status", "payout_reference", "created_at")
     list_filter = ("status", "currency", "created_at")
     search_fields = ("user__username", "user__email", "upi_id", "payout_reference")
