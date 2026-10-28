@@ -616,7 +616,7 @@ def review_kill_submission(request, submission_id):
         )
         if submission.status != KillSubmission.Status.PENDING:
             messages.error(request, "Yeh submission pehle hi review ho chuki hai.")
-            return redirect("tournaments:admin_kill_review")
+            return redirect("tournaments:admin_ai_assessments")
 
         decision = request.POST.get("decision", "").strip()
         notes = request.POST.get("admin_notes", "").strip()[:4000]
