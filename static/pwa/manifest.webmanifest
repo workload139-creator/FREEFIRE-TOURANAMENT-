@@ -1,0 +1,22 @@
+{
+  "id": "/",
+  "name": "FF Arena - Free Fire Tournaments",
+  "short_name": "FF Arena",
+  "description": "Join Free Fire tournaments, track matches, and compete with the FF Arena community.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "background_color": "#080b12",
+  "theme_color": "#080b12",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/static/pwa/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "prefer_related_applications": false
+}
