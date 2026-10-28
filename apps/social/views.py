@@ -7,6 +7,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from datetime import timedelta
 import random
+import os
+from urllib.parse import urlencode
 from django.views.decorators.http import require_POST
 
 from .models import Follow, FriendRequest, UserBlock, UserReport, PhotoPost, FFTickSubscription, PlayerShopWallet, ShopPaymentRequest, CurrencyWithdrawalRequest, DailySpin, FanTokenAward
@@ -331,18 +333,29 @@ def community_feed(request):
     return render(request, "social/feed.html", {"posts": posts})
 
 
-def _shop_payment_qr_data_uri():
-    """Build a QR for the shop's UPI ID; it does not confirm or verify a payment."""
+def _shop_payment_details():
+    """Use only administrator-configured shop payment details; never hard-code a personal UPI."""
+    upi_id = os.getenv("FF_ARENA_SHOP_UPI_ID", "").strip()
+    payee_name = os.getenv("FF_ARENA_SHOP_PAYEE_NAME", "").strip()
+    if not upi_id or "@" not in upi_id or any(char.isspace() for char in upi_id) or not payee_name:
+        return {"configured": False, "upi_id": "", "payee_name": "", "upi_uri": "", "qr_data_uri": ""}
+
+    upi_uri = "upi://pay?" + urlencode({"pa": upi_id, "pn": payee_name, "cu": "INR"})
     import base64
     from io import BytesIO
     import qrcode
 
-    upi_uri = "upi://pay?pa=6232481135%40fam&pn=Ravibaghel&cu=INR"
     image = qrcode.make(upi_uri)
     output = BytesIO()
     image.save(output, format="PNG")
     encoded = base64.b64encode(output.getvalue()).decode("ascii")
-    return "data:image/png;base64," + encoded
+    return {
+        "configured": True,
+        "upi_id": upi_id,
+        "payee_name": payee_name,
+        "upi_uri": upi_uri,
+        "qr_data_uri": "data:image/png;base64," + encoded,
+    }
 
 
 @login_required
@@ -437,10 +450,15 @@ def shop_view(request):
                 return redirect("social:shop")
 
     wallet.refresh_from_db()
+    payment_details = _shop_payment_details()
     return render(request, "social/shop.html", {
         "shop_wallet": wallet,
         "payment_requests": ShopPaymentRequest.objects.filter(user=request.user)[:10],
-        "payment_qr_data_uri": _shop_payment_qr_data_uri(),
+        "shop_payment_configured": payment_details["configured"],
+        "shop_upi_id": payment_details["upi_id"],
+        "shop_payee_name": payment_details["payee_name"],
+        "shop_upi_uri": payment_details["upi_uri"],
+        "payment_qr_data_uri": payment_details["qr_data_uri"],
     })
 
 
