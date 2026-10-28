@@ -95,7 +95,7 @@ public class MainActivity extends Activity {
                 try {
                     intent = params.createIntent();
                     startActivityForResult(intent, FILE_CHOOSER_REQUEST);
-                } catch (ActivityNotFoundException | RuntimeException exception) {
+                } catch (RuntimeException exception) {
                     filePathCallback = null;
                     return false;
                 }
@@ -162,7 +162,7 @@ public class MainActivity extends Activity {
             Intent intent = new Intent(Intent.ACTION_VIEW, uri);
             startActivity(intent);
             return true;
-        } catch (ActivityNotFoundException | java.net.URISyntaxException | RuntimeException ignored) {
+        } catch (java.net.URISyntaxException | RuntimeException ignored) {
             return true;
         }
     }
