@@ -1,11 +1,12 @@
 
 from django.urls import path
 
-from . import views
+from . import views, api_views
 
 app_name = "tournaments"
 
 urlpatterns = [
+    path("api/", api_views.public_tournament_list_api, name="api_list"),
     # Tournament list
     path(
         "",
