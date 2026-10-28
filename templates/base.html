@@ -36,6 +36,7 @@
             <a href="{% url 'tournaments:list' %}#cs-tournaments">CS</a>
             <a href="{% url 'tournaments:results' %}">Results</a>
             <a href="{% url 'assistant' %}">FF Assistant</a>
+            <a href="{% url 'support' %}">Support</a>
             {% if user.is_authenticated %}
                 <a href="{% url 'accounts:profile' %}">Profile</a>
                 <a href="{% url 'accounts:wallet' %}">Wallet</a>
