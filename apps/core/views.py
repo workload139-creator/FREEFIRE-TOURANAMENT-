@@ -25,6 +25,11 @@ def health_check(request):
     return JsonResponse({"status": "ok", "database": "ok"})
 
 
+def support(request):
+    """Public support page for players and payment-provider reviewers."""
+    return render(request, "pages/support.html")
+
+
 def _policy_page(request, title, intro, sections):
     return render(request, "pages/policy.html", {
         "policy_title": title,
