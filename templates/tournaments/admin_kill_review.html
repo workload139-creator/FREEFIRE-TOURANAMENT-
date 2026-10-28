@@ -8,10 +8,10 @@
       <a class="button button-outline" href="{% url 'tournaments:admin_ai_assessments' %}">AI Assessment Queue</a>
       <a class="button button-outline" href="{% url 'tournaments:admin_ai_sources' %}">AI Sources / Diagnostics</a>
     </nav>
-    <p>Yahin evidence check, AI retry aur manual revision manage karein. Dono AI high-confidence par agree karein aur saare website checks pass hon to Diamonds automatically credit honge; warna submission admin review mein rahegi.</p>
+    <p>Yahin evidence check, AI retry aur manual revision manage karein. Dono AI high-confidence par agree karein aur saare website checks pass hon to reward automatically credit ho sakta hai; free tournament mein Fan Tokens aur baaki mein Diamonds milte hain.</p>
     <p><strong>AI provider:</strong> {{ ai_provider }} · <strong>Model:</strong> {{ ai_model }}</p>
     <p><strong>OpenAI key configured:</strong> {{ ai_openai_configured|yesno:"Yes,No" }} · <strong>Compatible vision endpoint configured:</strong> {{ ai_compatible_configured|yesno:"Yes,No" }}</p>
-    <p><strong>Reward rule:</strong> Minimum {{ minimum_verified_kills }} verified kills; {{ diamonds_per_kill }} Diamonds per approved kill. Example: 3 kills = {{ diamonds_per_kill|add:diamonds_per_kill|add:diamonds_per_kill }} Diamonds. Diamonds are not cash/UPI money.</p>
+    <p><strong>Reward rule:</strong> Minimum {{ minimum_verified_kills }} verified kills. Free Fan Tournament: har 2 approved kills = 1 Fan Token. Baaki tournaments: {{ diamonds_per_kill }} Diamonds per approved kill. Dono rewards non-cash website currency hain.</p>
     {% if selected_tournament_id %}<p><a href="{% url 'tournaments:admin_kill_review' %}">View all pending submissions</a></p>{% endif %}
   </header>
 
@@ -31,7 +31,7 @@
           <p><strong>Email:</strong> {{ submission.player.email|default:"Not provided" }} · <strong>Phone:</strong> {{ submission.player.phone_number|default:"Not provided" }}</p>
           <p><strong>Tournament:</strong> {{ submission.tournament.title }} · <strong>Mode:</strong> {{ submission.tournament.get_mode_display }}{% if submission.tournament.vs_format %} ({{ submission.tournament.vs_format }}){% endif %}</p>
           <p><strong>Entry fee:</strong> ₹{{ submission.registration.entry_fee_paid }} · <strong>Payment verified:</strong> {{ submission.registration.payment_verified|yesno:"Yes,No" }}</p>
-          <p><strong>Current Diamonds balance:</strong> {% if submission.player.shop_wallet %}{{ submission.player.shop_wallet.diamonds }}{% else %}0{% endif %}</p>
+          <p><strong>Current {% if submission.tournament.is_free_fan_tournament %}Fan Tokens{% else %}Diamonds{% endif %} balance:</strong> {% if submission.player.shop_wallet %}{% if submission.tournament.is_free_fan_tournament %}{{ submission.player.shop_wallet.fan_tokens }}{% else %}{{ submission.player.shop_wallet.diamonds }}{% endif %}{% else %}0{% endif %}</p>
           <p><strong>Profile Free Fire UID:</strong> {{ submission.player.free_fire_uid|default:"Not saved on profile" }}</p>
           <p><strong>Registration UID:</strong> {{ submission.registration.free_fire_uid|default:"Missing" }} · <strong>Registered UID on submission:</strong> {{ submission.registered_uid }} · <strong>Submitted UID:</strong> {{ submission.free_fire_uid }}</p>
           <p><strong>UID consistency:</strong> {% if submission.registered_uid == submission.free_fire_uid and submission.registered_uid == submission.registration.free_fire_uid %}<span style="color:#16803c">MATCH</span>{% else %}<span style="color:#b91c1c">MISMATCH — approval blocked</span>{% endif %}</p>
@@ -43,7 +43,7 @@
       <h3>2. AI assessment</h3>
       <p><strong>AI proposed kills:</strong> {% if submission.ai_proposed_kills != None %}{{ submission.ai_proposed_kills }}{% else %}Not available — run AI review or enter the verified count below{% endif %} · <strong>Admin-approved kills:</strong> {% if submission.approved_kills != None %}{{ submission.approved_kills }}{% else %}Not approved yet{% endif %} · <strong>Confidence:</strong> {{ submission.ai_confidence|default:"Unknown" }} · <strong>AI UID match:</strong> {{ submission.ai_uid_matches|yesno:"Yes,No,Unknown" }}</p>
       <p><strong>AI review notes/error:</strong><br>{{ submission.ai_review_notes|default:"AI has not returned a result yet." }}</p>
-      <p><strong>Suggested reward:</strong> {{ submission.proposed_reward|floatformat:0 }} Diamonds (only if the evidence and UID are accepted; final count is set below).</p>
+      <p><strong>Suggested reward:</strong> {{ submission.proposed_reward|floatformat:0 }} {% if submission.tournament.is_free_fan_tournament %}Fan Tokens{% else %}Diamonds{% endif %} (only if the evidence and UID are accepted; final count is set below).</p>
       <form method="post" action="{% url 'tournaments:retry_ai_kill_review' submission.id %}" style="margin-top:12px">
         {% csrf_token %}
         <button class="button button-outline" type="submit">Run / Retry AI Review</button>
@@ -84,7 +84,7 @@
       {% if submission.player.upi_qr_code %}
         <a href="{{ submission.player.upi_qr_code.url }}" target="_blank" rel="noopener"><img src="{{ submission.player.upi_qr_code.url }}" alt="Player UPI QR" style="width:150px;height:150px;object-fit:contain;background:#fff;padding:6px;border-radius:10px"></a>
       {% else %}<p>UPI QR not uploaded.</p>{% endif %}
-      <p>Kill-confirmation Diamonds go to the player's shop wallet. This button does not send cash to UPI.</p>
+      <p>Kill rewards go to the player's non-cash shop wallet. This button does not send cash to UPI.</p>
     </section>
 
     <section style="padding:16px;border:1px solid var(--border-color, #777);border-radius:12px;margin:14px 0">
@@ -96,8 +96,8 @@
         <input id="approved-kills-{{ submission.id }}" type="number" name="approved_kills" min="0" max="99" value="{% if submission.ai_proposed_kills != None %}{{ submission.ai_proposed_kills }}{% elif submission.approved_kills != None %}{{ submission.approved_kills }}{% endif %}" style="display:block;max-width:240px;width:100%;margin:8px 0 14px">
         <label for="notes-{{ submission.id }}"><strong>Admin notes</strong></label>
         <textarea id="notes-{{ submission.id }}" name="admin_notes" rows="3" style="display:block;width:100%;margin:8px 0 14px" placeholder="Evidence reviewed, UID check, reason for decision..."></textarea>
-        <p>Confirmation awards {{ diamonds_per_kill }} Diamonds per kill if at least {{ minimum_verified_kills }} kills are verified. UID must match registration. Confirm only after checking the actual video and screenshots.</p>
-        <button class="button button-primary" type="submit">Confirm Kills &amp; Credit Diamonds</button>
+        <p>{% if submission.tournament.is_free_fan_tournament %}Confirmation awards 1 Fan Token per 2 approved kills{% else %}Confirmation awards {{ diamonds_per_kill }} Diamonds per kill{% endif %} if at least {{ minimum_verified_kills }} kills are verified. UID must match registration. Confirm only after checking the actual video and screenshots.</p>
+        <button class="button button-primary" type="submit">Confirm Kills &amp; Credit Reward</button>
       </form>
       <form method="post" action="{% url 'tournaments:review_kill_submission' submission.id %}" style="margin-top:12px">
         {% csrf_token %}
