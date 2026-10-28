@@ -4,6 +4,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initializeMobileMenu();
     initializeFormSubmission();
     initializeArenaEffects();
+    initializeThemeSettings();
 });
 
 function initializeMobileMenu() {
@@ -120,4 +121,31 @@ function initializeArenaEffects() {
         const target = event.target.closest("a, button[type='submit'], input[type='submit']");
         if (target && target !== toggle && !target.disabled) playClick(target.matches("button[type='submit'], input[type='submit']"));
     }, true);
+}
+
+
+/* User-selected theme is a visual preference only; it does not change account data. */
+function initializeThemeSettings() {
+    const root = document.documentElement;
+    const allowedThemes = new Set(["arena", "red", "purple", "blue"]);
+    let savedTheme = "arena";
+    try {
+        const stored = window.localStorage.getItem("ff-arena-theme");
+        if (stored && allowedThemes.has(stored)) savedTheme = stored;
+    } catch (_) { /* Storage may be disabled in private browsing. */ }
+    root.dataset.ffTheme = savedTheme;
+
+    const buttons = document.querySelectorAll("[data-theme-choice]");
+    const applyTheme = (theme) => {
+        if (!allowedThemes.has(theme)) return;
+        root.dataset.ffTheme = theme;
+        try { window.localStorage.setItem("ff-arena-theme", theme); } catch (_) { /* Theme still works for this page. */ }
+        buttons.forEach((button) => {
+            const selected = button.dataset.themeChoice === theme;
+            button.setAttribute("aria-pressed", String(selected));
+            button.classList.toggle("is-selected", selected);
+        });
+    };
+    buttons.forEach((button) => button.addEventListener("click", () => applyTheme(button.dataset.themeChoice)));
+    applyTheme(savedTheme);
 }
