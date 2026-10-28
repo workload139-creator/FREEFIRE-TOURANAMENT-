@@ -14,6 +14,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.ImageView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import org.json.JSONArray;
@@ -55,10 +56,17 @@ public class MainActivity extends Activity {
         header.setPadding(dp(20), dp(18), dp(20), dp(16));
         header.setOrientation(LinearLayout.HORIZONTAL);
 
+        ImageView appLogo = new ImageView(this);
+        appLogo.setImageResource(R.drawable.ff_arena_logo);
+        appLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(dp(54), dp(54));
+        logoParams.rightMargin = dp(12);
+        header.addView(appLogo, logoParams);
+
         LinearLayout brand = new LinearLayout(this);
         brand.setOrientation(LinearLayout.VERTICAL);
-        TextView logo = text("FF  ARENA", 23, Color.WHITE, true);
-        TextView tagline = text("MOBILE ESPORTS ARENA", 10, ORANGE, true);
+        TextView logo = text("FF ARENA", 22, Color.WHITE, true);
+        TextView tagline = text("TOURNAMENTS • ESPORTS", 10, ORANGE, true);
         brand.addView(logo);
         brand.addView(tagline);
         header.addView(brand, new LinearLayout.LayoutParams(0, -2, 1));
