@@ -19,6 +19,7 @@ CHAT_GIFTS = {
     "chocolate": {"name": "Chocolate", "emoji": "🍫", "quantity": 5, "tagline": "Sweet friend vibes"},
     "teddy": {"name": "Teddy Bear", "emoji": "🧸", "quantity": 10, "tagline": "A cuddly surprise"},
     "heart": {"name": "Heart", "emoji": "💖", "quantity": 20, "tagline": "Send some love"},
+    "love": {"name": "I Love You", "emoji": "💌", "quantity": 30, "tagline": "A special message from the heart"},
     "bouquet": {"name": "Flower Bouquet", "emoji": "💐", "quantity": 25, "tagline": "For someone special"},
     "crown": {"name": "Champion Crown", "emoji": "👑", "quantity": 50, "tagline": "Respect the MVP"},
     "trophy": {"name": "Golden Trophy", "emoji": "🏆", "quantity": 100, "tagline": "Legendary player"},
