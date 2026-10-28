@@ -22,9 +22,9 @@
   {% for item in submissions %}
   <article class="tournament-card" style="padding:18px;margin:16px 0;border-radius:14px">
     <h2>Submission #{{ item.pk }} · {{ item.player.username }} · {{ item.tournament.title }}</h2>
-    <p><strong>Status:</strong> {{ item.get_status_display }} · <strong>UID:</strong> registered {{ item.registered_uid }} / submitted {{ item.free_fire_uid }}</p>
+    <p><strong>Status:</strong> {{ item.get_status_display }} · <strong>Profile ID:</strong> {{ item.player_id }} · <strong>Phone:</strong> {{ item.player.phone_number|default:"Not provided" }}</p><p><strong>UIDs:</strong> profile {{ item.player.free_fire_uid|default:"Missing" }} / registration {{ item.registration.free_fire_uid|default:"Missing" }} / submission registered {{ item.registered_uid }} / submitted {{ item.free_fire_uid }}</p>
     <p><strong>Website UID equality:</strong> {% if item.registered_uid == item.free_fire_uid and item.registered_uid == item.registration.free_fire_uid %}Pass{% else %}FAIL{% endif %} · <strong>AI UID match:</strong> {{ item.ai_uid_matches|yesno:"Yes,No,Unknown" }}</p>
-    <p><strong>AI proposed kills:</strong> {{ item.ai_proposed_kills|default_if_none:"Not available" }} · <strong>Confidence:</strong> {{ item.ai_confidence|default:"Unknown" }} · <strong>Suggested/approved Diamonds:</strong> {{ item.approved_reward|default:item.proposed_reward|floatformat:0 }}</p>
+    <p><strong>AI proposed kills:</strong> {% if item.ai_proposed_kills != None %}{{ item.ai_proposed_kills }}{% else %}Not available{% endif %} · <strong>Admin-approved kills:</strong> {% if item.approved_kills != None %}{{ item.approved_kills }}{% else %}Not approved{% endif %} · <strong>Confidence:</strong> {{ item.ai_confidence|default:"Unknown" }} · <strong>Suggested/approved Diamonds:</strong> {{ item.approved_reward|default:item.proposed_reward|floatformat:0 }}</p>
     <p><strong>AI reason / mistake:</strong><br>{{ item.ai_review_notes|default:"Assessment not run yet." }}</p>
     <p><strong>Admin correction notes:</strong> {{ item.admin_notes|default:"None" }}</p>
     {% if item.status == "pending" %}<a class="button button-primary" href="{% url 'tournaments:admin_kill_review' %}?submission={{ item.pk }}">Open Admin Review / Revise</a>{% endif %}
