@@ -94,6 +94,10 @@ class Tournament(models.Model):
 
     # Unlimited BR series: each 49-player round gets its own leaderboard.
     is_unlimited_br = models.BooleanField(default=False)
+    # Dedicated no-date free arena: one entry per player per rolling 24 hours.
+    is_free_fan_tournament = models.BooleanField(default=False, db_index=True)
+    winner_coins_prize = models.PositiveIntegerField(default=20, help_text="Non-cash Coins paid to the winner of the free fan tournament.")
+    free_winner_coins_awarded = models.BooleanField(default=False)
     auto_start_at_capacity = models.BooleanField(default=False)
     auto_reopen = models.BooleanField(default=False)
     live_notification_sent_at = models.DateTimeField(null=True, blank=True)
@@ -158,12 +162,21 @@ class Tournament(models.Model):
 
 
 class UnlimitedTournament(Tournament):
-    """Separate admin section for the repeating 49-player BR tournament series."""
+    """Separate admin section for the repeating 49-player paid BR series."""
 
     class Meta:
         proxy = True
         verbose_name = "Unlimited Tournament"
         verbose_name_plural = "Unlimited Tournaments"
+
+
+class FreeFanTournament(Tournament):
+    """Separate admin section for the recurring free 49-player fan-currency arena."""
+
+    class Meta:
+        proxy = True
+        verbose_name = "Free Fan Tournament"
+        verbose_name_plural = "Free Fan Tournaments"
 
 
 class Registration(models.Model):
