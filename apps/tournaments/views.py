@@ -28,9 +28,9 @@ import qrcode
 def cleanup_expired_kill_evidence():
     """Delete uploaded evidence files after 12 hours, retaining review/audit metadata."""
     cutoff = timezone.now() - timedelta(hours=12)
-    expired = KillSubmission.objects.filter(submitted_at__lte=cutoff).exclude(
-        status=KillSubmission.Status.PENDING
-    ).only(
+    # Evidence files expire 12 hours after submission even if the review is still pending.
+    # Keep the database row, AI notes, UID and review status for audit; only remove media.
+    expired = KillSubmission.objects.filter(submitted_at__lte=cutoff).only(
         "id", "history_video", "history_image_one", "history_image_two"
     )
     for submission in expired.iterator():
