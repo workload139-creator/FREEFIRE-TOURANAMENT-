@@ -424,6 +424,9 @@ def shop_view(request):
     if request.method == "POST":
         action = request.POST.get("action", "")
         if action == "buy":
+            if not _shop_payment_details()["configured"]:
+                messages.error(request, "Shop payment details abhi configure nahi hain. Payment request submit nahi ki ja sakti.")
+                return redirect("social:shop")
             product = request.POST.get("product")
             try:
                 quantity = int(request.POST.get("quantity", "0"))
