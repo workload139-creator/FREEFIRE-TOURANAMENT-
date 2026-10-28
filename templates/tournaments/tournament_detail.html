@@ -13,6 +13,9 @@
   <p><strong>Players:</strong> {{ tournament.confirmed_players_count }}/{{ tournament.max_players }}</p>
   {% if not tournament.is_unlimited_br %}<p><strong>Start Time:</strong> {{ tournament.start_time|date:"d M Y, h:i A" }}</p>{% else %}<p><strong>Schedule:</strong> Always open; 49 players par LIVE</p>{% endif %}
   <p><strong>Status:</strong> {{ tournament.get_status_display }}</p>
+  {% if tournament.status == "live" %}
+    <p><a class="button button-primary" style="display:inline-flex;background:#d90032;border-color:#ff536f;color:#fff;margin:8px 0" href="https://www.youtube.com/@freefire_tour/live" target="_blank" rel="noopener noreferrer">▶ Watch Tournament Live on YouTube</a></p>
+  {% endif %}
   {% if tournament.mode == "BR" %}
   <section class="tournament-card" style="margin:20px 0;padding:18px;border:1px solid #ff7a45;border-radius:14px;background:linear-gradient(135deg,#241712,#171923);color:#fff">
     <h2 style="margin-top:0">🔥 BR Kill Verification</h2>
