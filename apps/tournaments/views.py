@@ -101,7 +101,7 @@ def free_fan_tournament_list(request):
 
 def tournament_detail(request, tournament_id):
     tournament = get_object_or_404(Tournament, pk=tournament_id)
-    return render(request, "tournaments/tournament_detail.html", {"tournament": tournament})
+    return render(request, "tournaments/tournament_detail.html", {"tournament": tournament, "diamonds_per_kill": int(settings.DIAMONDS_PER_APPROVED_KILL), "minimum_verified_kills": int(settings.MINIMUM_VERIFIED_KILLS)})
 
 
 def build_entry_payment_uri(tournament):
