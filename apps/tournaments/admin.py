@@ -794,6 +794,13 @@ def run_ai_review_for_selected(modeladmin, request, queryset):
 @admin.register(KillSubmission)
 class KillSubmissionAdmin(admin.ModelAdmin):
 
+    def get_queryset(self, request):
+        # Ensure the 12-hour media cleanup also runs when staff open the Django
+        # admin evidence list/detail page, not only on public tournament pages.
+        from .views import cleanup_expired_kill_evidence
+        cleanup_expired_kill_evidence()
+        return super().get_queryset(request)
+
     @admin.display(description="Configured AI sources")
     def ai_source_configuration(self, obj):
         import os
