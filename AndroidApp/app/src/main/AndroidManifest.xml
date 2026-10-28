@@ -5,6 +5,8 @@
 
     <application
         android:allowBackup="false"
+        android:icon="@drawable/ff_arena_logo"
+        android:roundIcon="@drawable/ff_arena_logo"
         android:label="FF Arena"
         android:usesCleartextTraffic="false"
         android:supportsRtl="true"
