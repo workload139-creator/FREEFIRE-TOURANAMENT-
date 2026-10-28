@@ -9,9 +9,9 @@
   <p><strong>Mode:</strong> {% if tournament.mode == "VS" %}CS / Clash Squad{% else %}Battle Royale (BR){% endif %}{% if tournament.mode == "VS" %} — {{ tournament.get_vs_format_display }}{% endif %}</p>
   <p><strong>Player Category:</strong> {{ tournament.get_gender_category_display }}</p>
   <p><strong>Entry Fee:</strong> ₹{{ tournament.entry_fee }}</p>
-  <p><strong>Prize Pool:</strong> ₹{{ tournament.prize_pool }}</p>
+  {% if tournament.is_free_fan_tournament %}<p><strong>Winner Prize:</strong> {{ tournament.winner_coins_prize }} Coins</p>{% else %}<p><strong>Prize Pool:</strong> ₹{{ tournament.prize_pool }}</p>{% endif %}
   <p><strong>Players:</strong> {{ tournament.confirmed_players_count }}/{{ tournament.max_players }}</p>
-  <p><strong>Start Time:</strong> {{ tournament.start_time|date:"d M Y, h:i A" }}</p>
+  {% if not tournament.is_unlimited_br %}<p><strong>Start Time:</strong> {{ tournament.start_time|date:"d M Y, h:i A" }}</p>{% else %}<p><strong>Schedule:</strong> Always open; 49 players par LIVE</p>{% endif %}
   <p><strong>Status:</strong> {{ tournament.get_status_display }}</p>
   {% if tournament.mode == "BR" %}
   <section class="tournament-card" style="margin:20px 0;padding:18px;border:1px solid #ff7a45;border-radius:14px;background:linear-gradient(135deg,#241712,#171923);color:#fff">
@@ -22,7 +22,7 @@
       <li>15–30 second ki gameplay/history video aur 2 clear game-history screenshots upload karein.</li>
       <li>AI initial evidence review karega agar AI service configured ho. Final kill count aur reward admin approve karega.</li>
     </ol>
-    <div style="padding:14px;border-radius:10px;background:#332014;border:1px solid #ff8a24;margin-top:14px"><h3 style="margin:0 0 8px">💰 BR Kill Reward: ₹5 per approved kill</h3><p style="margin:0 0 8px">Battle Royale mein har <strong>admin-approved kill = ₹5</strong>. Minimum <strong>2 verified kills</strong> chahiye. Udaharan: 2 kills = ₹10, 5 kills = ₹25, 10 kills = ₹50.</p><p style="margin:0">Yeh reward tabhi calculate hoga jab registered Free Fire UID match kare, evidence check ho aur admin final approval de. AI ka result sirf suggestion hai; approval ke baad bhi payout alag se process hota hai. Yeh rule BR ke liye hai, VS ke liye nahi.</p></div>
+    {% if tournament.is_free_fan_tournament %}<div style="padding:14px;border-radius:10px;background:#10291e;border:1px solid #49ffc3;margin-top:14px"><h3 style="margin:0 0 8px">🎁 Free Fan Reward</h3><p>Minimum {{ minimum_verified_kills }} verified kills. Har 2 approved kills par 1 Fan Token aur tournament winner ko {{ tournament.winner_coins_prize }} Coins milte hain. Tokens/Coins non-cash website currency hain.</p></div>{% else %}<div style="padding:14px;border-radius:10px;background:#332014;border:1px solid #ff8a24;margin-top:14px"><h3 style="margin:0 0 8px">💎 BR Kill Reward: {{ diamonds_per_kill }} Diamonds per approved kill</h3><p>Minimum <strong>{{ minimum_verified_kills }} verified kills</strong> chahiye. Har approved kill ke liye {{ diamonds_per_kill }} Diamonds wallet mein mil sakte hain.</p><p>Registered Free Fire UID match, website evidence checks aur AI assessment zaroori hain. Strict dual-AI high-confidence agreement aur sab checks pass hon to automatic credit ho sakta hai; baaki cases admin review mein jayenge. Diamonds cash/UPI payout nahi hain.</p></div>{% endif %}
   </section>
   {% endif %}
   {% if user.is_authenticated %}
