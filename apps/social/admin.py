@@ -200,24 +200,51 @@ def reject_currency_withdrawals(modeladmin, request, queryset):
 
 @admin.register(CurrencyWithdrawalRequest)
 class CurrencyWithdrawalAdmin(admin.ModelAdmin):
-    list_display = ("user", "currency", "quantity", "amount_inr", "upi_id", "upi_qr_preview", "status", "payout_reference", "created_at")
+    list_display = ("id", "player_id_display", "user", "currency", "quantity", "amount_inr", "upi_id", "upi_qr_preview", "status", "payout_reference", "created_at")
     list_filter = ("status", "currency", "created_at")
-    search_fields = ("user__username", "upi_id", "payout_reference")
-    readonly_fields = ("user", "currency", "quantity", "amount_inr", "upi_id", "upi_qr_code", "upi_qr_preview", "status", "created_at", "processed_at", "processed_by")
-    fields = ("user", "currency", "quantity", "amount_inr", "upi_id", "upi_qr_code", "upi_qr_preview", "status", "payout_reference", "created_at", "processed_at", "processed_by")
+    search_fields = ("user__username", "user__email", "upi_id", "payout_reference")
+    readonly_fields = ("user", "player_id_display", "player_email_display", "profile_upi_qr_preview", "currency", "quantity", "amount_inr", "upi_id", "upi_qr_code", "upi_qr_preview", "status", "created_at", "processed_at", "processed_by")
+    fields = ("user", "player_id_display", "player_email_display", "currency", "quantity", "amount_inr", "upi_id", "profile_upi_qr_preview", "upi_qr_code", "upi_qr_preview", "status", "payout_reference", "created_at", "processed_at", "processed_by")
     actions = (mark_currency_withdrawals_paid, reject_currency_withdrawals)
 
-    @admin.display(description="Uploaded UPI QR preview")
+    @admin.display(description="Player ID")
+    def player_id_display(self, obj):
+        return f"FF-{obj.user_id}" if obj and obj.user_id else "—"
+
+    @admin.display(description="Player email")
+    def player_email_display(self, obj):
+        return obj.user.email or "No email on account" if obj and obj.user else "—"
+
+    @admin.display(description="QR saved on player profile")
+    def profile_upi_qr_preview(self, obj):
+        qr = getattr(obj.user, "upi_qr_code", None) if obj and obj.user else None
+        if not qr:
+            return "No UPI QR is saved on the player's profile."
+        try:
+            if not qr.storage.exists(qr.name):
+                return "Profile QR record exists, but the image file is missing from media storage."
+            url = qr.url
+            return format_html(
+                '<a href="{}" target="_blank" rel="noopener"><img src="{}" alt="Player profile UPI QR" style="width:200px;height:200px;object-fit:contain;background:#fff;padding:8px;border-radius:10px"></a><p><a href="{}" target="_blank" rel="noopener">Open player profile QR full size</a></p>',
+                url, url, url,
+            )
+        except (ValueError, OSError):
+            return "Player profile QR is recorded but cannot be served by media storage."
+
+    @admin.display(description="QR uploaded with this withdrawal request")
     def upi_qr_preview(self, obj):
         if not obj or not obj.upi_qr_code:
             return "Player did not upload a withdrawal QR."
         try:
+            if not obj.upi_qr_code.storage.exists(obj.upi_qr_code.name):
+                return "Withdrawal QR record exists, but the image file is missing from media storage."
+            url = obj.upi_qr_code.url
             return format_html(
-                '<a href="{}" target="_blank" rel="noopener"><img src="{}" width="140" height="140" style="object-fit:contain;background:#fff;padding:6px;border-radius:8px" alt="Withdrawal UPI QR"></a>',
-                obj.upi_qr_code.url, obj.upi_qr_code.url,
+                '<a href="{}" target="_blank" rel="noopener"><img src="{}" alt="Withdrawal UPI QR" style="width:200px;height:200px;object-fit:contain;background:#fff;padding:8px;border-radius:10px"></a><p><a href="{}" target="_blank" rel="noopener">Open withdrawal QR full size</a></p>',
+                url, url, url,
             )
         except (ValueError, OSError):
-            return "QR uploaded but file is unavailable."
+            return "Withdrawal QR uploaded but file is unavailable."
 
 
 @admin.register(DailySpin)
