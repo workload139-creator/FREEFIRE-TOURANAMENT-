@@ -13,6 +13,9 @@ urlpatterns = [
         name="list",
     ),
 
+    # Dedicated date-free free tournament page
+    path("free-tournament/", views.free_fan_tournament_list, name="free_fan_list"),
+
     # Public results page
     path("results/", views.results, name="results"),
 
