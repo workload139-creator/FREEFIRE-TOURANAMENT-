@@ -244,6 +244,10 @@ class TournamentAdmin(admin.ModelAdmin):
         "winner_payout_destination", "winner_payout_qr",
     )
 
+    def get_queryset(self, request):
+        # Keep free and unlimited series in their own proxy-admin menus.
+        return super().get_queryset(request).filter(is_unlimited_br=False, is_free_fan_tournament=False)
+
     @admin.display(description="Tournament Control")
     def open_tournament_control(self, obj):
         url = reverse("tournaments:admin_tournament_dashboard", args=[obj.pk])
@@ -1014,7 +1018,7 @@ class UnlimitedTournamentAdmin(TournamentAdmin):
     )
 
     def get_queryset(self, request):
-        return super().get_queryset(request).filter(is_unlimited_br=True)
+        return admin.ModelAdmin.get_queryset(self, request).filter(is_unlimited_br=True, is_free_fan_tournament=False)
 
     def save_model(self, request, obj, form, change):
         obj.is_unlimited_br = True
@@ -1141,7 +1145,7 @@ class FreeFanTournamentAdmin(TournamentAdmin):
     ordering = ("-created_at",)
 
     def get_queryset(self, request):
-        return super().get_queryset(request).filter(is_free_fan_tournament=True)
+        return admin.ModelAdmin.get_queryset(self, request).filter(is_free_fan_tournament=True)
 
     def confirmed_players_count_display(self, obj):
         return f"{obj.confirmed_players_count}/49"
