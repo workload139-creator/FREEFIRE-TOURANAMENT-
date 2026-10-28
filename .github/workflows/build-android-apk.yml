@@ -1,4 +1,4 @@
-name: Build FF Arena Android APK
+name: Build and Publish FF Arena Android APK
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ on:
       - ".github/workflows/build-android-apk.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-apk:
@@ -51,10 +51,24 @@ jobs:
         working-directory: AndroidApp
         run: gradle --no-daemon assembleDebug
 
-      - name: Upload APK
+      - name: Upload APK build artifact
         uses: actions/upload-artifact@v4
         with:
           name: ff-arena-android-apk
           path: AndroidApp/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish public APK download
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ff-arena-latest
+          name: FF Arena Android APK
+          body: |
+            FF Arena Android app APK.
+            Download app-debug.apk and install it on an Android phone.
+            This is a debug-signed build; Android may show an unknown-app warning.
+          files: AndroidApp/app/build/outputs/apk/debug/app-debug.apk
+          overwrite_files: true
+          fail_on_unmatched_files: true
+          make_latest: true
