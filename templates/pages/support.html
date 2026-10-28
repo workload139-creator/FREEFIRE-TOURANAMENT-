@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Support | FF Arena{% endblock %}
+{% block content %}
+<section class="policy-page" style="max-width: 920px; margin: 2rem auto; padding: 0 1rem 3rem;">
+  <header style="margin-bottom: 1.5rem;">
+    <p style="color:#a7b2c7;font-size:.9rem;">FF ARENA · PLAYER HELP</p>
+    <h1>Support Centre</h1>
+    <p style="line-height:1.7;">Need help with your account, tournament registration, wallet status, or a payment reference? Contact the FF Arena support team using the details below.</p>
+  </header>
+  <section style="margin:1.25rem 0;padding:1.25rem;border:1px solid rgba(160,175,200,.2);border-radius:12px;background:rgba(20,27,40,.45);">
+    <h2 style="font-size:1.2rem;margin-top:0;">Contact support</h2>
+    <p style="line-height:1.75;">Email: <a href="mailto:workload139@gmail.com">workload139@gmail.com</a></p>
+    <p style="line-height:1.75;">Please include your username, the page or tournament involved, and the transaction reference/UTR if your question is about a payment. Do not send passwords, OTPs, UPI PINs, or API keys.</p>
+    <p><a class="button button-primary" href="mailto:workload139@gmail.com?subject=FF%20Arena%20Support%20Request">Email FF Arena Support</a></p>
+  </section>
+  <section style="margin:1.25rem 0;padding:1.25rem;border:1px solid rgba(160,175,200,.2);border-radius:12px;background:rgba(20,27,40,.45);">
+    <h2 style="font-size:1.2rem;margin-top:0;">Common help topics</h2>
+    <ul style="line-height:1.9;">
+      <li><a href="{% url 'login' %}">Login and account access</a></li>
+      <li><a href="{% url 'password_reset' %}">Forgot password</a></li>
+      <li><a href="{% url 'tournaments:list' %}">Tournament listings and registration</a></li>
+      <li><a href="{% url 'refund_policy' %}">Refunds, withdrawals and payment status</a></li>
+      <li><a href="{% url 'terms' %}">Terms and tournament rules</a></li>
+      <li><a href="{% url 'privacy_policy' %}">Privacy and personal-data requests</a></li>
+    </ul>
+  </section>
+  <p style="line-height:1.7;color:#a7b2c7;">Support requests are reviewed by the site operator. Payment screenshots alone do not confirm settlement; include the UTR/reference so the transaction can be checked.</p>
+  <p><a href="{% url 'home' %}">← Back to FF Arena</a></p>
+</section>
+{% endblock %}
