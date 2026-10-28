@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - feature/pwa-android-apk
+      - feature/native-android-app
     paths:
       - "AndroidApp/**"
       - ".github/workflows/build-android-apk.yml"
