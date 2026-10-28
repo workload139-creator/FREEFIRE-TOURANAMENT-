@@ -16,7 +16,7 @@
       <p>{{ tournament.description|default:"Battle Royale unlimited round." }}</p>
       <div class="stats"><div><small>Entry Fee</small><b>₹{{ tournament.entry_fee }}</b></div><div><small>Verified players</small><b>{{ tournament.paid_players_count }}/49</b></div><div><small>Prize pool</small><b>₹{{ tournament.prize_pool }}</b></div></div>
       <p class="rule">Existing registration and payment checks remain active. Kill evidence uses the same video + two screenshots, UID matching and AI Assessment process. Room ID/password are shared privately by the admin after LIVE.</p>
-      <div class="actions"><a class="button button-primary" href="{% url 'tournaments:detail' tournament.pk %}">View / Register</a><a class="button button-outline" href="{% url 'tournaments:leaderboard' tournament.pk %}">Leaderboard</a></div>
+      <div class="actions"><a class="button button-primary" href="{% url 'tournaments:detail' tournament.pk %}">View / Register</a><a class="button button-outline" href="{% url 'tournaments:leaderboard' tournament.pk %}">Leaderboard</a>{% if tournament.status == "live" %}<a class="button button-primary" style="background:#d90032;border-color:#ff536f;color:#fff" href="https://www.youtube.com/@freefire_tour/live" target="_blank" rel="noopener noreferrer">▶ Watch Live</a>{% endif %}</div>
     </article>
   {% empty %}
     <article class="round-card empty"><h2>Unlimited Arena ready hai</h2><p>Admin panel ke <strong>Unlimited Tournaments</strong> section se pehla round create karein. Date ki zaroorat nahi; page hamesha available rahega.</p></article>
