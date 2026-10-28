@@ -22,10 +22,10 @@
       <textarea id="messageBody" name="body" rows="2" maxlength="2000" placeholder="Message likho..." required></textarea>
       <button class="button button-primary" type="submit">Send</button>
     </form>
-    <form method="post" class="gift-composer">{% csrf_token %}<input type="hidden" name="action" value="gift"><div class="gift-heading"><div><strong>🎁 Send a Special Gift</strong><p>Rose se Legendary Trophy tak — friend ko surprise karo!</p></div><a href="{% url 'social:shop' %}">Wallet / Shop ↗</a></div>
+    <form method="post" class="gift-composer">{% csrf_token %}<input type="hidden" name="action" value="gift"><div class="gift-heading"><div><strong>🎁 Send a Special Gift</strong><p>Rose se Legendary Trophy tak — friend ko surprise karo! 💌 I Love You gift bhi bhejo.</p></div><a href="{% url 'social:shop' %}">Wallet / Shop ↗</a></div>
       <div class="gift-gallery">{% for gift in chat_gifts %}<label class="gift-card"><input type="radio" name="gift_code" value="{{ gift.code }}" {% if forloop.first %}checked{% endif %} required><span class="gift-emoji">{{ gift.emoji }}</span><strong>{{ gift.name }}</strong><small>{{ gift.tagline }}</small><b>{{ gift.quantity }} × selected currency</b></label>{% endfor %}</div>
       <div class="gift-row"><label for="giftCurrency">Pay using</label><select id="giftCurrency" name="currency" aria-label="Gift currency"><option value="diamonds">💎 Diamonds</option><option value="coins">🪙 Coins</option><option value="fan_tokens">✨ Fan Tokens</option></select><button class="button button-primary" type="submit">🎁 Send Gift</button></div>
-      <small>Selected gift ki utni hi currency sender se deduct hogi aur receiver ke usi currency balance mein add hogi. Normal chat messages free hain. Fan Tokens non-cash hain aur withdraw nahi ho sakte.</small></form><p class="community-note">Respectful raho; harassment ko report kar sakte ho.</p>
+      <small>Selected gift ki utni hi currency sender se deduct hogi aur receiver ke usi currency balance mein add hogi. I Love You gift ki price 30 units hai. Normal chat messages free hain. Fan Tokens non-cash hain aur withdraw nahi ho sakte.</small></form><p class="community-note">Respectful raho; harassment ko report kar sakte ho.</p>
   </section>
 </section>
 <style>
