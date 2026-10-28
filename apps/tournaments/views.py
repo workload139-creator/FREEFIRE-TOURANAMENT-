@@ -68,6 +68,17 @@ def tournament_list(request):
     )
 
 
+def unlimited_tournament_list(request):
+    """Dedicated page for the recurring paid 49-player BR series."""
+    process_expired_ready_registrations()
+    rounds = Tournament.objects.filter(
+        is_unlimited_br=True,
+        is_free_fan_tournament=False,
+        status__in=[Tournament.Status.UPCOMING, Tournament.Status.LIVE],
+    ).order_by("status", "created_at")
+    return render(request, "tournaments/unlimited_list.html", {"tournaments": rounds})
+
+
 def free_fan_tournament_list(request):
     """Dedicated page for the date-free, recurring free 49-player fan arena."""
     process_expired_ready_registrations()
