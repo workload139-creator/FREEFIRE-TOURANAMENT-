@@ -1873,6 +1873,18 @@ class FreeFanTournamentAdminForm(TournamentAdminForm):
     class Meta(TournamentAdminForm.Meta):
         fields = "__all__"
 
+    def clean(self):
+        # Keep the dedicated form date-free and avoid asking admins to configure hidden BR fields.
+        cleaned = super(TournamentAdminForm, self).clean()
+        cleaned["mode"] = Tournament.Mode.BR
+        cleaned["vs_format"] = ""
+        cleaned["gender_category"] = Tournament.GenderCategory.OPEN
+        cleaned["is_unlimited_br"] = True
+        cleaned["auto_start_at_capacity"] = True
+        cleaned["auto_reopen"] = True
+        cleaned["max_players"] = 49
+        return cleaned
+
 
 @admin.register(FreeFanTournament)
 class FreeFanTournamentAdmin(TournamentAdmin):
