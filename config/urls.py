@@ -59,6 +59,7 @@ urlpatterns = [
     # are served only to logged-in staff; ordinary uploaded media uses this route.
     re_path(r"^media/(?P<path>.*)$", media_file_serve, name="media_file"),
     path("health/", health_check, name="health_check"),
+    path("support/", support, name="support"),
     path("terms/", terms, name="terms"),
     path("privacy/", privacy_policy, name="privacy_policy"),
     path("refund-policy/", refund_policy, name="refund_policy"),
