@@ -1799,13 +1799,14 @@ class UnlimitedTournamentAdmin(TournamentAdmin):
 
     def save_model(self, request, obj, form, change):
         obj.is_unlimited_br = True
+        obj.is_free_fan_tournament = False
         obj.auto_start_at_capacity = True
+        obj.auto_reopen = True
         obj.mode = Tournament.Mode.BR
         obj.vs_format = ""
         obj.max_players = 49
         obj.entry_fee = Decimal("10.00")
         if not change:
-            obj.auto_reopen = True
             obj.status = Tournament.Status.UPCOMING
             if not obj.start_time or obj.start_time <= timezone.now():
                 obj.start_time = timezone.now() + timedelta(minutes=10)
@@ -1815,9 +1816,9 @@ class UnlimitedTournamentAdmin(TournamentAdmin):
     def confirmed_players_count_display(self, obj):
         return f"{obj.paid_players_count}/49"
 
-    list_filter = ("status", "auto_reopen", "live_notification_status", "start_time")
+    list_filter = ("status", "auto_reopen", "live_notification_status")
     list_display = (
-        "title", "entry_fee", "confirmed_players_count_display", "start_time",
+        "title", "entry_fee", "confirmed_players_count_display",
         "status", "auto_reopen", "live_notification_status",
     )
     search_fields = ("title", "description")
