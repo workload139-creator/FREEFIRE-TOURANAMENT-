@@ -11,6 +11,6 @@
     <div><small>Prize Pool</small><strong>₹{{ tournament.prize_pool }}</strong></div>
     <div><small>Players</small><strong>{% if tournament.is_unlimited_br %}{{ tournament.paid_players_count }}{% else %}{{ tournament.confirmed_players_count }}{% endif %}/{{ tournament.max_players }}</strong></div>
   </div>
-  <p>Status: {{ tournament.get_status_display }}</p><p>Start: {{ tournament.start_time|date:"d M Y, h:i A" }}</p>
+  <p>Status: {{ tournament.get_status_display }}</p>{% if not tournament.is_unlimited_br %}<p>Start: {{ tournament.start_time|date:"d M Y, h:i A" }}</p>{% endif %}
   <div><a class="button button-primary" href="{% url 'tournaments:detail' tournament.id %}">View / Register</a><a class="button button-outline" href="{% url 'tournaments:leaderboard' tournament.id %}">Leaderboard</a></div>
 </article>
