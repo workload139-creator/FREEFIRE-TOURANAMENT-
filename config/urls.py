@@ -2,6 +2,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
+from django.http import HttpResponseForbidden
 from django.urls import include, path, re_path
 from django.views.static import serve
 
@@ -12,12 +13,37 @@ from apps.accounts.view import logout_view
 from apps.core.views import home
 from apps.core.assistant import assistant_view
 
+
+# Evidence/payment files must not be exposed to unauthenticated visitors.
+_PRIVATE_MEDIA_PREFIXES = (
+    "kill-evidence/",
+    "currency_withdrawal_qr/",
+    "player_upi_qr/",
+    "shop_payments/",
+    "tournament_verification/",
+    "ff_tick_payments/",
+)
+
+
+def media_file_serve(request, path):
+    """Serve uploaded media in production; protect payout/payment/evidence uploads."""
+    normalized_path = path.replace("\\\\", "/").lstrip("/")
+    if normalized_path.startswith(_PRIVATE_MEDIA_PREFIXES):
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return HttpResponseForbidden("Admin login required to view this verification file.")
+    return serve(request, normalized_path, document_root=settings.MEDIA_ROOT)
+
+
 urlpatterns = [
+    # Profile pictures are public profile media; keep their existing route.
     re_path(
         r"^media/player_profiles/(?P<path>.*)$",
         serve,
         {"document_root": settings.MEDIA_ROOT / "player_profiles"},
     ),
+    # Production DEBUG=False still needs a media route. Sensitive uploads above
+    # are served only to logged-in staff; ordinary uploaded media uses this route.
+    re_path(r"^media/(?P<path>.*)$", media_file_serve, name="media_file"),
     path("health/", health_check, name="health_check"),
     path("terms/", terms, name="terms"),
     path("privacy/", privacy_policy, name="privacy_policy"),
