@@ -34,7 +34,8 @@ html[data-ff-theme="arena"] { --accent:#48ff9b; --accent-hover:#19d879; --gold:#
 }
 
 /* Route the main brand accents through the selected theme instead of hard-coded neon green. */
-.brand strong,.hero h1 span,.hero-line { color:var(--accent) !important; background-color:var(--accent); }
+.brand strong,.hero h1 span { color:var(--accent) !important; }
+.hero-line { background:var(--accent) !important; }
 .brand-icon { background:var(--accent) !important; color:#06110b !important; }
 .button-primary,.btn-primary,.button.button-primary,.btn-join {
   color:#07110b !important;
