@@ -40,3 +40,45 @@ class PrivateChatTests(TestCase):
         self.client.force_login(charlie)
         response = self.client.get(reverse("chat:conversation", args=[conversation.pk]))
         self.assertEqual(response.status_code, 302)
+
+
+class ChatGiftTests(TestCase):
+    def setUp(self):
+        self.alice = User.objects.create_user(username="gift_sender", password="test-password-12345")
+        self.bob = User.objects.create_user(username="gift_receiver", password="test-password-12345")
+        Follow.objects.create(follower=self.alice, following=self.bob)
+        self.conversation = Conversation.objects.create(user_one=self.alice, user_two=self.bob)
+        from apps.social.models import PlayerShopWallet
+        self.sender_wallet = PlayerShopWallet.objects.create(user=self.alice, diamonds=10, coins=5, fan_tokens=3)
+        self.receiver_wallet = PlayerShopWallet.objects.create(user=self.bob)
+        self.client.force_login(self.alice)
+
+    def test_rose_gift_deducts_and_credits_same_currency(self):
+        response = self.client.post(reverse("chat:conversation", args=[self.conversation.pk]), {
+            "action": "gift", "gift_code": "rose", "currency": "diamonds",
+        })
+        self.assertEqual(response.status_code, 302)
+        self.sender_wallet.refresh_from_db()
+        self.receiver_wallet.refresh_from_db()
+        self.assertEqual(self.sender_wallet.diamonds, 8)
+        self.assertEqual(self.receiver_wallet.diamonds, 2)
+        from apps.social.models import CurrencyGift
+        self.assertEqual(CurrencyGift.objects.get().quantity, 2)
+
+    def test_trophy_gift_cannot_overdraw_wallet(self):
+        self.client.post(reverse("chat:conversation", args=[self.conversation.pk]), {
+            "action": "gift", "gift_code": "trophy", "currency": "coins",
+        })
+        self.sender_wallet.refresh_from_db()
+        self.receiver_wallet.refresh_from_db()
+        self.assertEqual(self.sender_wallet.coins, 5)
+        self.assertEqual(self.receiver_wallet.coins, 0)
+
+    def test_invalid_gift_code_does_not_transfer_currency(self):
+        self.client.post(reverse("chat:conversation", args=[self.conversation.pk]), {
+            "action": "gift", "gift_code": "not-a-gift", "currency": "diamonds",
+        })
+        self.sender_wallet.refresh_from_db()
+        self.receiver_wallet.refresh_from_db()
+        self.assertEqual(self.sender_wallet.diamonds, 10)
+        self.assertEqual(self.receiver_wallet.diamonds, 0)
