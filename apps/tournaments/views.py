@@ -387,11 +387,26 @@ def kill_submission(request, registration_id):
                     submission.ai_confidence = ai_result["confidence"][:10]
                     submission.ai_uid_matches = ai_result["uid_matches"]
                     submission.ai_review_notes = ai_result["reason"]
-                    auto_approved = False  # AI only proposes; admin confirmation credits Diamonds.
-                    proposed_kills = int(ai_result["proposed_kills"] or 0)
-                    if auto_approved and proposed_kills > 0:
-                        # ₹5 per verified kill converts to 5 Diamonds at ₹1 per Diamond.
-                        submission.proposed_reward = Decimal(proposed_kills) * Decimal(str(settings.DIAMONDS_PER_APPROVED_KILL))
+                    proposed_kills = ai_result["proposed_kills"]
+                    uid_ok = (
+                        ai_result.get("uid_matches") is True
+                        and submitted_uid == registration.free_fire_uid
+                        and registration.free_fire_uid == submission.registered_uid
+                    )
+                    dual_agreement = (
+                        os.getenv("KILL_REVIEW_PROVIDER", "openai").strip().lower() == "dual"
+                        and ai_result.get("dual_agreement") is True
+                        and ai_result.get("confidence") == "high"
+                    )
+                    auto_approved = (
+                        dual_agreement and uid_ok and proposed_kills is not None
+                        and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS
+                        and submission.history_video and submission.history_image_one and submission.history_image_two
+                    )
+                    proposed_kills = int(proposed_kills or 0)
+                    if auto_approved:
+                        reward_quantity = proposed_kills // 2 if registration.tournament.is_free_fan_tournament else proposed_kills * int(settings.DIAMONDS_PER_APPROVED_KILL)
+                        submission.proposed_reward = Decimal(reward_quantity)
                     with transaction.atomic():
                         submission = KillSubmission.objects.select_for_update().get(pk=submission.pk)
                         submission.ai_proposed_kills = ai_result["proposed_kills"]
@@ -400,19 +415,23 @@ def kill_submission(request, registration_id):
                         submission.ai_review_notes = ai_result["reason"]
                         if auto_approved:
                             from apps.social.models import PlayerShopWallet
-                            submission.proposed_reward = (
-                                Decimal(proposed_kills) * Decimal(str(settings.DIAMONDS_PER_APPROVED_KILL))
-                                if proposed_kills > 0 else Decimal("0.00")
-                            )
+                            is_free = submission.tournament.is_free_fan_tournament
+                            reward_quantity = proposed_kills // 2 if is_free else proposed_kills * int(settings.DIAMONDS_PER_APPROVED_KILL)
+                            reward_currency = TournamentLedgerEntry.Currency.FAN_TOKENS if is_free else TournamentLedgerEntry.Currency.DIAMONDS
+                            reward_label = "Fan Tokens" if is_free else "Diamonds"
+                            submission.proposed_reward = Decimal(reward_quantity)
                             submission.approved_kills = proposed_kills
                             submission.approved_reward = submission.proposed_reward
                             submission.status = KillSubmission.Status.APPROVED
                             submission.reviewed_at = timezone.now()
-                            if proposed_kills > 0:
+                            if reward_quantity > 0:
                                 shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=submission.player)
                                 shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
-                                shop_wallet.diamonds += int(submission.approved_reward)
-                                shop_wallet.save(update_fields=("diamonds", "updated_at"))
+                                if is_free:
+                                    shop_wallet.fan_tokens += reward_quantity
+                                else:
+                                    shop_wallet.diamonds += reward_quantity
+                                shop_wallet.save(update_fields=("diamonds", "fan_tokens", "updated_at"))
                                 TournamentLedgerEntry.objects.get_or_create(
                                     reference=f"KILL-REWARD-{submission.pk}",
                                     defaults={
@@ -420,11 +439,11 @@ def kill_submission(request, registration_id):
                                         "player": submission.player,
                                         "registration": submission.registration,
                                         "entry_type": TournamentLedgerEntry.EntryType.REWARD,
-                                        "currency": TournamentLedgerEntry.Currency.DIAMONDS,
-                                        "quantity": int(submission.approved_reward),
-                                        "amount_inr": submission.approved_reward,
+                                        "currency": reward_currency,
+                                        "quantity": reward_quantity,
+                                        "amount_inr": Decimal("0.00"),
                                         "status": TournamentLedgerEntry.Status.COMPLETED,
-                                        "description": "AI-verified BR kill reward",
+                                        "description": f"Dual-AI verified reward: {reward_quantity} {reward_label} for {proposed_kills} kills",
                                     },
                                 )
                         submission.save(update_fields=[
@@ -433,15 +452,15 @@ def kill_submission(request, registration_id):
                             "approved_reward", "status", "reviewed_at",
                         ])
                     if auto_approved:
+                        reward_name = "Fan Tokens" if submission.tournament.is_free_fan_tournament else "Diamonds"
                         messages.success(
                             request,
-                            f"AI ne high-confidence UID-matched evidence verify ki. {proposed_kills} kills ke liye {int(submission.approved_reward)} Diamonds wallet mein add hue."
-                            if proposed_kills else "AI ne UID match aur 0 kills high confidence se verify kiye; koi Diamonds add nahi hue.",
+                            f"Dual AI ne high-confidence evidence verify ki. {proposed_kills} kills ke liye {int(submission.approved_reward)} {reward_name} wallet mein add hue.",
                         )
                     else:
                         messages.info(
                             request,
-                            "Evidence save ho gaya. AI confidence/UID match automatic award ke liye sufficient nahi tha; admin review queue mein rahega.",
+                            "Evidence save ho gaya. Dual-AI agreement, high confidence, exact UID match aur website checks sab pass nahi hue; Admin AI Assessment queue mein review hoga.",
                         )
                 except AIReviewError as exc:
                     messages.warning(
