@@ -547,7 +547,7 @@ def retry_ai_kill_review(request, submission_id):
             and submission.registered_uid == submission.registration.free_fire_uid
         )
         if proposed is not None and proposed >= settings.MINIMUM_VERIFIED_KILLS and uid_ok:
-            submission.proposed_reward = Decimal(proposed) * Decimal(str(settings.DIAMONDS_PER_APPROVED_KILL))
+            submission.proposed_reward = Decimal(proposed // 2) if submission.tournament.is_free_fan_tournament else Decimal(proposed) * Decimal(str(settings.DIAMONDS_PER_APPROVED_KILL))
         else:
             submission.proposed_reward = Decimal("0.00")
         # Auto-award only when website file/duration checks pass, UID is exact,
@@ -574,25 +574,33 @@ def retry_ai_kill_review(request, submission_id):
                 ).get(pk=submission.pk)
                 if submission.status == KillSubmission.Status.PENDING:
                     from apps.social.models import PlayerShopWallet
-                    approved_reward = Decimal(proposed) * Decimal(str(settings.DIAMONDS_PER_APPROVED_KILL))
+                    is_free = submission.tournament.is_free_fan_tournament
+                    reward_quantity = proposed // 2 if is_free else int(Decimal(proposed) * Decimal(str(settings.DIAMONDS_PER_APPROVED_KILL)))
+                    approved_reward = Decimal(reward_quantity)
                     ledger_reference = f"KILL-REWARD-{submission.pk}"
                     if not TournamentLedgerEntry.objects.filter(reference=ledger_reference).exists():
                         shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=submission.player)
                         shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
-                        diamond_quantity = int(approved_reward)
-                        shop_wallet.diamonds += diamond_quantity
-                        shop_wallet.save(update_fields=("diamonds", "updated_at"))
+                        if is_free:
+                            shop_wallet.fan_tokens += reward_quantity
+                            reward_currency = TournamentLedgerEntry.Currency.FAN_TOKENS
+                            reward_label = "Fan Tokens"
+                        else:
+                            shop_wallet.diamonds += reward_quantity
+                            reward_currency = TournamentLedgerEntry.Currency.DIAMONDS
+                            reward_label = "Diamonds"
+                        shop_wallet.save(update_fields=("diamonds", "fan_tokens", "updated_at"))
                         TournamentLedgerEntry.objects.create(
                             reference=ledger_reference,
                             tournament=submission.tournament,
                             player=submission.player,
                             registration=submission.registration,
                             entry_type=TournamentLedgerEntry.EntryType.REWARD,
-                            currency=TournamentLedgerEntry.Currency.DIAMONDS,
-                            quantity=diamond_quantity,
+                            currency=reward_currency,
+                            quantity=reward_quantity,
                             amount_inr=Decimal("0.00"),
                             status=TournamentLedgerEntry.Status.COMPLETED,
-                            description=f"Dual-AI verified automatic reward: {diamond_quantity} Diamonds for {proposed} kills",
+                            description=f"Dual-AI verified automatic reward: {reward_quantity} {reward_label} for {proposed} kills",
                         )
                     submission.approved_kills = proposed
                     submission.proposed_reward = approved_reward
@@ -608,7 +616,8 @@ def retry_ai_kill_review(request, submission_id):
                         "ai_review_notes", "approved_kills", "proposed_reward",
                         "approved_reward", "status", "reviewed_at", "admin_notes",
                     ])
-            messages.success(request, f"Dual AI agree hua: {proposed} kills verify hue aur {int(submission.approved_reward)} Diamonds credit kiye gaye.")
+            reward_name = "Fan Tokens" if submission.tournament.is_free_fan_tournament else "Diamonds"
+            messages.success(request, f"Dual AI agree hua: {proposed} kills verify hue aur {int(submission.approved_reward)} {reward_name} credit kiye gaye.")
         else:
             if not uid_ok:
                 issue = "UID mismatch: registered, submitted, aur AI UID match ko verify karein."
