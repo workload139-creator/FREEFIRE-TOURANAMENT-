@@ -68,6 +68,26 @@ def tournament_list(request):
     )
 
 
+def free_fan_tournament_list(request):
+    """Dedicated page for the date-free, recurring free 49-player fan arena."""
+    process_expired_ready_registrations()
+    rounds = Tournament.objects.filter(
+        is_free_fan_tournament=True,
+        status__in=[Tournament.Status.UPCOMING, Tournament.Status.LIVE],
+    ).order_by("status", "created_at")
+    recent_entry = False
+    if request.user.is_authenticated:
+        recent_entry = Registration.objects.filter(
+            player=request.user,
+            tournament__is_free_fan_tournament=True,
+            registered_at__gte=timezone.now() - timedelta(hours=24),
+        ).exclude(status__in=[Registration.Status.CANCELLED, Registration.Status.REFUNDED]).exists()
+    return render(request, "tournaments/free_fan_list.html", {
+        "tournaments": rounds,
+        "recent_entry": recent_entry,
+    })
+
+
 def tournament_detail(request, tournament_id):
     tournament = get_object_or_404(Tournament, pk=tournament_id)
     return render(request, "tournaments/tournament_detail.html", {"tournament": tournament})
