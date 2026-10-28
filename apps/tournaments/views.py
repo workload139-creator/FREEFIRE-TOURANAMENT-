@@ -59,8 +59,9 @@ def tournament_list(request):
         "tournaments/list.html",
         {
             "tournaments": tournaments,
-            "unlimited_tournaments": tournaments.filter(is_unlimited_br=True),
-            "br_tournaments": tournaments.filter(mode=Tournament.Mode.BR, is_unlimited_br=False),
+            "unlimited_tournaments": tournaments.filter(is_unlimited_br=True, is_free_fan_tournament=False),
+            "free_fan_tournaments": tournaments.filter(is_free_fan_tournament=True),
+            "br_tournaments": tournaments.filter(mode=Tournament.Mode.BR, is_unlimited_br=False, is_free_fan_tournament=False),
             "vs_tournaments": tournaments.filter(mode=Tournament.Mode.VS).exclude(gender_category=Tournament.GenderCategory.GIRLS_VS_BOYS),
             "girls_vs_boys_tournaments": tournaments.filter(gender_category=Tournament.GenderCategory.GIRLS_VS_BOYS, is_unlimited_br=False),
         },
@@ -97,6 +98,14 @@ def build_entry_qr_url(tournament):
 def tournament_register(request, tournament_id):
     process_expired_ready_registrations()
     tournament = get_object_or_404(Tournament, pk=tournament_id)
+    if tournament.is_free_fan_tournament:
+        recent_free_entry = Registration.objects.filter(
+            player=request.user, tournament__is_free_fan_tournament=True,
+            registered_at__gte=timezone.now() - timedelta(hours=24),
+        ).exclude(status__in=[Registration.Status.CANCELLED, Registration.Status.REFUNDED]).exists()
+        if recent_free_entry and not Registration.objects.filter(tournament=tournament, player=request.user).exists():
+            messages.error(request, "Free tournament mein 24 ghante mein sirf ek entry allowed hai.")
+            return redirect("tournaments:free_fan_list")
     if tournament.gender_category == Tournament.GenderCategory.BOYS and request.user.gender != "boy":
         messages.error(request, "Yeh Boys Only tournament hai. Profile mein Boy category select karne wale players hi join kar sakte hain.")
         return redirect("tournaments:detail", tournament_id=tournament.pk)
@@ -648,7 +657,7 @@ def review_kill_submission(request, submission_id):
             return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
 
         submission.approved_kills = approved_kills
-        reward_per_kill = Decimal(str(settings.DIAMONDS_PER_APPROVED_KILL))
+        reward_per_kill = Decimal("0.5") if submission.tournament.is_free_fan_tournament else Decimal(str(settings.DIAMONDS_PER_APPROVED_KILL))
         if approved_kills >= settings.MINIMUM_VERIFIED_KILLS:
             submission.proposed_reward = Decimal(approved_kills) * reward_per_kill
         else:
@@ -662,32 +671,44 @@ def review_kill_submission(request, submission_id):
             "admin_notes", "reviewed_at", "status",
         ])
 
-        # Diamonds are non-cash. Credit once after explicit admin confirmation for BR and VS.
+        # Credit non-cash tournament currency exactly once after admin confirmation.
         if submission.approved_reward > 0:
             from apps.social.models import PlayerShopWallet
             ledger_reference = f"KILL-REWARD-{submission.pk}"
             if not TournamentLedgerEntry.objects.filter(reference=ledger_reference).exists():
                 shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=submission.player)
                 shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
-                diamond_quantity = int(submission.approved_reward)
-                shop_wallet.diamonds += diamond_quantity
-                shop_wallet.save(update_fields=("diamonds", "updated_at"))
-                TournamentLedgerEntry.objects.create(
-                    reference=ledger_reference,
-                    tournament=submission.tournament,
-                    player=submission.player,
-                    registration=submission.registration,
-                    entry_type=TournamentLedgerEntry.EntryType.REWARD,
-                    currency=TournamentLedgerEntry.Currency.DIAMONDS,
-                    quantity=diamond_quantity,
-                    amount_inr=Decimal("0.00"),
-                    status=TournamentLedgerEntry.Status.COMPLETED,
-                    description=f"Admin-confirmed Diamond award: {diamond_quantity} Diamonds for {approved_kills} kills",
-                )
+                if submission.tournament.is_free_fan_tournament:
+                    reward_quantity = approved_kills // 2
+                    reward_currency = TournamentLedgerEntry.Currency.FAN_TOKENS
+                    reward_label = "Fan Tokens"
+                    shop_wallet.fan_tokens += reward_quantity
+                else:
+                    reward_quantity = int(submission.approved_reward)
+                    reward_currency = TournamentLedgerEntry.Currency.DIAMONDS
+                    reward_label = "Diamonds"
+                    shop_wallet.diamonds += reward_quantity
+                shop_wallet.save(update_fields=("diamonds", "fan_tokens", "updated_at"))
+                if reward_quantity > 0:
+                    TournamentLedgerEntry.objects.create(
+                        reference=ledger_reference,
+                        tournament=submission.tournament,
+                        player=submission.player,
+                        registration=submission.registration,
+                        entry_type=TournamentLedgerEntry.EntryType.REWARD,
+                        currency=reward_currency,
+                        quantity=reward_quantity,
+                        amount_inr=Decimal("0.00"),
+                        status=TournamentLedgerEntry.Status.COMPLETED,
+                        description=f"Admin-confirmed {reward_label} award for {approved_kills} verified kills",
+                    )
+                    submission.approved_reward = Decimal(reward_quantity)
+                    submission.save(update_fields=["approved_reward"])
 
+    reward_name = "Fan Tokens" if submission.tournament.is_free_fan_tournament else "Diamonds"
     messages.success(
         request,
-        f"Admin confirmation complete: {approved_kills} kills approved; {int(submission.approved_reward)} Diamonds credited to the player shop wallet. Diamonds are not an automatic INR/UPI payout.",
+        f"Admin confirmation complete: {approved_kills} kills approved; {int(submission.approved_reward)} {reward_name} credited to the player shop wallet. These are non-cash currencies.",
     )
     return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
 
