@@ -32,3 +32,20 @@ html[data-ff-theme="arena"] { --accent:#48ff9b; --accent-hover:#19d879; --gold:#
 @media (prefers-reduced-motion:reduce) {
   *,*::before,*::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; }
 }
+
+/* Route the main brand accents through the selected theme instead of hard-coded neon green. */
+.brand strong,.hero h1 span,.hero-line { color:var(--accent) !important; background-color:var(--accent); }
+.brand-icon { background:var(--accent) !important; color:#06110b !important; }
+.button-primary,.btn-primary,.button.button-primary,.btn-join {
+  color:#07110b !important;
+  background:var(--accent) !important;
+  border-color:var(--accent) !important;
+  box-shadow:none !important;
+}
+.button-primary:hover,.btn-primary:hover,.button.button-primary:hover,.btn-join:hover {
+  color:#07110b !important;
+  background:var(--accent-hover) !important;
+  border-color:var(--accent-hover) !important;
+  box-shadow:none !important;
+}
+.main-nav > a:hover,.ff-social-link:hover { color:var(--accent); }
