@@ -53,27 +53,27 @@
 
     <section style="padding:16px;border:1px solid var(--border-color, #777);border-radius:12px;margin:14px 0">
       <h3>3. Match evidence — open and inspect</h3>
-      {% if submission.history_video %}
+      {% if submission.history_video_available %}
         <p><a href="{{ submission.history_video.url }}" target="_blank" rel="noopener">Open video in a new tab</a></p>
         <video controls preload="metadata" style="display:block;width:100%;max-width:720px;max-height:420px;background:#111;border-radius:10px">
           <source src="{{ submission.history_video.url }}">
           Your browser cannot play this video. Use the open-video link above.
         </video>
-      {% else %}<p>Video missing.</p>{% endif %}
+      {% else %}<p>Video file unavailable. Evidence files are removed after 12 hours; if it is younger than 12 hours, the hosting media storage may have lost the upload and the player will need to submit it again.</p>{% endif %}
       <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:16px">
         <div style="max-width:320px;flex:1;min-width:220px">
           <h4>Match-history screenshot 1</h4>
-          {% if submission.history_image_one %}
+          {% if submission.history_image_one_available %}
             <a href="{{ submission.history_image_one.url }}" target="_blank" rel="noopener"><img src="{{ submission.history_image_one.url }}" alt="Match-history screenshot one" style="width:100%;max-width:320px;height:auto;border-radius:10px"></a>
             <p><a href="{{ submission.history_image_one.url }}" target="_blank" rel="noopener">Open full screenshot</a></p>
-          {% else %}<p>Screenshot missing.</p>{% endif %}
+          {% else %}<p>Screenshot unavailable. Evidence files are removed after 12 hours; if it is younger than 12 hours, hosting media storage may have lost the upload.</p>{% endif %}
         </div>
         <div style="max-width:320px;flex:1;min-width:220px">
           <h4>Match-history screenshot 2</h4>
-          {% if submission.history_image_two %}
+          {% if submission.history_image_two_available %}
             <a href="{{ submission.history_image_two.url }}" target="_blank" rel="noopener"><img src="{{ submission.history_image_two.url }}" alt="Match-history screenshot two" style="width:100%;max-width:320px;height:auto;border-radius:10px"></a>
             <p><a href="{{ submission.history_image_two.url }}" target="_blank" rel="noopener">Open full screenshot</a></p>
-          {% else %}<p>Screenshot missing.</p>{% endif %}
+          {% else %}<p>Screenshot unavailable. Evidence files are removed after 12 hours; if it is younger than 12 hours, hosting media storage may have lost the upload.</p>{% endif %}
         </div>
       </div>
     </section>
