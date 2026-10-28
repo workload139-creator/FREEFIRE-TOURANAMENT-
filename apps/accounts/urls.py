@@ -5,10 +5,13 @@ from django.views.generic import TemplateView
 from .email_otp import email_otp_view
 
 from . import view as views
+from . import native_api
 
 app_name = "accounts"
 
 urlpatterns = [
+    path("api/me/", native_api.native_profile_api, name="native_profile_api"),
+    path("api/wallet/", native_api.native_wallet_api, name="native_wallet_api"),
     path("register/", views.register_view, name="register"),
     path("email-otp/", email_otp_view, name="email_otp"),
     path("profile/", views.profile_view, name="profile"),
