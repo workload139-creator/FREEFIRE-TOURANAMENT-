@@ -1770,6 +1770,13 @@ def retry_unlimited_live_notifications(modeladmin, request, queryset):
 class UnlimitedTournamentAdmin(TournamentAdmin):
     """Separate admin menu for the repeating 49-player Unlimited BR series."""
 
+    exclude = ("start_time",)
+    fieldsets = (
+        ("Unlimited Tournament Setup", {"description": "No date/time scheduling. Har round mein 49 verified players. Entry ₹10; 49 entries par auto-LIVE. Admin room ID/password LIVE ke baad control panel se send kare.", "fields": ("tournament_control_panel", "title", "description", "entry_fee", "prize_pool", "max_players", "status")}),
+        ("Room Credentials", {"fields": ("room_id", "room_password")}),
+        ("Unlimited Series & Winner", {"fields": ("is_unlimited_br", "auto_start_at_capacity", "auto_reopen", "series_root", "winner_uid", "winner_payout_destination", "winner_payout_qr", "winner_prize_reference", "winner_prize_paid", "live_notification_sent_at", "live_notification_status")}),
+    )
+
     def get_queryset(self, request):
         return super().get_queryset(request).filter(is_unlimited_br=True)
 
@@ -1881,7 +1888,7 @@ class FreeFanTournamentAdmin(TournamentAdmin):
         ("Admin Room Credentials", {"description": "Room ID aur password sirf admin yahan set kare. LIVE round mein credentials eligible players ko private player-room page par milenge.", "fields": ("room_id", "room_password")}),
         ("Series & Winner", {"fields": ("is_free_fan_tournament", "is_unlimited_br", "auto_start_at_capacity", "auto_reopen", "series_root", "winner_uid", "free_winner_coins_awarded", "live_notification_sent_at", "live_notification_status")}),
     )
-    readonly_fields = ("tournament_control_panel", "series_root", "free_winner_coins_awarded", "live_notification_sent_at", "live_notification_status")
+    readonly_fields = ("tournament_control_panel", "series_root", "winner_coins_prize", "free_winner_coins_awarded", "live_notification_sent_at", "live_notification_status")
     ordering = ("-created_at",)
 
     def get_queryset(self, request):
@@ -1901,7 +1908,7 @@ class FreeFanTournamentAdmin(TournamentAdmin):
         obj.gender_category = Tournament.GenderCategory.OPEN
         obj.max_players = 49
         obj.entry_fee = Decimal("0.00")
-        obj.winner_coins_prize = int(obj.winner_coins_prize or 20)
+        obj.winner_coins_prize = 20
         if not obj.start_time or obj.start_time <= timezone.now():
             obj.start_time = timezone.now() + timedelta(minutes=10)
         if not change:
