@@ -120,14 +120,6 @@ def maybe_start_unlimited_tournament(tournament_id):
     tournament.status = Tournament.Status.LIVE
     tournament.save(update_fields=["status", "updated_at"])
     transaction.on_commit(lambda tournament_id=tournament.pk: send_unlimited_live_notifications(tournament_id))
-
-    root_id = tournament.series_root_id or tournament.pk
-    root = Tournament.objects.select_for_update().get(pk=root_id)
-    if root.auto_reopen:
-        next_round_number = root.series_rounds.count() + 2
-        Tournament.objects.create(
-            title=f"{root.title} - Round {next_round_number}"[:120],
-            mode=Tournament.Mode.BR, vs_format="", description=root.description,
     return True
 
 
