@@ -39,7 +39,7 @@
                         <th>Entry Fee</th>
                         <th>Prize Pool</th>
                         <th>Players</th>
-                        <th>Start Time</th>
+                        <th>Schedule</th>
                         <th>Status</th>
                     </tr>
                 </thead>
@@ -54,7 +54,7 @@
                                 {{ tournament.confirmed_players_count }}/{{ tournament.max_players }}
                             </td>
                             <td>
-                                {{ tournament.start_time|date:"d M Y, h:i A" }}
+                                {% if tournament.is_unlimited_br %}Always open{% else %}{{ tournament.start_time|date:"d M Y, h:i A" }}{% endif %}
                             </td>
                             <td>{{ tournament.get_status_display }}</td>
                         </tr>
