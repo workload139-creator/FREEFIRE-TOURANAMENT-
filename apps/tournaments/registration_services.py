@@ -128,11 +128,6 @@ def maybe_start_unlimited_tournament(tournament_id):
         Tournament.objects.create(
             title=f"{root.title} - Round {next_round_number}"[:120],
             mode=Tournament.Mode.BR, vs_format="", description=root.description,
-            entry_fee=Decimal("10.00"), prize_pool=root.prize_pool, max_players=49,
-            start_time=timezone.now() + timedelta(minutes=10),
-            status=Tournament.Status.UPCOMING, is_unlimited_br=True,
-            auto_start_at_capacity=True, auto_reopen=root.auto_reopen, series_root=root,
-        )
     return True
 
 
@@ -152,6 +147,14 @@ def create_pending_registration(*, tournament_id, player, free_fire_uid, payment
         raise RegistrationError("Free Fire UID 5 se 30 digits ka hona chahiye.")
     if Registration.objects.filter(tournament=tournament, player=player).exists():
         raise RegistrationError("Aap is tournament mein pehle se registered hain.")
+    if tournament.is_free_fan_tournament:
+        cooldown = timezone.now() - timedelta(hours=24)
+        recent_free_entry = Registration.objects.filter(
+            player=player, tournament__is_free_fan_tournament=True,
+            registered_at__gte=cooldown,
+        ).exclude(status__in=[Registration.Status.CANCELLED, Registration.Status.REFUNDED]).exists()
+        if recent_free_entry:
+            raise RegistrationError("Aap free tournament mein 24 ghante mein sirf ek baar entry le sakte hain. Cooldown khatam hone par dobara try karein.")
 
     fee = tournament.entry_fee
     reference = str(payment_reference or "").strip()
