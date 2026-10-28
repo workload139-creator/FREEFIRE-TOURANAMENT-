@@ -13,6 +13,17 @@ from .models import Conversation, Message
 
 User = get_user_model()
 
+# Preset gifts keep transfers predictable and prevent arbitrary user-entered amounts.
+CHAT_GIFTS = {
+    "rose": {"name": "Rose", "emoji": "🌹", "quantity": 2, "tagline": "A little kindness"},
+    "chocolate": {"name": "Chocolate", "emoji": "🍫", "quantity": 5, "tagline": "Sweet friend vibes"},
+    "teddy": {"name": "Teddy Bear", "emoji": "🧸", "quantity": 10, "tagline": "A cuddly surprise"},
+    "heart": {"name": "Heart", "emoji": "💖", "quantity": 20, "tagline": "Send some love"},
+    "bouquet": {"name": "Flower Bouquet", "emoji": "💐", "quantity": 25, "tagline": "For someone special"},
+    "crown": {"name": "Champion Crown", "emoji": "👑", "quantity": 50, "tagline": "Respect the MVP"},
+    "trophy": {"name": "Golden Trophy", "emoji": "🏆", "quantity": 100, "tagline": "Legendary player"},
+}
+
 
 def _blocked_either_way(first, second):
     return UserBlock.objects.filter(
@@ -80,13 +91,12 @@ def conversation_detail(request, conversation_id):
         action = request.POST.get("action", "message")
         if action == "gift":
             currency = request.POST.get("currency")
-            try:
-                quantity = int(request.POST.get("quantity", "0"))
-            except (TypeError, ValueError):
-                quantity = 0
-            if currency not in ("diamonds", "coins", "fan_tokens") or quantity < 1 or quantity > 10000:
-                messages.error(request, "Valid gift amount select karein (1–10000).")
+            gift_code = request.POST.get("gift_code", "")
+            gift = CHAT_GIFTS.get(gift_code)
+            if currency not in ("diamonds", "coins", "fan_tokens") or not gift:
+                messages.error(request, "Gift aur currency list mein se sahi option select karein.")
             else:
+                quantity = gift["quantity"]
                 with transaction.atomic():
                     sender_wallet, _ = PlayerShopWallet.objects.get_or_create(user=request.user)
                     recipient_wallet, _ = PlayerShopWallet.objects.get_or_create(user=other)
@@ -94,17 +104,17 @@ def conversation_detail(request, conversation_id):
                     recipient_wallet = PlayerShopWallet.objects.select_for_update().get(pk=recipient_wallet.pk)
                     field = {"diamonds": "diamonds", "coins": "coins", "fan_tokens": "fan_tokens"}[currency]
                     if getattr(sender_wallet, field) < quantity:
-                        messages.error(request, "Gift bhejne ke liye aapka balance kaafi nahi hai. Shop check karein.")
+                        messages.error(request, f"{gift['emoji']} {gift['name']} ke liye {quantity} {currency.replace('_', ' ')} chahiye. Aapka balance kaafi nahi hai.")
                     else:
                         setattr(sender_wallet, field, getattr(sender_wallet, field) - quantity)
                         setattr(recipient_wallet, field, getattr(recipient_wallet, field) + quantity)
                         sender_wallet.save(update_fields=[field, "updated_at"])
                         recipient_wallet.save(update_fields=[field, "updated_at"])
                         CurrencyGift.objects.create(sender=request.user, recipient=other, currency=currency, quantity=quantity, conversation_id=conversation.pk)
-                        gift_label = {"diamonds": "💎 diamonds", "coins": "🪙 coins", "fan_tokens": "✨ Fan Tokens"}[currency]
-                        Message.objects.create(conversation=conversation, sender=request.user, body=f"🎁 Sent {quantity} {gift_label} to {other.username}!")
+                        currency_label = {"diamonds": "💎 Diamonds", "coins": "🪙 Coins", "fan_tokens": "✨ Fan Tokens"}[currency]
+                        Message.objects.create(conversation=conversation, sender=request.user, body=f"{gift['emoji']} {request.user.username} ne {other.username} ko {gift['name']} gift kiya — {quantity} {currency_label} transfer hue.")
                         Conversation.objects.filter(pk=conversation.pk).update(updated_at=timezone.now())
-                        messages.success(request, "Gift chat mein bhej diya!")
+                        messages.success(request, f"{gift['emoji']} {gift['name']} bhej diya! {quantity} {currency_label} aapke wallet se kate aur receiver ko mile.")
             return redirect("chat:conversation", conversation_id=conversation.pk)
         body = request.POST.get("body", "").strip()
         if not body:
@@ -126,6 +136,7 @@ def conversation_detail(request, conversation_id):
         "other": other,
         "chat_messages": chat_messages,
         "last_message_id": chat_messages[-1].pk if chat_messages else 0,
+        "chat_gifts": [{"code": code, **gift} for code, gift in CHAT_GIFTS.items()],
     })
 
 
