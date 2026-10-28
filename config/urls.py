@@ -6,7 +6,7 @@ from django.http import HttpResponse, HttpResponseForbidden
 from django.urls import include, path, re_path
 from django.views.static import serve
 
-from apps.core.views import health_check, terms, privacy_policy, refund_policy, fair_play, about
+from apps.core.views import health_check, terms, privacy_policy, refund_policy, fair_play, about, support
 
 from apps.accounts.auth_views import login_view
 from apps.accounts.view import logout_view
