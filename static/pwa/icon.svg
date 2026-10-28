@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#080b12"/>
+  <path d="M256 48 303 142 407 157 332 230 350 333 256 284 162 333 180 230 105 157 209 142Z" fill="#55ffc0"/>
+  <path d="M170 370h172l-18 40H188Z" fill="#f5f8ff"/>
+  <text x="256" y="464" font-family="Arial,sans-serif" font-size="54" font-weight="800" text-anchor="middle" fill="#f5f8ff">FF ARENA</text>
+</svg>
