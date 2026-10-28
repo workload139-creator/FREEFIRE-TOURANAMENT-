@@ -1766,10 +1766,27 @@ def retry_unlimited_live_notifications(modeladmin, request, queryset):
     )
 
 
+class UnlimitedTournamentAdminForm(TournamentAdminForm):
+    class Meta(TournamentAdminForm.Meta):
+        fields = "__all__"
+
+    def clean(self):
+        cleaned = super(TournamentAdminForm, self).clean()
+        cleaned["mode"] = Tournament.Mode.BR
+        cleaned["vs_format"] = ""
+        cleaned["gender_category"] = Tournament.GenderCategory.OPEN
+        cleaned["is_unlimited_br"] = True
+        cleaned["auto_start_at_capacity"] = True
+        cleaned["auto_reopen"] = True
+        cleaned["max_players"] = 49
+        return cleaned
+
+
 @admin.register(UnlimitedTournament)
 class UnlimitedTournamentAdmin(TournamentAdmin):
     """Separate admin menu for the repeating 49-player Unlimited BR series."""
 
+    form = UnlimitedTournamentAdminForm
     exclude = ("start_time",)
     fieldsets = (
         ("Unlimited Tournament Setup", {"description": "No date/time scheduling. Har round mein 49 verified players. Entry ₹10; 49 entries par auto-LIVE. Admin room ID/password LIVE ke baad control panel se send kare.", "fields": ("tournament_control_panel", "title", "description", "entry_fee", "prize_pool", "max_players", "status")}),
