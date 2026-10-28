@@ -1,0 +1,34 @@
+/* Mobile-app layout and calmer visual effects. Loaded after the cinematic theme. */
+:root { --app-nav-height: 66px; }
+html[data-ff-theme="red"] { --accent:#ff4658; --accent-hover:#e42e43; --gold:#ffd778; --red:#ff4658; --red-dark:#d91f35; }
+html[data-ff-theme="purple"] { --accent:#b58cff; --accent-hover:#9669eb; --gold:#e1c9ff; --red:#b58cff; --red-dark:#8f63d8; }
+html[data-ff-theme="blue"] { --accent:#62b7ff; --accent-hover:#3697e9; --gold:#b9e0ff; --red:#62b7ff; --red-dark:#347fc0; }
+html[data-ff-theme="arena"] { --accent:#48ff9b; --accent-hover:#19d879; --gold:#ffd778; --red:#ff4658; --red-dark:#d91f35; }
+/* Keep esports styling, but remove excessive glow/zoom so the app feels calmer. */
+.site-header { box-shadow:0 4px 14px rgba(0,0,0,.2); backdrop-filter:blur(8px); }
+.brand-icon { box-shadow:none !important; }
+.button-primary,.btn-primary,.button.button-primary,.btn-join { box-shadow:0 3px 10px rgba(0,0,0,.18); }
+.button-primary:hover,.btn-primary:hover,.button.button-primary:hover,.btn-join:hover { box-shadow:0 4px 12px rgba(0,0,0,.2); transform:translateY(-1px); }
+.hero,.hero-card,.stat-card,.feature-card,.profile-hero,.profile-stat { box-shadow:0 8px 24px rgba(0,0,0,.22) !important; }
+.hero h1,.profile-hero h1 { text-shadow:0 2px 8px rgba(0,0,0,.45) !important; }
+.hero::after { height:2px; opacity:.7; }
+.ff-social-link:hover,.feature-card:hover,.profile-stat:hover { transform:translateY(-1px); }
+.ff-mobile-bottom-nav { display:none; }
+@media (max-width:700px) {
+  body { padding-bottom:calc(var(--app-nav-height) + env(safe-area-inset-bottom, 0px) + 12px); background-attachment:scroll; }
+  .nav-container { min-height:62px !important; padding:8px 14px !important; gap:10px !important; }
+  .brand { font-size:16px !important; gap:7px !important; }
+  .brand-icon { width:34px !important; height:34px !important; border-radius:9px !important; font-size:21px !important; }
+  .site-header .main-nav { max-height:calc(100dvh - 76px) !important; padding:8px !important; gap:2px !important; border-radius:12px !important; }
+  .site-header .main-nav > a { min-height:42px !important; padding:9px 10px !important; font-size:14px !important; }
+  .ff-sound-toggle { top:auto !important; right:12px !important; bottom:calc(var(--app-nav-height) + 14px + env(safe-area-inset-bottom, 0px)) !important; z-index:900 !important; }
+  .ff-mobile-bottom-nav { position:fixed; z-index:1100; left:0; right:0; bottom:0; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:3px; min-height:var(--app-nav-height); padding:7px 8px calc(7px + env(safe-area-inset-bottom, 0px)); background:rgba(7,12,19,.97); border-top:1px solid var(--border); box-shadow:0 -5px 18px rgba(0,0,0,.24); backdrop-filter:blur(8px); }
+  .ff-mobile-bottom-nav a { display:flex; min-width:0; flex-direction:column; align-items:center; justify-content:center; gap:2px; border:1px solid transparent; border-radius:9px; color:var(--muted); text-decoration:none; }
+  .ff-mobile-bottom-nav a span { font-size:20px; line-height:1.1; }
+  .ff-mobile-bottom-nav a small { font-size:10px; font-weight:800; white-space:nowrap; }
+  .ff-mobile-bottom-nav a:active,.ff-mobile-bottom-nav a:focus-visible { color:var(--accent); border-color:var(--border); }
+  .ff-social-hub { margin-bottom:20px !important; }
+}
+@media (prefers-reduced-motion:reduce) {
+  *,*::before,*::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; }
+}
