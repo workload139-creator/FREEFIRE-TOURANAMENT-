@@ -15,7 +15,7 @@ from apps.accounts.models import (
     WalletTransaction,
 )
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
-from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry, UnlimitedTournament
+from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry, UnlimitedTournament, FreeFanTournament
 from .services import cancel_tournament_and_refund
 
 
@@ -262,6 +262,23 @@ class TournamentAdmin(admin.ModelAdmin):
 
         was_live = previous_status == Tournament.Status.LIVE
         super().save_model(request, obj, form, change)
+
+        # Re-open a fresh no-date 49-player round only after admin marks the current round complete.
+        if obj.status == Tournament.Status.COMPLETED and previous_status != Tournament.Status.COMPLETED:
+            root = Tournament.objects.get(pk=obj.series_root_id or obj.pk)
+            if root.auto_reopen and not root.series_rounds.filter(status=Tournament.Status.UPCOMING).exists():
+                next_round_number = root.series_rounds.count() + 2
+                Tournament.objects.create(
+                    title=f"{root.title} - Round {next_round_number}"[:120],
+                    mode=Tournament.Mode.BR, vs_format="", description=root.description,
+                    entry_fee=Decimal("0.00") if root.is_free_fan_tournament else root.entry_fee,
+                    prize_pool=root.prize_pool, max_players=49,
+                    start_time=timezone.now() + timedelta(minutes=10),
+                    status=Tournament.Status.UPCOMING, is_unlimited_br=True,
+                    is_free_fan_tournament=root.is_free_fan_tournament,
+                    winner_coins_prize=root.winner_coins_prize,
+                    auto_start_at_capacity=True, auto_reopen=True, series_root=root,
+                )
 
         # Publish room access only when admin moves the tournament into LIVE.
         if obj.status != Tournament.Status.LIVE or was_live:
@@ -1771,6 +1788,108 @@ class UnlimitedTournamentAdmin(TournamentAdmin):
         "live_notification_sent_at", "live_notification_status",
         "winner_payout_destination", "winner_payout_qr",
     )
+
+
+@admin.action(description="Award the configured winner Coins (free tournament only)")
+def award_free_tournament_winner_coins(modeladmin, request, queryset):
+    awarded = 0
+    skipped = 0
+    with transaction.atomic():
+        for selected in queryset.select_for_update():
+            tournament = Tournament.objects.select_for_update().get(pk=selected.pk)
+            if not tournament.is_free_fan_tournament or tournament.status != Tournament.Status.COMPLETED or tournament.free_winner_coins_awarded:
+                skipped += 1
+                continue
+            winner_uid = str(tournament.winner_uid or "").strip()
+            winners = Registration.objects.select_for_update().filter(
+                tournament=tournament,
+                free_fire_uid=winner_uid,
+                payment_verified=True,
+                refund_processed=False,
+                status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
+            ).select_related("player")
+            if not winner_uid or winners.count() != 1:
+                skipped += 1
+                continue
+            winner = winners.first()
+            reference = f"FREE-WIN-COINS-{tournament.pk}"
+            if TournamentLedgerEntry.objects.filter(reference=reference).exists():
+                tournament.free_winner_coins_awarded = True
+                tournament.save(update_fields=["free_winner_coins_awarded", "updated_at"])
+                skipped += 1
+                continue
+            from apps.social.models import PlayerShopWallet
+            wallet, _ = PlayerShopWallet.objects.get_or_create(user=winner.player)
+            wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
+            quantity = int(tournament.winner_coins_prize or 20)
+            wallet.coins += quantity
+            wallet.save(update_fields=["coins", "updated_at"])
+            TournamentLedgerEntry.objects.create(
+                tournament=tournament,
+                player=winner.player,
+                registration=winners.first(),
+                entry_type=TournamentLedgerEntry.EntryType.REWARD,
+                currency=TournamentLedgerEntry.Currency.COINS,
+                quantity=quantity,
+                amount_inr=Decimal("0.00"),
+                status=TournamentLedgerEntry.Status.COMPLETED,
+                reference=reference,
+                description=f"Free Fan Tournament winner prize: {quantity} Coins",
+            )
+            tournament.free_winner_coins_awarded = True
+            tournament.save(update_fields=["free_winner_coins_awarded", "updated_at"])
+            awarded += 1
+    if awarded:
+        modeladmin.message_user(request, f"{awarded} free tournament winner prize(s) awarded as Coins.", messages.SUCCESS)
+    if skipped:
+        modeladmin.message_user(request, f"{skipped} skipped: tournament must be completed, winner UID must uniquely match a verified registration, and prize must not already be awarded.", messages.WARNING)
+
+
+class FreeFanTournamentAdminForm(TournamentAdminForm):
+    class Meta(TournamentAdminForm.Meta):
+        fields = "__all__"
+
+
+@admin.register(FreeFanTournament)
+class FreeFanTournamentAdmin(TournamentAdmin):
+    """Separate admin controls for the recurring free 49-player fan tournament."""
+
+    form = FreeFanTournamentAdminForm
+    exclude = ("start_time",)
+    list_display = ("title", "confirmed_players_count_display", "status", "winner_coins_prize", "free_winner_coins_awarded", "live_notification_status")
+    list_filter = ("status", "free_winner_coins_awarded", "live_notification_status")
+    actions = (cancel_and_refund_tournaments, award_free_tournament_winner_coins)
+    fieldsets = (
+        ("Free Fan Tournament Setup", {"description": "Yeh alag, no-date free BR series hai. Entry fee zero, capacity 49, 2 verified kills par 1 Fan Token, winner ko 20 Coins. 49 verified players par automatic LIVE.", "fields": ("tournament_control_panel", "title", "description", "winner_coins_prize", "max_players", "status")}),
+        ("Admin Room Credentials", {"description": "Room ID aur password sirf admin yahan set kare. LIVE round mein credentials eligible players ko private player-room page par milenge.", "fields": ("room_id", "room_password")}),
+        ("Series & Winner", {"fields": ("is_free_fan_tournament", "is_unlimited_br", "auto_start_at_capacity", "auto_reopen", "series_root", "winner_uid", "free_winner_coins_awarded", "live_notification_sent_at", "live_notification_status")}),
+    )
+    readonly_fields = ("tournament_control_panel", "series_root", "free_winner_coins_awarded", "live_notification_sent_at", "live_notification_status")
+    ordering = ("-created_at",)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).filter(is_free_fan_tournament=True)
+
+    def confirmed_players_count_display(self, obj):
+        return f"{obj.confirmed_players_count}/49"
+    confirmed_players_count_display.short_description = "Players"
+
+    def save_model(self, request, obj, form, change):
+        obj.is_free_fan_tournament = True
+        obj.is_unlimited_br = True
+        obj.auto_start_at_capacity = True
+        obj.auto_reopen = True
+        obj.mode = Tournament.Mode.BR
+        obj.vs_format = ""
+        obj.gender_category = Tournament.GenderCategory.OPEN
+        obj.max_players = 49
+        obj.entry_fee = Decimal("0.00")
+        obj.winner_coins_prize = int(obj.winner_coins_prize or 20)
+        if not obj.start_time or obj.start_time <= timezone.now():
+            obj.start_time = timezone.now() + timedelta(minutes=10)
+        if not change:
+            obj.status = Tournament.Status.UPCOMING
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(TournamentLedgerEntry)
