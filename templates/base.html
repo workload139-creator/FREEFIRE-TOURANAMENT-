@@ -60,11 +60,28 @@
     </div>
 {% endif %}
 
-
-
 <main id="main-content">
     {% block content %}{% endblock %}
 </main>
+
+<section class="ff-social-hub" aria-label="Follow FF Arena">
+  <style>
+    .ff-social-hub{max-width:1160px;margin:28px auto;padding:22px 18px;border:1px solid #55ffc033;border-radius:20px;background:radial-gradient(ellipse at 5% 0%,#2dffc312,transparent 45%),linear-gradient(135deg,#101a27,#090e17);color:#f5f8ff}
+    .ff-social-hub h2{margin:0 0 7px;font-size:clamp(22px,4vw,30px)}.ff-social-hub p{margin:0;color:#aebdd0}
+    .ff-social-links{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px;margin-top:18px}
+    .ff-social-link{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid #ffffff1c;border-radius:14px;background:#070d15;color:#f7f9ff;text-decoration:none;transition:transform .18s,border-color .18s}
+    .ff-social-link:hover{transform:translateY(-3px);border-color:#55ffc0}.ff-social-icon{display:grid;place-items:center;width:42px;height:42px;flex:0 0 42px;border-radius:12px;background:#152332;font-size:22px}
+    .ff-social-link strong,.ff-social-link small{display:block}.ff-social-link small{margin-top:3px;color:#aebdd0;font-size:12px}
+    @media(max-width:600px){.ff-social-hub{margin:22px 12px;padding:18px 14px}}
+  </style>
+  <h2>Join the <span style="color:#55ffc0">FF Arena Community</span></h2>
+  <p>Follow updates, watch tournament streams and join our community channels.</p>
+  <div class="ff-social-links">
+    <a class="ff-social-link" href="https://whatsapp.com/channel/0029Vb9NpfeBadmbTK4XDJ3p" target="_blank" rel="noopener noreferrer"><span class="ff-social-icon" aria-hidden="true">💬</span><span><strong>WhatsApp Channel</strong><small>Updates and announcements ↗</small></span></a>
+    <a class="ff-social-link" href="https://www.youtube.com/@freefire_tour" target="_blank" rel="noopener noreferrer"><span class="ff-social-icon" aria-hidden="true">▶️</span><span><strong>YouTube</strong><small>Gameplay and live tournaments ↗</small></span></a>
+    <a class="ff-social-link" href="https://www.instagram.com/freefiretournament0/" target="_blank" rel="noopener noreferrer"><span class="ff-social-icon" aria-hidden="true">📸</span><span><strong>Instagram</strong><small>Photos and tournament news ↗</small></span></a>
+  </div>
+</section>
 
 <footer class="site-footer">
     <p>FF Arena · Compete with skill. Play fair.</p>

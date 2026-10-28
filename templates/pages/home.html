@@ -94,7 +94,7 @@
                     <span class="status">{{ tournament.get_status_display }}</span>
                 </div>
                 <p>Starts {{ tournament.start_time|date:"d M, h:i A" }}</p>
-                <a href="{% url 'tournaments:detail' tournament.id %}" class="btn-join">View Tournament →</a>
+                <div style="display:flex;flex-wrap:wrap;gap:9px"><a href="{% url 'tournaments:detail' tournament.id %}" class="btn-join">View Tournament →</a>{% if tournament.status == "live" %}<a href="https://www.youtube.com/@freefire_tour/live" class="btn-join" style="background:#d90032;color:#fff" target="_blank" rel="noopener noreferrer">▶ Watch Live</a>{% endif %}</div>
             </div>
         </article>
         {% empty %}

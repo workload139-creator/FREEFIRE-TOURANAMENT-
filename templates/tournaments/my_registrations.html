@@ -16,6 +16,7 @@
       {% if registration.payment_reference %}<p>Submitted UTR: <strong>{{ registration.payment_reference }}</strong></p>{% endif %}
       {% if registration.status == "pending_payment" %}<div class="profile-notice">Seat abhi confirm nahi hai. Admin ko UTR ko actual received payment se match karna hoga.</div>{% endif %}
       <p>Registration status: <strong>{{ registration.get_status_display }}</strong></p>
+      {% if registration.tournament.status == "live" %}<p><a class="button button-primary" style="background:#d90032;border-color:#ff536f;color:#fff" href="https://www.youtube.com/@freefire_tour/live" target="_blank" rel="noopener noreferrer">▶ Watch Tournament Live</a></p>{% endif %}
       <p>Match time: {{ registration.tournament.start_time|date:"d M Y, h:i A" }}</p>
       {% if registration.status == "waiting_ready" or registration.status == "ready" %}
         <a class="button button-primary" href="{% url 'tournaments:player_room' registration.id %}">Open Room / Confirm</a>
