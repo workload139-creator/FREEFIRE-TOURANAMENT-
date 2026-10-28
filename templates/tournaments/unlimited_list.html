@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Unlimited Tournament | FF Arena{% endblock %}
+{% block content %}
+<section class="unlimited-arena">
+  <header class="unlimited-hero">
+    <span class="kicker">FF ARENA · ALWAYS OPEN BR</span>
+    <h1>♾️ Unlimited <span>Arena</span></h1>
+    <p>Entry ₹10. No calendar date or fixed start time. Every round needs 49 confirmed, payment-verified players and then turns LIVE automatically. After admin completes a round, the next waiting round opens.</p>
+    <div class="pills"><span>49 players per round</span><span>₹10 entry</span><span>💎 Existing Diamond / payment verification</span><span>🔐 Room ID/password from admin</span></div>
+  </header>
+  <div class="round-grid">
+  {% for tournament in tournaments %}
+    <article class="round-card">
+      <div class="round-top"><span>♾️ UNLIMITED BR</span>{% if tournament.status == "live" %}<strong class="live">● LIVE</strong>{% else %}<strong class="waiting">● WAITING FOR PLAYERS</strong>{% endif %}</div>
+      <h2>{{ tournament.title }}</h2>
+      <p>{{ tournament.description|default:"Battle Royale unlimited round." }}</p>
+      <div class="stats"><div><small>Entry Fee</small><b>₹{{ tournament.entry_fee }}</b></div><div><small>Verified players</small><b>{{ tournament.paid_players_count }}/49</b></div><div><small>Prize pool</small><b>₹{{ tournament.prize_pool }}</b></div></div>
+      <p class="rule">Existing registration and payment checks remain active. Kill evidence uses the same video + two screenshots, UID matching and AI Assessment process. Room ID/password are shared privately by the admin after LIVE.</p>
+      <div class="actions"><a class="button button-primary" href="{% url 'tournaments:detail' tournament.pk %}">View / Register</a><a class="button button-outline" href="{% url 'tournaments:leaderboard' tournament.pk %}">Leaderboard</a></div>
+    </article>
+  {% empty %}
+    <article class="round-card empty"><h2>Unlimited Arena ready hai</h2><p>Admin panel ke <strong>Unlimited Tournaments</strong> section se pehla round create karein. Date ki zaroorat nahi; page hamesha available rahega.</p></article>
+  {% endfor %}
+  </div>
+</section>
+<style>
+.unlimited-arena{max-width:1180px;margin:34px auto 70px;padding:clamp(14px,3vw,28px);color:#f5f8ff}.unlimited-hero{padding:clamp(24px,5vw,48px);border:1px solid #49ffc34d;border-radius:26px;background:radial-gradient(ellipse at 10% 0%,#39ffc322,transparent 40%),linear-gradient(130deg,#071b1c,#10122b 72%,#210f2c);box-shadow:0 24px 70px #0005}.kicker{color:#62ffd0;font-weight:950;letter-spacing:3px;font-size:11px}.unlimited-hero h1{font-size:clamp(36px,7vw,64px);line-height:1.05;margin:14px 0}.unlimited-hero h1 span{color:#62ffd0}.unlimited-hero p{max-width:800px;color:#c5d2e1}.pills{display:flex;flex-wrap:wrap;gap:9px;margin-top:22px}.pills span{padding:9px 12px;border:1px solid #ffffff26;background:#071014aa;border-radius:999px;font-size:12px;font-weight:800}.round-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:18px;margin:24px 0}.round-card{padding:22px;border:1px solid #4bffc044;border-radius:20px;background:linear-gradient(145deg,#111d2a,#080e16);box-shadow:0 16px 42px #0004}.round-top{display:flex;justify-content:space-between;gap:12px;align-items:center;color:#6dffd0;font-size:11px;font-weight:950;letter-spacing:1px}.live{color:#ff6d8a}.waiting{color:#ffd477}.round-card h2{font-size:25px;margin:16px 0 8px}.round-card p{color:#b9c8d9}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:18px 0}.stats div{padding:12px 9px;background:#060b12;border-radius:11px;border:1px solid #ffffff0c}.stats small,.stats b{display:block}.stats small{font-size:10px;color:#9caec1}.stats b{margin-top:6px;font-size:14px}.rule{font-size:12px;line-height:1.65}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}.actions a{flex:1;text-align:center}.empty{border-style:dashed}@media(max-width:600px){.round-card{padding:17px}.actions a{flex-basis:100%}}
+</style>
+{% endblock %}
