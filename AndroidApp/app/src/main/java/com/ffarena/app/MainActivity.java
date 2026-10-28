@@ -16,6 +16,13 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 public class MainActivity extends Activity {
     private static final String BASE_URL = "https://freefire-touranament-74nr.onrender.com";
@@ -107,10 +114,23 @@ public class MainActivity extends Activity {
             addActionRow("My registrations", "Track your joined matches", "/tournaments/my-registrations/");
             addActionRow("AI Tournament Assistant", "Get help about FF Arena tournaments", "/assistant/");
         } else if ("Matches".equals(currentTab)) {
-            addSectionTitle("TOURNAMENTS", "Find your next match");
-            addFeatureCard("All tournaments", "Browse available BR and VS events", "Browse tournaments", "/tournaments/");
-            addFeatureCard("My registrations", "See joined tournaments and room updates", "My registrations", "/tournaments/my-registrations/");
-            addFeatureCard("Results", "Completed matches and standings", "View results", "/tournaments/results/");
+            addSectionTitle("TOURNAMENTS", "Live tournament data from FF Arena");
+            LinearLayout filters = new LinearLayout(this);
+            filters.setOrientation(LinearLayout.HORIZONTAL);
+            String[] modes = {"ALL", "BR", "VS"};
+            for (String mode : modes) {
+                Button filter = button(mode);
+                filter.setTextSize(12);
+                filter.setOnClickListener(v -> loadTournamentCards("ALL".equals(mode) ? "" : mode));
+                LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(0, dp(42), 1);
+                fp.setMargins(dp(2), 0, dp(2), dp(10));
+                filters.addView(filter, fp);
+            }
+            content.addView(filters);
+            addNote("Loading tournaments from the FF Arena server…");
+            loadTournamentCards("");
+            addActionRow("My registrations", "See joined matches and room updates", "/tournaments/my-registrations/");
+            addActionRow("Results", "Completed matches and standings", "/tournaments/results/");
             addActionRow("Free tournaments", "Explore free-to-enter events", "/tournaments/free-tournament/");
         } else if ("Wallet".equals(currentTab)) {
             addSectionTitle("PLAYER WALLET", "Manage your account balance");
@@ -132,6 +152,96 @@ public class MainActivity extends Activity {
                 b.setTextColor(label.equals(currentTab) ? ORANGE : MUTED);
             }
         }
+    }
+
+    private void loadTournamentCards(String mode) {
+        final String endpoint = BASE_URL + "/tournaments/api/" + (mode.isEmpty() ? "" : "?mode=" + mode);
+        new Thread(() -> {
+            HttpURLConnection connection = null;
+            String response = null;
+            String error = null;
+            try {
+                connection = (HttpURLConnection) new URL(endpoint).openConnection();
+                connection.setRequestMethod("GET");
+                connection.setConnectTimeout(10000);
+                connection.setReadTimeout(10000);
+                connection.setRequestProperty("Accept", "application/json");
+                int status = connection.getResponseCode();
+                InputStream stream = status >= 200 && status < 300
+                        ? connection.getInputStream() : connection.getErrorStream();
+                if (stream == null) throw new IllegalStateException("Server returned HTTP " + status);
+                StringBuilder body = new StringBuilder();
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) body.append(line);
+                }
+                if (status >= 200 && status < 300) response = body.toString();
+                else error = "Server returned HTTP " + status;
+            } catch (Exception exception) {
+                error = "Could not load tournaments. Check your internet connection and try again.";
+            } finally {
+                if (connection != null) connection.disconnect();
+            }
+            final String json = response;
+            final String failure = error;
+            runOnUiThread(() -> {
+                if (!"Matches".equals(currentTab)) return;
+                if (json == null) {
+                    addNote(failure == null ? "Tournament data is temporarily unavailable." : failure);
+                    return;
+                }
+                try {
+                    JSONObject payload = new JSONObject(json);
+                    JSONArray results = payload.optJSONArray("results");
+                    if (results == null || results.length() == 0) {
+                        addNote("No tournaments are listed right now. Please check again soon.");
+                        return;
+                    }
+                    TextView count = text(results.length() + " TOURNAMENTS", 11, ORANGE, true);
+                    count.setPadding(0, dp(4), 0, dp(10));
+                    content.addView(count, Math.min(2, content.getChildCount()));
+                    for (int i = 0; i < results.length(); i++) {
+                        JSONObject item = results.optJSONObject(i);
+                        if (item != null) addTournamentCard(item);
+                    }
+                } catch (Exception exception) {
+                    addNote("Tournament data could not be read. Please try again later.");
+                }
+            });
+        }).start();
+    }
+
+    private void addTournamentCard(JSONObject item) {
+        String title = item.optString("title", "FF Arena Tournament");
+        String mode = item.optString("mode", "BR");
+        String format = item.optString("vs_format", "");
+        String status = item.optString("status", "upcoming").toUpperCase();
+        String fee = item.optString("entry_fee", "0");
+        String prize = item.optString("prize_pool", "0");
+        int joined = item.optInt("players_joined", 0);
+        int capacity = item.optInt("max_players", 49);
+        int id = item.optInt("id", 0);
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(16), dp(15), dp(16), dp(14));
+        card.setBackground(background(new int[]{PANEL, PANEL}, dp(16), Color.rgb(48, 57, 75)));
+        TextView badge = text(mode + (format.isEmpty() ? "" : "  •  " + format) + "     " + status,
+                11, ORANGE, true);
+        TextView heading = text(title, 18, Color.WHITE, true);
+        heading.setPadding(0, dp(7), 0, dp(7));
+        TextView details = text("Entry ₹" + fee + "     Prize ₹" + prize
+                + "\\nPlayers " + joined + "/" + capacity, 13, MUTED, false);
+        details.setPadding(0, 0, 0, dp(12));
+        card.addView(badge);
+        card.addView(heading);
+        card.addView(details);
+        Button open = button("VIEW TOURNAMENT");
+        open.setOnClickListener(v -> openFeature("/tournaments/" + id + "/"));
+        card.addView(open, new LinearLayout.LayoutParams(-1, dp(44)));
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
+        p.bottomMargin = dp(12);
+        content.addView(card, p);
     }
 
     private void addHero() {
