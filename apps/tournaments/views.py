@@ -28,9 +28,9 @@ import qrcode
 def cleanup_expired_kill_evidence():
     """Delete uploaded evidence files after 12 hours, retaining review/audit metadata."""
     cutoff = timezone.now() - timedelta(hours=12)
-    expired = KillSubmission.objects.filter(submitted_at__lte=cutoff).exclude(
-        status=KillSubmission.Status.PENDING
-    ).only(
+    # Evidence files expire 12 hours after submission even if the review is still pending.
+    # Keep the database row, AI notes, UID and review status for audit; only remove media.
+    expired = KillSubmission.objects.filter(submitted_at__lte=cutoff).only(
         "id", "history_video", "history_image_one", "history_image_two"
     )
     for submission in expired.iterator():
@@ -502,6 +502,24 @@ def admin_kill_review(request):
     submission_id = request.GET.get("submission")
     if submission_id and str(submission_id).isdigit():
         submissions = submissions.filter(pk=int(submission_id))
+
+    # Do not render broken media links that return 404 when a deployment's
+    # media storage no longer has the uploaded file.
+    for item in submissions:
+        for field_name, flag_name in (
+            ("history_video", "history_video_available"),
+            ("history_image_one", "history_image_one_available"),
+            ("history_image_two", "history_image_two_available"),
+        ):
+            media = getattr(item, field_name)
+            available = False
+            if media and media.name:
+                try:
+                    available = media.storage.exists(media.name)
+                except (OSError, ValueError):
+                    available = False
+            setattr(item, flag_name, available)
+
     return render(request, "tournaments/admin_kill_review.html", {
         "submissions": submissions,
         "selected_tournament_id": tournament_id or "",

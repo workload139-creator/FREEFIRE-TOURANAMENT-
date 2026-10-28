@@ -135,9 +135,24 @@ class ShopPaymentRequestAdmin(admin.ModelAdmin):
     list_display = ("user", "product", "quantity", "amount", "payment_reference", "status", "created_at", "reviewed_by")
     list_filter = ("status", "product", "created_at")
     search_fields = ("user__username", "payment_reference")
-    readonly_fields = ("user", "product", "quantity", "amount", "payment_reference", "payment_screenshot", "created_at", "reviewed_at", "reviewed_by")
-    fields = ("user", "product", "quantity", "amount", "payment_reference", "payment_screenshot", "status", "admin_note", "created_at", "reviewed_at", "reviewed_by")
+    readonly_fields = ("user", "product", "quantity", "amount", "payment_reference", "payment_screenshot_preview", "payment_screenshot", "created_at", "reviewed_at", "reviewed_by")
+    fields = ("user", "product", "quantity", "amount", "payment_reference", "payment_screenshot_preview", "payment_screenshot", "status", "admin_note", "created_at", "reviewed_at", "reviewed_by")
     actions = (approve_shop_payments, reject_shop_payments)
+
+    @admin.display(description="Player's uploaded payment screenshot")
+    def payment_screenshot_preview(self, obj):
+        if not obj or not obj.payment_screenshot:
+            return "No screenshot was uploaded."
+        try:
+            if not obj.payment_screenshot.storage.exists(obj.payment_screenshot.name):
+                return "Screenshot record exists, but the file is missing from media storage."
+            url = obj.payment_screenshot.url
+            return format_html(
+                '<a href="{}" target="_blank" rel="noopener"><img src="{}" alt="Payment proof screenshot" style="max-width:520px;max-height:520px;object-fit:contain;background:#fff;padding:6px;border-radius:8px"></a><p><a href="{}" target="_blank" rel="noopener">Open full-size screenshot</a></p>',
+                url, url, url,
+            )
+        except (ValueError, OSError):
+            return "Screenshot uploaded, but media storage could not serve it."
 
 
 @admin.action(description="Confirm PAID after sending actual UPI money and entering reference")
