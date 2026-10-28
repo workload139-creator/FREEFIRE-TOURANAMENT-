@@ -33,6 +33,7 @@ public class MainActivity extends Activity {
     private LinearLayout root;
     private LinearLayout content;
     private LinearLayout bottomNav;
+    private LinearLayout tournamentResults;
     private WebView featureWebView;
     private String currentTab = "Home";
 
@@ -127,7 +128,9 @@ public class MainActivity extends Activity {
                 filters.addView(filter, fp);
             }
             content.addView(filters);
-            addNote("Loading tournaments from the FF Arena server…");
+            tournamentResults = new LinearLayout(this);
+            tournamentResults.setOrientation(LinearLayout.VERTICAL);
+            content.addView(tournamentResults, new LinearLayout.LayoutParams(-1, -2));
             loadTournamentCards("");
             addActionRow("My registrations", "See joined matches and room updates", "/tournaments/my-registrations/");
             addActionRow("Results", "Completed matches and standings", "/tournaments/results/");
@@ -155,6 +158,9 @@ public class MainActivity extends Activity {
     }
 
     private void loadTournamentCards(String mode) {
+        if (tournamentResults == null) return;
+        tournamentResults.removeAllViews();
+        addNoteToResults("Loading tournaments from the FF Arena server…");
         final String endpoint = BASE_URL + "/tournaments/api/" + (mode.isEmpty() ? "" : "?mode=" + mode);
         new Thread(() -> {
             HttpURLConnection connection = null;
@@ -187,25 +193,28 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> {
                 if (!"Matches".equals(currentTab)) return;
                 if (json == null) {
-                    addNote(failure == null ? "Tournament data is temporarily unavailable." : failure);
+                    tournamentResults.removeAllViews();
+                    addNoteToResults(failure == null ? "Tournament data is temporarily unavailable." : failure);
                     return;
                 }
                 try {
                     JSONObject payload = new JSONObject(json);
                     JSONArray results = payload.optJSONArray("results");
+                    tournamentResults.removeAllViews();
                     if (results == null || results.length() == 0) {
-                        addNote("No tournaments are listed right now. Please check again soon.");
+                        addNoteToResults("No tournaments are listed right now. Please check again soon.");
                         return;
                     }
                     TextView count = text(results.length() + " TOURNAMENTS", 11, ORANGE, true);
                     count.setPadding(0, dp(4), 0, dp(10));
-                    content.addView(count, Math.min(2, content.getChildCount()));
+                    tournamentResults.addView(count);
                     for (int i = 0; i < results.length(); i++) {
                         JSONObject item = results.optJSONObject(i);
                         if (item != null) addTournamentCard(item);
                     }
                 } catch (Exception exception) {
-                    addNote("Tournament data could not be read. Please try again later.");
+                    tournamentResults.removeAllViews();
+                    addNoteToResults("Tournament data could not be read. Please try again later.");
                 }
             });
         }).start();
@@ -241,7 +250,14 @@ public class MainActivity extends Activity {
         card.addView(open, new LinearLayout.LayoutParams(-1, dp(44)));
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
         p.bottomMargin = dp(12);
-        content.addView(card, p);
+        tournamentResults.addView(card, p);
+    }
+
+    private void addNoteToResults(String message) {
+        TextView note = text(message, 12, MUTED, false);
+        note.setPadding(dp(15), dp(14), dp(15), dp(14));
+        note.setBackground(background(new int[]{PANEL, PANEL}, dp(14), Color.rgb(48, 57, 75)));
+        tournamentResults.addView(note);
     }
 
     private void addHero() {
