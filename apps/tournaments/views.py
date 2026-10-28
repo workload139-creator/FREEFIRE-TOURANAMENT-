@@ -625,27 +625,27 @@ def review_kill_submission(request, submission_id):
             submission.admin_notes = notes
             submission.reviewed_at = timezone.now()
             submission.save(update_fields=["status", "admin_notes", "reviewed_at"])
-            messages.success(request, "Submission reject kar di gayi.")
-            return redirect("tournaments:admin_kill_review")
+            messages.success(request, "Submission reject kar di gayi. Status AI Assessment Queue mein update ho gaya hai.")
+            return redirect("tournaments:admin_ai_assessments")
 
         if decision != "approve":
             messages.error(request, "Valid review action select karo.")
-            return redirect("tournaments:admin_kill_review")
+            return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
 
         try:
             approved_kills = int(request.POST.get("approved_kills", ""))
         except (TypeError, ValueError):
             messages.error(request, "Approved kills ek valid whole number hona chahiye.")
-            return redirect("tournaments:admin_kill_review")
+            return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
         if approved_kills < 0 or approved_kills > 99:
             messages.error(request, "Approved kills 0 se 99 ke beech hone chahiye.")
-            return redirect("tournaments:admin_kill_review")
+            return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
         if (
             submission.free_fire_uid != submission.registered_uid
             or submission.registered_uid != submission.registration.free_fire_uid
         ):
             messages.error(request, "UID mismatch hai; payout eligibility roki gayi.")
-            return redirect("tournaments:admin_kill_review")
+            return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
 
         submission.approved_kills = approved_kills
         reward_per_kill = Decimal(str(settings.DIAMONDS_PER_APPROVED_KILL))
@@ -689,7 +689,7 @@ def review_kill_submission(request, submission_id):
         request,
         f"Admin confirmation complete: {approved_kills} kills approved; {int(submission.approved_reward)} Diamonds credited to the player shop wallet. Diamonds are not an automatic INR/UPI payout.",
     )
-    return redirect("tournaments:admin_kill_review")
+    return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
 
 
 def results(request):
