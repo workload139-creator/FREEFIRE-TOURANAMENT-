@@ -35,6 +35,7 @@ def unseed_free_fan_tournament(apps, schema_editor):
 class Migration(migrations.Migration):
     dependencies = [
         ("tournaments", "0007_free_fan_tournament"),
+        ("tournaments", "0007_tournament_gender_category"),
     ]
 
     operations = [
