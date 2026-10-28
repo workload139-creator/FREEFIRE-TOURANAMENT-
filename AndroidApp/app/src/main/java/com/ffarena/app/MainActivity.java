@@ -136,17 +136,23 @@ public class MainActivity extends Activity {
             addActionRow("Results", "Completed matches and standings", "/tournaments/results/");
             addActionRow("Free tournaments", "Explore free-to-enter events", "/tournaments/free-tournament/");
         } else if ("Wallet".equals(currentTab)) {
-            addSectionTitle("PLAYER WALLET", "Manage your account balance");
-            addFeatureCard("Wallet & transactions", "View balance and wallet history", "Open wallet", "/accounts/wallet/");
-            addFeatureCard("Add funds", "See available deposit options", "Deposit options", "/accounts/wallet/deposit/");
-            addFeatureCard("Withdraw", "Manage withdrawal request and payout details", "Withdrawal options", "/accounts/wallet/withdraw/");
-            addNote("Payments and withdrawals are handled by the secure FF Arena account system. Never share your UPI PIN or OTP.");
+            addSectionTitle("PLAYER WALLET", "Your live wallet balance and recent transactions");
+            tournamentResults = new LinearLayout(this);
+            tournamentResults.setOrientation(LinearLayout.VERTICAL);
+            content.addView(tournamentResults, new LinearLayout.LayoutParams(-1, -2));
+            addFeatureCard("Add funds", "Use the available secure deposit options", "Deposit options", "/accounts/wallet/deposit/");
+            addFeatureCard("Withdraw", "Manage your withdrawal request and payout details", "Withdrawal options", "/accounts/wallet/withdraw/");
+            addNote("Never share your UPI PIN or OTP. Wallet balance is shown from the FF Arena account ledger.");
+            loadWalletData();
         } else {
-            addSectionTitle("PLAYER PROFILE", "Your FF Arena account");
+            addSectionTitle("PLAYER PROFILE", "Your FF Arena account details");
+            tournamentResults = new LinearLayout(this);
+            tournamentResults.setOrientation(LinearLayout.VERTICAL);
+            content.addView(tournamentResults, new LinearLayout.LayoutParams(-1, -2));
             addFeatureCard("Login / Register", "Sign in or create your player account", "Open account", "/login/");
-            addFeatureCard("My profile", "Profile details and player information", "View profile", "/accounts/profile/");
             addFeatureCard("Edit profile", "Update your player details", "Edit profile", "/accounts/profile/edit/");
             addFeatureCard("Password & settings", "Manage your account settings", "Account settings", "/accounts/settings/");
+            loadPlayerProfile();
         }
         if (bottomNav != null) {
             for (int i = 0; i < bottomNav.getChildCount(); i++) {
@@ -258,6 +264,118 @@ public class MainActivity extends Activity {
         note.setPadding(dp(15), dp(14), dp(15), dp(14));
         note.setBackground(background(new int[]{PANEL, PANEL}, dp(14), Color.rgb(48, 57, 75)));
         tournamentResults.addView(note);
+    }
+
+    private JSONObject fetchJson(String path) throws Exception {
+        HttpURLConnection connection = null;
+        try {
+            connection = (HttpURLConnection) new URL(BASE_URL + path).openConnection();
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(10000);
+            connection.setRequestProperty("Accept", "application/json");
+            String cookies = CookieManager.getInstance().getCookie(BASE_URL);
+            if (cookies != null && !cookies.isEmpty()) connection.setRequestProperty("Cookie", cookies);
+            int status = connection.getResponseCode();
+            InputStream stream = status >= 200 && status < 300
+                    ? connection.getInputStream() : connection.getErrorStream();
+            if (stream == null) throw new IllegalStateException("HTTP " + status);
+            StringBuilder body = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream))) {
+                String line;
+                while ((line = reader.readLine()) != null) body.append(line);
+            }
+            if (status == 401) throw new SecurityException("Please log in to your FF Arena account.");
+            if (status < 200 || status >= 300) throw new IllegalStateException("Server returned HTTP " + status);
+            return new JSONObject(body.toString());
+        } finally {
+            if (connection != null) connection.disconnect();
+        }
+    }
+
+    private void loadPlayerProfile() {
+        if (tournamentResults == null) return;
+        addNoteToResults("Loading your profile…");
+        new Thread(() -> {
+            JSONObject data = null;
+            String error = null;
+            try { data = fetchJson("/accounts/api/me/"); }
+            catch (Exception exception) { error = exception.getMessage(); }
+            final JSONObject result = data;
+            final String failure = error;
+            runOnUiThread(() -> {
+                if (!"Profile".equals(currentTab) || tournamentResults == null) return;
+                tournamentResults.removeAllViews();
+                if (result == null) {
+                    addNoteToResults(failure == null ? "Profile could not be loaded." : failure);
+                    return;
+                }
+                JSONObject p = result.optJSONObject("profile");
+                if (p == null) { addNoteToResults("Profile data is unavailable."); return; }
+                addAccountInfo("PLAYER", p.optString("username", "Player"));
+                addAccountInfo("EMAIL", p.optString("email", "Not added"));
+                addAccountInfo("PHONE", p.optString("phone_number", "Not added")
+                        + (p.optBoolean("phone_verified") ? "  •  Verified" : ""));
+                addAccountInfo("FREE FIRE UID", p.optString("free_fire_uid", "Not added")
+                        + (p.optBoolean("uid_verified") ? "  •  Verified" : ""));
+            });
+        }).start();
+    }
+
+    private void loadWalletData() {
+        if (tournamentResults == null) return;
+        addNoteToResults("Loading wallet balance…");
+        new Thread(() -> {
+            JSONObject data = null;
+            String error = null;
+            try { data = fetchJson("/accounts/api/wallet/"); }
+            catch (Exception exception) { error = exception.getMessage(); }
+            final JSONObject result = data;
+            final String failure = error;
+            runOnUiThread(() -> {
+                if (!"Wallet".equals(currentTab) || tournamentResults == null) return;
+                tournamentResults.removeAllViews();
+                if (result == null) {
+                    addNoteToResults(failure == null ? "Wallet could not be loaded." : failure);
+                    return;
+                }
+                JSONObject wallet = result.optJSONObject("wallet");
+                if (wallet == null) { addNoteToResults("Wallet data is unavailable."); return; }
+                addAccountInfo("AVAILABLE BALANCE", "₹" + wallet.optString("balance", "0.00"));
+                addAccountInfo("WALLET ID", wallet.optString("wallet_id", "—"));
+                JSONArray transactions = result.optJSONArray("transactions");
+                if (transactions == null || transactions.length() == 0) {
+                    addNoteToResults("No wallet transactions yet.");
+                } else {
+                    TextView heading = text("RECENT TRANSACTIONS", 12, ORANGE, true);
+                    heading.setPadding(0, dp(12), 0, dp(8));
+                    tournamentResults.addView(heading);
+                    for (int i = 0; i < transactions.length(); i++) {
+                        JSONObject item = transactions.optJSONObject(i);
+                        if (item == null) continue;
+                        String description = item.optString("description", "");
+                        if (description.isEmpty()) description = item.optString("type", "Transaction").replace('_', ' ');
+                        addAccountInfo(description.toUpperCase(),
+                                "₹" + item.optString("amount", "0.00") + "  •  " + item.optString("status", ""));
+                    }
+                }
+            });
+        }).start();
+    }
+
+    private void addAccountInfo(String label, String value) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(15), dp(12), dp(15), dp(12));
+        card.setBackground(background(new int[]{PANEL, PANEL}, dp(13), Color.rgb(48, 57, 75)));
+        TextView key = text(label, 10, ORANGE, true);
+        TextView val = text(value, 15, Color.WHITE, true);
+        val.setPadding(0, dp(4), 0, 0);
+        card.addView(key);
+        card.addView(val);
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
+        p.bottomMargin = dp(9);
+        tournamentResults.addView(card, p);
     }
 
     private void addHero() {
