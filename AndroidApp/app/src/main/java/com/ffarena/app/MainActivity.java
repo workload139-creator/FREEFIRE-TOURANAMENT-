@@ -1,6 +1,10 @@
 package com.ffarena.app;
 
 import android.app.Activity;
+import android.app.DownloadManager;
+import android.content.Context;
+import android.os.Environment;
+import android.widget.Toast;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
@@ -128,10 +132,30 @@ public class MainActivity extends Activity {
 
         webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
             try {
-                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                startActivity(intent);
-            } catch (ActivityNotFoundException ignored) {
-                // Keep the current page open if Android has no handler for this download.
+                Uri downloadUri = Uri.parse(url);
+                String path = downloadUri.getLastPathSegment() == null ? "" : downloadUri.getLastPathSegment();
+                if (path.toLowerCase().endsWith(".apk")) {
+                    DownloadManager.Request request = new DownloadManager.Request(downloadUri);
+                    request.setTitle("FF Arena Android App");
+                    request.setDescription("Downloading FF Arena. Tap the completed download notification to install.");
+                    request.setMimeType("application/vnd.android.package-archive");
+                    request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                    request.setAllowedOverMetered(true);
+                    request.setAllowedOverRoaming(false);
+                    request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "FF-Arena.apk");
+                    DownloadManager manager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+                    if (manager != null) {
+                        manager.enqueue(request);
+                        Toast.makeText(MainActivity.this, "APK download started. Open the completed download notification to install.", Toast.LENGTH_LONG).show();
+                    } else {
+                        Toast.makeText(MainActivity.this, "Download manager is unavailable. Open the APK link in your browser.", Toast.LENGTH_LONG).show();
+                    }
+                } else {
+                    Intent intent = new Intent(Intent.ACTION_VIEW, downloadUri);
+                    startActivity(intent);
+                }
+            } catch (ActivityNotFoundException | IllegalArgumentException exception) {
+                Toast.makeText(MainActivity.this, "Could not start download. Please try in your browser.", Toast.LENGTH_LONG).show();
             }
         });
 
