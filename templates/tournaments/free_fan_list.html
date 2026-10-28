@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Free Fan Tournament | FF Arena{% endblock %}
+{% block content %}
+<section class="free-arena">
+  <header class="free-hero">
+    <span class="kicker">FF ARENA · DAILY FREE MODE</span>
+    <h1>🎁 Free Fan <span>Arena</span></h1>
+    <p>Entry free hai. Har round mein 49 players. Koi date ya scheduled start nahi — 49 verified registrations hote hi LIVE.</p>
+    <div class="reward-pills"><span>🎯 Har 2 verified kills = 1 Fan Token</span><span>🏆 Winner = 20 Coins</span><span>🛡️ Same AI evidence assessment</span></div>
+  </header>
+  {% if recent_entry %}<div class="cooldown">⏳ Aapne pichhle 24 ghante mein free tournament entry le li hai. Agli entry 24-hour cooldown ke baad available hogi.</div>{% endif %}
+  <div class="round-grid">
+  {% for tournament in tournaments %}
+    <article class="round-card">
+      <div class="round-top"><span>🎁 FREE BR</span>{% if tournament.status == "live" %}<strong class="live">● LIVE</strong>{% else %}<strong class="waiting">● WAITING FOR PLAYERS</strong>{% endif %}</div>
+      <h2>{{ tournament.title }}</h2>
+      <p>{{ tournament.description|default:"Battle Royale free round — apna gameplay prove karo." }}</p>
+      <div class="stats"><div><small>Entry</small><b>FREE</b></div><div><small>Players</small><b>{{ tournament.confirmed_players_count }}/49</b></div><div><small>Winner prize</small><b>{{ tournament.winner_coins_prize }} Coins</b></div></div>
+      <p class="rule">Kill proof: 15–30 second match-history/gameplay video + 2 clear screenshots. UID must match your registered Free Fire UID. AI assesses evidence; unclear/disagreeing cases stay in admin review.</p>
+      <div class="actions"><a class="button button-primary" href="{% url 'tournaments:detail' tournament.pk %}">View / Register</a><a class="button button-outline" href="{% url 'tournaments:leaderboard' tournament.pk %}">Leaderboard</a></div>
+    </article>
+  {% empty %}
+    <article class="round-card empty"><h2>Free Arena ready hone wali hai</h2><p>Admin panel ke <strong>Free Fan Tournaments</strong> section se pehla round create karein. Round date ke bina waiting list mein rahega aur 49 verified players hote hi LIVE ho jayega.</p></article>
+  {% endfor %}
+  </div>
+  <section class="history-guide">
+    <h2>📸 Free Fire match-history screenshot kaisi honi chahiye?</h2>
+    <ul>
+      <li>Free Fire ke apne in-game match history/results screen ka original screenshot ho.</li>
+      <li>Player name/UID aur match result readable hon; kill count blur, crop ya edit na ho.</li>
+      <li>Do clear screenshots upload karein jo same match/result ko support karein.</li>
+      <li>Video original 15–30 seconds ka ho; video aur screenshots mein UID/result ek doosre se match karein.</li>
+      <li>Fake, edited, duplicate ya kisi aur player ki evidence reject ho sakti hai. AI result proposal hai; unclear evidence manual review mein jayega.</li>
+    </ul>
+    <p>Fan Tokens aur Coins non-cash website currency hain; ye UPI/cash withdrawal balance nahi hain.</p>
+  </section>
+</section>
+<style>
+.free-arena{max-width:1180px;margin:34px auto 70px;padding:clamp(14px,3vw,28px);color:#f5f8ff}.free-hero{padding:clamp(24px,5vw,48px);border:1px solid #49ffc34d;border-radius:26px;background:radial-gradient(ellipse at 10% 0%,#39ffc322,transparent 40%),linear-gradient(130deg,#071b1c,#10122b 72%,#210f2c);box-shadow:0 24px 70px #0005}.kicker{color:#62ffd0;font-weight:950;letter-spacing:3px;font-size:11px}.free-hero h1{font-size:clamp(36px,7vw,64px);line-height:1.05;margin:14px 0}.free-hero h1 span{color:#62ffd0}.free-hero p{max-width:760px;color:#c5d2e1}.reward-pills{display:flex;flex-wrap:wrap;gap:9px;margin-top:22px}.reward-pills span{padding:9px 12px;border:1px solid #ffffff26;background:#071014aa;border-radius:999px;font-size:12px;font-weight:800}.cooldown{margin:20px 0;padding:16px;border:1px solid #ffca6a70;border-radius:14px;background:#2b1d0b;color:#ffe2a7}.round-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:18px;margin:24px 0}.round-card{padding:22px;border:1px solid #4bffc044;border-radius:20px;background:linear-gradient(145deg,#111d2a,#080e16);box-shadow:0 16px 42px #0004}.round-top{display:flex;justify-content:space-between;gap:12px;align-items:center;color:#6dffd0;font-size:11px;font-weight:950;letter-spacing:1px}.live{color:#ff6d8a}.waiting{color:#ffd477}.round-card h2{font-size:25px;margin:16px 0 8px}.round-card p{color:#b9c8d9}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:18px 0}.stats div{padding:12px 9px;background:#060b12;border-radius:11px;border:1px solid #ffffff0c}.stats small,.stats b{display:block}.stats small{font-size:10px;color:#9caec1}.stats b{margin-top:6px;font-size:14px}.rule{font-size:12px;line-height:1.65}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}.actions a{flex:1;text-align:center}.empty{border-style:dashed}.history-guide{padding:24px;border:1px solid #b486ff44;border-radius:20px;background:linear-gradient(130deg,#171128,#0b111b)}.history-guide h2{margin-top:0}.history-guide li{margin:10px 0;color:#d2d9e7;line-height:1.6}.history-guide p{color:#aebbd0;font-size:13px}@media(max-width:600px){.round-card{padding:17px}.actions a{flex-basis:100%}}
+</style>
+{% endblock %}
