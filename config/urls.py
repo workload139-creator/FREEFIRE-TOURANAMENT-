@@ -2,7 +2,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
-from django.http import HttpResponseForbidden
+from django.http import HttpResponse, HttpResponseForbidden
 from django.urls import include, path, re_path
 from django.views.static import serve
 
@@ -34,7 +34,21 @@ def media_file_serve(request, path):
     return serve(request, normalized_path, document_root=settings.MEDIA_ROOT)
 
 
+def google_site_verification(request):
+    """Return the exact response body from Google's HTML verification file."""
+    return HttpResponse(
+        "google-site-verification: google29838d405c156c07.html",
+        content_type="text/plain; charset=utf-8",
+    )
+
+
 urlpatterns = [
+    # Google Search Console HTML-file ownership verification.
+    path(
+        "google29838d405c156c07.html",
+        google_site_verification,
+        name="google_site_verification",
+    ),
     # Profile pictures are public profile media; keep their existing route.
     re_path(
         r"^media/player_profiles/(?P<path>.*)$",
