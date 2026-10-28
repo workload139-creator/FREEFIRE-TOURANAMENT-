@@ -1563,10 +1563,18 @@ class KillSubmissionAdmin(admin.ModelAdmin):
     # Keep the changelist compact; full evidence, player details, AI notes and payout data
     # are grouped on the dedicated review page opened from the last column.
     list_display = (
-        "id", "player", "tournament", "mode_label", "status",
-        "ai_proposed_kills", "approved_kills", "ai_confidence",
-        "submitted_at", "open_manual_review",
+        "id", "player", "player_profile_id", "player_phone", "tournament",
+        "mode_label", "registered_uid", "free_fire_uid", "status",
+        "kills_summary", "ai_confidence", "submitted_at", "open_manual_review",
     )
+
+    @admin.display(description="AI / Approved kills")
+    def kills_summary(self, obj):
+        if obj.approved_kills is not None:
+            return f"Approved: {obj.approved_kills}"
+        if obj.ai_proposed_kills is not None:
+            return f"AI: {obj.ai_proposed_kills}"
+        return "AI not run yet"
 
     @admin.display(description="Mode")
     def mode_label(self, obj):
