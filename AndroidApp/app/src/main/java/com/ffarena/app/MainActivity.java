@@ -122,6 +122,8 @@ public class MainActivity extends Activity {
             addSectionTitle("PLAYER ZONE", "Everything for your account");
             addActionRow("My registrations", "Track your joined matches", "/tournaments/my-registrations/");
             addActionRow("AI Tournament Assistant", "Get help about FF Arena tournaments", "/assistant/");
+            addActionRow("Learn more about FF Arena", "How tournaments, profiles and fair play work", "/about/");
+            addActionRow("Help & Support", "Get help with your account or tournaments", "/support/");
         } else if ("Matches".equals(currentTab)) {
             addSectionTitle("TOURNAMENTS", "Live tournament data from FF Arena");
             LinearLayout filters = new LinearLayout(this);
@@ -485,8 +487,16 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(false);
         settings.setSupportZoom(false);
         CookieManager.getInstance().setAcceptCookie(true);
-        featureWebView.setWebViewClient(new WebViewClient());
+        featureWebView.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView view, String finishedUrl) {
+                super.onPageFinished(view, finishedUrl);
+                // Persist the website session so users usually stay signed in after reopening the app.
+                CookieManager.getInstance().flush();
+            }
+        });
         featureWebView.setWebChromeClient(new WebChromeClient());
+        CookieManager.getInstance().setAcceptThirdPartyCookies(featureWebView, true);
         featureWebView.loadUrl(url);
         page.addView(featureWebView, new LinearLayout.LayoutParams(-1, 0, 1));
         root.addView(page, new LinearLayout.LayoutParams(-1, -1));
@@ -539,7 +549,14 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onPause() {
+        CookieManager.getInstance().flush();
+        super.onPause();
+    }
+
+    @Override
     protected void onDestroy() {
+        CookieManager.getInstance().flush();
         if (featureWebView != null) {
             featureWebView.stopLoading();
             featureWebView.destroy();
