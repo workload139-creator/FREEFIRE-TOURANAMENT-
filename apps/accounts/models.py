@@ -32,6 +32,14 @@ class User(AbstractUser):
     last_seen = models.DateTimeField(null=True, blank=True, db_index=True)
 
     @property
+    def arena_player_id(self):
+        """Stable six-digit public player ID that does not expose sequential database IDs."""
+        if not self.pk:
+            return "FF-000000"
+        number = ((int(self.pk) * 7919 + 104729) % 900000) + 100000
+        return f"FF-{number:06d}"
+
+    @property
     def is_online(self):
         return self.last_seen is not None and timezone.now() - self.last_seen <= timedelta(minutes=2)
 
