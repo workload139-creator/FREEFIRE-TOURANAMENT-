@@ -256,6 +256,10 @@ def _eligible_players(room, round_number):
 
 
 def start_party_game(room, round_number=1):
+    if round_number == 1 and room.game_status == "finished":
+        room.game_answers.all().delete()
+        room.game_winner = None
+        room.reward_awarded = False
     if room.game_status == "break" and "DRAW" in (room.game_result or "").upper():
         room.game_answers.filter(round_number=round_number).delete()
     room.game_round = round_number
