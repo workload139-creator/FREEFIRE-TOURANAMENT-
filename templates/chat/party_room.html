@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ room.title }} | FF Arena Party{% endblock %}
 {% block extra_css %}<style>
-.party-room{max-width:1050px;margin:28px auto;padding:0 15px;color:#f6f7ff}.room-head{padding:22px;border-radius:20px;background:linear-gradient(135deg,#1c1834,#0b1722);border:1px solid #ad8cff55}.room-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(220px,1fr);gap:16px;margin-top:16px}.room-box{padding:18px;border:1px solid #ffffff20;border-radius:16px;background:#0e1420;min-width:0}.room-messages{height:360px;overflow:auto;display:flex;flex-direction:column;gap:9px;margin:12px 0}.room-msg{padding:10px 12px;border-radius:12px;background:#182335;overflow-wrap:anywhere}.room-msg small{display:block;color:#bdc7dc;font-size:.75rem;margin-bottom:3px}.room-form{display:flex;gap:8px}.room-form input,.room-box select{min-width:0;width:100%;padding:11px;border-radius:9px;background:#090e17;color:#fff;border:1px solid #38445b}.room-members{display:grid;gap:8px}.room-member{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:9px;background:#141d2c;border-radius:10px}.room-note{font-size:.82rem;color:#aebbd0;line-height:1.5}@media(max-width:720px){.room-layout{grid-template-columns:1fr}.room-messages{height:300px}}
+.party-room{--room-lime:#b6ff39;--room-mint:#3cf2b0;max-width:1120px;margin:28px auto 54px;padding:0 15px;color:#f6fff8}.room-head{position:relative;overflow:hidden;padding:clamp(22px,4vw,38px);border-radius:24px;background:radial-gradient(ellipse at 90% 10%,#b6ff3922,transparent 34%),radial-gradient(ellipse at 100% 100%,#3cf2b022,transparent 40%),linear-gradient(125deg,#121d20,#0b121a 55%,#10231c);border:1px solid #b6ff3955;box-shadow:0 18px 55px #0006}.room-head h1{font-size:clamp(1.8rem,5vw,3rem);letter-spacing:-.035em;margin:13px 0 8px}.room-head a{color:var(--room-lime);text-decoration:none;font-weight:800}.room-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(240px,1fr);gap:16px;margin-top:16px}.room-box{padding:clamp(15px,3vw,22px);border:1px solid #ffffff18;border-radius:19px;background:linear-gradient(145deg,#111b24,#0c131b);box-shadow:0 14px 38px #0003;min-width:0}.room-box h2{color:#f5fff6;font-size:1.15rem;margin-top:0}.room-box button{border-radius:11px;min-height:42px;font-weight:800}.room-box .button-primary{background:linear-gradient(110deg,#c5ff56,#8be52e);border-color:#b6ff39;color:#111a0b}.room-box .button-outline{border-color:#b6ff3955;color:#eaffd7}.room-layout .room-box:first-child{border-color:#b6ff3930}.room-layout aside.room-box{background:linear-gradient(145deg,#111c25,#101820)}.room-messages{height:360px;overflow:auto;display:flex;flex-direction:column;gap:9px;margin:12px 0}.room-msg{padding:11px 13px;border-radius:12px;background:linear-gradient(110deg,#16242b,#182335);border:1px solid #ffffff0b;overflow-wrap:anywhere}.room-msg small{display:block;color:#bdc7dc;font-size:.75rem;margin-bottom:3px}.room-form{display:flex;gap:8px}.room-form input,.room-box select{min-width:0;width:100%;padding:11px;border-radius:9px;background:#090e17;color:#fff;border:1px solid #38445b}.room-members{display:grid;gap:8px}.room-member{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:10px;background:linear-gradient(110deg,#16242b,#141d2c);border:1px solid #ffffff0c;border-radius:11px}.room-note{font-size:.82rem;color:#aebbd0;line-height:1.5}@media(max-width:720px){.room-layout{grid-template-columns:1fr}.room-messages{height:300px}.room-form{flex-wrap:wrap}.room-form button{width:100%}}
 </style>{% endblock %}
 {% block content %}
 <section class="party-room">
@@ -15,10 +15,11 @@
   {% else %}
   <div class="room-layout">
     <section class="room-box"><h2>💬 Live Room Chat</h2><div class="room-messages" id="partyMessages" data-poll-url="{% url 'chat:party_poll' room.pk %}" data-last-id="{{ room_messages|last|default_if_none:'' }}">{% for item in room_messages %}<article class="room-msg" data-message-id="{{ item.pk }}"><small>{{ item.sender.username }} · {{ item.created_at|date:"H:i" }}</small>{{ item.body }}</article>{% empty %}<p class="room-note">Pehla message bhejo!</p>{% endfor %}</div><form method="post" class="room-form">{% csrf_token %}<input type="hidden" name="action" value="message"><input name="body" maxlength="1000" placeholder="Room mein message likho..." required><button class="button button-primary" type="submit">Send</button></form>
-    <section class="room-box" id="partyVoice" style="margin-top:16px" data-token-url="{% url 'chat:party_voice_token' room.pk %}">
+    <section class="room-box" id="partyVoice" style="margin-top:16px;border-color:#b6ff3955;background:radial-gradient(ellipse at 100% 0%,#b6ff3912,transparent 45%),linear-gradient(145deg,#111e23,#0c131b)" data-token-url="{% url 'chat:party_voice_token' room.pk %}">
       <h2>🎙️ Group Voice</h2>
       <p class="room-note">Mic on karne ke baad room ke members aapki awaaz sun sakenge. Browser/Android app mein microphone permission allow karein.</p>
-      <p id="partyVoiceStatus" role="status" aria-live="polite">Voice abhi connect nahi hai.</p>
+      <p id="partyVoiceStatus" role="status" aria-live="polite">Voice abhi connect nahi hai. Mic ke liye button dabayein aur browser/app permission allow karein.</p>
+      <p class="room-note">Agar Live voice configure nahi hai, admin ko LIVEKIT_URL, LIVEKIT_API_KEY aur LIVEKIT_API_SECRET Render environment variables mein set karne honge.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="button button-primary" type="button" id="partyVoiceJoin">Join voice + Mic on</button>
         <button class="button button-outline" type="button" id="partyVoiceMute" disabled>Mute mic</button>
@@ -71,12 +72,19 @@ import { Room, RoomEvent, Track } from "https://cdn.jsdelivr.net/npm/livekit-cli
         credentials: "same-origin"
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Voice token nahi mila.");
+      if (!response.ok) throw new Error(data.error || (response.status === 403
+        ? "Pehle party room join karein."
+        : response.status === 503
+          ? "Live voice server configured nahi hai. Admin ko LiveKit setup karna hoga."
+          : "Voice token nahi mila (HTTP " + response.status + ")."));
+      if (!data.url || !data.token) throw new Error("Voice server URL/token missing hai. Admin LiveKit configuration check karein.");
       room = new Room({adaptiveStream: true, dynacast: true});
       room.on(RoomEvent.TrackSubscribed, (track) => attachAudio(track));
       room.on(RoomEvent.ParticipantConnected, (participant) => say(participant.name + " voice room mein aa gaye."));
       room.on(RoomEvent.ParticipantDisconnected, (participant) => say(participant.name + " voice room se chale gaye."));
-      room.on(RoomEvent.Disconnected, () => { renderState(false); say("Voice disconnect ho gaya."); });
+      room.on(RoomEvent.Disconnected, () => { renderState(false); say("Voice disconnect ho gaya. Dobara join kar sakte hain."); });
+      room.on(RoomEvent.MediaDevicesError, (error) => say("Microphone device error: " + (error?.message || "device unavailable")));
+      room.on(RoomEvent.ConnectionStateChanged, (state) => say("Voice connection: " + state));
       await room.connect(data.url, data.token);
       await room.localParticipant.setMicrophoneEnabled(true);
       muted = false;
@@ -86,7 +94,14 @@ import { Room, RoomEvent, Track } from "https://cdn.jsdelivr.net/npm/livekit-cli
     } catch (error) {
       if (room) { try { await room.disconnect(); } catch (_) {} room = null; }
       renderState(false);
-      say(error.message || "Voice connect nahi hua. Microphone permission aur LiveKit settings check karein.");
+      const message = error && error.message ? error.message : "Unknown error";
+      if (/permission|denied|notallowed/i.test(message)) {
+        say("Microphone permission denied. Android Settings > Apps > FF Arena > Permissions > Microphone ko Allow karein, phir dobara try karein.");
+      } else if (/livekit|token|url|network|connect|server|configured|http/i.test(message)) {
+        say("Voice connect nahi hua: " + message + " Admin Render par LiveKit settings aur service URL check karein.");
+      } else {
+        say("Voice connect nahi hua: " + message);
+      }
     }
   });
   muteButton.addEventListener("click", async function () {
