@@ -61,41 +61,61 @@ jobs:
           echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/ffarena-upload-key.jks" >> "$GITHUB_ENV"
 
       - name: Validate Android release keystore password
+        id: validate_signing
         shell: bash
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
           if [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ]; then
-            echo "Missing signing password or key alias secret."
-            exit 1
+            echo "valid=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Release signing secrets are missing. The debug APK will still be built."
+          elif keytool -list -keystore "$RUNNER_TEMP/ffarena-upload-key.jks" -storetype PKCS12 -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
+            echo "valid=true" >> "$GITHUB_OUTPUT"
+            echo "Keystore file, store password, and alias validated successfully."
+          else
+            echo "valid=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Keystore validation failed. The debug APK will still be built; update the signing secrets to enable the signed AAB."
           fi
-          if ! keytool -list -keystore "$RUNNER_TEMP/ffarena-upload-key.jks" -storetype PKCS12 -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
-            echo "Keystore validation failed. Check that ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, and ANDROID_KEY_ALIAS belong to the same keystore. Secret values were not printed."
-            exit 1
-          fi
-          echo "Keystore file, store password, and alias validated successfully."
 
-      - name: Build debug APK and signed release AAB
+      - name: Build debug APK
+        working-directory: AndroidApp
+        run: |
+          gradle --no-daemon assembleDebug -PversionCode=${{ github.run_number }}
+
+      - name: Build signed release AAB
+        if: steps.validate_signing.outputs.valid == 'true'
         working-directory: AndroidApp
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          gradle --no-daemon assembleDebug bundleRelease -PversionCode=${{ github.run_number }}
+          if [ -z "$ANDROID_KEY_PASSWORD" ]; then
+            echo "Missing repository secret: ANDROID_KEY_PASSWORD"
+            exit 1
+          fi
+          gradle --no-daemon bundleRelease -PversionCode=${{ github.run_number }}
 
-      - name: Upload Android build artifacts
+      - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ff-arena-android-builds
-          path: |
-            AndroidApp/app/build/outputs/apk/debug/app-debug.apk
-            AndroidApp/app/build/outputs/bundle/release/app-release.aab
+          name: ff-arena-android-apk
+          path: AndroidApp/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload signed AAB artifact
+        if: steps.validate_signing.outputs.valid == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ff-arena-android-aab
+          path: AndroidApp/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 14
 
       - name: Publish APK and AAB download
+        if: steps.validate_signing.outputs.valid == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ff-arena-latest
