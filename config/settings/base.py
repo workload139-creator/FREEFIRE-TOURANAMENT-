@@ -160,6 +160,25 @@ X_FRAME_OPTIONS = "DENY"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
+# Reverse-proxy HTTPS detection for Render; do not trust arbitrary client headers
+# unless requests arrive through the configured trusted platform proxy.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
+SECURE_CROSS_ORIGIN_RESOURCE_POLICY = "same-origin"
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip().rstrip("/")
+    for origin in os.getenv(
+        "DJANGO_CSRF_TRUSTED_ORIGINS",
+        "https://freefire-touranament-74nr.onrender.com",
+    ).split(",")
+    if origin.strip()
+]
+SESSION_COOKIE_AGE = int(os.getenv("DJANGO_SESSION_COOKIE_AGE", "3600"))
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
+
+
 SITE_NAME = os.getenv("SITE_NAME", "FF Tournament")
 SITE_CURRENCY = os.getenv("SITE_CURRENCY", "INR")
 

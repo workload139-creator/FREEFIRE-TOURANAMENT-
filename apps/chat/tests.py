@@ -82,3 +82,92 @@ class ChatGiftTests(TestCase):
         self.receiver_wallet.refresh_from_db()
         self.assertEqual(self.sender_wallet.diamonds, 10)
         self.assertEqual(self.receiver_wallet.diamonds, 0)
+
+
+
+class PartyRoomQuizSecurityTests(TestCase):
+    def setUp(self):
+        from django.utils import timezone
+        from datetime import timedelta
+        from .party_models import PartyRoom, PartyRoomMembership, PartyRoomMessage
+
+        self.owner = User.objects.create_user(username="party_owner", password="test-password-12345")
+        self.guest = User.objects.create_user(username="party_guest", password="test-password-12345")
+        self.room = PartyRoom.objects.create(
+            host=self.owner, title="Private test room", visibility=PartyRoom.Visibility.PRIVATE,
+            passcode="secret-code", max_members=12,
+        )
+        PartyRoomMembership.objects.create(room=self.room, user=self.owner)
+        PartyRoomMessage.objects.create(room=self.room, sender=self.owner, body="private-room-secret-message")
+        self.client.force_login(self.guest)
+
+    def test_private_room_does_not_expose_chat_to_non_member(self):
+        response = self.client.get(reverse("chat:party_room", args=[self.room.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "private-room-secret-message")
+
+    def test_private_room_wrong_passcode_does_not_join(self):
+        response = self.client.post(
+            reverse("chat:party_room", args=[self.room.pk]),
+            {"action": "join", "passcode": "wrong-code"},
+        )
+        self.assertEqual(response.status_code, 302)
+        from .party_models import PartyRoomMembership
+        self.assertFalse(PartyRoomMembership.objects.filter(room=self.room, user=self.guest).exists())
+
+    def test_quiz_winner_reward_is_awarded_only_once(self):
+        from .party_models import PartyRoom
+        from .party_views import _award_quiz_winner
+        from apps.social.models import PlayerShopWallet
+
+        _award_quiz_winner(self.room, self.owner)
+        _award_quiz_winner(self.room, self.owner)
+        wallet = PlayerShopWallet.objects.get(user=self.owner)
+        self.room.refresh_from_db()
+        self.assertEqual(wallet.fan_tokens, 5)
+        self.assertTrue(self.room.reward_awarded)
+        self.assertEqual(self.room.game_winner_id, self.owner.pk)
+
+    def test_timeout_advances_turn_once_and_records_no_correct_answer(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from .party_models import PartyRoom, PartyRoomMembership, PartyRoomGameAnswer
+        from .party_views import advance_party_game
+
+        self.room.visibility = PartyRoom.Visibility.PUBLIC
+        self.room.game_status = "live"
+        self.room.game_round = 1
+        self.room.game_question = "What does BR mean?"
+        self.room.game_answer = "br"
+        self.room.current_turn_player = self.owner
+        self.room.game_deadline = timezone.now() - timedelta(seconds=1)
+        self.room.save()
+        PartyRoomMembership.objects.create(room=self.room, user=self.guest)
+        advance_party_game(self.room)
+        self.room.refresh_from_db()
+        self.assertTrue(PartyRoomGameAnswer.objects.filter(
+            room=self.room, round_number=1, player=self.owner, is_correct=False
+        ).exists())
+        self.assertEqual(self.room.current_turn_player_id, self.guest.pk)
+        self.assertGreater(self.room.game_deadline, timezone.now())
+
+    def test_only_current_turn_player_can_submit_answer(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from .party_models import PartyRoom, PartyRoomMembership, PartyRoomGameAnswer
+
+        self.room.visibility = PartyRoom.Visibility.PUBLIC
+        self.room.game_status = "live"
+        self.room.game_round = 1
+        self.room.game_question = "What does BR mean?"
+        self.room.game_answer = "br"
+        self.room.current_turn_player = self.owner
+        self.room.game_deadline = timezone.now() + timedelta(seconds=30)
+        self.room.save()
+        PartyRoomMembership.objects.create(room=self.room, user=self.guest)
+        response = self.client.post(
+            reverse("chat:party_game_answer", args=[self.room.pk]),
+            {"answer": "battle royale"},
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(PartyRoomGameAnswer.objects.filter(room=self.room, player=self.guest).exists())
