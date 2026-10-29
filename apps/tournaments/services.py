@@ -26,17 +26,9 @@ def mark_not_playing_and_refund(registration_id):
     if timezone.now() < registration.ready_deadline:
         return False, "Confirmation deadline has not passed."
 
-    # Direct UPI entry payments must be refunded by a real UPI transfer, not a wallet credit.
-    if registration.payment_reference and registration.payment_verified:
-        registration.status = Registration.Status.NOT_PLAYING
-        registration.room_details_sent = False
-        registration.refund_processed = False
-        registration.refund_reference = ""
-        registration.save(update_fields=[
-            "status", "room_details_sent", "refund_processed",
-            "refund_reference", "updated_at",
-        ])
-        return True, "Player marked NOT_PLAYING; actual UPI refund is pending admin transfer and UTR entry."
+    if not registration.payment_verified:
+        return False, "Payment is not verified; no refund was credited."
+
 
     if registration.payment_method in ("diamonds", "coins", "fan_tokens") and registration.currency_amount > 0:
         from apps.social.models import PlayerShopWallet
@@ -137,8 +129,7 @@ def cancel_tournament_and_refund(tournament_id):
     for registration in registrations:
         if registration.refund_processed or registration.entry_fee_paid <= 0:
             continue
-        if registration.payment_reference:
-            # New direct-UPI registrations require a real external refund; do not mint wallet balance.
+        if not registration.payment_verified:
             registration.status = Registration.Status.CANCELLED
             registration.room_details_sent = False
             registration.refund_processed = False
