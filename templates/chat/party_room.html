@@ -18,7 +18,7 @@
       <h3 id="quizQuestion" style="font-size:clamp(18px,3vw,26px)">Host start kare ya 12 players ka wait karein.</h3>
       <p id="quizTurn" class="room-note">Decision turn yahan dikhega.</p>
       <p id="quizClock" aria-live="polite" style="font-size:22px;font-weight:900;color:#70ffc4">--</p>
-      <form id="quizAnswerForm" style="display:none;gap:8px;flex-wrap:wrap;margin:10px 0"><input id="quizAnswer" name="answer" maxlength="240" placeholder="Apna jawab likho..." autocomplete="off" style="flex:1;min-width:180px;padding:12px;border-radius:10px;background:#080d16;color:#fff;border:1px solid #46516b"><button class="button button-primary" type="submit">Submit Answer</button><button class="button button-outline" type="button" id="quizSkip">Skip Turn</button></form>
+      <form id="quizAnswerForm" style="display:none;gap:8px;flex-wrap:wrap;margin:10px 0"><input id="quizAnswer" name="answer" maxlength="240" placeholder="Apna jawab likho..." autocomplete="off" style="flex:1;min-width:180px;padding:12px;border-radius:10px;background:#080d16;color:#fff;border:1px solid #46516b"><button class="button button-primary" type="submit">Submit Answer</button><button class="button button-outline" type="button" id="quizSpeak">🎙️ Speak Answer</button><button class="button button-outline" type="button" id="quizSkip">Skip Turn</button></form>
       <p id="quizProgress" class="room-note">Players: {{ members|length }}/12</p>
     </section>
     <section id="quizResultPage" class="room-box" style="display:block;margin-top:14px;border-color:#ffd16655;background:#17140d">
@@ -53,7 +53,7 @@
  const panel=document.getElementById("partyQuiz"); if(!panel)return;
  const stateUrl=panel.dataset.stateUrl, answerUrl=panel.dataset.answerUrl;
  const csrf=panel.querySelector('input[name="csrfmiddlewaretoken"]')?.value || "";
- const round=document.getElementById("quizRound"), question=document.getElementById("quizQuestion"), clock=document.getElementById("quizClock"), result=document.getElementById("quizResult"), form=document.getElementById("quizAnswerForm"), input=document.getElementById("quizAnswer"), spectator=document.getElementById("quizSpectator"), progress=document.getElementById("quizProgress"), start=document.getElementById("quizStartForm"), turn=document.getElementById("quizTurn"), skip=document.getElementById("quizSkip"), decisionPage=document.getElementById("quizDecisionPage"), resultPage=document.getElementById("quizResultPage");
+ const round=document.getElementById("quizRound"), question=document.getElementById("quizQuestion"), clock=document.getElementById("quizClock"), result=document.getElementById("quizResult"), form=document.getElementById("quizAnswerForm"), input=document.getElementById("quizAnswer"), spectator=document.getElementById("quizSpectator"), progress=document.getElementById("quizProgress"), start=document.getElementById("quizStartForm"), turn=document.getElementById("quizTurn"), skip=document.getElementById("quizSkip"), speak=document.getElementById("quizSpeak"), decisionPage=document.getElementById("quizDecisionPage"), resultPage=document.getElementById("quizResultPage");
  let lastStatus="",lastQuestion="";
  async function sendAnswer(isSkip){
   const data=new FormData();data.append("answer",isSkip?"":input.value);if(isSkip)data.append("skip","1");
@@ -82,6 +82,16 @@
  }
  form.addEventListener("submit",async function(e){e.preventDefault();if(input.value.trim())await sendAnswer(false);});
  skip.addEventListener("click",()=>sendAnswer(true));
+ speak.addEventListener("click",()=>{
+  const SpeechAPI=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SpeechAPI){result.textContent="Is browser mein speech recognition available nahi hai; answer type karke submit karein.";return;}
+  const recognition=new SpeechAPI();recognition.lang="en-IN";recognition.interimResults=false;recognition.maxAlternatives=1;
+  speak.disabled=true;result.textContent="Suniye ja raha hai… apna jawab boliye.";
+  recognition.onresult=async event=>{input.value=(event.results[0][0].transcript||"").trim();if(input.value)await sendAnswer(false);else result.textContent="Jawab clear nahi suna; type karke submit karein.";};
+  recognition.onerror=()=>{result.textContent="Awaaz samajh nahi aayi; type karke submit karein.";};
+  recognition.onend=()=>{speak.disabled=false;};
+  try{recognition.start();}catch(e){speak.disabled=false;result.textContent="Mic start nahi hua; type karke submit karein.";}
+ });
  refresh();setInterval(refresh,1000);
 })();
 </script>
@@ -131,11 +141,29 @@ import { Room, RoomEvent, Track } from "https://cdn.jsdelivr.net/npm/livekit-cli
       room.on(RoomEvent.ParticipantDisconnected, (participant) => say(participant.name + " voice room se chale gaye."));
       room.on(RoomEvent.Disconnected, () => { renderState(false); say("Voice disconnect ho gaya."); });
       await room.connect(data.url, data.token);
-      await room.localParticipant.setMicrophoneEnabled(true);
       muted = false;
       muteButton.textContent = "Mute mic";
       renderState(true);
-      say("Voice connected — mic on. Participants: " + (room.remoteParticipants.size + 1));
+      say("Voice connected. Mic sirf aapki 30-second decision baari mein on hoga.");
+      const quizPanel = document.getElementById("partyQuiz");
+      const stateUrl = quizPanel?.dataset.stateUrl;
+      const syncTurnMic = async () => {
+        if (!room || !stateUrl) return;
+        try {
+          const stateResponse = await fetch(stateUrl, {credentials:"same-origin", headers:{"X-Requested-With":"XMLHttpRequest"}});
+          if (!stateResponse.ok) return;
+          const state = await stateResponse.json();
+          const shouldEnable = state.status === "live" && state.is_my_turn && !muted;
+          if (room.localParticipant.isMicrophoneEnabled !== shouldEnable) {
+            await room.localParticipant.setMicrophoneEnabled(shouldEnable);
+          }
+          if (state.status === "live" && state.is_my_turn && !muted) say("Aapki baari hai — mic on. 30 seconds mein boliye.");
+          else if (state.status === "live") say("Mic automatic muted hai; " + (state.turn_player || "next player") + " ki baari hai.");
+        } catch (_) {}
+      };
+      await syncTurnMic();
+      if (window.partyTurnMicTimer) clearInterval(window.partyTurnMicTimer);
+      window.partyTurnMicTimer = setInterval(syncTurnMic, 1000);
     } catch (error) {
       if (room) { try { await room.disconnect(); } catch (_) {} room = null; }
       renderState(false);
@@ -152,6 +180,7 @@ import { Room, RoomEvent, Track } from "https://cdn.jsdelivr.net/npm/livekit-cli
     } catch (_) { say("Mic setting change nahi hui. Browser permission check karein."); }
   });
   leaveButton.addEventListener("click", async function () {
+    if (window.partyTurnMicTimer) { clearInterval(window.partyTurnMicTimer); window.partyTurnMicTimer = null; }
     if (room) { await room.disconnect(); room = null; }
     audioBox.replaceChildren();
     audioBox.hidden = true;
