@@ -34,24 +34,17 @@ def create_party_room(request):
     if not title:
         messages.error(request, "Room ka naam likho.")
         return redirect("chat:party")
-    try:
-        capacity = int(request.POST.get("max_members", "12"))
-    except ValueError:
-        capacity = 12
-    if capacity < 2 or capacity > 30:
-        messages.error(request, "Room capacity 2 se 30 ke beech rakho.")
-        return redirect("chat:party")
-    visibility = request.POST.get("visibility", "public")
-    if visibility not in ("public", "private"):
-        visibility = "public"
     room = PartyRoom.objects.create(
-        host=request.user, title=title, description=request.POST.get("description", "").strip()[:240],
+        host=request.user,
+        title=title,
+        description=request.POST.get("description", "").strip()[:240],
         theme=request.POST.get("theme", "violet") if request.POST.get("theme") in ("violet", "gold", "ocean", "fire") else "violet",
-        visibility=visibility, passcode=request.POST.get("passcode", "").strip()[:24] if visibility == "private" else "",
-        max_members=capacity,
+        visibility=PartyRoom.Visibility.PUBLIC,
+        passcode="",
+        max_members=12,
     )
     PartyRoomMembership.objects.get_or_create(room=room, user=request.user)
-    messages.success(request, "Room ban gaya! Ab doston ko invite karo.")
+    messages.success(request, "Room ban gaya! Aap seedha room ke andar aa gaye.")
     return redirect("chat:party_room", room_id=room.pk)
 
 
@@ -59,21 +52,49 @@ def create_party_room(request):
 def party_room(request, room_id):
     room = get_object_or_404(PartyRoom.objects.select_related("host"), pk=room_id)
     membership = PartyRoomMembership.objects.filter(room=room, user=request.user).first()
-    if room.visibility == "private" and not membership:
-        if request.method == "POST" and request.POST.get("action") == "join":
-            if request.POST.get("passcode", "") != room.passcode:
-                messages.error(request, "Private room code galat hai.")
-                return redirect("chat:party")
     if request.method == "POST":
         action = request.POST.get("action", "message")
         if action == "join":
             if not room.is_open:
                 messages.error(request, "Room band hai.")
-            elif room.memberships.count() >= room.max_members and not membership:
+            elif room.visibility == PartyRoom.Visibility.PRIVATE and not membership:
+                from django.core.cache import cache
+                from django.utils.crypto import constant_time_compare
+                from hashlib import sha256
+                throttle_key = "party-room-passcode:" + sha256(f"{room.pk}:{request.user.pk}".encode()).hexdigest()
+                attempts = cache.get(throttle_key, 0)
+                if attempts >= 5:
+                    messages.error(request, "Bahut attempts hue. 10 minute baad try karein.")
+                    return redirect("chat:party_room", room_id=room.pk)
+                submitted = request.POST.get("passcode", "").strip()
+                if not room.passcode or not constant_time_compare(submitted, room.passcode):
+                    cache.set(throttle_key, attempts + 1, 600)
+                    messages.error(request, "Private room code galat hai.")
+                    return redirect("chat:party_room", room_id=room.pk)
+                cache.delete(throttle_key)
+            if room.memberships.count() >= 12 and not membership:
                 messages.error(request, "Room full hai.")
+            elif room.visibility == PartyRoom.Visibility.PRIVATE and not room.passcode and not membership:
+                messages.error(request, "Host ne abhi private room code set nahi kiya hai.")
             else:
                 PartyRoomMembership.objects.get_or_create(room=room, user=request.user)
                 messages.success(request, "Room join ho gaya.")
+            return redirect("chat:party_room", room_id=room.pk)
+        if action == "privacy":
+            if request.user.pk != room.host_id or not membership:
+                messages.error(request, "Sirf room host privacy change kar sakta hai.")
+            else:
+                visibility = request.POST.get("visibility", "public")
+                passcode = request.POST.get("passcode", "").strip()
+                if visibility not in ("public", "private"):
+                    messages.error(request, "Privacy option valid nahi hai.")
+                elif visibility == "private" and len(passcode) < 4:
+                    messages.error(request, "Private room ke liye kam se kam 4 characters ka passcode rakho.")
+                else:
+                    room.visibility = visibility
+                    room.passcode = passcode[:24] if visibility == "private" else ""
+                    room.save(update_fields=["visibility", "passcode", "updated_at"])
+                    messages.success(request, "Room privacy update ho gayi.")
             return redirect("chat:party_room", room_id=room.pk)
         if not membership:
             messages.error(request, "Pehle room join karo.")
@@ -119,9 +140,14 @@ def party_room(request, room_id):
                 PartyRoomMembership.objects.filter(room=room, user=request.user).delete()
             return redirect("chat:party")
         return redirect("chat:party_room", room_id=room.pk)
-    PartyRoomMembership.objects.filter(room=room, user=request.user).update(last_seen_at=timezone.now())
-    members = room.memberships.select_related("user").order_by("joined_at")
-    room_messages = room.room_messages.select_related("sender").order_by("-pk")[:100]
+    if room.visibility == PartyRoom.Visibility.PRIVATE and not membership:
+        # Do not expose member lists, chat history, or gifts to private-room visitors.
+        members = []
+        room_messages = []
+    else:
+        PartyRoomMembership.objects.filter(room=room, user=request.user).update(last_seen_at=timezone.now())
+        members = room.memberships.select_related("user").order_by("joined_at")
+        room_messages = room.room_messages.select_related("sender").order_by("-pk")[:100]
     return render(request, "chat/party_room.html", {"room": room, "members": members, "room_messages": list(reversed(room_messages)), "gifts": [{"code": code, "emoji": values[0], "name": values[1], "price": values[2]} for code, values in GIFTS.items()], "joined": bool(membership)})
 
 
