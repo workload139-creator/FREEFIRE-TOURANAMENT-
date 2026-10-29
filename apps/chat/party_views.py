@@ -64,8 +64,6 @@ def party_room(request, room_id):
             if request.POST.get("passcode", "") != room.passcode:
                 messages.error(request, "Private room code galat hai.")
                 return redirect("chat:party")
-        else:
-            return redirect("chat:party")
     if request.method == "POST":
         action = request.POST.get("action", "message")
         if action == "join":
