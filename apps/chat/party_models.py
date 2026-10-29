@@ -23,6 +23,7 @@ class PartyRoom(models.Model):
     game_deadline = models.DateTimeField(null=True, blank=True)
     game_result = models.CharField(max_length=300, blank=True)
     game_winner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="party_game_wins")
+    current_turn_player = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="party_game_current_turns")
     reward_awarded = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
