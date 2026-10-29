@@ -140,7 +140,12 @@ import { Room, RoomEvent, Track } from "https://cdn.jsdelivr.net/npm/livekit-cli
       room.on(RoomEvent.TrackSubscribed, (track) => attachAudio(track));
       room.on(RoomEvent.ParticipantConnected, (participant) => say(participant.name + " voice room mein aa gaye."));
       room.on(RoomEvent.ParticipantDisconnected, (participant) => say(participant.name + " voice room se chale gaye."));
-      room.on(RoomEvent.Disconnected, () => { renderState(false); say("Voice disconnect ho gaya."); });
+      room.on(RoomEvent.Disconnected, () => {
+        if (window.partyTurnMicTimer) { clearInterval(window.partyTurnMicTimer); window.partyTurnMicTimer = null; }
+        isMyTurn = false;
+        renderState(false);
+        say("Voice disconnect ho gaya.");
+      });
       await room.connect(data.url, data.token);
       muted = false;
       isMyTurn = false;
