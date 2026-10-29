@@ -11,6 +11,7 @@ urlpatterns = [
     path("<int:conversation_id>/poll/", views.poll_messages, name="poll"),
     path("party/", party_views.party_home, name="party"),
     path("party/create-room/", party_views.create_party_room, name="party_create_room"),
+    path("party/quick-join/", party_views.party_quick_join, name="party_quick_join"),
     path("party/room/<int:room_id>/", party_views.party_room, name="party_room"),
     path("party/room/<int:room_id>/poll/", party_views.party_poll, name="party_poll"),
     path("party/room/<int:room_id>/game/state/", party_views.party_game_state, name="party_game_state"),
