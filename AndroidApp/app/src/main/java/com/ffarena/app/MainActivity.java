@@ -172,11 +172,11 @@ public class MainActivity extends Activity {
             tournamentResults = new LinearLayout(this);
             tournamentResults.setOrientation(LinearLayout.VERTICAL);
             content.addView(tournamentResults, new LinearLayout.LayoutParams(-1, -2));
-            addFeatureCard("PLAYER PROFILE", "View your account identity and Free Fire UID", "My profile", "/social/");
-            addFeatureCard("FOLLOWERS", "See players who follow your account", "View followers", "/social/followers/");
-            addFeatureCard("FOLLOWING", "See accounts you follow", "View following", "/social/following/");
+            addFeatureCard("PLAYER PROFILE", "View your account identity and Free Fire UID", "My profile", "/accounts/profile/");
+            addFeatureCard("FOLLOWERS", "See players who follow your account", "View followers", "/friends/followers/");
+            addFeatureCard("FOLLOWING", "See accounts you follow", "View following", "/friends/following/");
             addFeatureCard("CHAT & FRIENDS", "Open direct messages, friend requests and squad conversations", "Open chat", "/chat/");
-            addFeatureCard("PHOTO POSTS", "Post images only, browse the community photo feed and share Booyah moments", "Open photo feed", "/social/feed/");
+            addFeatureCard("PHOTO POSTS", "Post images only, browse the community photo feed and share Booyah moments", "Open photo feed", "/friends/feed/");
             addFeatureCard("☰ SETTINGS & ACCOUNT DETAILS", "Email, phone, UID, profile editing, password and account options", "Open settings", "/accounts/settings/");
             addFeatureCard("Edit profile", "Update your player details and profile photo", "Edit profile", "/accounts/profile/edit/");
             addFeatureCard("Login / Register", "Sign in or create your player account", "Open account", "/login/");
