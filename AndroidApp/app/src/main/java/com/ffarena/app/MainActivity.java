@@ -91,7 +91,7 @@ public class MainActivity extends Activity {
         bottomNav = new LinearLayout(this);
         bottomNav.setPadding(dp(5), dp(8), dp(5), dp(8));
         bottomNav.setBackgroundColor(Color.rgb(14, 18, 28));
-        String[] tabs = {"Home", "Matches", "Wallet", "Profile"};
+        String[] tabs = {"Home", "Matches", "Party", "Wallet", "Profile"};
         for (String tab : tabs) {
             Button b = new Button(this);
             b.setAllCaps(false);
@@ -149,6 +149,10 @@ public class MainActivity extends Activity {
             addActionRow("My registrations", "See joined matches and room updates", "/tournaments/my-registrations/");
             addActionRow("Results", "Completed matches and standings", "/tournaments/results/");
             addActionRow("Free tournaments", "Explore free-to-enter events", "/tournaments/free-tournament/");
+        } else if ("Party".equals(currentTab)) {
+            addSectionTitle("FF ARENA PARTY", "Live rooms, voice chat and the three-round FF quiz");
+            addFeatureCard("Party Rooms", "Create a 12-player room or random join an available room", "Open Party Rooms", "/chat/party/");
+            addNote("Room games use in-app Fan Tokens only. Party Room page works through the same website account.");
         } else if ("Wallet".equals(currentTab)) {
             addSectionTitle("PLAYER WALLET", "Your live wallet balance and recent transactions");
             tournamentResults = new LinearLayout(this);
