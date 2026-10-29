@@ -104,7 +104,7 @@
     const start = Date.parse(form.dataset.start);
     const button = form.querySelector('button[type="submit"]');
     const status = form.querySelector(".refund-window-status");
-    const eligible = Number.isFinite(start) && start - now > 60 * 60 * 1000;
+    const eligible = Number.isFinite(start) && start - now >= 60 * 60 * 1000;
     if (button) button.disabled = !eligible;
     if (status) status.textContent = eligible
       ? "Refund window open hai. Tournament start hone mein 1 ghante se zyada baaki hai; refund lene par original wallet currency return hogi aur registration cancel hogi."
