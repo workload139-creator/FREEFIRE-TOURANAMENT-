@@ -250,7 +250,7 @@ def decline_playing(request, registration_id):
     registration.save(update_fields=["ready_deadline", "updated_at"])
     changed, detail = mark_not_playing_and_refund(registration.pk)
     if changed:
-        messages.warning(request, "Aap NOT PLAYING mark ho gaye. Direct UPI refund ke liye admin ko actual transfer process karna hoga.")
+        messages.warning(request, "Aap NOT PLAYING mark ho gaye. Refund original in-app wallet currency mein credit hua hai; wallet history check karein.")
     else:
         messages.error(request, "Status update nahi ho saka: " + detail)
     return redirect("tournaments:my_registrations")
