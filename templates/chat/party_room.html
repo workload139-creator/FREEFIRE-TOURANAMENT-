@@ -28,6 +28,17 @@
       {% else %}<p class="room-note">Host Auto-start ON kar sakta hai; 12 players hote hi game start hoga.</p>{% endif %}
     {% else %}
       <div class="room-game-live"><strong>⚡ Party session started — Round {{ room.current_round }} of 3</strong><p class="room-note" style="margin:6px 0 0">Squad lobby live hai. Voice aur room chat use karo.</p></div>
+      <section id="partyQuizGame" class="room-box" style="margin-top:14px;border-color:#b6ff3955" data-state-url="{% url 'chat:party_game_state' room.pk %}" data-answer-url="{% url 'chat:party_game_answer' room.pk %}" data-decision-url="{% url 'chat:party_game_decision' room.pk %}" data-restart-url="{% url 'chat:party_game_restart_draw' room.pk %}" data-host="{% if user.pk == room.host_id %}1{% else %}0{% endif %}">
+        <h2>🧠 FF Arena Quiz — Live Game</h2>
+        <p id="quizStatus" class="room-note" role="status" aria-live="polite">Game state load ho raha hai…</p>
+        <div id="quizTimer" style="font-size:1.15rem;font-weight:900;color:#c5ff56;margin:8px 0"></div>
+        <div id="quizQuestion" style="font-size:1.05rem;font-weight:800;margin:10px 0"></div>
+        <div id="quizChoices" style="display:grid;gap:8px;margin:10px 0"></div>
+        <div id="quizDecision" style="margin:10px 0"></div>
+        <div id="quizResult" style="margin:10px 0"></div>
+        <div id="quizLeaderboard" style="margin-top:14px"></div>
+        <button id="quizRestart" class="button button-primary" type="button" hidden>🔄 Restart Draw Game</button>
+      </section>
     {% endif %}
   </section>
   {% endif %}
@@ -55,6 +66,133 @@
 </section>
 {% endblock %}
 {% block extra_js %}
+<script>
+(function () {
+  const panel = document.getElementById("partyQuizGame");
+  if (!panel) return;
+  const stateUrl = panel.dataset.stateUrl;
+  const answerUrl = panel.dataset.answerUrl;
+  const decisionUrl = panel.dataset.decisionUrl;
+  const restartUrl = panel.dataset.restartUrl;
+  const isHost = panel.dataset.host === "1";
+  const csrf = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || "";
+  const statusEl = document.getElementById("quizStatus");
+  const timerEl = document.getElementById("quizTimer");
+  const questionEl = document.getElementById("quizQuestion");
+  const choicesEl = document.getElementById("quizChoices");
+  const decisionEl = document.getElementById("quizDecision");
+  const resultEl = document.getElementById("quizResult");
+  const leaderboardEl = document.getElementById("quizLeaderboard");
+  const restartButton = document.getElementById("quizRestart");
+  let busy = false;
+  let latestState = null;
+  function node(tag, text, className) {
+    const item = document.createElement(tag);
+    if (text !== undefined && text !== null) item.textContent = text;
+    if (className) item.className = className;
+    return item;
+  }
+  async function post(url, values) {
+    const body = new URLSearchParams(values);
+    body.set("csrfmiddlewaretoken", csrf);
+    const response = await fetch(url, {method:"POST", credentials:"same-origin", headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8", "X-CSRFToken":csrf}, body:body.toString()});
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "Request complete nahi hui.");
+    return data;
+  }
+  function render(data) {
+    latestState = data;
+    statusEl.textContent = data.phase === "question" ? "Round " + data.round + " / 3 — jawab 30 seconds ke andar dein." :
+      data.phase === "decision" ? "Round " + data.round + " — speaking / skip decision phase." :
+      data.phase === "completed" ? (data.winner ? "Game complete! Winner: " + data.winner : "Draw! Sabhi players eliminate ho gaye.") :
+      "12 players hone par game start hoga.";
+    timerEl.textContent = data.seconds_left === null || data.seconds_left === undefined ? "" : "⏱️ " + data.seconds_left + " seconds";
+    questionEl.replaceChildren();
+    choicesEl.replaceChildren();
+    decisionEl.replaceChildren();
+    resultEl.replaceChildren();
+    restartButton.hidden = !(isHost && data.phase === "completed" && !data.winner && data.leaderboard.length >= 12);
+    if (data.is_eliminated) {
+      resultEl.appendChild(node("p", "👀 Aap Spectator hain. Elimination: " + (data.elimination_reason || "eliminated") + (data.eliminated_round ? " (Round " + data.eliminated_round + ")" : "")));
+    }
+    if (data.phase === "question") {
+      if (data.question) {
+        questionEl.textContent = data.question;
+        Object.entries(data.choices || {}).forEach(([key, label]) => {
+          const button = node("button", key + ". " + label, "button button-outline");
+          button.type = "button";
+          button.disabled = busy;
+          button.addEventListener("click", async () => {
+            if (busy) return;
+            busy = true;
+            statusEl.textContent = "Answer submit ho raha hai…";
+            try {
+              const result = await post(answerUrl, {answer:key});
+              statusEl.textContent = result.result === "correct" ? "Sahi jawab! Agle phase ka intezar karein." : "Galat jawab — aap spectator ban gaye.";
+              await refresh();
+            } catch (error) { statusEl.textContent = error.message; }
+            finally { busy = false; }
+          });
+          choicesEl.appendChild(button);
+        });
+      } else if (data.my_answer) {
+        questionEl.textContent = "Aapka answer submit ho gaya. Baaki players ka wait karein.";
+      } else if (!data.is_eliminated) {
+        questionEl.textContent = "Question load ho raha hai…";
+      }
+    } else if (data.phase === "decision") {
+      questionEl.textContent = "Round " + data.round + " decision phase";
+      if (data.correct_answer && data.explanation) {
+        resultEl.appendChild(node("p", "Correct answer: " + data.correct_answer + " — " + data.explanation));
+      }
+      if (data.is_my_decision && !data.is_eliminated) {
+        decisionEl.appendChild(node("p", "🎙️ Ab aapki turn hai. Group Voice mein 30 seconds tak bol sakte hain, ya Skip karein."));
+        const done = node("button", "✅ Done speaking", "button button-primary");
+        done.type = "button";
+        done.addEventListener("click", async () => { try { busy = true; await post(decisionUrl, {action:"done"}); await refresh(); } catch(e) { statusEl.textContent=e.message; } finally { busy=false; } });
+        const skip = node("button", "⏭️ Skip", "button button-outline");
+        skip.type = "button";
+        skip.style.marginLeft = "8px";
+        skip.addEventListener("click", async () => { try { busy = true; await post(decisionUrl, {action:"skip"}); await refresh(); } catch(e) { statusEl.textContent=e.message; } finally { busy=false; } });
+        done.disabled = busy; skip.disabled = busy;
+        decisionEl.append(done, skip);
+      } else {
+        decisionEl.appendChild(node("p", data.decision_player ? "Current speaker: " + data.decision_player + ". Aapki turn aane ka wait karein." : "Next phase load ho raha hai…"));
+      }
+    } else if (data.phase === "completed") {
+      questionEl.textContent = data.winner ? "🏆 Winner: " + data.winner : "🤝 Match Draw";
+      resultEl.appendChild(node("p", data.winner ? (data.winner_awarded ? "Winner ko 5 Fan Tokens ek baar award kiye gaye." : "Winner reward process ho raha hai.") : "Koi reward award nahi hua. Host 12 players ke saath draw game restart kar sakta hai."));
+    } else {
+      questionEl.textContent = "Lobby mein 12 players ka wait hai.";
+    }
+    const list = node("ol");
+    (data.leaderboard || []).forEach((player) => {
+      let label = player.username + " — " + player.score + " point(s)";
+      if (player.winner) label += " 🏆 WINNER";
+      else if (player.eliminated) label += " · Spectator (" + (player.reason || "eliminated") + ")";
+      list.appendChild(node("li", label));
+    });
+    leaderboardEl.replaceChildren(node("h3", "🏅 Live Ranking"), list);
+  }
+  async function refresh() {
+    if (busy) return;
+    try {
+      const response = await fetch(stateUrl, {credentials:"same-origin", headers:{"X-Requested-With":"XMLHttpRequest"}});
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Game state load nahi hua.");
+      render(data);
+    } catch (error) { statusEl.textContent = error.message; }
+  }
+  restartButton.addEventListener("click", async () => {
+    if (busy) return;
+    try { busy = true; await post(restartUrl, {}); await refresh(); }
+    catch(error) { statusEl.textContent = error.message; }
+    finally { busy = false; }
+  });
+  refresh();
+  window.setInterval(refresh, 2000);
+})();
+</script>
 <script type="module">
 import { Room, RoomEvent, Track } from "https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.esm.mjs";
 (function () {
