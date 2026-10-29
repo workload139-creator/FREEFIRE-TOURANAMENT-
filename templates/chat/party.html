@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}FF Arena Party | Voice Rooms & Community Tournaments{% endblock %}
+{% block extra_css %}
+<style>
+.party-page{max-width:1180px;margin:28px auto;padding:0 16px;color:#f5f7ff}.party-hero{padding:30px;border-radius:22px;background:radial-gradient(circle at 90% 5%,#b78cff35,transparent 35%),linear-gradient(135deg,#15162b,#08141e);border:1px solid #b78cff55}.party-kicker{color:#d8b8ff;font-size:.75rem;letter-spacing:.15em;font-weight:800}.party-hero h1{font-size:clamp(2rem,5vw,3.5rem);margin:8px 0}.party-hero p,.party-muted{color:#b9c4d8}.party-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,310px),1fr));gap:18px;margin:20px 0}.party-panel,.party-card{background:#0e1420;border:1px solid #ffffff1a;border-radius:18px;padding:20px}.party-panel h2{margin-top:0}.party-form{display:grid;gap:11px}.party-form input,.party-form textarea,.party-form select{width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid #38445b;background:#090e17;color:#fff}.party-form label{font-size:.86rem;color:#c7d0e2}.party-form button{border:0;cursor:pointer}.party-list{display:grid;gap:12px}.party-card{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.party-card h3{margin:0 0 5px}.party-chip{display:inline-block;border-radius:999px;background:#25213a;color:#d9c4ff;padding:4px 9px;font-size:.75rem}.party-empty{padding:24px;text-align:center;border:1px dashed #ffffff2b;border-radius:14px;color:#aebbd0}.party-note{font-size:.8rem;color:#98a8c1;line-height:1.5}@media(max-width:600px){.party-hero{padding:22px 18px}.party-panel{padding:16px}}
+</style>
+{% endblock %}
+{% block content %}
+<section class="party-page">
+  <header class="party-hero">
+    <span class="party-kicker">FF ARENA SOCIAL</span>
+    <h1>🎙️ Party Rooms</h1>
+    <p>Apna room banao, doston ke saath chat karo, gifts bhejo aur community tournament host karo.</p>
+    <a class="button button-primary" href="#create-room">＋ Create Room</a>
+    <a class="button button-outline" href="#create-tournament">🏆 Host Tournament</a>
+  </header>
+  <div class="party-grid">
+    <section class="party-panel" id="create-room">
+      <h2>✨ Customize Your Room</h2>
+      <form class="party-form" method="post" action="{% url 'chat:party_create_room' %}">{% csrf_token %}
+        <label>Room name<input name="title" maxlength="70" required placeholder="e.g. FF Night Squad"></label>
+        <label>Short description<textarea name="description" maxlength="240" rows="2" placeholder="Room ka mood ya rules"></textarea></label>
+        <label>Room theme<select name="theme"><option value="violet">Neon Violet</option><option value="gold">Champion Gold</option><option value="ocean">Ocean Blue</option><option value="fire">Fire Red</option></select></label>
+        <label>Privacy<select name="visibility"><option value="public">Public — anyone can join</option><option value="private">Private — passcode required</option></select></label>
+        <label>Private passcode (optional)<input name="passcode" maxlength="24" placeholder="For private rooms"></label>
+        <label>Room capacity<select name="max_members"><option>4</option><option selected>12</option><option>20</option><option>30</option></select></label>
+        <button class="button button-primary" type="submit">Create My Room</button>
+      </form>
+      <p class="party-note">Room chat and gifts are enabled. Group voice needs a configured real-time voice provider; the microphone button will not fake a live group call.</p>
+    </section>
+    <section class="party-panel" id="create-tournament">
+      <h2>🏆 Host Community Tournament</h2>
+      <form class="party-form" method="post" action="{% url 'chat:party_create_tournament' %}">{% csrf_token %}
+        <label>Tournament name<input name="title" maxlength="90" required placeholder="Weekend CS Challenge"></label>
+        <label>Mode<select name="game_mode">{% for value,label in modes %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label>
+        <label>Start date &amp; time<input type="datetime-local" name="starts_at" required></label>
+        <label>Players<select name="max_players"><option>2</option><option>4</option><option>8</option><option selected>12</option><option>24</option><option>49</option></select></label>
+        <label>Rules / details<textarea name="description" rows="2" maxlength="500" placeholder="Rules, lobby details, eligibility"></textarea></label>
+        <label>Entry information<input name="entry_note" maxlength="120" placeholder="Free community event / rules"></label>
+        <button class="button button-primary" type="submit">Publish Tournament</button>
+      </form>
+      <p class="party-note">Community tournaments are separate from official paid tournaments. This first version does not collect entry fees or automatically control Free Fire custom rooms.</p>
+    </section>
+  </div>
+  <section class="party-panel">
+    <h2>🔴 Public Rooms <span class="party-chip">{{ rooms|length }} listed</span></h2>
+    <div class="party-list">{% for room in rooms %}
+      <article class="party-card"><div><span class="party-chip">{{ room.get_theme_display }}</span><h3>{{ room.title }}</h3><div class="party-muted">{{ room.description|default:"Come say hello!" }} · Host: {{ room.host.username }}</div><small class="party-muted">👥 {{ room.people }}/{{ room.max_members }} members</small></div><a class="button button-primary" href="{% url 'chat:party_room' room.pk %}">Join Room ↗</a></article>
+    {% empty %}<div class="party-empty">Abhi public room nahi hai. Pehla room tum banao! 🎙️</div>{% endfor %}</div>
+  </section>
+  <section class="party-panel" style="margin-top:18px">
+    <h2>🎮 Community Tournaments</h2>
+    <div class="party-list">{% for item in tournaments %}
+      <article class="party-card"><div><span class="party-chip">{{ item.get_game_mode_display }}</span><h3>{{ item.title }}</h3><div class="party-muted">Host: {{ item.host.username }} · {{ item.starts_at|date:"d M Y, h:i A" }}</div><small class="party-muted">👥 {{ item.entries.count }}/{{ item.max_players }} players · {{ item.entry_note|default:"Community event" }}</small></div><form method="post" action="{% url 'chat:party_join_tournament' item.pk %}">{% csrf_token %}<button class="button button-primary" type="submit">Register</button></form></article>
+    {% empty %}<div class="party-empty">Abhi koi community tournament nahi. Apna event host karo!</div>{% endfor %}</div>
+  </section>
+</section>
+{% endblock %}

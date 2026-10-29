@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}{{ room.title }} | FF Arena Party{% endblock %}
+{% block extra_css %}<style>
+.party-room{max-width:1050px;margin:28px auto;padding:0 15px;color:#f6f7ff}.room-head{padding:22px;border-radius:20px;background:linear-gradient(135deg,#1c1834,#0b1722);border:1px solid #ad8cff55}.room-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(220px,1fr);gap:16px;margin-top:16px}.room-box{padding:18px;border:1px solid #ffffff20;border-radius:16px;background:#0e1420;min-width:0}.room-messages{height:360px;overflow:auto;display:flex;flex-direction:column;gap:9px;margin:12px 0}.room-msg{padding:10px 12px;border-radius:12px;background:#182335;overflow-wrap:anywhere}.room-msg small{display:block;color:#bdc7dc;font-size:.75rem;margin-bottom:3px}.room-form{display:flex;gap:8px}.room-form input,.room-box select{min-width:0;width:100%;padding:11px;border-radius:9px;background:#090e17;color:#fff;border:1px solid #38445b}.room-members{display:grid;gap:8px}.room-member{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:9px;background:#141d2c;border-radius:10px}.room-note{font-size:.82rem;color:#aebbd0;line-height:1.5}@media(max-width:720px){.room-layout{grid-template-columns:1fr}.room-messages{height:300px}}
+</style>{% endblock %}
+{% block content %}
+<section class="party-room">
+  <header class="room-head"><a href="{% url 'chat:party' %}">← Party Rooms</a><span class="party-chip">{{ room.get_theme_display }}</span><h1>{{ room.title }}</h1><p>{{ room.description|default:"Welcome to the room!" }} · Host: {{ room.host.username }} · {{ members|length }}/{{ room.max_members }} seats</p>
+    {% if user.pk == room.host_id %}<form method="post" style="display:inline">{% csrf_token %}<input type="hidden" name="action" value="leave"><button class="button button-outline" type="submit">Close Room</button></form>{% elif joined %}<form method="post" style="display:inline">{% csrf_token %}<input type="hidden" name="action" value="leave"><button class="button button-outline" type="submit">Leave Room</button></form>{% endif %}
+  </header>
+  {% if not joined %}
+  <section class="room-box" style="margin-top:16px"><h2>Join this room</h2><form method="post" class="room-form">{% csrf_token %}<input type="hidden" name="action" value="join">{% if room.visibility == "private" %}<input name="passcode" placeholder="Private passcode" required>{% endif %}<button class="button button-primary" type="submit">Join</button></form></section>
+  {% else %}
+  <div class="room-layout">
+    <section class="room-box"><h2>💬 Live Room Chat</h2><div class="room-messages" id="partyMessages" data-poll-url="{% url 'chat:party_poll' room.pk %}" data-last-id="{{ room_messages|last|default_if_none:'' }}">{% for item in room_messages %}<article class="room-msg" data-message-id="{{ item.pk }}"><small>{{ item.sender.username }} · {{ item.created_at|date:"H:i" }}</small>{{ item.body }}</article>{% empty %}<p class="room-note">Pehla message bhejo!</p>{% endfor %}</div><form method="post" class="room-form">{% csrf_token %}<input type="hidden" name="action" value="message"><input name="body" maxlength="1000" placeholder="Room mein message likho..." required><button class="button button-primary" type="submit">Send</button></form>
+    <section class="room-box" id="partyVoice" style="margin-top:16px" data-token-url="{% url 'chat:party_voice_token' room.pk %}">
+      <h2>🎙️ Group Voice</h2>
+      <p class="room-note">Mic on karne ke baad room ke members aapki awaaz sun sakenge. Browser/Android app mein microphone permission allow karein.</p>
+      <p id="partyVoiceStatus" role="status" aria-live="polite">Voice abhi connect nahi hai.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="button button-primary" type="button" id="partyVoiceJoin">Join voice + Mic on</button>
+        <button class="button button-outline" type="button" id="partyVoiceMute" disabled>Mute mic</button>
+        <button class="button button-outline" type="button" id="partyVoiceLeave" disabled>Leave voice</button>
+      </div>
+      <div id="partyVoiceAudio" hidden></div>
+    </section>
+    </section>
+    <aside class="room-box"><h2>👥 Members</h2><div class="room-members">{% for member in members %}<div class="room-member"><span>{{ member.user.username }}{% if member.user_id == room.host_id %} 👑{% endif %}</span>{% if member.user_id != user.pk %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="gift"><input type="hidden" name="recipient_id" value="{{ member.user_id }}"><select name="gift_code" aria-label="Gift">{% for gift in gifts %}<option value="{{ gift.code }}">{{ gift.emoji }} {{ gift.name }} ({{ gift.price }})</option>{% endfor %}</select><select name="currency" aria-label="Currency"><option value="diamonds">Diamonds</option><option value="coins">Coins</option><option value="fan_tokens">Fan Tokens</option></select><button class="button button-outline" type="submit">🎁</button></form>{% endif %}</div>{% empty %}<p>No members yet.</p>{% endfor %}</div><p class="room-note">Gifts transfer non-cash in-app currency. Diamonds, coins and Fan Tokens are not INR cash balances.</p></aside>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
+{% block extra_js %}
+<script type="module">
+import { Room, RoomEvent, Track } from "https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.esm.mjs";
+(function () {
+  const panel = document.getElementById("partyVoice");
+  if (!panel) return;
+  const joinButton = document.getElementById("partyVoiceJoin");
+  const muteButton = document.getElementById("partyVoiceMute");
+  const leaveButton = document.getElementById("partyVoiceLeave");
+  const status = document.getElementById("partyVoiceStatus");
+  const audioBox = document.getElementById("partyVoiceAudio");
+  const csrf = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || "";
+  let room = null;
+  let muted = false;
+  function say(message) { status.textContent = message; }
+  function renderState(connected) {
+    joinButton.disabled = connected;
+    muteButton.disabled = !connected;
+    leaveButton.disabled = !connected;
+  }
+  function attachAudio(track) {
+    if (track.kind !== Track.Kind.Audio) return;
+    const element = track.attach();
+    element.autoplay = true;
+    element.playsInline = true;
+    audioBox.appendChild(element);
+    audioBox.hidden = false;
+    element.play().catch(() => say("Voice connected hai. Audio sunne ke liye page par ek baar tap karein."));
+  }
+  joinButton.addEventListener("click", async function () {
+    joinButton.disabled = true;
+    say("Voice room se connect ho raha hai…");
+    try {
+      const response = await fetch(panel.dataset.tokenUrl, {
+        method: "POST",
+        headers: {"X-CSRFToken": csrf, "X-Requested-With": "XMLHttpRequest"},
+        credentials: "same-origin"
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Voice token nahi mila.");
+      room = new Room({adaptiveStream: true, dynacast: true});
+      room.on(RoomEvent.TrackSubscribed, (track) => attachAudio(track));
+      room.on(RoomEvent.ParticipantConnected, (participant) => say(participant.name + " voice room mein aa gaye."));
+      room.on(RoomEvent.ParticipantDisconnected, (participant) => say(participant.name + " voice room se chale gaye."));
+      room.on(RoomEvent.Disconnected, () => { renderState(false); say("Voice disconnect ho gaya."); });
+      await room.connect(data.url, data.token);
+      await room.localParticipant.setMicrophoneEnabled(true);
+      muted = false;
+      muteButton.textContent = "Mute mic";
+      renderState(true);
+      say("Voice connected — mic on. Participants: " + (room.remoteParticipants.size + 1));
+    } catch (error) {
+      if (room) { try { await room.disconnect(); } catch (_) {} room = null; }
+      renderState(false);
+      say(error.message || "Voice connect nahi hua. Microphone permission aur LiveKit settings check karein.");
+    }
+  });
+  muteButton.addEventListener("click", async function () {
+    if (!room) return;
+    try {
+      muted = !muted;
+      await room.localParticipant.setMicrophoneEnabled(!muted);
+      muteButton.textContent = muted ? "Unmute mic" : "Mute mic";
+      say(muted ? "Mic muted hai." : "Mic on hai.");
+    } catch (_) { say("Mic setting change nahi hui. Browser permission check karein."); }
+  });
+  leaveButton.addEventListener("click", async function () {
+    if (room) { await room.disconnect(); room = null; }
+    audioBox.replaceChildren();
+    audioBox.hidden = true;
+    muted = false;
+    muteButton.textContent = "Mute mic";
+    renderState(false);
+    say("Aap voice room se nikal gaye.");
+  });
+})();
+</script>
+
+<script>
+(function(){const box=document.getElementById("partyMessages");if(!box)return;let last=Number(box.dataset.lastId)||0;const poll=async()=>{try{const r=await fetch(box.dataset.pollUrl+"?after="+last,{headers:{"X-Requested-With":"XMLHttpRequest"}});if(!r.ok)return;const data=await r.json();for(const m of data.messages||[]){if(box.querySelector('[data-message-id="'+m.id+'"]'))continue;const article=document.createElement("article");article.className="room-msg";article.dataset.messageId=m.id;const small=document.createElement("small");small.textContent=m.sender+" · "+m.time;article.appendChild(small);article.appendChild(document.createTextNode(m.body));box.appendChild(article);last=Math.max(last,m.id)}if((data.messages||[]).length)box.scrollTop=box.scrollHeight;}catch(e){}};last=Math.max(last,...Array.from(box.querySelectorAll("[data-message-id]")).map(x=>Number(x.dataset.messageId)||0));box.scrollTop=box.scrollHeight;setInterval(poll,3500);})();
+</script>
+{% endblock %}
