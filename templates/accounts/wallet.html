@@ -108,7 +108,24 @@
     {% for gift in fan_token_gifts %}{% if gift.currency == "fan_tokens" %}<div class="wallet-record"><div class="wallet-record-top"><strong>✨ {{ gift.quantity }} Fan Token(s) {% if gift.sender_id == user.pk %}sent to {{ gift.recipient.username }}{% else %}received from {{ gift.sender.username }}{% endif %}</strong><span class="wallet-record-status">Gift</span></div><small>{{ gift.created_at|date:"d M Y, h:i A" }}</small></div>{% endif %}{% endfor %}
     {% for entry in fan_token_tournament_entries %}<div class="wallet-record"><div class="wallet-record-top"><strong>✨ {{ entry.quantity }} Fan Token(s) · {{ entry.get_entry_type_display }}</strong><span class="wallet-record-status">{{ entry.get_status_display }}</span></div><small>{{ entry.created_at|date:"d M Y, h:i A" }}</small>{% if entry.description %}<p>{{ entry.description }}</p>{% endif %}</div>{% endfor %}
     <div class="wallet-history-heading">
-        <h2>Transaction History</h2>
+        <h2>All Tournament Transactions</h2>
+        <p>Registration fees, refunds, rewards and admin adjustments. Status and reference are shown from the tournament ledger.</p>
+    </div>
+    {% for entry in tournament_ledger_entries %}
+      <div class="wallet-record">
+        <div class="wallet-record-top">
+          <strong>{{ entry.tournament.title }} · {{ entry.get_entry_type_display }}</strong>
+          <span class="wallet-record-status">{{ entry.get_status_display }}</span>
+        </div>
+        <p>{{ entry.get_currency_display }}{% if entry.currency == "inr" %}: ₹{{ entry.amount_inr }}{% else %}: {{ entry.quantity }}{% endif %}</p>
+        <small>{{ entry.created_at|date:"d M Y, h:i A" }}{% if entry.reference %} · Ref: {{ entry.reference }}{% endif %}</small>
+        {% if entry.description %}<p>{{ entry.description }}</p>{% endif %}
+      </div>
+    {% empty %}
+      <p class="wallet-empty">Abhi tournament ledger transaction nahi hai.</p>
+    {% endfor %}
+    <div class="wallet-history-heading">
+        <h2>INR Wallet Transactions</h2>
     </div>
     {% for transaction in transactions %}
         <div class="wallet-record">
