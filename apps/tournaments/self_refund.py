@@ -1,3 +1,4 @@
+from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib import messages
@@ -44,7 +45,7 @@ def request_tournament_diamond_refund(request, registration_id):
         messages.error(request, "Tournament live, completed ya cancelled hai; self-refund available nahi hai.")
         return redirect("tournaments:my_registrations")
 
-    if not (tournament.start_time - timezone.timedelta(hours=1) <= now < tournament.start_time):
+    if not (tournament.start_time - timedelta(hours=1) <= now < tournament.start_time):
         messages.error(request, "Diamond refund sirf tournament start hone se aakhri 1 ghante ke andar milta hai.")
         return redirect("tournaments:my_registrations")
 
