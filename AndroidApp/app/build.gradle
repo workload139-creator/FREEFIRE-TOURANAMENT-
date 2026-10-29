@@ -2,6 +2,9 @@ plugins {
     id "com.android.application"
 }
 
+// Use Gradle's Provider API so the version code always has a non-null default.
+def appVersionCode = providers.gradleProperty("versionCode").getOrElse("1").toInteger()
+
 android {
     namespace "com.ffarena.app"
     compileSdk 35
@@ -10,8 +13,8 @@ android {
         applicationId "com.ffarena.app"
         minSdk 23
         targetSdk 35
-        versionCode (project.findProperty("versionCode") ?: "1").toString().toInteger()
-        versionName "1.0." + (project.findProperty("versionCode") ?: "1").toString()
+        versionCode appVersionCode
+        versionName "1.0." + appVersionCode.toString()
     }
 
     compileOptions {
