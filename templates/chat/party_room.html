@@ -14,7 +14,7 @@
   <section class="room-lobby">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
       <div><span class="party-chip">🎮 FF ARENA QUIZ BATTLE</span><h2 style="margin:12px 0 5px">Squad Lobby</h2><p class="room-note" style="margin:0">Host samet 12 seats · {{ members|length }} player(s) joined</p></div>
-      {% if room.game_status == "lobby" %}<span class="party-chip">🟡 WAITING TO START</span>{% else %}<span class="party-chip">🟢 GAME LIVE</span>{% endif %}
+      {% if room.game_status == "lobby" %}<span id="partyGameBadge" class="party-chip">🟡 WAITING TO START</span>{% else %}<span id="partyGameBadge" class="party-chip">🟢 GAME LIVE</span>{% endif %}
     </div>
     <div class="room-seat-grid">
       {% for member in members %}<div class="room-seat filled {% if member.user_id == room.host_id %}host{% endif %}"><strong>{% if member.user_id == room.host_id %}👑 {% endif %}{{ member.user.username }}</strong><span>{% if member.user_id == room.host_id %}HOST{% else %}PLAYER{% endif %}</span></div>{% endfor %}
