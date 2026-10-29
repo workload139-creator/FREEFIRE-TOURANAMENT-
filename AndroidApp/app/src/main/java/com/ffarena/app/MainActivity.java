@@ -160,6 +160,7 @@ public class MainActivity extends Activity {
             content.addView(tournamentResults, new LinearLayout.LayoutParams(-1, -2));
             addFeatureCard("Add funds", "Use the available secure deposit options", "Deposit options", "/accounts/wallet/deposit/");
             addFeatureCard("Withdraw", "Manage your withdrawal request and payout details", "Withdrawal options", "/accounts/wallet/withdraw/");
+            addActionRow("Tournament refunds", "View refund options, wallet credits and pending refund status", "/tournaments/my-registrations/");
             addNote("Never share your UPI PIN or OTP. Wallet balance is shown from the FF Arena account ledger.");
             loadWalletData();
         } else {
