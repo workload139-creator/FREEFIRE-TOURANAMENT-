@@ -6,7 +6,7 @@ from django.http import HttpResponse, HttpResponseForbidden
 from django.urls import include, path, re_path
 from django.views.static import serve
 
-from apps.core.views import health_check, terms, privacy_policy, refund_policy, fair_play, about, support
+from apps.core.views import health_check, terms, privacy_policy, refund_policy, fair_play, about, support, faq
 
 from apps.accounts.auth_views import login_view
 from apps.accounts.view import logout_view
@@ -60,6 +60,7 @@ urlpatterns = [
     re_path(r"^media/(?P<path>.*)$", media_file_serve, name="media_file"),
     path("health/", health_check, name="health_check"),
     path("support/", support, name="support"),
+    path("faq/", faq, name="faq"),
     path("terms/", terms, name="terms"),
     path("privacy/", privacy_policy, name="privacy_policy"),
     path("refund-policy/", refund_policy, name="refund_policy"),
