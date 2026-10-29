@@ -117,8 +117,10 @@ def request_tournament_diamond_refund(request, registration_id):
         messages.error(request, "Tournament live, completed ya cancelled hai; self-refund available nahi hai.")
         return redirect("tournaments:my_registrations")
 
-    if not (tournament.start_time - timedelta(hours=1) <= now < tournament.start_time):
-        messages.error(request, "Self-refund sirf tournament start hone se aakhri 1 ghante ke andar available hai.")
+    # Self-refund closes exactly one hour before the scheduled start.
+    # Players may cancel any time before that cutoff, but never during the final hour.
+    if now >= tournament.start_time - timedelta(hours=1) or now >= tournament.start_time:
+        messages.error(request, "Self-refund sirf tournament start hone se 1 ghante se zyada pehle available hai.")
         return redirect("tournaments:my_registrations")
 
     amount = Decimal(str(registration.entry_fee_paid or tournament.entry_fee))
