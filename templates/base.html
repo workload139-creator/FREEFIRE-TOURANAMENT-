@@ -37,6 +37,7 @@
             <a href="{% url 'tournaments:list' %}#cs-tournaments">CS</a>
             <a href="{% url 'tournaments:results' %}">Results</a>
             <a href="{% url 'assistant' %}">FF Assistant</a>
+            <a href="{% url 'faq' %}">FAQ</a>
             <a href="{% url 'support' %}">Support</a>
             <a href="https://github.com/workload139-creator/FREEFIRE-TOURANAMENT-/releases/download/ff-arena-latest/app-debug.apk" class="button button-outline">📲 Download App</a>
             {% if user.is_authenticated %}
@@ -113,6 +114,7 @@
     <p class="footer-note">Independent community platform. Not affiliated with Garena. Paid events must be used only where lawful and after required approvals.</p>
     <nav class="footer-links" aria-label="Legal and information">
         <a href="{% url 'about' %}">About</a>
+        <a href="{% url 'faq' %}">FAQ</a>
         <a href="{% url 'terms' %}">Terms &amp; Conditions</a>
         <a href="{% url 'privacy_policy' %}">Privacy</a>
         <a href="{% url 'refund_policy' %}">Refunds &amp; Withdrawals</a>
