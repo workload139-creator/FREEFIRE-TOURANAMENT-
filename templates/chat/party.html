@@ -22,9 +22,9 @@
 <main class="party-page">
   <header class="party-hero">
     <span class="party-kicker">FF ARENA • SOCIAL PLAY</span>
-    <h1>PARTY <span>ROOMS</span></h1>
-    <p>Squad banao, apne friends ke saath vibe karo aur Free Fire quiz arena mein compete karo. Room 12 players se full hote hi game automatically start hota hai.</p>
-    <div style="display:flex;gap:11px;flex-wrap:wrap"><a class="party-btn party-btn-primary" href="#create-room">＋ Create Room</a><a class="party-btn party-btn-secondary" href="#public-rooms">🎮 Browse Rooms</a></div>
+    <h1>FF ARENA <span>QUIZ BATTLE</span></h1>
+    <p>Apni squad banao, voice chat karo aur FF Arena Quiz Battle khelo. Ek room mein host samet 12 players tak aa sakte hain.</p>
+    <div style="display:flex;gap:11px;flex-wrap:wrap"><a class="party-btn party-btn-primary" href="#game-options">🎮 Play Now</a><a class="party-btn party-btn-secondary" href="#public-rooms">＋ Join Room</a></div>
   </header>
   <div class="party-stats">
     <div class="party-stat"><strong>12 PLAYERS</strong><span>Fixed room capacity</span></div>
@@ -32,36 +32,39 @@
     <div class="party-stat"><strong>+5 TOKENS</strong><span>Winner reward per game</span></div>
   </div>
   <div class="party-grid">
-    <section class="party-panel" id="create-room">
-      <h2>✦ Customize Your Room</h2>
-      <p class="party-intro">Apni room identity choose karo. Public room mein players join kar sakte hain; private room passcode se protected rahega.</p>
+    <section class="party-panel" id="game-options">
+      <h2>🎮 FF Arena Quiz Battle</h2>
+      <p class="party-intro">Game select ho gaya. Ab room banao ya kisi dost ke room mein join karo.</p>
       <div class="party-theme-row" aria-hidden="true">
         <div><div class="party-theme-swatch" style="background:linear-gradient(90deg,#b87cff,#6941e8)"></div><div class="party-theme-label">Neon Violet</div></div>
         <div><div class="party-theme-swatch" style="background:linear-gradient(90deg,#ffe27a,#c18a24)"></div><div class="party-theme-label">Champion Gold</div></div>
         <div><div class="party-theme-swatch" style="background:linear-gradient(90deg,#59d8ff,#2467df)"></div><div class="party-theme-label">Ocean Blue</div></div>
         <div><div class="party-theme-swatch" style="background:linear-gradient(90deg,#ff8769,#e52e44)"></div><div class="party-theme-label">Fire Red</div></div>
       </div>
-      <form class="party-form" method="post" action="{% url 'chat:party_create_room' %}">{% csrf_token %}
-        <label>Room name<input name="title" maxlength="70" required placeholder="e.g. FF Night Squad"></label>
-        <label>Short description<textarea name="description" maxlength="240" rows="2" placeholder="Room ka mood ya rules"></textarea></label>
-        <label>Room theme<select name="theme"><option value="violet">Neon Violet</option><option value="gold">Champion Gold</option><option value="ocean">Ocean Blue</option><option value="fire">Fire Red</option></select></label>
-        <p class="party-intro" style="margin:0">Room 12 players ka hoga. Create karte hi aap seedha room ke andar pahunchoge; Public/Private baad mein room ke andar badal sakte ho.</p>
-        <button class="party-btn party-btn-primary" type="submit">＋ Create Room & Enter</button>
-      </form>
+      <div class="party-form">
+        <form method="post" action="{% url 'chat:party_create_room' %}">{% csrf_token %}
+          <input type="hidden" name="title" value="FF Arena Quiz Battle">
+          <input type="hidden" name="description" value="12-player voice party and quiz lobby">
+          <input type="hidden" name="theme" value="fire">
+          <button class="party-btn party-btn-primary" type="submit">⚡ Create Room</button>
+        </form>
+        <a class="party-btn party-btn-secondary" href="#public-rooms">👥 Join Room</a>
+      </div>
+      <p class="party-intro" style="margin:12px 0 0">Create Room dabate hi room banega aur aap seedhe andar jaoge. Host ke saath maximum 11 aur players join kar sakte hain.</p>
       <p class="party-intro" style="margin:14px 0 0;font-size:.78rem">Room creator automatically room mein join hoga. Group voice feature tabhi chalega jab live voice provider configure ho.</p>
     </section>
     <section class="party-panel" id="public-rooms">
-      <div style="display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin:0 0 15px"><div><h2>◉ Public Rooms</h2><p class="party-intro" style="margin:5px 0 0">Join an open room and meet your squad.</p></div><span class="party-chip">{{ rooms|length }} listed</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin:0 0 15px"><div><h2>👥 Join Room</h2><p class="party-intro" style="margin:5px 0 0">Kisi available public room ko select karke join karo.</p></div><span class="party-chip">{{ rooms|length }} listed</span></div>
       <div class="party-room-list">{% for room in rooms %}
         <article class="party-card"><div class="party-card-main"><div class="party-room-icon">🎮</div><div><span class="party-chip">{{ room.get_theme_display }}</span><h3>{{ room.title }}</h3><p>{{ room.description|default:"Come say hello!" }}<br>Host: {{ room.host.username }} · 👥 {{ room.people }}/{{ room.max_members }}</p></div></div><a class="party-btn party-btn-primary" href="{% url 'chat:party_room' room.pk %}">Join Room ↗</a></article>
       {% empty %}<div class="party-empty"><strong>Abhi koi public room available nahi hai</strong><p>Sabse pehle apna room create karo. Room list mein public rooms dikhte hain.</p></div>{% endfor %}</div>
     </section>
   </div>
-  <div class="party-section-head" style="margin:28px 0 14px"><div><h2>How Party Quiz Works</h2><p class="party-intro" style="margin:5px 0 0">Simple rules, quick rounds, fair play.</p></div></div>
+  <div class="party-section-head" style="margin:28px 0 14px"><div><h2>Game Start Process</h2><p class="party-intro" style="margin:5px 0 0">Room mein aane ke baad players ready honge, phir host game start karega.</p></div></div>
   <div class="party-rules">
-    <div class="party-rule"><b><em>01</em> Fill the room</b><span>Room full hote hi 12 players ke saath game auto-start hota hai.</span></div>
-    <div class="party-rule"><b><em>02</em> Answer in time</b><span>Har turn ke liye 30 seconds. Wrong answer, skip ya timeout par player eliminate hota hai.</span></div>
-    <div class="party-rule"><b><em>03</em> Win tokens</b><span>3 rounds ke baad winner ko 5 Fan Tokens automatically milte hain.</span></div>
+    <div class="party-rule"><b><em>01</em> Create or Join</b><span>Host room banayega; friends Join Room se usmein aa sakte hain. Capacity 12 players hai.</span></div>
+    <div class="party-rule"><b><em>02</em> Get ready</b><span>Room ke andar mic on karo, squad se baat karo aur sab players ke aane ka wait karo.</span></div>
+    <div class="party-rule"><b><em>03</em> Host starts</b><span>Host jab kam se kam 2 players hon tab Start Game dabakar round shuru karega.</span></div>
   </div>
 </main>
 {% endblock %}
