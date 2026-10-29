@@ -427,7 +427,7 @@ def kill_submission(request, registration_id):
                         if ai_eligible:
                             submission.proposed_reward = Decimal(reward_quantity)
                             submission.ai_review_notes = (
-                                (submission.ai_review_notes + "\\n\\nAI CHECK: Both configured providers agreed at high confidence and UID/evidence checks passed. "
+                                (submission.ai_review_notes + "\n\nAI CHECK: Both configured providers agreed at high confidence and UID/evidence checks passed. "
                                  "Reward is only proposed; final admin approval is required before any credit.")
                             )[:2000]
                         submission.save(update_fields=[
@@ -588,7 +588,7 @@ def retry_ai_kill_review(request, submission_id):
         )
         if eligible:
             submission.ai_review_notes = (
-                (submission.ai_review_notes + "\\n\\nAI CHECK: Dual-AI agreement and evidence checks passed. "
+                (submission.ai_review_notes + "\n\nAI CHECK: Dual-AI agreement and evidence checks passed. "
                  "Proposed reward is awaiting explicit admin approval; no balance has been credited.")
             )[:2000]
             submission.save(update_fields=[
@@ -608,7 +608,7 @@ def retry_ai_kill_review(request, submission_id):
                 issue = f"Minimum {settings.MINIMUM_VERIFIED_KILLS} verified kills chahiye; admin evidence check kare."
             else:
                 issue = "Website evidence validation complete nahi hui; admin evidence manually revise kare."
-            submission.ai_review_notes = (submission.ai_review_notes + "\\n\\nAUTOMATION CHECK: " + issue)[:2000]
+            submission.ai_review_notes = (submission.ai_review_notes + "\n\nAUTOMATION CHECK: " + issue)[:2000]
             submission.save(update_fields=[
                 "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
                 "ai_review_notes", "proposed_reward",
