@@ -12,6 +12,7 @@
     <h1>🎙️ Party Rooms</h1>
     <p>Apna room banao ya random room join karo. 12 players par mini-game auto-start hoga; host chahe to pehle manually start kar sakta hai.</p>
     <a class="button button-primary" href="#create-room">＋ Create Room</a>
+    <form method="post" action="{% url &quot;chat:party_quick_join&quot; %}" style="display:inline">{% csrf_token %}<button class="button button-outline" type="submit">🎲 Random Join</button></form>
   </header>
   <div class="party-grid">
     <section class="party-panel" id="create-room">
