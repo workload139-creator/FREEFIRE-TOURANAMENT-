@@ -12,12 +12,12 @@
   <section class="room-box" style="margin-top:16px"><h2>Join this room</h2><form method="post" class="room-form">{% csrf_token %}<input type="hidden" name="action" value="join">{% if room.visibility == "private" %}<input name="passcode" placeholder="Private passcode" required>{% endif %}<button class="button button-primary" type="submit">Join</button></form></section>
   {% else %}
   <section class="room-box party-quiz" id="partyQuiz" data-state-url="{% url 'chat:party_game_state' room.pk %}" data-answer-url="{% url 'chat:party_game_answer' room.pk %}" style="margin-top:16px;border-color:#b78cff66;background:radial-gradient(circle at 90% 0%,#9e63ff20,transparent 42%),#0b111c">
-    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><div><span class="party-chip">3 ROUND CHALLENGE</span><h2 style="margin:10px 0 4px">🎮 FF Quiz Arena</h2><p class="room-note">Har round mein 30 seconds. Galat ya unanswered answer par spectator mode. Round 3 mein sabse fast correct answer wins 5 Fan Tokens.</p></div><div id="quizRound" class="party-chip">Waiting</div></div>
-    <h3 id="quizQuestion" style="font-size:clamp(18px,3vw,26px)">Host start kare ya 12 players ka wait karein.</h3>
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><div><span class="party-chip">3 ROUND CHALLENGE</span><h2 style="margin:10px 0 4px">🎮 FF Quiz Arena</h2><p class="room-note">Har round mein har eligible player ki alag 30-second baari, Skip button aur sabki baari ke baad result. Teen rounds mein winner ko 5 Fan Tokens.</p></div><div id="quizRound" class="party-chip">Waiting</div></div>
+    <h3 id="quizQuestion" style="font-size:clamp(18px,3vw,26px)">Host start kare ya 12 players ka wait karein.</h3><p id="quizTurn" class="room-note">Decision turn yahan dikhega.</p>
     <p id="quizClock" aria-live="polite" style="font-size:22px;font-weight:900;color:#70ffc4">--</p>
     <p id="quizResult" role="status" aria-live="polite" class="room-note">{{ room.game_result|default:"12 players hote hi auto-start; host pehle bhi start kar sakta hai." }}</p>
     <form method="post" id="quizStartForm" style="display:{% if user.pk == room.host_id and room.game_status == 'waiting' or user.pk == room.host_id and room.game_status == 'finished' %}inline-flex{% else %}none{% endif %};gap:8px;margin:10px 0">{% csrf_token %}<input type="hidden" name="action" value="start_game"><button class="button button-primary" type="submit">▶ Host: Start / Restart Game</button></form>
-    <form id="quizAnswerForm" style="display:none;gap:8px;flex-wrap:wrap;margin:10px 0"><input id="quizAnswer" name="answer" maxlength="240" placeholder="Apna jawab likho..." autocomplete="off" required style="flex:1;min-width:180px;padding:12px;border-radius:10px;background:#080d16;color:#fff;border:1px solid #46516b"><button class="button button-primary" type="submit">Submit Answer</button></form>
+    <form id="quizAnswerForm" style="display:none;gap:8px;flex-wrap:wrap;margin:10px 0"><input id="quizAnswer" name="answer" maxlength="240" placeholder="Apna jawab likho..." autocomplete="off" style="flex:1;min-width:180px;padding:12px;border-radius:10px;background:#080d16;color:#fff;border:1px solid #46516b"><button class="button button-primary" type="submit">Submit Answer</button><button class="button button-outline" type="button" id="quizSkip">Skip Turn</button></form>
     <p id="quizSpectator" class="room-note" style="display:none">👀 Aap spectator mode mein hain. Round ke results dekh sakte hain.</p>
     <p id="quizProgress" class="room-note">Players: {{ members|length }}/12</p>
   </section>
@@ -46,28 +46,34 @@
  const panel=document.getElementById("partyQuiz"); if(!panel)return;
  const stateUrl=panel.dataset.stateUrl, answerUrl=panel.dataset.answerUrl;
  const csrf=panel.querySelector('input[name="csrfmiddlewaretoken"]')?.value || "";
- const round=document.getElementById("quizRound"), question=document.getElementById("quizQuestion"), clock=document.getElementById("quizClock"), result=document.getElementById("quizResult"), form=document.getElementById("quizAnswerForm"), input=document.getElementById("quizAnswer"), spectator=document.getElementById("quizSpectator"), progress=document.getElementById("quizProgress"), start=document.getElementById("quizStartForm");
- let lastStatus="",lastQuestion="",lastSeconds=-1;
+ const round=document.getElementById("quizRound"), question=document.getElementById("quizQuestion"), clock=document.getElementById("quizClock"), result=document.getElementById("quizResult"), form=document.getElementById("quizAnswerForm"), input=document.getElementById("quizAnswer"), spectator=document.getElementById("quizSpectator"), progress=document.getElementById("quizProgress"), start=document.getElementById("quizStartForm"), turn=document.getElementById("quizTurn"), skip=document.getElementById("quizSkip");
+ let lastStatus="",lastQuestion="";
+ async function sendAnswer(isSkip){
+  const data=new FormData();data.append("answer",isSkip?"":input.value);if(isSkip)data.append("skip","1");
+  const r=await fetch(answerUrl,{method:"POST",body:data,credentials:"same-origin",headers:{"X-CSRFToken":csrf,"X-Requested-With":"XMLHttpRequest"}});
+  const d=await r.json();result.textContent=d.message||d.error||"Submit nahi hua.";if(!r.ok) return;
+  form.style.display="none";await refresh();
+ }
  async function refresh(){
   try{
    const r=await fetch(stateUrl,{credentials:"same-origin",headers:{"X-Requested-With":"XMLHttpRequest"}}); if(!r.ok)return;
-   const d=await r.json(); round.textContent=d.status==="waiting"?"Waiting":d.status==="finished"?"Game Over":"Round "+d.round+" / 3";
+   const d=await r.json();
+   round.textContent=d.status==="waiting"?"Waiting":d.status==="finished"?"Game Over":"Round "+d.round+" / 3";
    question.textContent=d.question||"Host start kare ya 12 players ka wait karein.";
    result.textContent=d.result||"";
-   clock.textContent=d.status==="live"?("⏱ "+d.seconds_left+" sec left"):(d.status==="break"?"Next round soon…":"");
-   progress.textContent="Players: "+d.members+"/12 · Answers: "+d.answered;
-   form.style.display=d.status==="live"&&d.eligible&&!d.has_answered?"flex":"none";
-   spectator.style.display=(d.status==="live"&&(!d.eligible||d.has_answered)||d.status==="finished")?"block":"none";
+   clock.textContent=d.status==="live"?("⏱ "+d.seconds_left+" sec left"):(d.status==="break"?"Round result / next round soon…":"");
+   turn.textContent=d.status==="live"?(d.is_my_turn?"🎙️ Aapki baari! 30 seconds mein jawab dein ya Skip karein.":"Abhi baari: "+(d.turn_player||"—")):"Decision phase band hai.";
+   progress.textContent="Players: "+d.members+"/12 · Is round ki completed turns: "+d.answered;
+   form.style.display=d.status==="live"&&d.is_my_turn&&!d.has_answered?"flex":"none";
+   skip.style.display=d.status==="live"&&d.is_my_turn&&!d.has_answered?"inline-block":"none";
+   spectator.style.display=(d.status==="live"&&(!d.eligible||d.has_answered&&!d.is_my_turn)||d.status==="finished")?"block":"none";
    start.style.display=d.can_start?"inline-flex":"none";
    if(d.status!==lastStatus||d.question!==lastQuestion){input.value="";lastStatus=d.status;lastQuestion=d.question;}
   }catch(e){}
  }
- form.addEventListener("submit",async function(e){
-  e.preventDefault(); const data=new FormData();data.append("answer",input.value);
-  const r=await fetch(answerUrl,{method:"POST",body:data,credentials:"same-origin",headers:{"X-CSRFToken":csrf,"X-Requested-With":"XMLHttpRequest"}});
-  const d=await r.json();result.textContent=d.message||d.error||"Answer submit nahi hua.";if(r.ok){form.style.display="none";spectator.style.display="block";}await refresh();
- });
- refresh();setInterval(refresh,1500);
+ form.addEventListener("submit",async function(e){e.preventDefault();if(input.value.trim())await sendAnswer(false);});
+ skip.addEventListener("click",()=>sendAnswer(true));
+ refresh();setInterval(refresh,1000);
 })();
 </script>
 
