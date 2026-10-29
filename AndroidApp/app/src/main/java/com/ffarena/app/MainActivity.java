@@ -124,6 +124,7 @@ public class MainActivity extends Activity {
             addSectionTitle("QUICK ACCESS", "Your tournament hub");
             addFeatureCard("Battle Royale", "Solo and squad tournaments", "Explore BR tournaments", "/tournaments/");
             addFeatureCard("VS ARENA", "1v1 • 2v2 • 3v3 • 4v4", "Explore VS matches", "/tournaments/");
+            addFeatureCard("PARTY ROOMS", "Create a room, set Public or Private privacy, and play with your squad", "Open Party Rooms", "/chat/party/");
             addFeatureCard("Leaderboard", "Check tournament standings and results", "View leaderboard & results", "/tournaments/results/");
             addSectionTitle("PLAYER ZONE", "Everything for your account");
             addActionRow("My registrations", "Track your joined matches", "/tournaments/my-registrations/");
