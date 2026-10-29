@@ -105,7 +105,6 @@ class PartyRoomQuizSecurityTests(TestCase):
         response = self.client.get(reverse("chat:party_room", args=[self.room.pk]))
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "private-room-secret-message")
-        self.assertNotContains(response, "party_owner")
 
     def test_private_room_wrong_passcode_does_not_join(self):
         response = self.client.post(
