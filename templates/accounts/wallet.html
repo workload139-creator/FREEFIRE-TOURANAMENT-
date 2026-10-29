@@ -83,6 +83,21 @@
         <p class="wallet-empty">Abhi koi withdrawal request record nahi hai.</p>
     {% endfor %}
 
+    <div class="wallet-history-heading"><h2>🏆 Tournament & Refund History</h2><p>Joined tournaments, payment state, cancellation and refund reference yahan محفوظ rahega. Cancelled tournaments active registrations se hide honge, history delete nahi hogi.</p></div>
+    {% for registration in tournament_history %}
+      <div class="wallet-record">
+        <div class="wallet-record-top">
+          <strong>{{ registration.tournament.title }} · {{ registration.tournament.get_mode_display }}{% if registration.tournament.mode == "VS" %} {{ registration.tournament.get_vs_format_display }}{% endif %}</strong>
+          <span class="wallet-record-status">{% if registration.tournament.status == "cancelled" %}Tournament Cancelled{% else %}{{ registration.get_status_display }}{% endif %}</span>
+        </div>
+        <p>Free Fire UID: {{ registration.free_fire_uid }} · Entry fee: ₹{{ registration.entry_fee_paid }} · Payment: {% if registration.payment_verified %}Verified{% else %}Pending / not verified{% endif %}</p>
+        <small>Registered: {{ registration.registered_at|date:"d M Y, h:i A" }}</small>
+        {% if registration.refund_processed %}<p><strong>Refund processed:</strong> {{ registration.refund_reference|default:"Reference saved" }}</p>{% elif registration.tournament.status == "cancelled" %}<p>Refund status: Admin review required; UPI refund actual transfer ya wallet credit confirm hone ke baad hi processed maana jayega.</p>{% endif %}
+      </div>
+    {% empty %}
+      <p class="wallet-empty">Abhi tournament history nahi hai.</p>
+    {% endfor %}
+
     <div class="wallet-history-heading"><h2>Fan Token History</h2><p>Follower milestone rewards and gifts sent/received. Fan Tokens cannot be withdrawn.</p></div>
     {% for award in fan_token_awards %}<div class="wallet-record"><div class="wallet-record-top"><strong>✨ +{{ award.quantity }} Fan Token(s) earned</strong><span class="wallet-record-status">Follower milestone {{ award.follower_milestone }}</span></div><small>{{ award.created_at|date:"d M Y, h:i A" }}</small></div>{% endfor %}
     {% for gift in fan_token_gifts %}{% if gift.currency == "fan_tokens" %}<div class="wallet-record"><div class="wallet-record-top"><strong>✨ {{ gift.quantity }} Fan Token(s) {% if gift.sender_id == user.pk %}sent to {{ gift.recipient.username }}{% else %}received from {{ gift.sender.username }}{% endif %}</strong><span class="wallet-record-status">Gift</span></div><small>{{ gift.created_at|date:"d M Y, h:i A" }}</small></div>{% endif %}{% endfor %}
