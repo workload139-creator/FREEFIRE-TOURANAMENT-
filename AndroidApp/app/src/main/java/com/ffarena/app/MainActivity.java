@@ -373,8 +373,15 @@ public class MainActivity extends Activity {
                         if (item == null) continue;
                         String description = item.optString("description", "");
                         if (description.isEmpty()) description = item.optString("type", "Transaction").replace('_', ' ');
-                        addAccountInfo(description.toUpperCase(),
-                                "₹" + item.optString("amount", "0.00") + "  •  " + item.optString("status", ""));
+                        String currency = item.optString("currency", "INR");
+                        String quantity = item.optString("quantity", "");
+                        String value = "INR".equalsIgnoreCase(currency)
+                                ? "₹" + item.optString("amount", "0.00")
+                                : (quantity.isEmpty() ? item.optString("amount", "0.00") : quantity + " " + currency);
+                        String reference = item.optString("reference", "");
+                        String details = value + "  •  " + item.optString("status", "");
+                        if (!reference.isEmpty()) details += "\\nRef: " + reference;
+                        addAccountInfo(description.toUpperCase(), details);
                     }
                 }
             });
