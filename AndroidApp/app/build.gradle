@@ -9,6 +9,11 @@ android {
     namespace "com.ffarena.app"
     compileSdk 35
 
+    buildFeatures {
+        // MainActivity uses BuildConfig.VERSION_CODE and VERSION_NAME for update checks.
+        buildConfig true
+    }
+
     defaultConfig {
         applicationId "com.ffarena.app"
         minSdk 23
