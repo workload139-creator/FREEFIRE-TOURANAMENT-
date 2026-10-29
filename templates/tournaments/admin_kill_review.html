@@ -8,7 +8,7 @@
       <a class="button button-outline" href="{% url 'tournaments:admin_ai_assessments' %}">AI Assessment Queue</a>
       <a class="button button-outline" href="{% url 'tournaments:admin_ai_sources' %}">AI Sources / Diagnostics</a>
     </nav>
-    <p>Yahin evidence check, AI retry aur manual revision manage karein. Dono AI high-confidence par agree karein aur saare website checks pass hon to reward automatically credit ho sakta hai; free tournament mein Fan Tokens aur baaki mein Diamonds milte hain.</p>
+    <p>Yahin evidence check, AI retry aur manual revision manage karein. AI agreement aur website checks reward proposal ko support karte hain, lekin player ko credit dene se pehle admin ko manually final approval karna hoga. Free tournament mein Fan Tokens aur baaki mein Diamonds milte hain.</p>
     <p><strong>AI provider:</strong> {{ ai_provider }} · <strong>Model:</strong> {{ ai_model }}</p>
     <p><strong>OpenAI key configured:</strong> {{ ai_openai_configured|yesno:"Yes,No" }} · <strong>Compatible vision endpoint configured:</strong> {{ ai_compatible_configured|yesno:"Yes,No" }}</p>
     <p><strong>Reward rule:</strong> Minimum {{ minimum_verified_kills }} verified kills. Free Fan Tournament: har 2 approved kills = 1 Fan Token. Baaki tournaments: {{ diamonds_per_kill }} Diamonds per approved kill. Dono rewards non-cash website currency hain.</p>

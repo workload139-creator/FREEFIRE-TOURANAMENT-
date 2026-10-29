@@ -10,7 +10,7 @@
       <div class="public-player-identity">
         <span class="public-player-label">{{ player.get_profile_visibility_display|upper }} PLAYER PROFILE</span>
         <h1>{{ player.username }} {% if player.is_staff %}<span class="public-admin-badge">ADMIN</span>{% endif %}{% if has_ff_tick %}<span class="public-tick-badge">✓ FF TICK</span>{% endif %}</h1>
-        <p>Player ID: <strong>FF-{{ player.pk|stringformat:"06d" }}</strong></p>
+        <p>Player ID: <strong>{{ player.arena_player_id }}</strong></p>
         <p class="public-category">Player category: {{ player.get_gender_display|default:"Not selected" }}</p>
       </div>
     </div>

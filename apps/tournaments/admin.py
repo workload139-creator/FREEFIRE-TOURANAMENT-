@@ -165,7 +165,8 @@ def mark_winner_prizes_paid(modeladmin, request, queryset):
     for selected in queryset:
         with transaction.atomic():
             tournament = Tournament.objects.select_for_update().get(pk=selected.pk)
-            if tournament.winner_prize_paid or not tournament.winner_uid or tournament.prize_pool <= 0:
+            if (tournament.status != Tournament.Status.COMPLETED or tournament.winner_prize_paid
+                    or not tournament.winner_uid or tournament.prize_pool <= 0):
                 skipped += 1
                 continue
             utr = (tournament.winner_prize_reference or "").strip()
@@ -216,7 +217,7 @@ def mark_winner_prizes_paid(modeladmin, request, queryset):
     if paid:
         modeladmin.message_user(request, f"{paid} winner prize(s) marked paid after manual UPI transfer.", messages.SUCCESS)
     if skipped:
-        modeladmin.message_user(request, f"{skipped} winner prize(s) skipped: check winner UID, saved UPI/QR, real unique UTR and Admin Wallet ledger balance.", messages.WARNING)
+        modeladmin.message_user(request, f"{skipped} winner prize(s) skipped: tournament must be completed; check winner UID, saved UPI/QR, real unique UTR and Admin Wallet ledger balance.", messages.WARNING)
 
 
 @admin.register(Tournament)

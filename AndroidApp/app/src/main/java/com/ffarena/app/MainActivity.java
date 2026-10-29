@@ -1,6 +1,10 @@
 package com.ffarena.app;
 
 import android.app.Activity;
+import android.app.DownloadManager;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Environment;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -8,6 +12,7 @@ import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
 import android.webkit.CookieManager;
+import android.webkit.DownloadListener;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -17,6 +22,7 @@ import android.widget.LinearLayout;
 import android.widget.ImageView;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.BufferedReader;
@@ -115,6 +121,7 @@ public class MainActivity extends Activity {
         content.removeAllViews();
         if ("Home".equals(currentTab)) {
             addHero();
+            addActionRow("Share FF Arena app", "Invite friends with the official app download link", "share-app");
             addSectionTitle("QUICK ACCESS", "Your tournament hub");
             addFeatureCard("Battle Royale", "Solo and squad tournaments", "Explore BR tournaments", "/tournaments/");
             addFeatureCard("VS ARENA", "1v1 • 2v2 • 3v3 • 4v4", "Explore VS matches", "/tournaments/");
@@ -122,6 +129,8 @@ public class MainActivity extends Activity {
             addSectionTitle("PLAYER ZONE", "Everything for your account");
             addActionRow("My registrations", "Track your joined matches", "/tournaments/my-registrations/");
             addActionRow("AI Tournament Assistant", "Get help about FF Arena tournaments", "/assistant/");
+            addActionRow("Learn more about FF Arena", "How tournaments, profiles and fair play work", "/about/");
+            addActionRow("Help & Support", "Get help with your account or tournaments", "/support/");
         } else if ("Matches".equals(currentTab)) {
             addSectionTitle("TOURNAMENTS", "Live tournament data from FF Arena");
             LinearLayout filters = new LinearLayout(this);
@@ -160,6 +169,11 @@ public class MainActivity extends Activity {
             addFeatureCard("Login / Register", "Sign in or create your player account", "Open account", "/login/");
             addFeatureCard("Edit profile", "Update your player details", "Edit profile", "/accounts/profile/edit/");
             addFeatureCard("Password & settings", "Manage your account settings", "Account settings", "/accounts/settings/");
+            addActionRow("Followers", "See players who follow you", "/friends/followers/");
+            addActionRow("Following", "Manage players you follow", "/friends/following/");
+            addActionRow("Messages", "Open your player chats", "/chat/");
+            addActionRow("Community photo feed", "Share and view player photos", "/friends/feed/");
+            addActionRow("My tournaments", "View registrations and match updates", "/tournaments/my-registrations/");
             loadPlayerProfile();
         }
         if (bottomNav != null) {
@@ -449,7 +463,10 @@ public class MainActivity extends Activity {
         row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
         TextView arrow = text("›", 28, ORANGE, true);
         row.addView(arrow);
-        row.setOnClickListener(v -> openFeature(route));
+        row.setOnClickListener(v -> {
+            if ("share-app".equals(route)) shareApp();
+            else openFeature(route);
+        });
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
         p.bottomMargin = dp(10);
         content.addView(row, p);
@@ -485,11 +502,53 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(false);
         settings.setSupportZoom(false);
         CookieManager.getInstance().setAcceptCookie(true);
-        featureWebView.setWebViewClient(new WebViewClient());
+        featureWebView.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView view, String finishedUrl) {
+                super.onPageFinished(view, finishedUrl);
+                // Persist the website session so users usually stay signed in after reopening the app.
+                CookieManager.getInstance().flush();
+            }
+        });
         featureWebView.setWebChromeClient(new WebChromeClient());
+        featureWebView.setDownloadListener((downloadUrl, userAgent, contentDisposition, mimeType, contentLength) -> {
+            if (downloadUrl == null) return;
+            if (!downloadUrl.toLowerCase().contains(".apk")) {
+                try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl))); }
+                catch (Exception exception) { Toast.makeText(this, "Cannot open this download link.", Toast.LENGTH_LONG).show(); }
+                return;
+            }
+            try {
+                DownloadManager.Request request = new DownloadManager.Request(Uri.parse(downloadUrl));
+                request.setTitle("FF Arena app");
+                request.setDescription("Downloading the FF Arena Android app");
+                request.setMimeType("application/vnd.android.package-archive");
+                request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "FF-Arena.apk");
+                DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+                if (manager == null) throw new IllegalStateException("Download service unavailable");
+                manager.enqueue(request);
+                Toast.makeText(this, "APK download started. Check your notifications.", Toast.LENGTH_LONG).show();
+            } catch (Exception exception) {
+                try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl))); }
+                catch (Exception ignored) { Toast.makeText(this, "Unable to download APK.", Toast.LENGTH_LONG).show(); }
+            }
+        });
+        CookieManager.getInstance().setAcceptThirdPartyCookies(featureWebView, true);
         featureWebView.loadUrl(url);
         page.addView(featureWebView, new LinearLayout.LayoutParams(-1, 0, 1));
         root.addView(page, new LinearLayout.LayoutParams(-1, -1));
+    }
+
+    private void shareApp() {
+        String apkUrl = "https://github.com/workload139-creator/FREEFIRE-TOURANAMENT-/releases/download/ff-arena-latest/app-debug.apk";
+        String message = "Join FF Arena tournaments! Download the Android app here: " + apkUrl
+                + "\nWebsite: " + BASE_URL;
+        Intent share = new Intent(Intent.ACTION_SEND);
+        share.setType("text/plain");
+        share.putExtra(Intent.EXTRA_SUBJECT, "FF Arena Tournament App");
+        share.putExtra(Intent.EXTRA_TEXT, message);
+        startActivity(Intent.createChooser(share, "Share FF Arena"));
     }
 
     private Button button(String label) {
@@ -539,7 +598,14 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onPause() {
+        CookieManager.getInstance().flush();
+        super.onPause();
+    }
+
+    @Override
     protected void onDestroy() {
+        CookieManager.getInstance().flush();
         if (featureWebView != null) {
             featureWebView.stopLoading();
             featureWebView.destroy();

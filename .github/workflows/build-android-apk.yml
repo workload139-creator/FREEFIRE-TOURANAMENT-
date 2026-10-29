@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - feature/pwa-android-apk
+      - feature/native-android-app
     paths:
       - "AndroidApp/**"
       - ".github/workflows/build-android-apk.yml"
@@ -60,6 +61,7 @@ jobs:
           retention-days: 14
 
       - name: Publish public APK download
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ff-arena-latest
