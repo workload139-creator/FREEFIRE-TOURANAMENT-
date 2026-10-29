@@ -22,8 +22,12 @@
         <h3 style="margin:0 0 6px">💸 Refund & payment status</h3>
         {% if registration.refund_processed or registration.status == "refunded" %}
           <p><strong>Refund processed.</strong>{% if registration.refund_reference %} Reference: {{ registration.refund_reference }}.{% endif %} Wallet/ledger history mein credit details check karein.</p>
-        {% elif registration.status == "not_playing" and registration.payment_verified and registration.payment_method == "upi" %}
-          <p><strong>UPI refund admin ke action ka wait kar raha hai.</strong> Real UPI transfer automatic nahi hua hai. Admin se actual transfer aur UTR/reference update karwana zaroori hai.</p>
+        {% elif registration.status == "not_playing" and registration.payment_verified %}
+          <p><strong>Refund pending hai.</strong> Purani verified registration ke liye one-time refund original in-app wallet currency mein claim karein. UPI entry refund INR wallet mein credit hoga; bank/UPI payout alag process hai.</p>
+          <form method="post" action="{% url 'tournaments:self_refund' registration.id %}" style="margin:12px 0">
+            {% csrf_token %}
+            <button class="button button-primary" type="submit" onclick="return confirm('Verified entry fee refund original in-app wallet mein credit hoga. Continue?')">Claim pending refund</button>
+          </form>
         {% elif registration.status == "cancelled" %}
           <p>Registration cancel hai. Agar payment ki thi aur refund status update nahi hua, admin ko registration ID {{ registration.id }} ke saath contact karein.</p>
         {% elif registration.payment_verified and registration.status != "ready" and registration.status != "waiting_ready" and registration.status != "not_playing" and registration.tournament.status == "upcoming" and registration.tournament.entry_fee > 0 %}
