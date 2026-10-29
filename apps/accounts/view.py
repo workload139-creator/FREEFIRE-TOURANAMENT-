@@ -182,6 +182,7 @@ def wallet_view(request):
         "fan_token_awards": FanTokenAward.objects.filter(user=request.user)[:20],
         "fan_token_gifts": CurrencyGift.objects.filter(Q(sender=request.user) | Q(recipient=request.user))[:20],
         "fan_token_tournament_entries": TournamentLedgerEntry.objects.filter(player=request.user, currency="fan_tokens")[:20],
+        "tournament_ledger_entries": TournamentLedgerEntry.objects.filter(player=request.user).select_related("tournament").order_by("-created_at")[:100],
         "last_spin": last_spin,
         "next_spin_at": next_spin_at,
         "spin_available": spin_available,
