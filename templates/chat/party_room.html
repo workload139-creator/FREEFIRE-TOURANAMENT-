@@ -87,6 +87,7 @@
   const leaderboardEl = document.getElementById("quizLeaderboard");
   const restartButton = document.getElementById("quizRestart");
   const lobbyControls = document.getElementById("partyLobbyControls");
+  const gameBadge = document.getElementById("partyGameBadge");
   let busy = false;
   let latestState = null;
   function node(tag, text, className) {
@@ -106,6 +107,7 @@
   function render(data) {
     latestState = data;
     if (lobbyControls) lobbyControls.hidden = data.phase !== "lobby";
+    if (gameBadge) gameBadge.textContent = data.phase === "lobby" ? "🟡 WAITING TO START" : (data.phase === "completed" ? "🏁 GAME COMPLETE" : "🟢 GAME LIVE");
     statusEl.textContent = data.phase === "question" ? "Round " + data.round + " / 3 — jawab 30 seconds ke andar dein." :
       data.phase === "decision" ? "Round " + data.round + " — speaking / skip decision phase." :
       data.phase === "completed" ? (data.winner ? "Game complete! Winner: " + data.winner : "Draw! Sabhi players eliminate ho gaye.") :
