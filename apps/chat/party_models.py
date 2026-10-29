@@ -16,6 +16,8 @@ class PartyRoom(models.Model):
     passcode = models.CharField(max_length=24, blank=True)
     max_members = models.PositiveSmallIntegerField(default=12)
     is_open = models.BooleanField(default=True)
+    game_status = models.CharField(max_length=12, choices=[("lobby", "Lobby"), ("live", "Live"), ("completed", "Completed")], default="lobby", db_index=True)
+    current_round = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
