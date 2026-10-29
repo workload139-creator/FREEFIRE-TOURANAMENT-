@@ -359,7 +359,7 @@ def admin_tournament_dashboard(request, tournament_id):
 def my_registrations(request):
     cleanup_expired_kill_evidence()
     process_expired_ready_registrations()
-    registrations = Registration.objects.filter(player=request.user).select_related("tournament")
+    registrations = Registration.objects.filter(player=request.user).exclude(tournament__status=Tournament.Status.CANCELLED).select_related("tournament")
     return render(request, "tournaments/my_registrations.html", {"registrations": registrations})
 
 
