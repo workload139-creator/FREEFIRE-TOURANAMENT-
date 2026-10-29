@@ -96,6 +96,26 @@ def party_room(request, room_id):
                     room.save(update_fields=["visibility", "passcode", "updated_at"])
                     messages.success(request, "Room privacy update ho gayi.")
             return redirect("chat:party_room", room_id=room.pk)
+        if action == "start_game":
+            if request.user.pk != room.host_id or not membership:
+                messages.error(request, "Game sirf room host start kar sakta hai.")
+            elif room.game_status != "lobby":
+                messages.error(request, "Game pehle hi start ho chuka hai.")
+            else:
+                with transaction.atomic():
+                    locked_room = PartyRoom.objects.select_for_update().get(pk=room.pk)
+                    player_count = locked_room.memberships.count()
+                    if locked_room.game_status != "lobby":
+                        messages.error(request, "Game pehle hi start ho chuka hai.")
+                    elif player_count < 2:
+                        messages.error(request, "Game start karne ke liye host samet kam se kam 2 players chahiye.")
+                    else:
+                        locked_room.game_status = "live"
+                        locked_room.current_round = 1
+                        locked_room.save(update_fields=["game_status", "current_round", "updated_at"])
+                        PartyRoomMessage.objects.create(room=locked_room, sender=request.user, body="🎮 GAME_STARTED|FF Arena Quiz Battle|Round 1 of 3")
+                        messages.success(request, "Party session start ho gaya! Round 1 ready hai.")
+            return redirect("chat:party_room", room_id=room.pk)
         if not membership:
             messages.error(request, "Pehle room join karo.")
             return redirect("chat:party_room", room_id=room.pk)
