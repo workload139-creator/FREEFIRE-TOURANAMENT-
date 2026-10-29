@@ -9,6 +9,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from apps.social.models import PlayerShopWallet
 from .party_models import PartyRoom, PartyRoomMembership, PartyRoomMessage, PartyRoomGift, CommunityTournament, CommunityTournamentEntry
+from .party_game import begin_quiz
 
 GIFTS = {
     "rose": ("🌹", "Rose", 2),
@@ -83,10 +84,7 @@ def party_room(request, room_id):
                     with transaction.atomic():
                         locked_room = PartyRoom.objects.select_for_update().get(pk=room.pk)
                         if locked_room.game_status == "lobby" and locked_room.memberships.count() >= 12:
-                            locked_room.game_status = "live"
-                            locked_room.current_round = 1
-                            locked_room.save(update_fields=["game_status", "current_round", "updated_at"])
-                            PartyRoomMessage.objects.create(room=locked_room, sender=locked_room.host, body="🎮 GAME_STARTED|FF Arena Quiz Battle|Round 1 of 3|AUTO")
+                            begin_quiz(locked_room)
                 messages.success(request, "Room join ho gaya.")
             return redirect("chat:party_room", room_id=room.pk)
         if action == "privacy":
@@ -129,11 +127,10 @@ def party_room(request, room_id):
                     elif player_count < 12:
                         messages.error(request, f"Game start karne ke liye poore 12 players chahiye. Abhi {player_count}/12 hain.")
                     else:
-                        locked_room.game_status = "live"
-                        locked_room.current_round = 1
-                        locked_room.save(update_fields=["game_status", "current_round", "updated_at"])
-                        PartyRoomMessage.objects.create(room=locked_room, sender=request.user, body="🎮 GAME_STARTED|FF Arena Quiz Battle|Round 1 of 3")
-                        messages.success(request, "12 players complete! Party session start ho gaya.")
+                        if begin_quiz(locked_room):
+                            messages.success(request, "12 players complete! Round 1 ka 30-second quiz question start ho gaya.")
+                        else:
+                            messages.error(request, "Game start karne ke liye poore 12 players chahiye.")
             return redirect("chat:party_room", room_id=room.pk)
         if not membership:
             messages.error(request, "Pehle room join karo.")
