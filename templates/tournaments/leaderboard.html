@@ -5,7 +5,7 @@
     <h1>🏆 {{ tournament.title }} — Leaderboard</h1>
     <p>Payment verified players: <strong>{{ verified_player_count }}</strong>. Har tournament ka leaderboard alag hai.</p>
     <p>Payment verify hone ke baad player yahan dikhai deta hai. Kills aur kill-reward sirf admin-approved evidence ke baad show honge.</p>
-    {% if tournament.mode == "BR" %}<div style="padding:14px;margin:14px 0;border:1px solid #ff8a24;border-radius:10px;background:#241712;color:#fff"><strong>🔥 BR Kill Reward Rule: ₹5 per admin-approved kill</strong><p style="margin:6px 0 0">Minimum 2 verified kills. Example: 2 kills = ₹10; 5 = ₹25; 10 = ₹50. UID match, video + 2 screenshots, and final admin approval are required. AI suggestion alone does not confirm a reward or payment.</p></div>{% endif %}
+    {% if tournament.mode == "BR" %}<div style="padding:14px;margin:14px 0;border:1px solid #ff8a24;border-radius:10px;background:#241712;color:#fff"><strong>🔥 BR Kill Reward: ₹5 per verified kill</strong><p style="margin:6px 0 0">Minimum 2 verified kills. Example: 2 kills = ₹10; 5 = ₹25; 10 = ₹50. Submit a 15–30 second match-history video and 2 clear screenshots. Registered UID and evidence UID must match. AI only suggests the kill count; admin must approve the final reward. Approval is not an automatic bank/UPI transfer.</p></div>{% endif %}
     {% if tournament.winner_uid %}
         <div class="tournament-card" style="padding:16px;margin:16px 0;border:2px solid #eab308">
             <strong>🏆 Admin-confirmed First Place</strong>

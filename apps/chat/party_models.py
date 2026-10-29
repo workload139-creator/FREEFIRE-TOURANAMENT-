@@ -16,6 +16,15 @@ class PartyRoom(models.Model):
     passcode = models.CharField(max_length=24, blank=True)
     max_members = models.PositiveSmallIntegerField(default=12)
     is_open = models.BooleanField(default=True)
+    game_status = models.CharField(max_length=12, default="waiting", choices=[("waiting", "Waiting"), ("live", "Live"), ("break", "Round result"), ("finished", "Finished")], db_index=True)
+    game_round = models.PositiveSmallIntegerField(default=0)
+    game_question = models.CharField(max_length=240, blank=True)
+    game_answer = models.CharField(max_length=80, blank=True)
+    game_deadline = models.DateTimeField(null=True, blank=True)
+    game_result = models.CharField(max_length=300, blank=True)
+    game_winner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="party_game_wins")
+    current_turn_player = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="party_game_current_turns")
+    reward_awarded = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -94,3 +103,19 @@ class CommunityTournamentEntry(models.Model):
     class Meta:
         constraints = [models.UniqueConstraint(fields=("tournament", "user"), name="chat_community_tournament_unique_entry")]
         ordering = ("created_at",)
+
+
+class PartyRoomGameAnswer(models.Model):
+    room = models.ForeignKey(PartyRoom, on_delete=models.CASCADE, related_name="game_answers")
+    round_number = models.PositiveSmallIntegerField()
+    player = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="party_game_answers")
+    answer = models.CharField(max_length=240)
+    is_correct = models.BooleanField(default=False)
+    answered_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("answered_at", "pk")
+        constraints = [models.UniqueConstraint(fields=("room", "round_number", "player"), name="chat_party_game_one_answer_per_round")]
+
+    def __str__(self):
+        return f"{self.room_id} · round {self.round_number} · {self.player}"
