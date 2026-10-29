@@ -31,6 +31,48 @@ def health_check(request):
     return JsonResponse({"status": "ok", "database": "ok"})
 
 
+
+def faq(request):
+    """Public FAQ using the site's current documented feature and payment rules."""
+    faq_sections = [
+        {
+            "title": "Accounts & Profile",
+            "items": [
+                {"question": "How do I create an account?", "answer": "Register using your details and complete email OTP verification when requested. If the email does not arrive, check Spam/Junk and confirm the email address."},
+                {"question": "I forgot my password. What should I do?", "answer": "Use the Forgot Password link on the login page and follow the email instructions. Never share your password or OTP with another person."},
+                {"question": "Why should my Free Fire UID be correct?", "answer": "Your registered UID is used to identify you for tournament eligibility and result review. Check the UID carefully before joining and follow the evidence requirements shown for that tournament."},
+            ],
+        },
+        {
+            "title": "Tournaments & Rewards",
+            "items": [
+                {"question": "How do I join a tournament?", "answer": "Open Tournaments, choose an event, and read its mode, entry fee, date, eligibility, capacity and rules. Registration is available only when the event is open and has space; complete the displayed verification/payment steps."},
+                {"question": "What is the difference between BR and VS/CS?", "answer": "BR means Battle Royale. VS/CS means Clash Squad and may have separate formats such as 1v1, 2v2, 3v3 or 4v4. Check each tournament's own detail page for its format, entry requirements and prize rules."},
+                {"question": "How are kill rewards and match results approved?", "answer": "Submit genuine match evidence and the correct UID as requested by the event. Automated/AI review can make mistakes and is advisory; an administrator must complete the final review before a reward is approved. Check the tournament page for the exact reward and minimum requirements."},
+                {"question": "When will room ID and password be shared?", "answer": "Room details are intended for eligible registered players through the tournament/admin workflow. Follow the event's readiness instructions and never trust unofficial accounts asking you to pay them."},
+            ],
+        },
+        {
+            "title": "Wallet, Payments & Refunds",
+            "items": [
+                {"question": "What is the wallet deposit limit?", "answer": "The currently documented deposit range is ₹10 to ₹5,000. Availability and verification depend on the wallet flow shown on your account."},
+                {"question": "Will my wallet update immediately after a UPI payment?", "answer": "Not necessarily. A QR code, payment screen or screenshot does not prove that money was received. The transaction must be matched against the actual bank/UPI record before it is credited. Keep your UTR/reference for support."},
+                {"question": "Is the website wallet a bank account?", "answer": "No. The website wallet is an internal ledger record, not a bank account. Do not treat an on-screen balance as proof that a deposit or payout has settled."},
+                {"question": "How do refunds and withdrawals work?", "answer": "Eligibility depends on the event rules, the refund policy and applicable law. Read the Refunds & Withdrawals policy before paying. A payout is complete only after the actual transfer has been made and its reference recorded; do not assume every request is automatic."},
+            ],
+        },
+        {
+            "title": "Party Rooms, Chat & Help",
+            "items": [
+                {"question": "How do I use Party Rooms?", "answer": "Open Party Rooms while logged in, then create or join a room using the available controls. Voice depends on the room membership and LiveKit configuration. If Create/Join shows a server error or voice does not connect, contact support and include the time and action that failed."},
+                {"question": "Can I message another player?", "answer": "Use the Messages page for private chat and the available player/community pages for social features. Never share passwords, OTPs, UPI PINs or private payment details in chat."},
+                {"question": "Where can I get help with a payment or account issue?", "answer": "Open the Support Centre or email workload139@gmail.com. Include your username, the page/tournament involved and the transaction UTR/reference if relevant. Do not email passwords, OTPs, UPI PINs or API keys."},
+            ],
+        },
+    ]
+    return render(request, "pages/faq.html", {"faq_sections": faq_sections})
+
+
 def support(request):
     """Public support page for players and payment-provider reviewers."""
     return render(request, "pages/support.html")
