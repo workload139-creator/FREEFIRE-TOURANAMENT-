@@ -360,7 +360,18 @@ def my_registrations(request):
     cleanup_expired_kill_evidence()
     process_expired_ready_registrations()
     registrations = Registration.objects.filter(player=request.user).select_related("tournament")
-    return render(request, "tournaments/my_registrations.html", {"registrations": registrations})
+    from apps.accounts.models import WalletTransaction
+    from apps.social.models import PlayerShopWallet
+    from django.db.models import Q
+    wallet_transactions = WalletTransaction.objects.filter(wallet__user=request.user).order_by("-created_at")[:50]
+    tournament_transactions = TournamentLedgerEntry.objects.filter(player=request.user).select_related("tournament").order_by("-created_at")[:100]
+    shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=request.user)
+    return render(request, "tournaments/my_registrations.html", {
+        "registrations": registrations,
+        "wallet_transactions": wallet_transactions,
+        "tournament_transactions": tournament_transactions,
+        "shop_wallet": shop_wallet,
+    })
 
 
 @login_required
