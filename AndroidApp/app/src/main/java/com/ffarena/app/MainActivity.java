@@ -1,14 +1,18 @@
 package com.ffarena.app;
 
+import android.Manifest;
 import android.app.Activity;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
 import android.webkit.CookieManager;
 import android.webkit.WebChromeClient;
+import android.webkit.PermissionRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -37,6 +41,8 @@ public class MainActivity extends Activity {
     private LinearLayout tournamentResults;
     private WebView featureWebView;
     private String currentTab = "Home";
+    private static final int REQUEST_MIC_PERMISSION = 7021;
+    private PermissionRequest pendingMicRequest;
 
     @Override
     public void onCreate(Bundle state) {
@@ -486,7 +492,36 @@ public class MainActivity extends Activity {
         settings.setSupportZoom(false);
         CookieManager.getInstance().setAcceptCookie(true);
         featureWebView.setWebViewClient(new WebViewClient());
-        featureWebView.setWebChromeClient(new WebChromeClient());
+        featureWebView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onPermissionRequest(PermissionRequest request) {
+                runOnUiThread(() -> {
+                    Uri origin = request.getOrigin();
+                    boolean trustedOrigin = origin != null
+                            && "https".equalsIgnoreCase(origin.getScheme())
+                            && "freefire-touranament-74nr.onrender.com".equalsIgnoreCase(origin.getHost());
+                    boolean asksForAudio = false;
+                    for (String resource : request.getResources()) {
+                        if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource)) asksForAudio = true;
+                    }
+                    if (!trustedOrigin || !asksForAudio) {
+                        request.deny();
+                        return;
+                    }
+                    if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                        request.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
+                    } else {
+                        pendingMicRequest = request;
+                        requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_MIC_PERMISSION);
+                    }
+                });
+            }
+
+            @Override
+            public void onPermissionRequestCanceled(PermissionRequest request) {
+                if (pendingMicRequest == request) pendingMicRequest = null;
+            }
+        });
         featureWebView.loadUrl(url);
         page.addView(featureWebView, new LinearLayout.LayoutParams(-1, 0, 1));
         root.addView(page, new LinearLayout.LayoutParams(-1, -1));
@@ -522,6 +557,20 @@ public class MainActivity extends Activity {
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_MIC_PERMISSION && pendingMicRequest != null) {
+            PermissionRequest request = pendingMicRequest;
+            pendingMicRequest = null;
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                request.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
+            } else {
+                request.deny();
+            }
+        }
     }
 
     @Override
