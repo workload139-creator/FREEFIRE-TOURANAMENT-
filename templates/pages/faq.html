@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}FAQ | FF Arena{% endblock %}
+{% block content %}
+<section class="policy-page" style="max-width:1000px;margin:2rem auto;padding:0 1rem 3rem;">
+  <header style="margin-bottom:1.5rem;padding:clamp(1.25rem,4vw,2.25rem);border:1px solid rgba(85,255,192,.22);border-radius:20px;background:radial-gradient(ellipse at top left,rgba(85,255,192,.10),transparent 55%),rgba(15,22,34,.8);">
+    <p style="color:#55ffc0;font-size:.85rem;font-weight:800;letter-spacing:2px;">FF ARENA · PLAYER HELP</p>
+    <h1 style="margin:.35rem 0;">Frequently Asked Questions</h1>
+    <p style="line-height:1.7;color:#aebdd0;margin-bottom:0;">Tournament join karne, account, wallet, rewards aur support ke common sawaalon ke jawaab yahan dekhein.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:.65rem;margin-top:1.25rem;">
+      <a class="button button-primary" href="{% url 'tournaments:list' %}">Browse Tournaments</a>
+      <a class="button button-outline" href="{% url 'assistant' %}">Ask FF Assistant</a>
+    </div>
+  </header>
+
+  {% for section in faq_sections %}
+  <section style="margin:1.4rem 0;">
+    <h2 style="font-size:1.25rem;margin:0 0 .75rem;">{{ section.title }}</h2>
+    <div style="display:grid;gap:.7rem;">
+      {% for item in section.items %}
+      <details style="padding:1rem 1.1rem;border:1px solid rgba(160,175,200,.22);border-radius:14px;background:rgba(17,24,37,.72);">
+        <summary style="cursor:pointer;font-weight:700;line-height:1.5;">{{ item.question }}</summary>
+        <p style="line-height:1.8;color:#c0cada;margin:.8rem 0 .1rem;">{{ item.answer }}</p>
+      </details>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+
+  <section style="margin-top:2rem;padding:1.2rem;border:1px solid rgba(85,255,192,.2);border-radius:16px;background:rgba(20,27,40,.45);">
+    <h2 style="margin-top:0;font-size:1.2rem;">Still need help?</h2>
+    <p style="line-height:1.7;">Apna username, tournament ka naam aur payment issue ho to transaction reference/UTR ke saath support ko message karein. Password, OTP, UPI PIN ya API secret kabhi share na karein.</p>
+    <p><a class="button button-primary" href="{% url 'support' %}">Open Support Centre</a> <a href="mailto:workload139@gmail.com">workload139@gmail.com</a></p>
+  </section>
+</section>
+{% endblock %}
