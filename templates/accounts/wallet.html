@@ -83,6 +83,26 @@
         <p class="wallet-empty">Abhi koi withdrawal request record nahi hai.</p>
     {% endfor %}
 
+    <div class="wallet-history-heading"><h2>💸 Tournament Refunds</h2><p>Refund status for cancelled, not-playing, and refunded registrations.</p></div>
+    {% for registration in refund_registrations %}
+      <div class="wallet-record">
+        <div class="wallet-record-top">
+          <strong>{{ registration.tournament.title }} · Registration #{{ registration.pk }}</strong>
+          <span class="wallet-record-status">{{ registration.get_status_display }}</span>
+        </div>
+        <p>Entry fee: ₹{{ registration.entry_fee_paid }} · Payment method: {{ registration.get_payment_method_display }}</p>
+        {% if registration.refund_processed or registration.status == "refunded" %}
+          <p><strong>Refund processed.</strong>{% if registration.refund_reference %} Reference: {{ registration.refund_reference }}.{% endif %} Check the relevant wallet/ledger history for the credited currency.</p>
+        {% elif registration.status == "not_playing" and registration.payment_verified and registration.payment_method == "upi" %}
+          <p><strong>UPI refund pending admin transfer.</strong> This is not an automatic bank/UPI transfer. Admin must send the actual refund and record the transfer reference.</p>
+        {% else %}
+          <p>Registration is cancelled/not playing. If the paid amount has not been returned, contact admin with this registration ID.</p>
+        {% endif %}
+        <a href="{% url 'tournaments:my_registrations' %}">Open registration and refund options →</a>
+      </div>
+    {% empty %}
+      <p class="wallet-empty">No tournament refunds or refund-related registration statuses yet.</p>
+    {% endfor %}
     <div class="wallet-history-heading"><h2>Fan Token History</h2><p>Follower milestone rewards and gifts sent/received. Fan Tokens cannot be withdrawn.</p></div>
     {% for award in fan_token_awards %}<div class="wallet-record"><div class="wallet-record-top"><strong>✨ +{{ award.quantity }} Fan Token(s) earned</strong><span class="wallet-record-status">Follower milestone {{ award.follower_milestone }}</span></div><small>{{ award.created_at|date:"d M Y, h:i A" }}</small></div>{% endfor %}
     {% for gift in fan_token_gifts %}{% if gift.currency == "fan_tokens" %}<div class="wallet-record"><div class="wallet-record-top"><strong>✨ {{ gift.quantity }} Fan Token(s) {% if gift.sender_id == user.pk %}sent to {{ gift.recipient.username }}{% else %}received from {{ gift.sender.username }}{% endif %}</strong><span class="wallet-record-status">Gift</span></div><small>{{ gift.created_at|date:"d M Y, h:i A" }}</small></div>{% endif %}{% endfor %}
