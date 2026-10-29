@@ -188,6 +188,12 @@ public class MainActivity extends Activity {
             featureWebView.destroy();
             featureWebView = null;
         }
+        // Open the game selection page directly; it contains the game title,
+        // Create Room and Join Room options without an extra intermediate screen.
+        if ("Voice Party".equals(tab)) {
+            openFeature("/chat/party/");
+            return;
+        }
         showNativeShell();
     }
 
