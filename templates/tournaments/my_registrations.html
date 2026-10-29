@@ -18,13 +18,25 @@
       <p>Registration status: <strong>{{ registration.get_status_display }}</strong></p>
       {% if registration.tournament.status == "live" %}<p><a class="button button-primary" style="background:#d90032;border-color:#ff536f;color:#fff" href="https://www.youtube.com/@freefire_tour/live" target="_blank" rel="noopener noreferrer">▶ Watch Tournament Live</a></p>{% endif %}
       <p>Match time: {{ registration.tournament.start_time|date:"d M Y, h:i A" }}</p>
-      {% if registration.payment_verified and not registration.refund_processed and registration.status != "cancelled" and registration.status != "refunded" and registration.status != "not_playing" and registration.tournament.status == "upcoming" and registration.tournament.entry_fee > 0 %}
-        <form method="post" action="{% url 'tournaments:self_refund' registration.id %}" class="self-refund-form" data-start="{{ registration.tournament.start_time|date:'c' }}" hidden style="margin:12px 0">
-          {% csrf_token %}
-          <p><strong>Last-hour refund:</strong> entry fee ke barabar Diamonds turant milenge; is tournament ki registration cancel ho jayegi.</p>
-          <button class="button button-primary" type="submit" onclick="return confirm('Refund lene par is tournament ki registration cancel ho jayegi. Continue?')">Refund entry fee as Diamonds</button>
-        </form>
-      {% endif %}
+      <section class="registration-refund-panel" aria-label="Refund options" style="margin:14px 0;padding:14px;border:1px solid #ffc66a66;border-radius:12px;background:#151722">
+        <h3 style="margin:0 0 6px">💸 Refund & payment status</h3>
+        {% if registration.refund_processed or registration.status == "refunded" %}
+          <p><strong>Refund processed.</strong>{% if registration.refund_reference %} Reference: {{ registration.refund_reference }}.{% endif %} Wallet/ledger history mein credit details check karein.</p>
+        {% elif registration.status == "not_playing" and registration.payment_verified and registration.payment_method == "upi" %}
+          <p><strong>UPI refund admin ke action ka wait kar raha hai.</strong> Real UPI transfer automatic nahi hua hai. Admin se actual transfer aur UTR/reference update karwana zaroori hai.</p>
+        {% elif registration.status == "cancelled" %}
+          <p>Registration cancel hai. Agar payment ki thi aur refund status update nahi hua, admin ko registration ID {{ registration.id }} ke saath contact karein.</p>
+        {% elif registration.payment_verified and registration.status != "ready" and registration.status != "waiting_ready" and registration.status != "not_playing" and registration.tournament.status == "upcoming" and registration.tournament.entry_fee > 0 %}
+          <p class="refund-policy-copy"><strong>Self-refund policy:</strong> aakhri 1 ghante mein verified UPI entry fee INR wallet mein aur Diamonds/Coins/Fan Tokens apni original currency mein return honge. Registration cancel ho jayegi.</p>
+          <form method="post" action="{% url 'tournaments:self_refund' registration.id %}" class="self-refund-form" data-start="{{ registration.tournament.start_time|date:'c' }}" style="margin:12px 0">
+            {% csrf_token %}
+            <p class="refund-window-status" role="status" aria-live="polite">Refund window check ho rahi hai…</p>
+            <button class="button button-primary" type="submit" disabled onclick="return confirm('Refund lene par registration cancel hogi aur amount aapke in-app wallet mein return hoga. Continue?')">Refund to wallet</button>
+          </form>
+        {% else %}
+          <p>Abhi self-refund eligible nahi hai. Refund window aur payment/status rules upar check karein. UPI refund ke liye real transfer admin ko process karna hota hai.</p>
+        {% endif %}
+      </section>
       {% if registration.status == "waiting_ready" or registration.status == "ready" %}
         <a class="button button-primary" href="{% url 'tournaments:player_room' registration.id %}">Open Room / Confirm</a>
       {% endif %}
@@ -37,7 +49,7 @@
             {% if submission.ai_confidence %}<p>AI confidence: {{ submission.ai_confidence }}</p>{% endif %}
             {% if submission.ai_review_notes %}<p>AI notes: {{ submission.ai_review_notes }}</p>{% endif %}
             {% if submission.admin_notes %}<p>Admin review notes: {{ submission.admin_notes }}</p>{% endif %}
-            <p>Evidence already submitted for this registration.</p>{% if submission.status == "approved" and submission.approved_reward %}<p><strong>Kill reward credited:</strong> {{ submission.approved_reward }} Diamonds</p>{% elif submission.status == "pending" %}<p>AI confidence low/unclear ho sakta hai; admin review pending hai. High-confidence UID match par Diamonds automatic credit hote hain.</p>{% elif submission.status == "rejected" %}<p>Kill proof reject hui. Admin notes check karein ya support se contact karein.</p>{% endif %}
+            <p>Evidence already submitted for this registration.</p>{% if submission.status == "approved" and submission.approved_reward %}<p><strong>Approved kill reward:</strong> ₹{{ submission.approved_reward }}. Wallet/payout status ko neeche check karein; approval ka matlab automatic UPI transfer nahi hai.</p>{% elif submission.status == "pending" %}<p><strong>Status: Admin review pending.</strong> AI kill count ka suggestion deta hai; admin video, dono screenshots aur UID check karke final reward approve karega.</p>{% elif submission.status == "rejected" %}<p>Kill proof reject hui. Admin notes check karein ya support se contact karein.</p>{% endif %}
           {% else %}
             <p>Match ke baad 15–30 second ki gameplay/history video aur 2 clear game-history screenshots submit karein. UID registration wali UID se match honi chahiye.</p>
             <a class="button button-primary" href="{% url 'tournaments:kill_submission' registration.id %}">Submit Kill Proof</a>
@@ -59,9 +71,15 @@
   const now = Date.now();
   document.querySelectorAll(".self-refund-form[data-start]").forEach(function (form) {
     const start = Date.parse(form.dataset.start);
-    if (Number.isFinite(start) && start > now && start - now <= 60 * 60 * 1000) {
-      form.hidden = false;
-    }
+    const button = form.querySelector('button[type="submit"]');
+    const status = form.querySelector(".refund-window-status");
+    const eligible = Number.isFinite(start) && start > now && start - now <= 60 * 60 * 1000;
+    if (button) button.disabled = !eligible;
+    if (status) status.textContent = eligible
+      ? "Refund window open hai. Button dabane par amount aapke original in-app wallet currency mein return hoga aur registration cancel hogi."
+      : (Number.isFinite(start) && start > now
+        ? "Refund button tournament start hone se aakhri 1 ghante mein active hoga."
+        : "Tournament start time nikal chuka hai; self-refund window band hai.");
   });
 })();
 </script>
