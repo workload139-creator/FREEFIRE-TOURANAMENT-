@@ -70,12 +70,15 @@ jobs:
           if [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ]; then
             echo "valid=false" >> "$GITHUB_OUTPUT"
             echo "::warning::Release signing secrets are missing. The debug APK will still be built."
-          elif keytool -list -keystore "$RUNNER_TEMP/ffarena-upload-key.jks" -storetype PKCS12 -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
+          elif ! keytool -list -keystore "$RUNNER_TEMP/ffarena-upload-key.jks" -storetype PKCS12 -storepass "$ANDROID_KEYSTORE_PASSWORD" >/dev/null 2>&1; then
+            echo "valid=false" >> "$GITHUB_OUTPUT"
+            echo "::error::Keystore file could not be opened with ANDROID_KEYSTORE_PASSWORD. Check that ANDROID_KEYSTORE_BASE64 is the complete Base64 of the .p12 file and that ANDROID_KEYSTORE_PASSWORD matches that file."
+          elif ! keytool -list -keystore "$RUNNER_TEMP/ffarena-upload-key.jks" -storetype PKCS12 -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
+            echo "valid=false" >> "$GITHUB_OUTPUT"
+            echo "::error::Keystore password worked, but ANDROID_KEY_ALIAS was not found. Check the secret spelling; the expected alias from the local keystore was ffarena."
+          else
             echo "valid=true" >> "$GITHUB_OUTPUT"
             echo "Keystore file, store password, and alias validated successfully."
-          else
-            echo "valid=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Keystore validation failed. The debug APK will still be built; update the signing secrets to enable the signed AAB."
           fi
 
       - name: Build debug APK
