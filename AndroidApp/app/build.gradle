@@ -5,6 +5,13 @@ plugins {
 // Use Gradle's Provider API so the version code always has a non-null default.
 def appVersionCode = providers.gradleProperty("versionCode").getOrElse("1").toInteger()
 
+// Release signing values are supplied only by GitHub Actions repository secrets.
+def releaseStorePath = System.getenv("ANDROID_KEYSTORE_FILE")
+def releaseStorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+def releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
+def releaseKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+def hasReleaseSigning = releaseStorePath && releaseStorePassword && releaseKeyAlias && releaseKeyPassword
+
 android {
     namespace "com.ffarena.app"
     compileSdk 35
@@ -20,6 +27,27 @@ android {
         targetSdk 35
         versionCode appVersionCode
         versionName "1.0." + appVersionCode.toString()
+    }
+
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile file(releaseStorePath)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            // The CI workflow supplies signing values through GitHub Actions secrets.
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
+            minifyEnabled false
+        }
     }
 
     compileOptions {
