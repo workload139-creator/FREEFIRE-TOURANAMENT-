@@ -73,7 +73,9 @@ def party_room(request, room_id):
                     messages.error(request, "Private room code galat hai.")
                     return redirect("chat:party_room", room_id=room.pk)
                 cache.delete(throttle_key)
-            if room.memberships.count() >= 12 and not membership:
+            if room.game_status != "lobby" and not membership:
+                messages.error(request, "Game start ho chuka hai; ab naye players join nahi kar sakte.")
+            elif room.memberships.count() >= 12 and not membership:
                 messages.error(request, "Room full hai.")
             elif room.visibility == PartyRoom.Visibility.PRIVATE and not room.passcode and not membership:
                 messages.error(request, "Host ne abhi private room code set nahi kiya hai.")
@@ -169,7 +171,16 @@ def party_room(request, room_id):
                             PartyRoomMessage.objects.create(room=room, sender=request.user, body=f"{emoji} {request.user.username} ne {recipient_membership.user.username} ko {label} gift kiya!")
                             messages.success(request, f"{label} gift bhej diya.")
         elif action == "leave":
-            if request.user.pk == room.host_id:
+            if room.game_status == "live" and membership:
+                membership.is_eliminated = True
+                membership.eliminated_round = room.current_round
+                membership.elimination_reason = "left_game"
+                membership.save(update_fields=["is_eliminated", "eliminated_round", "elimination_reason"])
+                if request.user.pk == room.host_id:
+                    room.is_open = False
+                    room.save(update_fields=["is_open", "updated_at"])
+                messages.info(request, "Game ke beech leave karne par aap spectator/eliminated mark ho gaye.")
+            elif request.user.pk == room.host_id:
                 room.is_open = False
                 room.save(update_fields=["is_open", "updated_at"])
             else:
