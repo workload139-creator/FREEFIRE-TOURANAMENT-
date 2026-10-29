@@ -378,3 +378,25 @@ def party_game_answer(request, room_id):
     if room.game_round == 3 and is_correct:
         _award_quiz_winner(room, request.user)
     return JsonResponse({"ok": True, "correct": is_correct, "message": "Sahi jawab!" if is_correct else "Galat jawab — aap ab spectator hain."})
+
+@login_required
+@require_POST
+def party_quick_join(request):
+    with transaction.atomic():
+        rooms = PartyRoom.objects.select_for_update().filter(
+            is_open=True, visibility=PartyRoom.Visibility.PUBLIC
+        ).annotate(people=Count("memberships")).filter(people__lt=12).order_by("people", "-updated_at")
+        room = rooms.first()
+        if room is None:
+            room = PartyRoom.objects.create(
+                host=request.user, title="Quick Match Arena", description="Random public 12-player quiz room",
+                theme="violet", visibility=PartyRoom.Visibility.PUBLIC, max_members=12
+            )
+        if not PartyRoomMembership.objects.filter(room=room, user=request.user).exists():
+            if room.memberships.count() < 12 and room.game_status == "waiting":
+                PartyRoomMembership.objects.create(room=room, user=request.user)
+            elif room.memberships.count() < 12 and room.game_status != "waiting":
+                PartyRoomMembership.objects.create(room=room, user=request.user)
+        if room.game_status == "waiting" and room.memberships.count() >= 12:
+            start_party_game(room)
+    return redirect("chat:party_room", room_id=room.pk)
