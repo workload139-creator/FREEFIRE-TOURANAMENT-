@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.social.models import PlayerShopWallet
-from .party_models import PartyRoom, PartyRoomMembership, PartyRoomMessage, PartyRoomGift, CommunityTournament, CommunityTournamentEntry
+from .party_models import PartyRoom, PartyRoomMembership, PartyRoomMessage, PartyRoomGift
 
 GIFTS = {
     "rose": ("🌹", "Rose", 2),
@@ -23,8 +23,7 @@ CURRENCIES = {"diamonds": "diamonds", "coins": "coins", "fan_tokens": "fan_token
 @login_required
 def party_home(request):
     rooms = PartyRoom.objects.filter(is_open=True, visibility=PartyRoom.Visibility.PUBLIC).select_related("host").annotate(people=Count("memberships")).order_by("-people", "-updated_at")
-    tournaments = CommunityTournament.objects.filter(status=CommunityTournament.Status.OPEN).select_related("host").annotate(people=Count("entries")).order_by("starts_at")
-    return render(request, "chat/party.html", {"rooms": rooms, "tournaments": tournaments, "themes": PartyRoom._meta.get_field("theme").choices, "modes": CommunityTournament._meta.get_field("game_mode").choices})
+    return render(request, "chat/party.html", {"rooms": rooms, "themes": PartyRoom._meta.get_field("theme").choices})
 
 
 @login_required
@@ -38,8 +37,9 @@ def create_party_room(request):
         capacity = int(request.POST.get("max_members", "12"))
     except ValueError:
         capacity = 12
-    if capacity < 2 or capacity > 30:
-        messages.error(request, "Room capacity 2 se 30 ke beech rakho.")
+    if capacity != 12:
+        capacity = 12
+        messages.info(request, "Party Room ki capacity 12 players fix hai.")
         return redirect("chat:party")
     visibility = request.POST.get("visibility", "public")
     if visibility not in ("public", "private"):
