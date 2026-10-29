@@ -86,6 +86,7 @@
   const resultEl = document.getElementById("quizResult");
   const leaderboardEl = document.getElementById("quizLeaderboard");
   const restartButton = document.getElementById("quizRestart");
+  const lobbyControls = document.getElementById("partyLobbyControls");
   let busy = false;
   let latestState = null;
   function node(tag, text, className) {
@@ -104,6 +105,7 @@
   }
   function render(data) {
     latestState = data;
+    if (lobbyControls) lobbyControls.hidden = data.phase !== "lobby";
     statusEl.textContent = data.phase === "question" ? "Round " + data.round + " / 3 — jawab 30 seconds ke andar dein." :
       data.phase === "decision" ? "Round " + data.round + " — speaking / skip decision phase." :
       data.phase === "completed" ? (data.winner ? "Game complete! Winner: " + data.winner : "Draw! Sabhi players eliminate ho gaye.") :
@@ -194,9 +196,31 @@
   }
   restartButton.addEventListener("click", async () => {
     if (busy) return;
-    try { busy = true; await post(restartUrl, {}); await refresh(); }
+    try { busy = true; await post(restartUrl, {}); }
     catch(error) { statusEl.textContent = error.message; }
     finally { busy = false; }
+    await refresh();
+  });
+  document.querySelectorAll("form").forEach((form) => {
+    const startAction = form.querySelector('input[name="action"][value="start_game"]');
+    if (!startAction) return;
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (busy) return;
+      busy = true;
+      statusEl.textContent = "Game start request bheji ja rahi hai…";
+      try {
+        const response = await fetch(window.location.href, {
+          method: "POST",
+          body: new FormData(form),
+          credentials: "same-origin",
+          headers: {"X-Requested-With":"XMLHttpRequest"}
+        });
+        if (!response.ok) throw new Error("Game start request fail hui. 12 players check karein.");
+      } catch (error) { statusEl.textContent = error.message; }
+      finally { busy = false; }
+      await refresh();
+    });
   });
   refresh();
   window.setInterval(refresh, 2000);
