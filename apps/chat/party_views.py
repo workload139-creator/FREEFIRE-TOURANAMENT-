@@ -78,6 +78,15 @@ def party_room(request, room_id):
                 messages.error(request, "Host ne abhi private room code set nahi kiya hai.")
             else:
                 PartyRoomMembership.objects.get_or_create(room=room, user=request.user)
+                room.refresh_from_db()
+                if room.auto_start and room.game_status == "lobby" and room.memberships.count() >= 12:
+                    with transaction.atomic():
+                        locked_room = PartyRoom.objects.select_for_update().get(pk=room.pk)
+                        if locked_room.game_status == "lobby" and locked_room.memberships.count() >= 12:
+                            locked_room.game_status = "live"
+                            locked_room.current_round = 1
+                            locked_room.save(update_fields=["game_status", "current_round", "updated_at"])
+                            PartyRoomMessage.objects.create(room=locked_room, sender=locked_room.host, body="🎮 GAME_STARTED|FF Arena Quiz Battle|Round 1 of 3|AUTO")
                 messages.success(request, "Room join ho gaya.")
             return redirect("chat:party_room", room_id=room.pk)
         if action == "privacy":
@@ -96,6 +105,16 @@ def party_room(request, room_id):
                     room.save(update_fields=["visibility", "passcode", "updated_at"])
                     messages.success(request, "Room privacy update ho gayi.")
             return redirect("chat:party_room", room_id=room.pk)
+        if action == "toggle_auto_start":
+            if request.user.pk != room.host_id or not membership:
+                messages.error(request, "Auto-start setting sirf room host badal sakta hai.")
+            elif room.game_status != "lobby":
+                messages.error(request, "Game start hone ke baad auto-start setting nahi badal sakte.")
+            else:
+                room.auto_start = not room.auto_start
+                room.save(update_fields=["auto_start", "updated_at"])
+                messages.success(request, "Auto-start ON ho gaya: 12 players poore hote hi game start hoga." if room.auto_start else "Auto-start OFF ho gaya.")
+            return redirect("chat:party_room", room_id=room.pk)
         if action == "start_game":
             if request.user.pk != room.host_id or not membership:
                 messages.error(request, "Game sirf room host start kar sakta hai.")
@@ -107,14 +126,14 @@ def party_room(request, room_id):
                     player_count = locked_room.memberships.count()
                     if locked_room.game_status != "lobby":
                         messages.error(request, "Game pehle hi start ho chuka hai.")
-                    elif player_count < 2:
-                        messages.error(request, "Game start karne ke liye host samet kam se kam 2 players chahiye.")
+                    elif player_count < 12:
+                        messages.error(request, f"Game start karne ke liye poore 12 players chahiye. Abhi {player_count}/12 hain.")
                     else:
                         locked_room.game_status = "live"
                         locked_room.current_round = 1
                         locked_room.save(update_fields=["game_status", "current_round", "updated_at"])
                         PartyRoomMessage.objects.create(room=locked_room, sender=request.user, body="🎮 GAME_STARTED|FF Arena Quiz Battle|Round 1 of 3")
-                        messages.success(request, "Party session start ho gaya! Round 1 ready hai.")
+                        messages.success(request, "12 players complete! Party session start ho gaya.")
             return redirect("chat:party_room", room_id=room.pk)
         if not membership:
             messages.error(request, "Pehle room join karo.")
