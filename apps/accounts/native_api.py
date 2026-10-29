@@ -46,7 +46,62 @@ def native_wallet_api(request):
         return denied
 
     wallet, _ = Wallet.objects.get_or_create(user=request.user)
-    transactions = wallet.transactions.order_by("-created_at")[:10]
+    from apps.tournaments.models import Registration, TournamentLedgerEntry
+
+    # Combine wallet transactions with tournament entries/refunds/rewards so the
+    # native app shows the same server-side audit history as the website.
+    wallet_transactions = [
+        {
+            "type": item.transaction_type,
+            "status": item.get_status_display(),
+            "amount": str(item.amount),
+            "currency": "INR",
+            "quantity": "",
+            "description": item.description or item.get_transaction_type_display(),
+            "reference": item.reference or "",
+            "created_at": item.created_at.isoformat(),
+            "_sort": item.created_at.timestamp(),
+        }
+        for item in wallet.transactions.order_by("-created_at")[:50]
+    ]
+    ledger_transactions = [
+        {
+            "type": item.get_entry_type_display(),
+            "status": item.get_status_display(),
+            "amount": str(item.amount_inr),
+            "currency": item.currency.upper(),
+            "quantity": item.quantity,
+            "description": (item.tournament.title + " — " + (item.description or item.get_entry_type_display())),
+            "reference": item.reference or "",
+            "created_at": item.created_at.isoformat(),
+            "_sort": item.created_at.timestamp(),
+        }
+        for item in TournamentLedgerEntry.objects.filter(player=request.user)
+            .select_related("tournament").order_by("-created_at")[:100]
+    ]
+    registration_history = [
+        {
+            "type": "Tournament Registration",
+            "status": item.get_status_display(),
+            "amount": str(item.entry_fee_paid),
+            "currency": "INR",
+            "quantity": "",
+            "description": item.tournament.title + " — " + item.get_status_display(),
+            "reference": item.refund_reference or item.payment_reference or ("REG-" + str(item.pk)),
+            "created_at": item.updated_at.isoformat(),
+            "_sort": item.updated_at.timestamp(),
+        }
+        for item in Registration.objects.filter(player=request.user)
+            .select_related("tournament").order_by("-updated_at")[:50]
+    ]
+    combined = sorted(
+        wallet_transactions + ledger_transactions + registration_history,
+        key=lambda item: item["_sort"],
+        reverse=True,
+    )[:100]
+    for item in combined:
+        item.pop("_sort", None)
+
     return JsonResponse({
         "success": True,
         "wallet": {
@@ -54,14 +109,5 @@ def native_wallet_api(request):
             "balance": str(wallet.balance),
             "currency": "INR",
         },
-        "transactions": [
-            {
-                "type": item.transaction_type,
-                "status": item.status,
-                "amount": str(item.amount),
-                "description": item.description,
-                "created_at": item.created_at.isoformat(),
-            }
-            for item in transactions
-        ],
+        "transactions": combined,
     })
