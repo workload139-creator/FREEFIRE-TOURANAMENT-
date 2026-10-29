@@ -9,7 +9,7 @@
   <p><strong>Mode:</strong> {% if tournament.mode == "VS" %}CS / Clash Squad{% else %}Battle Royale (BR){% endif %}{% if tournament.mode == "VS" %} — {{ tournament.get_vs_format_display }}{% endif %}</p>
   <p><strong>Player Category:</strong> {{ tournament.get_gender_category_display }}</p>
   <p><strong>Entry Fee:</strong> ₹{{ tournament.entry_fee }}</p>
-  {% if tournament.is_free_fan_tournament %}<p><strong>Winner Prize:</strong> {{ tournament.winner_coins_prize }} Coins</p>{% else %}<p><strong>Prize Pool:</strong> ₹{{ tournament.prize_pool }}</p>{% endif %}
+  {% if tournament.is_free_fan_tournament %}<p><strong>Winner Prize:</strong> {{ tournament.winner_coins_prize }} Coins</p>{% elif tournament.mode == "VS" %}<p><strong>Fan Token Prize Pool:</strong> {% if tournament.vs_format == "1v1" %}10{% elif tournament.vs_format == "2v2" %}20{% elif tournament.vs_format == "3v3" %}30{% elif tournament.vs_format == "4v4" %}40{% else %}10{% endif %} Fan Tokens</p><p>Reward guide: team format ke hisaab se winner pool. Fan Tokens non-cash website currency hain.</p>{% else %}<p><strong>1st Prize:</strong> 50 Diamonds</p><p><strong>Kill Reward:</strong> {{ diamonds_per_kill }} Diamonds per approved kill</p><p class="room-note">Kills leaderboard par sirf verified/approved evidence count hota hai. Diamonds non-cash website currency hain.</p>{% endif %}
   <p><strong>Players:</strong> {{ tournament.confirmed_players_count }}/{{ tournament.max_players }}</p>
   {% if not tournament.is_unlimited_br %}<p><strong>Start Time:</strong> {{ tournament.start_time|date:"d M Y, h:i A" }}</p>{% else %}<p><strong>Schedule:</strong> Always open; 49 players par LIVE</p>{% endif %}
   <p><strong>Status:</strong> {{ tournament.get_status_display }}</p>
