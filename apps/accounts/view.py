@@ -160,7 +160,7 @@ from .models import Wallet, WalletTransaction, WithdrawalRequest
 def wallet_view(request):
     wallet, created = Wallet.objects.get_or_create(user=request.user)
     from apps.social.models import PlayerShopWallet, DailySpin, FanTokenAward, CurrencyGift
-    from apps.tournaments.models import TournamentLedgerEntry
+    from apps.tournaments.models import Registration, TournamentLedgerEntry
     from django.db.models import Q
     shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=request.user)
     last_spin = DailySpin.objects.filter(user=request.user).order_by("-spun_at").first()
@@ -168,10 +168,15 @@ def wallet_view(request):
     spin_available = not last_spin or __import__("django.utils.timezone", fromlist=["now"]).now() >= next_spin_at
     transactions = wallet.transactions.all()[:50]
     withdrawal_requests = WithdrawalRequest.objects.filter(wallet=wallet)[:10]
+    refund_registrations = Registration.objects.filter(
+        player=request.user,
+        status__in=[Registration.Status.NOT_PLAYING, Registration.Status.CANCELLED, Registration.Status.REFUNDED],
+    ).select_related("tournament").order_by("-updated_at")[:10]
     return render(request, "accounts/wallet.html", {
         "wallet": wallet,
         "transactions": transactions,
         "withdrawal_requests": withdrawal_requests,
+        "refund_registrations": refund_registrations,
         "deposit_requests": wallet.deposit_requests.all()[:10],
         "shop_wallet": shop_wallet,
         "fan_token_awards": FanTokenAward.objects.filter(user=request.user)[:20],
