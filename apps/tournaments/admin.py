@@ -219,6 +219,63 @@ def mark_winner_prizes_paid(modeladmin, request, queryset):
         modeladmin.message_user(request, f"{skipped} winner prize(s) skipped: check winner UID, saved UPI/QR, real unique UTR and Admin Wallet ledger balance.", messages.WARNING)
 
 
+@admin.action(description="Award BR Diamonds / VS Fan Tokens to selected tournament winner")
+def award_arena_currency_winner(modeladmin, request, queryset):
+    """Credit non-cash tournament prizes once; separate from any manual UPI prize."""
+    from apps.social.models import PlayerShopWallet
+
+    awarded = 0
+    skipped = 0
+    for selected in queryset:
+        with transaction.atomic():
+            tournament = Tournament.objects.select_for_update().get(pk=selected.pk)
+            if tournament.status != Tournament.Status.COMPLETED or tournament.is_free_fan_tournament:
+                skipped += 1
+                continue
+            winner_uid = str(tournament.winner_uid or "").strip()
+            winners = Registration.objects.select_for_update().filter(
+                tournament=tournament,
+                free_fire_uid=winner_uid,
+                payment_verified=True,
+                refund_processed=False,
+                status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
+            ).select_related("player")
+            if not winner_uid or winners.count() != 1:
+                skipped += 1
+                continue
+            registration = winners.first()
+            reference = f"ARENA-CURRENCY-WIN-{tournament.pk}"
+            if TournamentLedgerEntry.objects.filter(reference=reference).exists():
+                skipped += 1
+                continue
+            if tournament.mode == Tournament.Mode.BR:
+                currency, field, quantity = TournamentLedgerEntry.Currency.DIAMONDS, "diamonds", 50
+            else:
+                currency, field = TournamentLedgerEntry.Currency.FAN_TOKENS, "fan_tokens"
+                quantity = {"1v1": 10, "2v2": 20, "3v3": 30, "4v4": 40}.get(tournament.vs_format, 10)
+            wallet, _ = PlayerShopWallet.objects.get_or_create(user=registration.player)
+            wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
+            setattr(wallet, field, getattr(wallet, field) + quantity)
+            wallet.save(update_fields=[field, "updated_at"])
+            TournamentLedgerEntry.objects.create(
+                tournament=tournament,
+                player=registration.player,
+                registration=registration,
+                entry_type=TournamentLedgerEntry.EntryType.REWARD,
+                currency=currency,
+                quantity=quantity,
+                amount_inr=Decimal("0.00"),
+                status=TournamentLedgerEntry.Status.COMPLETED,
+                reference=reference,
+                description=f"Admin-approved tournament winner reward: {quantity} {currency}",
+            )
+            awarded += 1
+    if awarded:
+        modeladmin.message_user(request, f"{awarded} winner non-cash reward(s) credited to player wallet.", messages.SUCCESS)
+    if skipped:
+        modeladmin.message_user(request, f"{skipped} skipped: set the correct Winner UID, verify the player's registration/payment, mark tournament Completed, and check that no reward was already credited.", messages.WARNING)
+
+
 @admin.register(Tournament)
 class TournamentAdmin(admin.ModelAdmin):
     form = TournamentAdminForm
@@ -233,7 +290,7 @@ class TournamentAdmin(admin.ModelAdmin):
     # Keep tournament setup separate from registrations and kill evidence.
     # Those have their own admin sections so adding/editing a tournament stays manageable.
     inlines = ()
-    actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid,)
+    actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid, award_arena_currency_winner,)
     readonly_fields = (
         "tournament_control_panel", "series_root", "winner_prize_paid",
         "kill_prize_distributed", "kill_prize_pool", "kill_prize_reference",
