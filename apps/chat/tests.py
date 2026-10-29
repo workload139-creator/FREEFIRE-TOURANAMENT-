@@ -82,3 +82,43 @@ class ChatGiftTests(TestCase):
         self.receiver_wallet.refresh_from_db()
         self.assertEqual(self.sender_wallet.diamonds, 10)
         self.assertEqual(self.receiver_wallet.diamonds, 0)
+
+
+
+class PartyRoomCreateJoinTests(TestCase):
+    def setUp(self):
+        from .party_models import PartyRoom, PartyRoomMembership
+        self.PartyRoom = PartyRoom
+        self.PartyRoomMembership = PartyRoomMembership
+        self.host = User.objects.create_user(username="party_host", password="test-password-12345")
+        self.player = User.objects.create_user(username="party_player", password="test-password-12345")
+        self.client.force_login(self.host)
+
+    def test_create_room_redirects_and_room_page_renders(self):
+        response = self.client.post(reverse("chat:party_create_room"), {"title": "Test Voice Party"})
+        self.assertEqual(response.status_code, 302)
+        room = self.PartyRoom.objects.get(title="Test Voice Party", host=self.host)
+        self.assertTrue(self.PartyRoomMembership.objects.filter(room=room, user=self.host).exists())
+        response = self.client.get(reverse("chat:party_room", args=[room.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Test Voice Party")
+        self.assertContains(response, "FF Arena Quiz")
+
+    def test_player_can_join_public_room_and_reopen_page(self):
+        room = self.PartyRoom.objects.create(host=self.host, title="Joinable Voice Party")
+        self.PartyRoomMembership.objects.create(room=room, user=self.host)
+        self.client.force_login(self.player)
+        response = self.client.post(reverse("chat:party_room", args=[room.pk]), {"action": "join"})
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(self.PartyRoomMembership.objects.filter(room=room, user=self.player).exists())
+        response = self.client.get(reverse("chat:party_room", args=[room.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Joinable Voice Party")
+
+    def test_live_room_rejects_new_player_without_server_error(self):
+        room = self.PartyRoom.objects.create(host=self.host, title="Live Voice Party", game_status="live", game_phase="question")
+        self.PartyRoomMembership.objects.create(room=room, user=self.host)
+        self.client.force_login(self.player)
+        response = self.client.post(reverse("chat:party_room", args=[room.pk]), {"action": "join"})
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(self.PartyRoomMembership.objects.filter(room=room, user=self.player).exists())
