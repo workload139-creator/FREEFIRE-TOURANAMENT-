@@ -2,6 +2,8 @@ package com.ffarena.app;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -55,6 +57,73 @@ public class MainActivity extends Activity {
         root.setBackgroundColor(BG);
         setContentView(root);
         openFeature("/");
+        checkForAppUpdate();
+    }
+
+    private void checkForAppUpdate() {
+        new Thread(() -> {
+            HttpURLConnection connection = null;
+            try {
+                URL url = new URL("https://api.github.com/repos/workload139-creator/FREEFIRE-TOURANAMENT-/releases/tags/ff-arena-latest");
+                connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod("GET");
+                connection.setConnectTimeout(8000);
+                connection.setReadTimeout(8000);
+                connection.setRequestProperty("Accept", "application/vnd.github+json");
+                connection.setRequestProperty("X-GitHub-Api-Version", "2022-11-28");
+                int status = connection.getResponseCode();
+                if (status < 200 || status >= 300) return;
+                StringBuilder body = new StringBuilder();
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) body.append(line);
+                }
+                JSONObject release = new JSONObject(body.toString());
+                String releaseNotes = release.optString("body", "");
+                java.util.regex.Matcher matcher = java.util.regex.Pattern
+                        .compile("versionCode\\s*:\\s*(\\d+)", java.util.regex.Pattern.CASE_INSENSITIVE)
+                        .matcher(releaseNotes);
+                if (!matcher.find()) return;
+                int latestVersion = Integer.parseInt(matcher.group(1));
+                if (latestVersion <= BuildConfig.VERSION_CODE) return;
+                String apkUrl = "";
+                JSONArray assets = release.optJSONArray("assets");
+                if (assets != null) {
+                    for (int i = 0; i < assets.length(); i++) {
+                        JSONObject asset = assets.optJSONObject(i);
+                        if (asset != null && "app-debug.apk".equals(asset.optString("name"))) {
+                            apkUrl = asset.optString("browser_download_url", "");
+                            break;
+                        }
+                    }
+                }
+                if (apkUrl.isEmpty()) return;
+                final String downloadUrl = apkUrl;
+                runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) return;
+                    new AlertDialog.Builder(MainActivity.this)
+                            .setTitle("FF Arena update available")
+                            .setMessage("A new app version is available ("
+                                    + BuildConfig.VERSION_NAME + " → 1.0." + latestVersion
+                                    + "). Update the app to get the latest features.")
+                            .setCancelable(true)
+                            .setNegativeButton("Later", (dialog, which) -> dialog.dismiss())
+                            .setPositiveButton("Download update", (dialog, which) -> {
+                                try {
+                                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl));
+                                    startActivity(intent);
+                                } catch (Exception ignored) {
+                                    // The player can still use the website inside the app.
+                                }
+                            })
+                            .show();
+                });
+            } catch (Exception ignored) {
+                // Update checks are optional; offline users can continue using the app.
+            } finally {
+                if (connection != null) connection.disconnect();
+            }
+        }).start();
     }
 
     private void showNativeShell() {
