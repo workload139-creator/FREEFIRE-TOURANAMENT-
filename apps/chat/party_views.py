@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.social.models import PlayerShopWallet
-from .party_models import PartyRoom, PartyRoomMembership, PartyRoomMessage, PartyRoomGift
+from .party_models import PartyRoom, PartyRoomMembership, PartyRoomMessage, PartyRoomGift, CommunityTournament, CommunityTournamentEntry
 
 GIFTS = {
     "rose": ("🌹", "Rose", 2),
