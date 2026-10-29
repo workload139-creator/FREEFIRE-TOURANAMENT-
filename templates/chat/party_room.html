@@ -118,23 +118,30 @@
     if (data.phase === "question") {
       if (data.question) {
         questionEl.textContent = data.question;
+        async function submitAnswer(key) {
+          if (busy) return;
+          busy = true;
+          statusEl.textContent = key === "SKIP" ? "Question skip ho raha hai…" : "Answer submit ho raha hai…";
+          try {
+            const result = await post(answerUrl, {answer:key});
+            statusEl.textContent = result.result === "correct" ? "Sahi jawab! Agle phase ka intezar karein." : "Wrong answer / Skip — aap spectator ban gaye.";
+          } catch (error) { statusEl.textContent = error.message; }
+          finally { busy = false; }
+          await refresh();
+        }
         Object.entries(data.choices || {}).forEach(([key, label]) => {
           const button = node("button", key + ". " + label, "button button-outline");
           button.type = "button";
           button.disabled = busy;
-          button.addEventListener("click", async () => {
-            if (busy) return;
-            busy = true;
-            statusEl.textContent = "Answer submit ho raha hai…";
-            try {
-              const result = await post(answerUrl, {answer:key});
-              statusEl.textContent = result.result === "correct" ? "Sahi jawab! Agle phase ka intezar karein." : "Galat jawab — aap spectator ban gaye.";
-              await refresh();
-            } catch (error) { statusEl.textContent = error.message; }
-            finally { busy = false; }
-          });
+          button.addEventListener("click", () => submitAnswer(key));
           choicesEl.appendChild(button);
         });
+        const skipQuestion = node("button", "⏭️ Skip Question (eliminate)", "button button-outline");
+        skipQuestion.type = "button";
+        skipQuestion.style.marginTop = "8px";
+        skipQuestion.disabled = busy;
+        skipQuestion.addEventListener("click", () => submitAnswer("SKIP"));
+        choicesEl.appendChild(skipQuestion);
       } else if (data.my_answer) {
         questionEl.textContent = "Aapka answer submit ho gaya. Baaki players ka wait karein.";
       } else if (!data.is_eliminated) {
