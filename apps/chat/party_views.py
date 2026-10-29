@@ -345,7 +345,10 @@ def _advance_turn(room):
 def advance_party_game(room):
     now = timezone.now()
     if room.game_status == "break" and room.game_deadline and now >= room.game_deadline:
-        if room.game_round < 3:
+        is_draw = "DRAW" in (room.game_result or "").upper()
+        if is_draw:
+            _start_quiz_round(room, room.game_round, clear_round=True)
+        elif room.game_round < 3:
             _start_quiz_round(room, room.game_round + 1, clear_round=True)
         else:
             _start_quiz_round(room, 3, clear_round=True)
