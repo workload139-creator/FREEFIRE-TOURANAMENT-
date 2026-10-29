@@ -49,7 +49,12 @@ public class MainActivity extends Activity {
         super.onCreate(state);
         getWindow().setStatusBarColor(BG);
         getWindow().setNavigationBarColor(BG);
-        showNativeShell();
+        // Keep the app UI server-driven so website changes appear without reinstalling the APK.
+        root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(BG);
+        setContentView(root);
+        openFeature("/");
     }
 
     private void showNativeShell() {
@@ -495,8 +500,12 @@ public class MainActivity extends Activity {
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
         page.setBackgroundColor(BG);
-        Button back = button("‹  BACK TO FF ARENA");
+        Button back = button("/".equals(route) ? "↻  REFRESH FF ARENA" : "‹  BACK TO FF ARENA");
         back.setOnClickListener(v -> {
+            if ("/".equals(route) && featureWebView != null) {
+                featureWebView.reload();
+                return;
+            }
             if (featureWebView != null) {
                 featureWebView.stopLoading();
                 featureWebView.destroy();
@@ -600,11 +609,6 @@ public class MainActivity extends Activity {
     public void onBackPressed() {
         if (featureWebView != null && featureWebView.canGoBack()) {
             featureWebView.goBack();
-        } else if (featureWebView != null) {
-            featureWebView.stopLoading();
-            featureWebView.destroy();
-            featureWebView = null;
-            showNativeShell();
         } else {
             super.onBackPressed();
         }
