@@ -265,7 +265,7 @@ def party_game_state(request, room_id):
 @require_POST
 def party_game_answer(request, room_id):
     answer = request.POST.get("answer", "").strip().upper()
-    if answer not in ("A", "B", "C", "D"):
+    if answer not in ("A", "B", "C", "D", "SKIP"):
         return JsonResponse({"error": "Answer option valid nahi hai."}, status=400)
     with transaction.atomic():
         room = get_object_or_404(PartyRoom.objects.select_for_update().select_related("host"), pk=room_id)
@@ -290,8 +290,8 @@ def party_game_answer(request, room_id):
         else:
             member.is_eliminated = True
             member.eliminated_round = room.current_round
-            member.elimination_reason = "wrong_answer"
-            outcome = f"❌ PLAYER_ELIMINATED|{request.user.username}|Round {room.current_round}|Wrong answer"
+            member.elimination_reason = "skip" if answer == "SKIP" else "wrong_answer"
+            outcome = f"❌ PLAYER_ELIMINATED|{request.user.username}|Round {room.current_round}|{'Skipped' if answer == 'SKIP' else 'Wrong answer'}"
         member.save(update_fields=["current_answer", "answered_at", "score", "is_eliminated", "eliminated_round", "elimination_reason"])
         PartyRoomMessage.objects.create(room=room, sender=request.user, body=outcome)
         active = list(PartyRoomMembership.objects.filter(room=room, is_eliminated=False))
