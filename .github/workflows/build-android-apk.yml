@@ -60,6 +60,22 @@ jobs:
           test -s "$RUNNER_TEMP/ffarena-upload-key.jks"
           echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/ffarena-upload-key.jks" >> "$GITHUB_ENV"
 
+      - name: Validate Android release keystore password
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ]; then
+            echo "Missing signing password or key alias secret."
+            exit 1
+          fi
+          if ! keytool -list -keystore "$RUNNER_TEMP/ffarena-upload-key.jks" -storetype PKCS12 -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
+            echo "Keystore validation failed. Check that ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, and ANDROID_KEY_ALIAS belong to the same keystore. Secret values were not printed."
+            exit 1
+          fi
+          echo "Keystore file, store password, and alias validated successfully."
+
       - name: Build debug APK and signed release AAB
         working-directory: AndroidApp
         env:
