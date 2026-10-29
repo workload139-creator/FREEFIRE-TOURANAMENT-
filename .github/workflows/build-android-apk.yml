@@ -56,9 +56,12 @@ jobs:
             echo "Missing repository secret: ANDROID_KEYSTORE_BASE64"
             exit 1
           fi
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/ffarena-upload-key.jks"
-          test -s "$RUNNER_TEMP/ffarena-upload-key.jks"
-          echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/ffarena-upload-key.jks" >> "$GITHUB_ENV"
+          # Normalize copied Base64 in case it contains wrapped lines or spaces.
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d ' \r\n\t' | base64 --decode > "$RUNNER_TEMP/ffarena-upload-key"
+          test -s "$RUNNER_TEMP/ffarena-upload-key"
+          echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/ffarena-upload-key" >> "$GITHUB_ENV"
+          echo "Decoded signing file successfully (file size: $(wc -c < "$RUNNER_TEMP/ffarena-upload-key") bytes)."
+          file "$RUNNER_TEMP/ffarena-upload-key" || true
 
       - name: Validate Android release keystore password
         id: validate_signing
@@ -70,15 +73,22 @@ jobs:
           if [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ]; then
             echo "valid=false" >> "$GITHUB_OUTPUT"
             echo "::warning::Release signing secrets are missing. The debug APK will still be built."
-          elif ! keytool -list -keystore "$RUNNER_TEMP/ffarena-upload-key.jks" -storetype PKCS12 -storepass "$ANDROID_KEYSTORE_PASSWORD" >/dev/null 2>&1; then
+          STORE_TYPE=""
+          if keytool -list -keystore "$RUNNER_TEMP/ffarena-upload-key" -storetype PKCS12 -storepass "$ANDROID_KEYSTORE_PASSWORD" >/dev/null 2>&1; then
+            STORE_TYPE="PKCS12"
+          elif keytool -list -keystore "$RUNNER_TEMP/ffarena-upload-key" -storetype JKS -storepass "$ANDROID_KEYSTORE_PASSWORD" >/dev/null 2>&1; then
+            STORE_TYPE="JKS"
+          fi
+          if [ -z "$STORE_TYPE" ]; then
             echo "valid=false" >> "$GITHUB_OUTPUT"
-            echo "::error::Keystore file could not be opened with ANDROID_KEYSTORE_PASSWORD. Check that ANDROID_KEYSTORE_BASE64 is the complete Base64 of the .p12 file and that ANDROID_KEYSTORE_PASSWORD matches that file."
-          elif ! keytool -list -keystore "$RUNNER_TEMP/ffarena-upload-key.jks" -storetype PKCS12 -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
+            echo "::error::The decoded file is not opening as PKCS12 or JKS with the provided password. Check the Base64 secret is copied from the same keystore file and the password matches. The workflow will not print or expose secrets."
+          elif ! keytool -list -keystore "$RUNNER_TEMP/ffarena-upload-key" -storetype "$STORE_TYPE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
             echo "valid=false" >> "$GITHUB_OUTPUT"
-            echo "::error::Keystore password worked, but ANDROID_KEY_ALIAS was not found. Check the secret spelling; the expected alias from the local keystore was ffarena."
+            echo "::error::Keystore password is valid but the alias was not found. Confirm ANDROID_KEY_ALIAS matches the alias inside your keystore."
           else
             echo "valid=true" >> "$GITHUB_OUTPUT"
-            echo "Keystore file, store password, and alias validated successfully."
+            echo "Keystore validated. Detected store type: $STORE_TYPE"
+            echo "ANDROID_KEYSTORE_STORE_TYPE=$STORE_TYPE" >> "$GITHUB_ENV"
           fi
 
       - name: Build debug APK
