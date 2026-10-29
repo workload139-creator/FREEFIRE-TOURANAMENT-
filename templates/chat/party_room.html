@@ -21,13 +21,16 @@
       {% for seat in "123456789012" %}{% if forloop.counter > members|length and forloop.counter <= 12 %}<div class="room-seat"><span>＋</span><span>Seat {{ forloop.counter }}</span></div>{% endif %}{% endfor %}
     </div>
     {% if room.game_status == "lobby" %}
+      <div id="partyLobbyControls">
       <p class="room-note">Game 12/12 players poore hone par hi start hoga. Abhi {{ members|length }}/12 players hain.</p>
       {% if user.pk == room.host_id %}
         <form method="post" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0">{% csrf_token %}<input type="hidden" name="action" value="toggle_auto_start"><button class="button button-outline" type="submit">⏱️ Auto-start: {% if room.auto_start %}ON — turn OFF{% else %}OFF — turn ON{% endif %}</button></form>
         {% if members|length >= 12 %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="start_game"><button class="button button-primary" type="submit">⚡ Start Game (12/12)</button></form>{% else %}<button class="button button-primary" type="button" disabled title="12 players required">⚡ Start Game (12/12 required)</button>{% endif %}
       {% else %}<p class="room-note">Host Auto-start ON kar sakta hai; 12 players hote hi game start hoga.</p>{% endif %}
+      </div>
     {% else %}
       <div class="room-game-live"><strong>⚡ Party session started — Round {{ room.current_round }} of 3</strong><p class="room-note" style="margin:6px 0 0">Squad lobby live hai. Voice aur room chat use karo.</p></div>
+    {% endif %}
       <section id="partyQuizGame" class="room-box" style="margin-top:14px;border-color:#b6ff3955" data-state-url="{% url 'chat:party_game_state' room.pk %}" data-answer-url="{% url 'chat:party_game_answer' room.pk %}" data-decision-url="{% url 'chat:party_game_decision' room.pk %}" data-restart-url="{% url 'chat:party_game_restart_draw' room.pk %}" data-host="{% if user.pk == room.host_id %}1{% else %}0{% endif %}">
         <h2>🧠 FF Arena Quiz — Live Game</h2>
         <p id="quizStatus" class="room-note" role="status" aria-live="polite">Game state load ho raha hai…</p>
@@ -39,7 +42,6 @@
         <div id="quizLeaderboard" style="margin-top:14px"></div>
         <button id="quizRestart" class="button button-primary" type="button" hidden>🔄 Restart Draw Game</button>
       </section>
-    {% endif %}
   </section>
   {% endif %}
   {% if not joined %}
