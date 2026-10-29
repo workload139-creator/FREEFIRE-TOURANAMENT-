@@ -21,8 +21,11 @@
       {% for seat in "123456789012" %}{% if forloop.counter > members|length and forloop.counter <= 12 %}<div class="room-seat"><span>＋</span><span>Seat {{ forloop.counter }}</span></div>{% endif %}{% endfor %}
     </div>
     {% if room.game_status == "lobby" %}
-      <p class="room-note">Players ke aane ka wait karo. Host jab kam se kam 2 players hon, Start Game dabaye.</p>
-      {% if user.pk == room.host_id %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="start_game"><button class="button button-primary" type="submit">⚡ Start Game</button></form>{% else %}<p class="room-note">Game start karne ka button host ke paas hai.</p>{% endif %}
+      <p class="room-note">Game 12/12 players poore hone par hi start hoga. Abhi {{ members|length }}/12 players hain.</p>
+      {% if user.pk == room.host_id %}
+        <form method="post" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0">{% csrf_token %}<input type="hidden" name="action" value="toggle_auto_start"><button class="button button-outline" type="submit">⏱️ Auto-start: {% if room.auto_start %}ON — turn OFF{% else %}OFF — turn ON{% endif %}</button></form>
+        {% if members|length >= 12 %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="start_game"><button class="button button-primary" type="submit">⚡ Start Game (12/12)</button></form>{% else %}<button class="button button-primary" type="button" disabled title="12 players required">⚡ Start Game (12/12 required)</button>{% endif %}
+      {% else %}<p class="room-note">Host Auto-start ON kar sakta hai; 12 players hote hi game start hoga.</p>{% endif %}
     {% else %}
       <div class="room-game-live"><strong>⚡ Party session started — Round {{ room.current_round }} of 3</strong><p class="room-note" style="margin:6px 0 0">Squad lobby live hai. Voice aur room chat use karo.</p></div>
     {% endif %}
