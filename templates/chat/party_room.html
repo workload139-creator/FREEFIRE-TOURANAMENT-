@@ -18,7 +18,7 @@
     <p id="quizResult" role="status" aria-live="polite" class="room-note">{{ room.game_result|default:"12 players hote hi auto-start; host pehle bhi start kar sakta hai." }}</p>
     <form method="post" id="quizStartForm" style="display:{% if user.pk == room.host_id and room.game_status == 'waiting' or user.pk == room.host_id and room.game_status == 'finished' %}inline-flex{% else %}none{% endif %};gap:8px;margin:10px 0">{% csrf_token %}<input type="hidden" name="action" value="start_game"><button class="button button-primary" type="submit">▶ Host: Start / Restart Game</button></form>
     <form id="quizAnswerForm" style="display:none;gap:8px;flex-wrap:wrap;margin:10px 0"><input id="quizAnswer" name="answer" maxlength="240" placeholder="Apna jawab likho..." autocomplete="off" style="flex:1;min-width:180px;padding:12px;border-radius:10px;background:#080d16;color:#fff;border:1px solid #46516b"><button class="button button-primary" type="submit">Submit Answer</button><button class="button button-outline" type="button" id="quizSkip">Skip Turn</button></form>
-    <p id="quizSpectator" class="room-note" style="display:none">👀 Aap spectator mode mein hain. Round ke results dekh sakte hain.</p>
+    <p id="quizSpectator" class="room-note" style="display:none">👀 Aap spectator mode mein hain ya game complete ho gaya hai. Round results dekh sakte hain.</p>
     <p id="quizProgress" class="room-note">Players: {{ members|length }}/12</p>
   </section>
   <div class="room-layout">
@@ -66,7 +66,7 @@
    progress.textContent="Players: "+d.members+"/12 · Is round ki completed turns: "+d.answered;
    form.style.display=d.status==="live"&&d.is_my_turn&&!d.has_answered?"flex":"none";
    skip.style.display=d.status==="live"&&d.is_my_turn&&!d.has_answered?"inline-block":"none";
-   spectator.style.display=(d.status==="live"&&(!d.eligible||d.has_answered&&!d.is_my_turn)||d.status==="finished")?"block":"none";
+   spectator.style.display=(d.status==="live"&&!d.eligible||d.status==="finished")?"block":"none";
    start.style.display=d.can_start?"inline-flex":"none";
    if(d.status!==lastStatus||d.question!==lastQuestion){input.value="";lastStatus=d.status;lastQuestion=d.question;}
   }catch(e){}
