@@ -213,7 +213,7 @@ def _current_decision_member(room):
 @require_GET
 def party_game_state(request, room_id):
     with transaction.atomic():
-        room = get_object_or_404(PartyRoom.objects.select_for_update().select_related("host", "winner"), pk=room_id)
+        room = get_object_or_404(PartyRoom.objects.select_for_update().select_related("host"), pk=room_id)
         if not PartyRoomMembership.objects.filter(room=room, user=request.user).exists():
             return JsonResponse({"error": "Join this room first."}, status=403)
         _advance_if_due(room)
@@ -240,7 +240,7 @@ def party_game_state(request, room_id):
             "score": my_member.score,
             "question": question.get("text") if room.game_phase == "question" and not my_member.is_eliminated and not my_member.current_answer else None,
             "choices": question.get("choices") if room.game_phase == "question" and not my_member.is_eliminated and not my_member.current_answer else None,
-            "correct_answer": question.get("correct") if room.game_phase in ("decision", "completed") else None,
+            "correct_answer": question.get("choices", {}).get(question.get("correct")) if room.game_phase in ("decision", "completed") else None,
             "explanation": question.get("explanation") if room.game_phase in ("decision", "completed") else None,
             "decision_player": current_decision.user.username if current_decision else None,
             "is_my_decision": bool(current_decision and current_decision.user_id == request.user.pk),
