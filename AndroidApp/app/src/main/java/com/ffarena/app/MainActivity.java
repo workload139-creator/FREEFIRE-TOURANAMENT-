@@ -169,9 +169,10 @@ public class MainActivity extends Activity {
             addFeatureCard("Login / Register", "Sign in or create your player account", "Open account", "/login/");
             addFeatureCard("Edit profile", "Update your player details", "Edit profile", "/accounts/profile/edit/");
             addFeatureCard("Password & settings", "Manage your account settings", "Account settings", "/accounts/settings/");
-            addActionRow("Followers", "See players who follow you", "/accounts/profile/");
-            addActionRow("Following", "Manage players you follow", "/accounts/profile/");
+            addActionRow("Followers", "See players who follow you", "/friends/followers/");
+            addActionRow("Following", "Manage players you follow", "/friends/following/");
             addActionRow("Messages", "Open your player chats", "/chat/");
+            addActionRow("Community photo feed", "Share and view player photos", "/friends/feed/");
             addActionRow("My tournaments", "View registrations and match updates", "/tournaments/my-registrations/");
             loadPlayerProfile();
         }
