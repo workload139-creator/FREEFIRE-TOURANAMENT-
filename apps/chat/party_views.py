@@ -5,10 +5,13 @@ from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from datetime import timedelta
+import random
+import re
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.social.models import PlayerShopWallet
-from .party_models import PartyRoom, PartyRoomMembership, PartyRoomMessage, PartyRoomGift, CommunityTournament, CommunityTournamentEntry
+from .party_models import PartyRoom, PartyRoomMembership, PartyRoomMessage, PartyRoomGift, CommunityTournament, CommunityTournamentEntry, PartyRoomGameAnswer
 
 GIFTS = {
     "rose": ("🌹", "Rose", 2),
@@ -37,10 +40,7 @@ def create_party_room(request):
         capacity = int(request.POST.get("max_members", "12"))
     except ValueError:
         capacity = 12
-    if capacity != 12:
-        capacity = 12
-        messages.info(request, "Party Room ki capacity 12 players fix hai.")
-        return redirect("chat:party")
+    capacity = 12
     visibility = request.POST.get("visibility", "public")
     if visibility not in ("public", "private"):
         visibility = "public"
@@ -73,12 +73,25 @@ def party_room(request, room_id):
                 messages.error(request, "Room full hai.")
             else:
                 PartyRoomMembership.objects.get_or_create(room=room, user=request.user)
+                room.refresh_from_db()
+                if room.game_status == "waiting" and room.memberships.count() >= 12:
+                    start_party_game(room)
                 messages.success(request, "Room join ho gaya.")
             return redirect("chat:party_room", room_id=room.pk)
         if not membership:
             messages.error(request, "Pehle room join karo.")
             return redirect("chat:party_room", room_id=room.pk)
-        if action == "message":
+        if action == "start_game":
+            if request.user.pk != room.host_id:
+                messages.error(request, "Game sirf host start kar sakta hai.")
+            elif room.game_status not in ("waiting", "finished"):
+                messages.info(request, "Game pehle hi start ho chuka hai.")
+            elif room.memberships.count() < 2:
+                messages.error(request, "Game start karne ke liye kam se kam 2 players chahiye.")
+            else:
+                start_party_game(room)
+                messages.success(request, "3-round FF Quiz start ho gaya!")
+        elif action == "message":
             body = request.POST.get("body", "").strip()[:1000]
             if body:
                 PartyRoomMessage.objects.create(room=room, sender=request.user, body=body)
@@ -122,7 +135,7 @@ def party_room(request, room_id):
     PartyRoomMembership.objects.filter(room=room, user=request.user).update(last_seen_at=timezone.now())
     members = room.memberships.select_related("user").order_by("joined_at")
     room_messages = room.room_messages.select_related("sender").order_by("-pk")[:100]
-    return render(request, "chat/party_room.html", {"room": room, "members": members, "room_messages": list(reversed(room_messages)), "gifts": [{"code": code, "emoji": values[0], "name": values[1], "price": values[2]} for code, values in GIFTS.items()], "joined": bool(membership)})
+    return render(request, "chat/party_room.html", {"room": room, "members": members, "room_messages": list(reversed(room_messages)), "gifts": [{"code": code, "emoji": values[0], "name": values[1], "price": values[2]} for code, values in GIFTS.items()], "joined": bool(membership), "game_answers": room.game_answers.filter(round_number=room.game_round).select_related("player")})
 
 
 @login_required
@@ -184,3 +197,184 @@ def join_community_tournament(request, tournament_id):
             _, created = CommunityTournamentEntry.objects.get_or_create(tournament=tournament, user=request.user)
             messages.success(request, "Tournament join ho gaya." if created else "Tum pehle se registered ho.")
     return redirect("chat:party")
+
+
+# Timed, non-cash three-round Free Fire quiz for Party Rooms.
+PARTY_QUIZ = {
+    1: [
+        ("Free Fire mein safe zone se bahar rehne par kya hota hai?", "damage"),
+        ("Knocked teammate ko bachane ke liye kya karte hain?", "revive"),
+        ("Battle Royale ka short form kya hai?", "br"),
+        ("Headshot kis body part par hit hota hai?", "head"),
+        ("Gloo wall ka main use kya hai?", "cover"),
+    ],
+    2: [
+        ("Free Fire mein medkit ka use kya hai?", "heal"),
+        ("Teammate ko location batane ke liye kya use karte hain?", "ping"),
+        ("Weapon reload karne se kya hota hai?", "ammo"),
+        ("Safe zone mein rehne ka main faida kya hai?", "survival"),
+        ("Gloo wall kis cheez se bachane mein madad karti hai?", "bullets"),
+    ],
+    3: [
+        ("Free Fire ka famous victory shout kya hai?", "booyah"),
+        ("HP ka matlab kya hai?", "health points"),
+        ("Scope ka use kis liye hota hai?", "aim"),
+        ("Revive ke baad teammate ko kis cheez ki zaroorat ho sakti hai?", "heal"),
+        ("BR match mein jeetne ke liye aakhir tak kya rehna hota hai?", "alive"),
+    ],
+}
+ANSWER_ALIASES = {
+    "damage": {"damage", "health damage", "hp kam"},
+    "revive": {"revive", "reviving", "uthana", "teammate ko uthana"},
+    "br": {"br", "battle royale", "battleroyale"},
+    "head": {"head", "headshot", "sir"},
+    "cover": {"cover", "protection", "bachav"},
+    "heal": {"heal", "healing", "health", "hp badhana", "health badhana"},
+    "ping": {"ping", "mark", "location mark"},
+    "ammo": {"ammo", "bullets", "goli"},
+    "survival": {"survival", "safe rehna", "bachna"},
+    "bullets": {"bullets", "goli", "enemy fire"},
+    "booyah": {"booyah"},
+    "health points": {"health points", "health point", "hp"},
+    "aim": {"aim", "target", "nishana"},
+    "alive": {"alive", "zinda", "last tak zinda"},
+}
+
+
+def _clean_answer(value):
+    return re.sub(r"[^a-z0-9 ]", "", (value or "").lower()).strip()
+
+
+def _eligible_players(room, round_number):
+    members = list(room.memberships.select_related("user").order_by("joined_at"))
+    for previous_round in range(1, round_number):
+        correct_ids = set(PartyRoomGameAnswer.objects.filter(
+            room=room, round_number=previous_round, is_correct=True
+        ).values_list("player_id", flat=True))
+        members = [m for m in members if m.user_id in correct_ids]
+    return members
+
+
+def start_party_game(room, round_number=1):
+    room.game_round = round_number
+    question, answer = random.choice(PARTY_QUIZ[round_number])
+    old_questions = set(room.room_messages.filter(body__startswith="[QUIZ QUESTION]").values_list("body", flat=True))
+    options = [pair for pair in PARTY_QUIZ[round_number] if "[QUIZ QUESTION] " + pair[0] not in old_questions]
+    if options:
+        question, answer = random.choice(options)
+    room.game_question = question
+    room.game_answer = answer
+    room.game_status = "live"
+    room.game_deadline = timezone.now() + timedelta(seconds=30)
+    room.game_result = "Round " + str(round_number) + ": 30 seconds mein answer submit karo."
+    room.save(update_fields=["game_round", "game_question", "game_answer", "game_status", "game_deadline", "game_result", "updated_at"])
+    PartyRoomMessage.objects.create(room=room, sender=room.host, body="[QUIZ QUESTION] " + question)
+
+
+def _award_quiz_winner(room, winner):
+    with transaction.atomic():
+        locked = PartyRoom.objects.select_for_update().get(pk=room.pk)
+        if locked.game_status == "finished" or locked.reward_awarded:
+            return
+        wallet, _ = PlayerShopWallet.objects.get_or_create(user=winner)
+        wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
+        wallet.fan_tokens += 5
+        wallet.save(update_fields=["fan_tokens", "updated_at"])
+        locked.game_winner = winner
+        locked.reward_awarded = True
+        locked.game_status = "finished"
+        locked.game_deadline = None
+        locked.game_result = winner.username + " jeet gaya! +5 Fan Tokens."
+        locked.save(update_fields=["game_winner", "reward_awarded", "game_status", "game_deadline", "game_result", "updated_at"])
+
+
+def advance_party_game(room):
+    now = timezone.now()
+    if room.game_status == "break" and room.game_deadline and now >= room.game_deadline:
+        if room.game_round < 3:
+            start_party_game(room, room.game_round + 1)
+        else:
+            start_party_game(room, 3)
+        return
+    if room.game_status != "live" or not room.game_deadline or now < room.game_deadline:
+        return
+    answers = list(room.game_answers.filter(round_number=room.game_round).select_related("player").order_by("answered_at", "pk"))
+    correct = [item for item in answers if item.is_correct]
+    if room.game_round == 3 and correct:
+        _award_quiz_winner(room, correct[0].player)
+        return
+    eligible = _eligible_players(room, room.game_round)
+    correct_ids = {item.player_id for item in correct}
+    survivors = [member for member in eligible if member.user_id in correct_ids]
+    if not survivors:
+        room.game_status = "break"
+        room.game_deadline = now + timedelta(seconds=5)
+        room.game_result = "Round " + str(room.game_round) + " DRAW — sabke jawab galat ya time out. 5 sec baad naya sawaal."
+        room.save(update_fields=["game_status", "game_deadline", "game_result", "updated_at"])
+        if room.game_round < 3:
+            # A draw retries the same round with a new question.
+            room.game_round -= 1
+            room.save(update_fields=["game_round", "updated_at"])
+        return
+    if room.game_round < 3:
+        room.game_status = "break"
+        room.game_deadline = now + timedelta(seconds=5)
+        room.game_result = "Round " + str(room.game_round) + " complete — " + str(len(survivors)) + " player(s) advance. Wrong / unanswered players can watch."
+        room.save(update_fields=["game_status", "game_deadline", "game_result", "updated_at"])
+    else:
+        room.game_status = "break"
+        room.game_deadline = now + timedelta(seconds=5)
+        room.game_result = "Final round draw — koi sahi jawab nahi. 5 sec baad naya final question."
+        room.save(update_fields=["game_status", "game_deadline", "game_result", "updated_at"])
+
+
+@login_required
+@require_GET
+def party_game_state(request, room_id):
+    room = get_object_or_404(PartyRoom, pk=room_id)
+    if not PartyRoomMembership.objects.filter(room=room, user=request.user).exists():
+        return JsonResponse({"error": "Join this room first."}, status=403)
+    advance_party_game(room)
+    room.refresh_from_db()
+    answers = room.game_answers.filter(round_number=room.game_round)
+    eligible_ids = {m.user_id for m in _eligible_players(room, room.game_round)}
+    own_answer = answers.filter(player=request.user).first()
+    return JsonResponse({
+        "status": room.game_status, "round": room.game_round, "question": room.game_question,
+        "result": room.game_result, "deadline": room.game_deadline.isoformat() if room.game_deadline else None,
+        "seconds_left": max(0, int((room.game_deadline - timezone.now()).total_seconds())) if room.game_deadline and room.game_status == "live" else 0,
+        "answered": answers.count(), "members": room.memberships.count(),
+        "eligible": request.user.pk in eligible_ids, "has_answered": bool(own_answer),
+        "winner": room.game_winner.username if room.game_winner_id else None,
+        "reward_awarded": room.reward_awarded,
+        "can_start": request.user.pk == room.host_id and room.game_status in ("waiting", "finished"),
+    })
+
+
+@login_required
+@require_POST
+def party_game_answer(request, room_id):
+    room = get_object_or_404(PartyRoom, pk=room_id)
+    if not PartyRoomMembership.objects.filter(room=room, user=request.user).exists():
+        return JsonResponse({"error": "Room membership required."}, status=403)
+    advance_party_game(room)
+    room.refresh_from_db()
+    if room.game_status != "live" or not room.game_deadline or timezone.now() >= room.game_deadline:
+        return JsonResponse({"error": "Answer time khatam ho gaya."}, status=400)
+    if request.user.pk not in {m.user_id for m in _eligible_players(room, room.game_round)}:
+        return JsonResponse({"error": "Aap spectator mode mein hain."}, status=403)
+    answer = request.POST.get("answer", "").strip()[:240]
+    if not answer:
+        return JsonResponse({"error": "Jawab likho."}, status=400)
+    normalized = _clean_answer(answer)
+    expected = _clean_answer(room.game_answer)
+    accepted = {_clean_answer(item) for item in ANSWER_ALIASES.get(expected, {expected})}
+    is_correct = normalized == expected or normalized in accepted
+    try:
+        with transaction.atomic():
+            PartyRoomGameAnswer.objects.create(room=room, round_number=room.game_round, player=request.user, answer=answer, is_correct=is_correct)
+    except Exception:
+        return JsonResponse({"error": "Is round mein aap ek jawab de chuke ho."}, status=409)
+    if room.game_round == 3 and is_correct:
+        _award_quiz_winner(room, request.user)
+    return JsonResponse({"ok": True, "correct": is_correct, "message": "Sahi jawab!" if is_correct else "Galat jawab — aap ab spectator hain."})
