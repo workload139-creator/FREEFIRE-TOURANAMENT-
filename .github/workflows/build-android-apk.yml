@@ -1,4 +1,4 @@
-name: Build and Publish FF Arena Android APK
+name: Build and Publish FF Arena Android APK and AAB
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 jobs:
-  build-apk:
+  build-android:
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
@@ -47,29 +47,52 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Build debug APK
-        working-directory: AndroidApp
-        run: gradle --no-daemon assembleDebug -PversionCode=${{ github.run_number }}
+      - name: Prepare Android release signing key
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "Missing repository secret: ANDROID_KEYSTORE_BASE64"
+            exit 1
+          fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/ffarena-upload-key.jks"
+          test -s "$RUNNER_TEMP/ffarena-upload-key.jks"
+          echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/ffarena-upload-key.jks" >> "$GITHUB_ENV"
 
-      - name: Upload APK build artifact
+      - name: Build debug APK and signed release AAB
+        working-directory: AndroidApp
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          gradle --no-daemon assembleDebug bundleRelease -PversionCode=${{ github.run_number }}
+
+      - name: Upload Android build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ff-arena-android-apk
-          path: AndroidApp/app/build/outputs/apk/debug/app-debug.apk
+          name: ff-arena-android-builds
+          path: |
+            AndroidApp/app/build/outputs/apk/debug/app-debug.apk
+            AndroidApp/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 14
 
-      - name: Publish public APK download
+      - name: Publish APK and AAB download
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ff-arena-latest
-          name: FF Arena Android APK
+          name: FF Arena Android Builds
           body: |
-            FF Arena Android app APK.
-            Download app-debug.apk and install it on an Android phone.
+            FF Arena Android app builds.
+            app-debug.apk: debug-signed APK for direct testing.
+            app-release.aab: release-signed Android App Bundle for Play Console upload.
             versionCode: ${{ github.run_number }}
-            This is a debug-signed build; Android may show an unknown-app warning.
-          files: AndroidApp/app/build/outputs/apk/debug/app-debug.apk
+            Publishing the AAB does not guarantee Google Play policy eligibility.
+          files: |
+            AndroidApp/app/build/outputs/apk/debug/app-debug.apk
+            AndroidApp/app/build/outputs/bundle/release/app-release.aab
           overwrite_files: true
           fail_on_unmatched_files: true
           make_latest: true
