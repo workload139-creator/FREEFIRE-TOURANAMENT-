@@ -46,3 +46,7 @@ class Message(models.Model):
 
     def __str__(self):
         return f"Message #{self.pk} by {self.sender}"
+
+
+# Keep room models discoverable by Django's migration autodetector.
+from .party_models import PartyRoom, PartyRoomMembership, PartyRoomMessage, PartyRoomGift, CommunityTournament, CommunityTournamentEntry
