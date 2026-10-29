@@ -480,6 +480,13 @@ def verify_entry_payments(modeladmin, request, queryset):
             registration.payment_verified = True
             registration.status = Registration.Status.CONFIRMED
             registration.save(update_fields=["payment_verified", "status", "updated_at"])
+            TournamentLedgerEntry.objects.filter(
+                registration=registration,
+                entry_type=TournamentLedgerEntry.EntryType.ENTRY,
+            ).update(
+                status=TournamentLedgerEntry.Status.COMPLETED,
+                description="Tournament entry payment verified by admin against the actual payment receipt.",
+            )
             if registration.tournament.is_unlimited_br:
                 from .registration_services import maybe_start_unlimited_tournament
                 maybe_start_unlimited_tournament(registration.tournament_id)
