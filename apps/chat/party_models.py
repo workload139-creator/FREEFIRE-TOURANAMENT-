@@ -19,6 +19,11 @@ class PartyRoom(models.Model):
     game_status = models.CharField(max_length=12, choices=[("lobby", "Lobby"), ("live", "Live"), ("completed", "Completed")], default="lobby", db_index=True)
     current_round = models.PositiveSmallIntegerField(default=0)
     auto_start = models.BooleanField(default=False, help_text="Start the quiz automatically when the room reaches 12 members.")
+    game_phase = models.CharField(max_length=12, choices=[("lobby", "Lobby"), ("question", "Question"), ("decision", "Decision"), ("completed", "Completed")], default="lobby", db_index=True)
+    phase_deadline = models.DateTimeField(null=True, blank=True)
+    decision_index = models.PositiveSmallIntegerField(default=0)
+    game_winner_awarded = models.BooleanField(default=False)
+    winner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="party_quiz_wins")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -39,6 +44,13 @@ class PartyRoomMembership(models.Model):
     joined_at = models.DateTimeField(auto_now_add=True)
     last_seen_at = models.DateTimeField(auto_now=True)
     is_muted = models.BooleanField(default=False)
+    is_eliminated = models.BooleanField(default=False, db_index=True)
+    eliminated_round = models.PositiveSmallIntegerField(null=True, blank=True)
+    elimination_reason = models.CharField(max_length=24, blank=True)
+    current_answer = models.CharField(max_length=1, blank=True)
+    answered_at = models.DateTimeField(null=True, blank=True)
+    score = models.PositiveSmallIntegerField(default=0)
+    decision_done = models.BooleanField(default=False)
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=("room", "user"), name="chat_party_room_unique_member")]
