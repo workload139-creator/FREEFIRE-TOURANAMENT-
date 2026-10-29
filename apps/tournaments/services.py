@@ -81,6 +81,20 @@ def mark_not_playing_and_refund(registration_id):
             )
 
     if amount > 0:
+        TournamentLedgerEntry.objects.get_or_create(
+            reference=reference,
+            defaults={
+                "tournament": registration.tournament,
+                "player": registration.player,
+                "registration": registration,
+                "entry_type": TournamentLedgerEntry.EntryType.REFUND,
+                "currency": TournamentLedgerEntry.Currency.INR,
+                "quantity": 0,
+                "amount_inr": amount,
+                "status": TournamentLedgerEntry.Status.COMPLETED,
+                "description": "Verified INR wallet refund after missed ready confirmation.",
+            },
+        )
         entry_ref = f"ADMIN-ENTRY-{registration.pk}"
         refund_ref = f"ADMIN-REFUND-{registration.pk}"
         entry_ledger = AdminWalletTransaction.objects.filter(reference=entry_ref, status=AdminWalletTransaction.Status.COMPLETED).first()
@@ -186,6 +200,20 @@ def cancel_tournament_and_refund(tournament_id):
                 description=f"Automatic wallet refund because tournament {tournament.title} was cancelled",
             )
 
+        TournamentLedgerEntry.objects.get_or_create(
+            reference=reference,
+            defaults={
+                "tournament": tournament,
+                "player": registration.player,
+                "registration": registration,
+                "entry_type": TournamentLedgerEntry.EntryType.REFUND,
+                "currency": TournamentLedgerEntry.Currency.INR,
+                "quantity": 0,
+                "amount_inr": registration.entry_fee_paid,
+                "status": TournamentLedgerEntry.Status.COMPLETED,
+                "description": "Verified INR wallet refund because tournament was cancelled.",
+            },
+        )
         entry_ref = f"ADMIN-ENTRY-{registration.pk}"
         admin_refund_ref = f"ADMIN-REFUND-CANCEL-{registration.pk}"
         entry_ledger = AdminWalletTransaction.objects.filter(reference=entry_ref, status=AdminWalletTransaction.Status.COMPLETED).first()
