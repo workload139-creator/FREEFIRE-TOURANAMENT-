@@ -28,3 +28,26 @@ class MessageAdmin(admin.ModelAdmin):
     def body_preview(self, obj):
         return obj.body[:80]
     body_preview.short_description = "Message"
+
+
+from .party_models import PartyRoom, PartyRoomMembership, PartyRoomMessage, PartyRoomGift, CommunityTournament, CommunityTournamentEntry
+
+
+@admin.register(PartyRoom)
+class PartyRoomAdmin(admin.ModelAdmin):
+    list_display = ("title", "host", "visibility", "is_open", "created_at")
+    list_filter = ("visibility", "is_open", "theme")
+    search_fields = ("title", "host__username")
+
+
+@admin.register(CommunityTournament)
+class CommunityTournamentAdmin(admin.ModelAdmin):
+    list_display = ("title", "host", "game_mode", "starts_at", "status", "max_players")
+    list_filter = ("game_mode", "status")
+    search_fields = ("title", "host__username")
+
+
+admin.site.register(PartyRoomMembership)
+admin.site.register(PartyRoomMessage)
+admin.site.register(PartyRoomGift)
+admin.site.register(CommunityTournamentEntry)
