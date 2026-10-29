@@ -34,6 +34,9 @@ def request_tournament_diamond_refund(request, registration_id):
             return redirect("tournaments:my_registrations")
         amount = Decimal(str(registration.entry_fee_paid or tournament.entry_fee))
         reference = f"NOTPLAYING-REFUND-{registration.pk}"
+        if WalletTransaction.objects.filter(reference=reference).exists() or TournamentLedgerEntry.objects.filter(reference=reference).exists():
+            messages.error(request, "Is registration ka refund transaction pehle se record hai. Duplicate credit nahi kiya gaya.")
+            return redirect("tournaments:my_registrations")
         if amount <= 0:
             messages.error(request, "Is registration ki refundable amount nahi hai.")
             return redirect("tournaments:my_registrations")
