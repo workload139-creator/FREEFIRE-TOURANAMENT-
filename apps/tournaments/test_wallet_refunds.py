@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from apps.accounts.models import Wallet, WalletTransaction
@@ -87,6 +88,31 @@ class VerifiedEntryWalletRefundTests(TestCase):
         self.assertEqual(refunded_again, 0)
         wallet.refresh_from_db()
         self.assertEqual(wallet.balance, Decimal("50.00"))
+
+    def test_final_hour_self_refund_credits_verified_upi_to_inr_wallet(self):
+        self.tournament.start_time = timezone.now() + timedelta(minutes=30)
+        self.tournament.save(update_fields=["start_time"])
+        registration = self.make_registration(status=Registration.Status.CONFIRMED)
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("tournaments:self_refund", args=[registration.pk])
+        )
+
+        self.assertEqual(response.status_code, 302)
+        registration.refresh_from_db()
+        wallet = Wallet.objects.get(user=self.user)
+        self.assertEqual(wallet.balance, Decimal("50.00"))
+        self.assertEqual(registration.status, Registration.Status.REFUNDED)
+        self.assertTrue(registration.refund_processed)
+        self.assertEqual(
+            WalletTransaction.objects.filter(
+                reference=f"SELF-REFUND-{registration.pk}",
+                transaction_type=WalletTransaction.TransactionType.REFUND,
+                status=WalletTransaction.Status.COMPLETED,
+            ).count(),
+            1,
+        )
 
     def test_unverified_payment_is_not_credited_as_refund(self):
         registration = self.make_registration(
