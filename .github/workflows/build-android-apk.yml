@@ -73,6 +73,7 @@ jobs:
           if [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ]; then
             echo "valid=false" >> "$GITHUB_OUTPUT"
             echo "::warning::Release signing secrets are missing. The debug APK will still be built."
+          fi
           STORE_TYPE=""
           if keytool -list -keystore "$RUNNER_TEMP/ffarena-upload-key" -storetype PKCS12 -storepass "$ANDROID_KEYSTORE_PASSWORD" >/dev/null 2>&1; then
             STORE_TYPE="PKCS12"
