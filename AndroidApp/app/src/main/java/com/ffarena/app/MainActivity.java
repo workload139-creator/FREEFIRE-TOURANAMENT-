@@ -314,7 +314,8 @@ public class MainActivity extends Activity {
 
     private void loadPlayerProfile() {
         if (tournamentResults == null) return;
-        addNoteToResults("Loading your profile…");
+        tournamentResults.removeAllViews();
+        addNoteToResults("Loading your player card…");
         new Thread(() -> {
             JSONObject data = null;
             String error = null;
@@ -326,17 +327,79 @@ public class MainActivity extends Activity {
                 if (!"Profile".equals(currentTab) || tournamentResults == null) return;
                 tournamentResults.removeAllViews();
                 if (result == null) {
-                    addNoteToResults(failure == null ? "Profile could not be loaded." : failure);
+                    addNoteToResults(failure == null ? "Profile could not be loaded. Please sign in and try again." : failure);
+                    Button login = button("LOGIN / REGISTER");
+                    login.setOnClickListener(v -> openFeature("/login/"));
+                    tournamentResults.addView(login, new LinearLayout.LayoutParams(-1, dp(46)));
                     return;
                 }
                 JSONObject p = result.optJSONObject("profile");
                 if (p == null) { addNoteToResults("Profile data is unavailable."); return; }
-                addAccountInfo("PLAYER", p.optString("username", "Player"));
-                addAccountInfo("EMAIL", p.optString("email", "Not added"));
-                addAccountInfo("PHONE", p.optString("phone_number", "Not added")
-                        + (p.optBoolean("phone_verified") ? "  •  Verified" : ""));
-                addAccountInfo("FREE FIRE UID", p.optString("free_fire_uid", "Not added")
-                        + (p.optBoolean("uid_verified") ? "  •  Verified" : ""));
+
+                String username = p.optString("username", "Player");
+                String email = p.optString("email", "Not added");
+                String phone = p.optString("phone_number", "Not added");
+                String uid = p.optString("free_fire_uid", "Not added");
+                boolean phoneVerified = p.optBoolean("phone_verified");
+                boolean uidVerified = p.optBoolean("uid_verified");
+
+                LinearLayout playerCard = new LinearLayout(MainActivity.this);
+                playerCard.setOrientation(LinearLayout.VERTICAL);
+                playerCard.setPadding(dp(18), dp(20), dp(18), dp(18));
+                playerCard.setBackground(background(
+                        new int[]{Color.rgb(34, 31, 49), Color.rgb(19, 25, 39)},
+                        dp(20), ORANGE));
+
+                LinearLayout identity = new LinearLayout(MainActivity.this);
+                identity.setGravity(Gravity.CENTER_VERTICAL);
+                identity.setOrientation(LinearLayout.HORIZONTAL);
+                TextView avatar = text(username.isEmpty() ? "FF" : username.substring(0, 1).toUpperCase(),
+                        25, Color.WHITE, true);
+                avatar.setGravity(Gravity.CENTER);
+                avatar.setBackground(background(new int[]{ORANGE, Color.rgb(255, 76, 38)}, dp(36), ORANGE));
+                identity.addView(avatar, new LinearLayout.LayoutParams(dp(66), dp(66)));
+
+                LinearLayout identityText = new LinearLayout(MainActivity.this);
+                identityText.setOrientation(LinearLayout.VERTICAL);
+                identityText.setPadding(dp(13), 0, 0, 0);
+                identityText.addView(text("PLAYER CARD", 10, ORANGE, true));
+                identityText.addView(text(username, 21, Color.WHITE, true));
+                identityText.addView(text("FF ARENA MEMBER", 10, MUTED, true));
+                identity.addView(identityText, new LinearLayout.LayoutParams(0, -2, 1));
+                playerCard.addView(identity);
+
+                TextView summary = text("Your account details and Free Fire identity in one place.",
+                        12, MUTED, false);
+                summary.setPadding(0, dp(14), 0, dp(14));
+                playerCard.addView(summary);
+                Button edit = button("✎  EDIT PROFILE");
+                edit.setOnClickListener(v -> openFeature("/accounts/profile/edit/"));
+                playerCard.addView(edit, new LinearLayout.LayoutParams(-1, dp(46)));
+                LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, -2);
+                cardParams.bottomMargin = dp(14);
+                tournamentResults.addView(playerCard, cardParams);
+
+                addAccountInfo("PLAYER USERNAME", username);
+                addAccountInfo("EMAIL ADDRESS", email);
+                addAccountInfo("MOBILE NUMBER", phone + (phoneVerified ? "  •  VERIFIED" : "  •  NOT VERIFIED"));
+                addAccountInfo("FREE FIRE UID", uid + (uidVerified ? "  •  VERIFIED" : "  •  NOT VERIFIED"));
+
+                LinearLayout safetyCard = new LinearLayout(MainActivity.this);
+                safetyCard.setOrientation(LinearLayout.VERTICAL);
+                safetyCard.setPadding(dp(15), dp(14), dp(15), dp(14));
+                safetyCard.setBackground(background(new int[]{PANEL, PANEL}, dp(14), Color.rgb(48, 57, 75)));
+                safetyCard.addView(text("ACCOUNT SECURITY", 11, ORANGE, true));
+                TextView safetyText = text("Keep your email, mobile number and Free Fire UID accurate. Never share your password or OTP.",
+                        12, MUTED, false);
+                safetyText.setPadding(0, dp(6), 0, 0);
+                safetyCard.addView(safetyText);
+                LinearLayout.LayoutParams safetyParams = new LinearLayout.LayoutParams(-1, -2);
+                safetyParams.bottomMargin = dp(10);
+                tournamentResults.addView(safetyCard, safetyParams);
+
+                Button settings = button("PASSWORD & ACCOUNT SETTINGS");
+                settings.setOnClickListener(v -> openFeature("/accounts/settings/"));
+                tournamentResults.addView(settings, new LinearLayout.LayoutParams(-1, dp(46)));
             });
         }).start();
     }
