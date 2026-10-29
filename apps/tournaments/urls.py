@@ -1,7 +1,7 @@
 
 from django.urls import path
 
-from . import views, api_views
+from . import views, api_views, self_refund
 
 app_name = "tournaments"
 
@@ -27,6 +27,9 @@ urlpatterns = [
         views.tournament_detail,
         name="detail",
     ),
+
+    # Player self-refund: only available during the final hour before start.
+    path("registration/<int:registration_id>/refund/", self_refund.request_tournament_diamond_refund, name="self_refund"),
 
     # Player registration
     path(

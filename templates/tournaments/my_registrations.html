@@ -18,6 +18,13 @@
       <p>Registration status: <strong>{{ registration.get_status_display }}</strong></p>
       {% if registration.tournament.status == "live" %}<p><a class="button button-primary" style="background:#d90032;border-color:#ff536f;color:#fff" href="https://www.youtube.com/@freefire_tour/live" target="_blank" rel="noopener noreferrer">▶ Watch Tournament Live</a></p>{% endif %}
       <p>Match time: {{ registration.tournament.start_time|date:"d M Y, h:i A" }}</p>
+      {% if registration.payment_verified and not registration.refund_processed and registration.status != "cancelled" and registration.status != "refunded" and registration.status != "not_playing" and registration.tournament.status == "upcoming" and registration.tournament.entry_fee > 0 %}
+        <form method="post" action="{% url 'tournaments:self_refund' registration.id %}" class="self-refund-form" data-start="{{ registration.tournament.start_time|date:'c' }}" hidden style="margin:12px 0">
+          {% csrf_token %}
+          <p><strong>Last-hour refund:</strong> entry fee ke barabar Diamonds turant milenge; is tournament ki registration cancel ho jayegi.</p>
+          <button class="button button-primary" type="submit" onclick="return confirm('Refund lene par is tournament ki registration cancel ho jayegi. Continue?')">Refund entry fee as Diamonds</button>
+        </form>
+      {% endif %}
       {% if registration.status == "waiting_ready" or registration.status == "ready" %}
         <a class="button button-primary" href="{% url 'tournaments:player_room' registration.id %}">Open Room / Confirm</a>
       {% endif %}
@@ -47,4 +54,15 @@
   {% endfor %}
   </div>
 </section>
+<script>
+(function () {
+  const now = Date.now();
+  document.querySelectorAll(".self-refund-form[data-start]").forEach(function (form) {
+    const start = Date.parse(form.dataset.start);
+    if (Number.isFinite(start) && start > now && start - now <= 60 * 60 * 1000) {
+      form.hidden = false;
+    }
+  });
+})();
+</script>
 {% endblock %}
