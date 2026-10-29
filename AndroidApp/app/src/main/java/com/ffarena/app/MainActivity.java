@@ -91,7 +91,7 @@ public class MainActivity extends Activity {
         bottomNav = new LinearLayout(this);
         bottomNav.setPadding(dp(5), dp(8), dp(5), dp(8));
         bottomNav.setBackgroundColor(Color.rgb(14, 18, 28));
-        String[] tabs = {"Home", "Matches", "Wallet", "Profile"};
+        String[] tabs = {"Home", "Matches", "Wallet", "Voice Party", "Profile"};
         for (String tab : tabs) {
             Button b = new Button(this);
             b.setAllCaps(false);
@@ -125,7 +125,8 @@ public class MainActivity extends Activity {
             addFeatureCard("Battle Royale", "Solo and squad tournaments", "Explore BR tournaments", "/tournaments/");
             addFeatureCard("VS ARENA", "1v1 • 2v2 • 3v3 • 4v4", "Explore VS matches", "/tournaments/");
             addFeatureCard("PARTY ROOMS", "Create a room, set Public or Private privacy, and play with your squad", "Open Party Rooms", "/chat/party/");
-        addFeatureCard("MY REGISTRATIONS & REFUNDS", "Check tournament status, request eligible refunds, and review your complete transaction history", "Open Registration History", "/tournaments/my-registrations/");
+            addFeatureCard("VOICE PARTY", "Join your squad, allow microphone access and talk live in party rooms", "Open Voice Party", "/chat/party/");
+            addFeatureCard("MY REGISTRATIONS & REFUNDS", "Check tournament status, request eligible refunds, and review your complete transaction history", "Open Registration History", "/tournaments/my-registrations/");
             addFeatureCard("Leaderboard", "Check tournament standings and results", "View leaderboard & results", "/tournaments/results/");
             addSectionTitle("PLAYER ZONE", "Everything for your account");
             addActionRow("My registrations", "Track your joined matches", "/tournaments/my-registrations/");
@@ -151,6 +152,10 @@ public class MainActivity extends Activity {
             addActionRow("My registrations", "See joined matches and room updates", "/tournaments/my-registrations/");
             addActionRow("Results", "Completed matches and standings", "/tournaments/results/");
             addActionRow("Free tournaments", "Explore free-to-enter events", "/tournaments/free-tournament/");
+        } else if ("Voice Party".equals(currentTab)) {
+            addSectionTitle("VOICE PARTY", "Squad voice rooms • microphone • live chat");
+            addFeatureCard("PARTY ROOMS", "Create a room or join your squad. Inside the room tap Join voice + Mic on and allow microphone permission.", "Open Voice Party", "/chat/party/");
+            addNote("Mic troubleshooting: allow microphone permission for FF Arena in Android app settings. Live voice also requires LIVEKIT_URL, LIVEKIT_API_KEY and LIVEKIT_API_SECRET configured by the server administrator.");
         } else if ("Wallet".equals(currentTab)) {
             addSectionTitle("PLAYER WALLET", "Your live wallet balance and recent transactions");
             tournamentResults = new LinearLayout(this);
@@ -167,9 +172,14 @@ public class MainActivity extends Activity {
             tournamentResults = new LinearLayout(this);
             tournamentResults.setOrientation(LinearLayout.VERTICAL);
             content.addView(tournamentResults, new LinearLayout.LayoutParams(-1, -2));
+            addFeatureCard("PLAYER PROFILE", "View your account identity and Free Fire UID", "My profile", "/social/");
+            addFeatureCard("FOLLOWERS", "See players who follow your account", "View followers", "/social/followers/");
+            addFeatureCard("FOLLOWING", "See accounts you follow", "View following", "/social/following/");
+            addFeatureCard("CHAT & FRIENDS", "Open direct messages, friend requests and squad conversations", "Open chat", "/chat/");
+            addFeatureCard("PHOTO POSTS", "Post images only, browse the community photo feed and share Booyah moments", "Open photo feed", "/social/feed/");
+            addFeatureCard("☰ SETTINGS & ACCOUNT DETAILS", "Email, phone, UID, profile editing, password and account options", "Open settings", "/accounts/settings/");
+            addFeatureCard("Edit profile", "Update your player details and profile photo", "Edit profile", "/accounts/profile/edit/");
             addFeatureCard("Login / Register", "Sign in or create your player account", "Open account", "/login/");
-            addFeatureCard("Edit profile", "Update your player details", "Edit profile", "/accounts/profile/edit/");
-            addFeatureCard("Password & settings", "Manage your account settings", "Account settings", "/accounts/settings/");
             loadPlayerProfile();
         }
         if (bottomNav != null) {
@@ -499,6 +509,8 @@ public class MainActivity extends Activity {
         WebSettings settings = featureWebView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
+        settings.setMediaPlaybackRequiresUserGesture(false);
+        settings.setJavaScriptCanOpenWindowsAutomatically(false);
         settings.setAllowFileAccess(false);
         settings.setSupportZoom(false);
         CookieManager.getInstance().setAcceptCookie(true);
