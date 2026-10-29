@@ -37,9 +37,6 @@ def request_tournament_diamond_refund(request, registration_id):
         if WalletTransaction.objects.filter(reference=reference).exists() or TournamentLedgerEntry.objects.filter(reference=reference).exists():
             messages.error(request, "Is registration ka refund transaction pehle se record hai. Duplicate credit nahi kiya gaya.")
             return redirect("tournaments:my_registrations")
-        if amount <= 0:
-            messages.error(request, "Is registration ki refundable amount nahi hai.")
-            return redirect("tournaments:my_registrations")
         if registration.payment_method in ("diamonds", "coins", "fan_tokens"):
             quantity = registration.currency_amount
             if quantity <= 0:
@@ -51,6 +48,9 @@ def request_tournament_diamond_refund(request, registration_id):
             shop_wallet.save(update_fields=["diamonds", "coins", "fan_tokens", "updated_at"])
             currency = registration.payment_method
         elif registration.payment_method == "upi":
+            if amount <= 0:
+                messages.error(request, "Is registration ki refundable INR amount nahi hai.")
+                return redirect("tournaments:my_registrations")
             wallet, _ = Wallet.objects.get_or_create(user=request.user)
             wallet = Wallet.objects.select_for_update().get(pk=wallet.pk)
             wallet.balance += amount
@@ -124,8 +124,11 @@ def request_tournament_diamond_refund(request, registration_id):
         return redirect("tournaments:my_registrations")
 
     amount = Decimal(str(registration.entry_fee_paid or tournament.entry_fee))
-    if amount <= 0:
-        messages.error(request, "Is free entry ka refund amount nahi hai.")
+    if registration.payment_method == "upi" and amount <= 0:
+        messages.error(request, "Is free entry ki refundable INR amount nahi hai.")
+        return redirect("tournaments:my_registrations")
+    if registration.payment_method in ("diamonds", "coins", "fan_tokens") and registration.currency_amount <= 0:
+        messages.error(request, "Original currency amount nahi mila; admin support se contact karein.")
         return redirect("tournaments:my_registrations")
 
     reference = f"SELF-REFUND-{registration.pk}"
