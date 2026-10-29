@@ -172,6 +172,14 @@ def party_room(request, room_id):
                             messages.success(request, f"{label} gift bhej diya.")
         elif action == "leave":
             if room.game_status == "live" and membership:
+                if room.game_phase == "decision":
+                    active_before = list(
+                        PartyRoomMembership.objects.filter(room=room, is_eliminated=False)
+                        .order_by("joined_at", "pk").values_list("pk", flat=True)
+                    )
+                    if membership.pk in active_before and active_before.index(membership.pk) < room.decision_index:
+                        room.decision_index = max(0, room.decision_index - 1)
+                        room.save(update_fields=["decision_index", "updated_at"])
                 membership.is_eliminated = True
                 membership.eliminated_round = room.current_round
                 membership.elimination_reason = "left_game"
