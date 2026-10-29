@@ -273,7 +273,7 @@ def start_party_game(room, round_number=1):
     room.game_status = "live"
     room.game_deadline = timezone.now() + timedelta(seconds=30)
     room.game_result = "Round " + str(round_number) + ": 30 seconds mein answer submit karo."
-    room.save(update_fields=["game_round", "game_question", "game_answer", "game_status", "game_deadline", "game_result", "updated_at"])
+    room.save(update_fields=["game_round", "game_question", "game_answer", "game_status", "game_deadline", "game_result", "game_winner", "reward_awarded", "updated_at"])
     PartyRoomMessage.objects.create(room=room, sender=room.host, body="[QUIZ QUESTION] " + question)
 
 
