@@ -1,58 +1,69 @@
 {% extends "base.html" %}
-{% block title %}FF Arena Party | Voice Rooms & Community Tournaments{% endblock %}
+{% block title %}FF Arena Party Rooms | Neon Social Arena{% endblock %}
 {% block extra_css %}
 <style>
-.party-page{max-width:1180px;margin:28px auto;padding:0 16px;color:#f5f7ff}.party-hero{padding:30px;border-radius:22px;background:radial-gradient(circle at 90% 5%,#b78cff35,transparent 35%),linear-gradient(135deg,#15162b,#08141e);border:1px solid #b78cff55}.party-kicker{color:#d8b8ff;font-size:.75rem;letter-spacing:.15em;font-weight:800}.party-hero h1{font-size:clamp(2rem,5vw,3.5rem);margin:8px 0}.party-hero p,.party-muted{color:#b9c4d8}.party-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,310px),1fr));gap:18px;margin:20px 0}.party-panel,.party-card{background:#0e1420;border:1px solid #ffffff1a;border-radius:18px;padding:20px}.party-panel h2{margin-top:0}.party-form{display:grid;gap:11px}.party-form input,.party-form textarea,.party-form select{width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid #38445b;background:#090e17;color:#fff}.party-form label{font-size:.86rem;color:#c7d0e2}.party-form button{border:0;cursor:pointer}.party-list{display:grid;gap:12px}.party-card{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.party-card h3{margin:0 0 5px}.party-chip{display:inline-block;border-radius:999px;background:#25213a;color:#d9c4ff;padding:4px 9px;font-size:.75rem}.party-empty{padding:24px;text-align:center;border:1px dashed #ffffff2b;border-radius:14px;color:#aebbd0}.party-note{font-size:.8rem;color:#98a8c1;line-height:1.5}@media(max-width:600px){.party-hero{padding:22px 18px}.party-panel{padding:16px}}
+.party-page{--green:#b6ff39;--mint:#3cf2b0;--muted:#a8b8b2;max-width:1220px;margin:26px auto 54px;padding:0 16px;color:#f5f8f5}
+.party-page *{box-sizing:border-box}.party-hero{position:relative;isolation:isolate;overflow:hidden;padding:clamp(25px,5vw,54px);border:1px solid #a6ff394f;border-radius:26px;background:radial-gradient(ellipse at 82% 20%,#a7ff3926,transparent 28%),radial-gradient(ellipse at 100% 100%,#14d9b53a,transparent 40%),linear-gradient(125deg,#121d20,#0b121a 54%,#10231c);box-shadow:0 20px 60px #0006}
+.party-hero:before{content:"";position:absolute;z-index:-1;width:300px;height:300px;right:-90px;top:-130px;border:1px solid #b6ff3938;border-radius:50%;box-shadow:0 0 0 28px #b6ff3909,0 0 0 58px #b6ff3907}
+.party-kicker{display:inline-flex;align-items:center;gap:8px;color:var(--green);font-size:.72rem;letter-spacing:.19em;font-weight:900}.party-kicker:before{content:"";width:24px;height:2px;background:var(--green);box-shadow:0 0 12px var(--green)}
+.party-hero h1{font-size:clamp(2.25rem,6vw,4.5rem);letter-spacing:-.045em;line-height:1.02;margin:14px 0 12px;font-weight:950}.party-hero h1 span{color:var(--green);text-shadow:0 0 28px #b6ff3933}.party-hero p{max-width:650px;color:#c1cfca;line-height:1.7;margin:0 0 23px}
+.party-btn{display:inline-flex;justify-content:center;align-items:center;gap:8px;min-height:46px;padding:12px 19px;border-radius:12px;text-decoration:none!important;font-weight:850;border:1px solid transparent;cursor:pointer;transition:transform .18s,box-shadow .18s;font:inherit}.party-btn:hover{transform:translateY(-2px)}.party-btn-primary{background:linear-gradient(110deg,#c5ff56,#8be52e);color:#111a0b!important;box-shadow:0 8px 25px #a8f53c25}.party-btn-secondary{background:#ffffff08;border-color:#ffffff2a;color:#f4fff7!important}
+.party-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:17px 0 24px}.party-stat{padding:15px 17px;border-radius:15px;border:1px solid #ffffff13;background:linear-gradient(135deg,#121c24,#0c131b)}.party-stat strong{display:block;color:var(--green);font-size:1.3rem}.party-stat span{display:block;color:var(--muted);font-size:.77rem;margin-top:4px}
+.party-grid{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.25fr);gap:17px;margin:0 0 22px}.party-panel{min-width:0;padding:clamp(17px,3vw,25px);border-radius:20px;background:linear-gradient(145deg,#111b24,#0c131b);border:1px solid #ffffff18;box-shadow:0 14px 38px #0002}.party-panel h2{font-size:1.18rem;margin:0 0 7px}.party-intro{color:var(--muted);font-size:.86rem;line-height:1.6;margin:0 0 18px}
+.party-form{display:grid;gap:13px}.party-form label{display:grid;gap:7px;font-size:.81rem;color:#d4dfda;font-weight:700}.party-form input,.party-form textarea,.party-form select{width:100%;min-width:0;padding:12px 13px;border-radius:11px;border:1px solid #34474a;background:#080f15;color:#f4fff8;font:inherit;outline:none}.party-form input:focus,.party-form textarea:focus,.party-form select:focus{border-color:var(--green);box-shadow:0 0 0 3px #b6ff3915}.party-form textarea{resize:vertical}.party-form select option{background:#101922}.party-form button{width:100%}
+.party-theme-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:0 0 16px}.party-theme-swatch{height:7px;border-radius:99px}.party-theme-label{font-size:.68rem;color:#b4c3bd;margin-top:6px;text-align:center}
+.party-room-list{display:grid;gap:10px}.party-card{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:15px;border:1px solid #ffffff14;border-radius:15px;background:linear-gradient(110deg,#151f28,#101820);transition:border-color .18s,transform .18s}.party-card:hover{border-color:#b6ff3966;transform:translateY(-1px)}.party-card-main{display:flex;align-items:center;gap:12px;min-width:0}.party-room-icon{display:grid;place-items:center;flex:0 0 44px;width:44px;height:44px;border-radius:13px;background:linear-gradient(135deg,#b6ff3926,#3cf2b014);border:1px solid #b6ff3938;font-size:1.3rem}.party-card h3{margin:5px 0;font-size:1rem;overflow-wrap:anywhere}.party-card p{margin:0;color:var(--muted);font-size:.8rem;line-height:1.5;overflow-wrap:anywhere}.party-card .party-btn{white-space:nowrap;flex-shrink:0;min-height:40px;padding:9px 13px;font-size:.8rem}
+.party-chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;background:#b6ff3912;border:1px solid #b6ff3936;color:var(--green);padding:6px 10px;font-size:.75rem;font-weight:800}.party-empty{padding:28px 18px;text-align:center;border:1px dashed #ffffff2b;border-radius:15px;color:#aebdb7;background:#ffffff03}.party-empty strong{display:block;color:#edf7f1;font-size:1rem;margin-bottom:7px}.party-empty p{margin:0;font-size:.84rem;line-height:1.6}.party-rules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:17px}.party-rule{padding:14px;border-radius:14px;background:#0d171c;border:1px solid #ffffff12}.party-rule b{display:block;color:#eff9f1;font-size:.85rem;margin-bottom:5px}.party-rule span{color:var(--muted);font-size:.76rem;line-height:1.5}.party-rule em{font-style:normal;color:var(--green);margin-right:5px}
+@media(max-width:780px){.party-grid{grid-template-columns:1fr}.party-rules{grid-template-columns:1fr}.party-panel{padding:18px}.party-hero{border-radius:20px}.party-stats{gap:8px}.party-stat{padding:12px}.party-stat strong{font-size:1.1rem}}
+@media(max-width:480px){.party-page{padding:0 11px;margin-top:14px}.party-hero{padding:24px 19px}.party-hero h1{font-size:2.35rem}.party-stats{grid-template-columns:1fr 1fr}.party-stat:last-child{grid-column:1/-1}.party-card{align-items:flex-start}.party-card-main{align-items:flex-start}.party-room-icon{flex-basis:38px;width:38px;height:38px}.party-card .party-btn{padding:9px 10px}.party-theme-label{font-size:.62rem}}
 </style>
 {% endblock %}
 {% block content %}
-<section class="party-page">
+<main class="party-page">
   <header class="party-hero">
-    <span class="party-kicker">FF ARENA SOCIAL</span>
-    <h1>🎙️ Party Rooms</h1>
-    <p>Apna room banao, doston ke saath chat karo, gifts bhejo aur community tournament host karo.</p>
-    <a class="button button-primary" href="#create-room">＋ Create Room</a>
-    <a class="button button-outline" href="#create-tournament">🏆 Host Tournament</a>
+    <span class="party-kicker">FF ARENA • SOCIAL PLAY</span>
+    <h1>PARTY <span>ROOMS</span></h1>
+    <p>Squad banao, apne friends ke saath vibe karo aur Free Fire quiz arena mein compete karo. Room 12 players se full hote hi game automatically start hota hai.</p>
+    <div style="display:flex;gap:11px;flex-wrap:wrap"><a class="party-btn party-btn-primary" href="#create-room">＋ Create Room</a><a class="party-btn party-btn-secondary" href="#public-rooms">🎮 Browse Rooms</a></div>
   </header>
+  <div class="party-stats">
+    <div class="party-stat"><strong>12 PLAYERS</strong><span>Fixed room capacity</span></div>
+    <div class="party-stat"><strong>3 ROUNDS</strong><span>Free Fire quiz challenge</span></div>
+    <div class="party-stat"><strong>+5 TOKENS</strong><span>Winner reward per game</span></div>
+  </div>
   <div class="party-grid">
     <section class="party-panel" id="create-room">
-      <h2>✨ Customize Your Room</h2>
+      <h2>✦ Customize Your Room</h2>
+      <p class="party-intro">Apni room identity choose karo. Public room mein players join kar sakte hain; private room passcode se protected rahega.</p>
+      <div class="party-theme-row" aria-hidden="true">
+        <div><div class="party-theme-swatch" style="background:linear-gradient(90deg,#b87cff,#6941e8)"></div><div class="party-theme-label">Neon Violet</div></div>
+        <div><div class="party-theme-swatch" style="background:linear-gradient(90deg,#ffe27a,#c18a24)"></div><div class="party-theme-label">Champion Gold</div></div>
+        <div><div class="party-theme-swatch" style="background:linear-gradient(90deg,#59d8ff,#2467df)"></div><div class="party-theme-label">Ocean Blue</div></div>
+        <div><div class="party-theme-swatch" style="background:linear-gradient(90deg,#ff8769,#e52e44)"></div><div class="party-theme-label">Fire Red</div></div>
+      </div>
       <form class="party-form" method="post" action="{% url 'chat:party_create_room' %}">{% csrf_token %}
         <label>Room name<input name="title" maxlength="70" required placeholder="e.g. FF Night Squad"></label>
         <label>Short description<textarea name="description" maxlength="240" rows="2" placeholder="Room ka mood ya rules"></textarea></label>
         <label>Room theme<select name="theme"><option value="violet">Neon Violet</option><option value="gold">Champion Gold</option><option value="ocean">Ocean Blue</option><option value="fire">Fire Red</option></select></label>
         <label>Privacy<select name="visibility"><option value="public">Public — anyone can join</option><option value="private">Private — passcode required</option></select></label>
-        <label>Private passcode (optional)<input name="passcode" maxlength="24" placeholder="For private rooms"></label>
-        <label>Room capacity<select name="max_members"><option>4</option><option selected>12</option><option>20</option><option>30</option></select></label>
-        <button class="button button-primary" type="submit">Create My Room</button>
+        <label>Private passcode (private room ke liye)<input name="passcode" maxlength="24" placeholder="Create a passcode"></label>
+        <label>Room capacity<select name="max_members"><option value="12" selected>12 players — fixed capacity</option></select></label>
+        <button class="party-btn party-btn-primary" type="submit">＋ Create My Room</button>
       </form>
-      <p class="party-note">Room chat and gifts are enabled. Group voice needs a configured real-time voice provider; the microphone button will not fake a live group call.</p>
+      <p class="party-intro" style="margin:14px 0 0;font-size:.78rem">Room creator automatically room mein join hoga. Group voice feature tabhi chalega jab live voice provider configure ho.</p>
     </section>
-    <section class="party-panel" id="create-tournament">
-      <h2>🏆 Host Community Tournament</h2>
-      <form class="party-form" method="post" action="{% url 'chat:party_create_tournament' %}">{% csrf_token %}
-        <label>Tournament name<input name="title" maxlength="90" required placeholder="Weekend CS Challenge"></label>
-        <label>Mode<select name="game_mode">{% for value,label in modes %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label>
-        <label>Start date &amp; time<input type="datetime-local" name="starts_at" required></label>
-        <label>Players<select name="max_players"><option>2</option><option>4</option><option>8</option><option selected>12</option><option>24</option><option>49</option></select></label>
-        <label>Rules / details<textarea name="description" rows="2" maxlength="500" placeholder="Rules, lobby details, eligibility"></textarea></label>
-        <label>Entry information<input name="entry_note" maxlength="120" placeholder="Free community event / rules"></label>
-        <button class="button button-primary" type="submit">Publish Tournament</button>
-      </form>
-      <p class="party-note">Community tournaments are separate from official paid tournaments. This first version does not collect entry fees or automatically control Free Fire custom rooms.</p>
+    <section class="party-panel" id="public-rooms">
+      <div style="display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin:0 0 15px"><div><h2>◉ Public Rooms</h2><p class="party-intro" style="margin:5px 0 0">Join an open room and meet your squad.</p></div><span class="party-chip">{{ rooms|length }} listed</span></div>
+      <div class="party-room-list">{% for room in rooms %}
+        <article class="party-card"><div class="party-card-main"><div class="party-room-icon">🎮</div><div><span class="party-chip">{{ room.get_theme_display }}</span><h3>{{ room.title }}</h3><p>{{ room.description|default:"Come say hello!" }}<br>Host: {{ room.host.username }} · 👥 {{ room.people }}/{{ room.max_members }}</p></div></div><a class="party-btn party-btn-primary" href="{% url 'chat:party_room' room.pk %}">Join Room ↗</a></article>
+      {% empty %}<div class="party-empty"><strong>Abhi koi public room available nahi hai</strong><p>Sabse pehle apna room create karo. Room list mein public rooms dikhte hain.</p></div>{% endfor %}</div>
     </section>
   </div>
-  <section class="party-panel">
-    <h2>🔴 Public Rooms <span class="party-chip">{{ rooms|length }} listed</span></h2>
-    <div class="party-list">{% for room in rooms %}
-      <article class="party-card"><div><span class="party-chip">{{ room.get_theme_display }}</span><h3>{{ room.title }}</h3><div class="party-muted">{{ room.description|default:"Come say hello!" }} · Host: {{ room.host.username }}</div><small class="party-muted">👥 {{ room.people }}/{{ room.max_members }} members</small></div><a class="button button-primary" href="{% url 'chat:party_room' room.pk %}">Join Room ↗</a></article>
-    {% empty %}<div class="party-empty">Abhi public room nahi hai. Pehla room tum banao! 🎙️</div>{% endfor %}</div>
-  </section>
-  <section class="party-panel" style="margin-top:18px">
-    <h2>🎮 Community Tournaments</h2>
-    <div class="party-list">{% for item in tournaments %}
-      <article class="party-card"><div><span class="party-chip">{{ item.get_game_mode_display }}</span><h3>{{ item.title }}</h3><div class="party-muted">Host: {{ item.host.username }} · {{ item.starts_at|date:"d M Y, h:i A" }}</div><small class="party-muted">👥 {{ item.entries.count }}/{{ item.max_players }} players · {{ item.entry_note|default:"Community event" }}</small></div><form method="post" action="{% url 'chat:party_join_tournament' item.pk %}">{% csrf_token %}<button class="button button-primary" type="submit">Register</button></form></article>
-    {% empty %}<div class="party-empty">Abhi koi community tournament nahi. Apna event host karo!</div>{% endfor %}</div>
-  </section>
-</section>
+  <div class="party-section-head" style="margin:28px 0 14px"><div><h2>How Party Quiz Works</h2><p class="party-intro" style="margin:5px 0 0">Simple rules, quick rounds, fair play.</p></div></div>
+  <div class="party-rules">
+    <div class="party-rule"><b><em>01</em> Fill the room</b><span>Room full hote hi 12 players ke saath game auto-start hota hai.</span></div>
+    <div class="party-rule"><b><em>02</em> Answer in time</b><span>Har turn ke liye 30 seconds. Wrong answer, skip ya timeout par player eliminate hota hai.</span></div>
+    <div class="party-rule"><b><em>03</em> Win tokens</b><span>3 rounds ke baad winner ko 5 Fan Tokens automatically milte hain.</span></div>
+  </div>
+</main>
 {% endblock %}
