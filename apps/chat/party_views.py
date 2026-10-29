@@ -256,6 +256,8 @@ def _eligible_players(room, round_number):
 
 
 def start_party_game(room, round_number=1):
+    if room.game_status == "break" and "DRAW" in (room.game_result or "").upper():
+        room.game_answers.filter(round_number=round_number).delete()
     room.game_round = round_number
     question, answer = random.choice(PARTY_QUIZ[round_number])
     old_questions = set(room.room_messages.filter(body__startswith="[QUIZ QUESTION]").values_list("body", flat=True))
