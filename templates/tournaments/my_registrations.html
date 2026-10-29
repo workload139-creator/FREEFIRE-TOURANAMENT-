@@ -1,15 +1,5 @@
 {% extends "base.html" %}
-{% block title %}My Registrations | FF Arena<script>
-(function () {
-  const now = Date.now();
-  document.querySelectorAll(".self-refund-form[data-start]").forEach(function (form) {
-    const start = Date.parse(form.dataset.start);
-    if (Number.isFinite(start) && start > now && start - now <= 60 * 60 * 1000) {
-      form.hidden = false;
-    }
-  });
-})();
-</script>
+{% block title %}My Registrations | FF Arena
 {% endblock %}
 {% block content %}
 <section class="container" style="max-width:1000px;margin:35px auto;padding:20px">
@@ -65,4 +55,15 @@
   {% endfor %}
   </div>
 </section>
+<script>
+(function () {
+  const now = Date.now();
+  document.querySelectorAll(".self-refund-form[data-start]").forEach(function (form) {
+    const start = Date.parse(form.dataset.start);
+    if (Number.isFinite(start) && start > now && start - now <= 60 * 60 * 1000) {
+      form.hidden = false;
+    }
+  });
+})();
+</script>
 {% endblock %}
