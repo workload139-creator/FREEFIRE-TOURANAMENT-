@@ -89,12 +89,20 @@ import { Room, RoomEvent, Track } from "https://cdn.jsdelivr.net/npm/livekit-cli
         headers: {"X-CSRFToken": csrf, "X-Requested-With": "XMLHttpRequest"},
         credentials: "same-origin"
       });
-      const data = await response.json();
+      const contentType = response.headers.get("content-type") || "";
+      let data = {};
+      if (contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        await response.text();
+        if (response.redirected || response.url.includes("/login")) {
+          throw new Error("Login session expire ho gaya hai. Page refresh karke dobara login karein.");
+        }
+        throw new Error("Voice API ne JSON ke badle HTML bheja (HTTP " + response.status + "). URL/CSRF/Render Logs check karein; page refresh karke dobara try karein.");
+      }
       if (!response.ok) throw new Error(data.error || (response.status === 403
-        ? "Pehle party room join karein."
-        : response.status === 503
-          ? "Live voice server configured nahi hai. Admin ko LiveKit setup karna hoga."
-          : "Voice token nahi mila (HTTP " + response.status + ")."));
+        ? "Pehle party room join karein ya page refresh karke login dobara karein."
+        : "Voice token nahi mila (HTTP " + response.status + ")."));
       if (!data.url || !data.token) throw new Error("Voice server URL/token missing hai. Admin LiveKit configuration check karein.");
       room = new Room({adaptiveStream: true, dynacast: true});
       room.on(RoomEvent.TrackSubscribed, (track) => attachAudio(track));
