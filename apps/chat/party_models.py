@@ -18,6 +18,7 @@ class PartyRoom(models.Model):
     is_open = models.BooleanField(default=True)
     game_status = models.CharField(max_length=12, choices=[("lobby", "Lobby"), ("live", "Live"), ("completed", "Completed")], default="lobby", db_index=True)
     current_round = models.PositiveSmallIntegerField(default=0)
+    auto_start = models.BooleanField(default=False, help_text="Start the quiz automatically when the room reaches 12 members.")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
