@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -133,9 +133,19 @@ def party_room(request, room_id):
             return redirect("chat:party")
         return redirect("chat:party_room", room_id=room.pk)
     PartyRoomMembership.objects.filter(room=room, user=request.user).update(last_seen_at=timezone.now())
-    members = room.memberships.select_related("user").order_by("joined_at")
-    room_messages = room.room_messages.select_related("sender").order_by("-pk")[:100]
-    return render(request, "chat/party_room.html", {"room": room, "members": members, "room_messages": list(reversed(room_messages)), "gifts": [{"code": code, "emoji": values[0], "name": values[1], "price": values[2]} for code, values in GIFTS.items()], "joined": bool(membership), "game_answers": room.game_answers.filter(round_number=room.game_round).select_related("player")})
+    # Do not expose a private room's member list, chat history, gifts, or quiz answers
+    # to someone who has not successfully joined it.
+    if room.visibility == "private" and not membership:
+        members = []
+        room_messages = []
+        gifts = []
+        game_answers = PartyRoomGameAnswer.objects.none()
+    else:
+        members = room.memberships.select_related("user").order_by("joined_at")
+        room_messages = room.room_messages.select_related("sender").order_by("-pk")[:100]
+        gifts = [{"code": code, "emoji": values[0], "name": values[1], "price": values[2]} for code, values in GIFTS.items()]
+        game_answers = room.game_answers.filter(round_number=room.game_round).select_related("player")
+    return render(request, "chat/party_room.html", {"room": room, "members": members, "room_messages": list(reversed(room_messages)), "gifts": gifts, "joined": bool(membership), "game_answers": game_answers})
 
 
 @login_required
@@ -419,7 +429,7 @@ def party_game_answer(request, room_id):
                 room=room, round_number=room.game_round, player=request.user,
                 answer=answer, is_correct=is_correct,
             )
-    except Exception:
+    except IntegrityError:
         return JsonResponse({"error": "Aapki baari already submit ho chuki hai."}, status=409)
     _advance_turn(room)
     room.refresh_from_db()
