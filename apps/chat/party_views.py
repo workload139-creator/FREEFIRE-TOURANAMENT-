@@ -390,7 +390,7 @@ def party_game_answer(request, room_id):
 def party_quick_join(request):
     with transaction.atomic():
         rooms = PartyRoom.objects.select_for_update().filter(
-            is_open=True, visibility=PartyRoom.Visibility.PUBLIC
+            is_open=True, visibility=PartyRoom.Visibility.PUBLIC, game_status="waiting"
         ).annotate(people=Count("memberships")).filter(people__lt=12).order_by("people", "-updated_at")
         room = rooms.first()
         if room is None:
