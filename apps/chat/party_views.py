@@ -353,26 +353,30 @@ def _advance_turn(room):
 
 
 def advance_party_game(room):
-    now = timezone.now()
-    if room.game_status == "break" and room.game_deadline and now >= room.game_deadline:
-        is_draw = "DRAW" in (room.game_result or "").upper()
-        if is_draw:
-            _start_quiz_round(room, room.game_round, clear_round=True)
-        elif room.game_round < 3:
-            _start_quiz_round(room, room.game_round + 1, clear_round=True)
-        else:
-            _start_quiz_round(room, 3, clear_round=True)
-        return
-    if room.game_status != "live" or not room.game_deadline or now < room.game_deadline:
-        return
-    # A timed-out turn is recorded as unanswered, then the next player gets their own 30 seconds.
-    current = room.current_turn_player
-    if current and not room.game_answers.filter(round_number=room.game_round, player=current).exists():
-        PartyRoomGameAnswer.objects.get_or_create(
-            room=room, round_number=room.game_round, player=current,
-            defaults={"answer": "", "is_correct": False},
-        )
-    _advance_turn(room)
+    # Serialize timeout and round-transition processing per room. This prevents two
+    # simultaneous poll requests from advancing the same turn twice.
+    with transaction.atomic():
+        locked = PartyRoom.objects.select_for_update().get(pk=room.pk)
+        now = timezone.now()
+        if locked.game_status == "break" and locked.game_deadline and now >= locked.game_deadline:
+            is_draw = "DRAW" in (locked.game_result or "").upper()
+            if is_draw:
+                _start_quiz_round(locked, locked.game_round, clear_round=True)
+            elif locked.game_round < 3:
+                _start_quiz_round(locked, locked.game_round + 1, clear_round=True)
+            else:
+                _start_quiz_round(locked, 3, clear_round=True)
+            return
+        if locked.game_status != "live" or not locked.game_deadline or now < locked.game_deadline:
+            return
+        # A timed-out turn is recorded once, then the next player gets their own 30 seconds.
+        current = locked.current_turn_player
+        if current and not locked.game_answers.filter(round_number=locked.game_round, player=current).exists():
+            PartyRoomGameAnswer.objects.get_or_create(
+                room=locked, round_number=locked.game_round, player=current,
+                defaults={"answer": "", "is_correct": False},
+            )
+        _advance_turn(locked)
 
 
 @login_required
@@ -407,31 +411,32 @@ def party_game_answer(request, room_id):
     if not PartyRoomMembership.objects.filter(room=room, user=request.user).exists():
         return JsonResponse({"error": "Room membership required."}, status=403)
     advance_party_game(room)
-    room.refresh_from_db()
-    if room.game_status != "live" or not room.game_deadline or timezone.now() >= room.game_deadline:
-        return JsonResponse({"error": "Is turn ka time khatam ho gaya."}, status=400)
-    if room.current_turn_player_id != request.user.pk:
-        return JsonResponse({"error": "Abhi kisi aur player ki baari hai."}, status=403)
-    if room.game_answers.filter(round_number=room.game_round, player=request.user).exists():
-        return JsonResponse({"error": "Aapki baari already complete ho gayi."}, status=409)
-
     skipped = request.POST.get("skip") == "1"
     answer = "" if skipped else request.POST.get("answer", "").strip()[:240]
     if not skipped and not answer:
         return JsonResponse({"error": "Jawab likho ya Skip dabao."}, status=400)
-    normalized = _clean_answer(answer)
-    expected = _clean_answer(room.game_answer)
-    accepted = {_clean_answer(item) for item in ANSWER_ALIASES.get(expected, {expected})}
-    is_correct = bool(answer) and (normalized == expected or normalized in accepted)
     try:
         with transaction.atomic():
+            # Re-check turn ownership while holding the room lock so two requests
+            # cannot both accept an answer or race the turn transition.
+            room = PartyRoom.objects.select_for_update().get(pk=room.pk)
+            if room.game_status != "live" or not room.game_deadline or timezone.now() >= room.game_deadline:
+                return JsonResponse({"error": "Is turn ka time khatam ho gaya."}, status=400)
+            if room.current_turn_player_id != request.user.pk:
+                return JsonResponse({"error": "Abhi kisi aur player ki baari hai."}, status=403)
+            if room.game_answers.filter(round_number=room.game_round, player=request.user).exists():
+                return JsonResponse({"error": "Aapki baari already complete ho gayi."}, status=409)
+            normalized = _clean_answer(answer)
+            expected = _clean_answer(room.game_answer)
+            accepted = {_clean_answer(item) for item in ANSWER_ALIASES.get(expected, {expected})}
+            is_correct = bool(answer) and (normalized == expected or normalized in accepted)
             PartyRoomGameAnswer.objects.create(
                 room=room, round_number=room.game_round, player=request.user,
                 answer=answer, is_correct=is_correct,
             )
+            _advance_turn(room)
     except IntegrityError:
         return JsonResponse({"error": "Aapki baari already submit ho chuki hai."}, status=409)
-    _advance_turn(room)
     room.refresh_from_db()
     return JsonResponse({
         "ok": True, "correct": is_correct,
@@ -444,20 +449,23 @@ def party_game_answer(request, room_id):
 @require_POST
 def party_quick_join(request):
     with transaction.atomic():
-        rooms = PartyRoom.objects.select_for_update().filter(
+        # Avoid SELECT FOR UPDATE on an aggregate query: PostgreSQL rejects row
+        # locking with GROUP BY. Lock each candidate room before checking capacity.
+        candidates = PartyRoom.objects.filter(
             is_open=True, visibility=PartyRoom.Visibility.PUBLIC, game_status="waiting"
-        ).annotate(people=Count("memberships")).filter(people__lt=12).order_by("people", "-updated_at")
-        room = rooms.first()
+        ).order_by("updated_at", "pk")
+        room = None
+        for candidate in candidates:
+            locked_candidate = PartyRoom.objects.select_for_update().get(pk=candidate.pk)
+            if locked_candidate.memberships.count() < 12:
+                room = locked_candidate
+                break
         if room is None:
             room = PartyRoom.objects.create(
                 host=request.user, title="Quick Match Arena", description="Random public 12-player quiz room",
                 theme="violet", visibility=PartyRoom.Visibility.PUBLIC, max_members=12
             )
-        if not PartyRoomMembership.objects.filter(room=room, user=request.user).exists():
-            if room.memberships.count() < 12 and room.game_status == "waiting":
-                PartyRoomMembership.objects.create(room=room, user=request.user)
-            elif room.memberships.count() < 12 and room.game_status != "waiting":
-                PartyRoomMembership.objects.create(room=room, user=request.user)
-        if room.game_status == "waiting" and room.memberships.count() >= 12:
+        membership, created = PartyRoomMembership.objects.get_or_create(room=room, user=request.user)
+        if created and room.game_status == "waiting" and room.memberships.count() >= 12:
             start_party_game(room)
     return redirect("chat:party_room", room_id=room.pk)
