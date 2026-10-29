@@ -199,7 +199,7 @@ def join_community_tournament(request, tournament_id):
     return redirect("chat:party")
 
 
-# Timed, non-cash three-round Free Fire quiz for Party Rooms.
+# Three-round sequential-turn Free Fire quiz for Party Rooms.
 PARTY_QUIZ = {
     1: [
         ("Free Fire mein safe zone se bahar rehne par kya hota hai?", "damage"),
@@ -251,30 +251,8 @@ def _eligible_players(room, round_number):
         correct_ids = set(PartyRoomGameAnswer.objects.filter(
             room=room, round_number=previous_round, is_correct=True
         ).values_list("player_id", flat=True))
-        members = [m for m in members if m.user_id in correct_ids]
+        members = [member for member in members if member.user_id in correct_ids]
     return members
-
-
-def start_party_game(room, round_number=1):
-    if round_number == 1 and room.game_status == "finished":
-        room.game_answers.all().delete()
-        room.game_winner = None
-        room.reward_awarded = False
-    if room.game_status == "break" and "DRAW" in (room.game_result or "").upper():
-        room.game_answers.filter(round_number=round_number).delete()
-    room.game_round = round_number
-    question, answer = random.choice(PARTY_QUIZ[round_number])
-    old_questions = set(room.room_messages.filter(body__startswith="[QUIZ QUESTION]").values_list("body", flat=True))
-    options = [pair for pair in PARTY_QUIZ[round_number] if "[QUIZ QUESTION] " + pair[0] not in old_questions]
-    if options:
-        question, answer = random.choice(options)
-    room.game_question = question
-    room.game_answer = answer
-    room.game_status = "live"
-    room.game_deadline = timezone.now() + timedelta(seconds=30)
-    room.game_result = "Round " + str(round_number) + ": 30 seconds mein answer submit karo."
-    room.save(update_fields=["game_round", "game_question", "game_answer", "game_status", "game_deadline", "game_result", "game_winner", "reward_awarded", "updated_at"])
-    PartyRoomMessage.objects.create(room=room, sender=room.host, body="[QUIZ QUESTION] " + question)
 
 
 def _award_quiz_winner(room, winner):
@@ -290,48 +268,98 @@ def _award_quiz_winner(room, winner):
         locked.reward_awarded = True
         locked.game_status = "finished"
         locked.game_deadline = None
+        locked.current_turn_player = None
         locked.game_result = winner.username + " jeet gaya! +5 Fan Tokens."
-        locked.save(update_fields=["game_winner", "reward_awarded", "game_status", "game_deadline", "game_result", "updated_at"])
+        locked.save(update_fields=["game_winner", "reward_awarded", "game_status", "game_deadline", "current_turn_player", "game_result", "updated_at"])
+
+
+def _start_quiz_round(room, round_number, clear_round=False):
+    if clear_round:
+        room.game_answers.filter(round_number=round_number).delete()
+    question, answer = random.choice(PARTY_QUIZ[round_number])
+    room.game_round = round_number
+    room.game_question = question
+    room.game_answer = answer
+    room.game_status = "live"
+    room.game_result = "Round " + str(round_number) + ": players ko baari-baari 30 seconds milenge."
+    room.current_turn_player = None
+    room.game_deadline = None
+    room.save(update_fields=["game_round", "game_question", "game_answer", "game_status", "game_result", "current_turn_player", "game_deadline", "updated_at"])
+    _advance_turn(room)
+
+
+def start_party_game(room, round_number=1):
+    if round_number == 1 and room.game_status == "finished":
+        room.game_answers.all().delete()
+        room.game_winner = None
+        room.reward_awarded = False
+        room.save(update_fields=["game_winner", "reward_awarded", "updated_at"])
+    _start_quiz_round(room, round_number, clear_round=True)
+
+
+def _finish_quiz_round(room):
+    round_number = room.game_round
+    eligible = _eligible_players(room, round_number)
+    answers = list(room.game_answers.filter(round_number=round_number).select_related("player").order_by("answered_at", "pk"))
+    correct = [item for item in answers if item.is_correct]
+
+    if round_number == 3 and correct:
+        _award_quiz_winner(room, correct[0].player)
+        return
+
+    survivors = [member for member in eligible if any(
+        item.player_id == member.user_id and item.is_correct for item in correct
+    )]
+    if len(survivors) == 1:
+        _award_quiz_winner(room, survivors[0].user)
+        return
+
+    room.current_turn_player = None
+    room.game_deadline = timezone.now() + timedelta(seconds=5)
+    room.game_status = "break"
+    if not survivors or (round_number == 3 and not correct):
+        room.game_result = "Round " + str(round_number) + " DRAW — koi winner nahi. 5 sec baad isi round ka naya sawaal."
+    elif round_number < 3:
+        room.game_result = "Round " + str(round_number) + " result: " + str(len(survivors)) + " player(s) next round mein. Galat/skip/timeout players spectator hain."
+    else:
+        room.game_result = "Final round draw — 5 sec baad naya final question."
+    room.save(update_fields=["current_turn_player", "game_deadline", "game_status", "game_result", "updated_at"])
+
+
+def _advance_turn(room):
+    eligible = _eligible_players(room, room.game_round)
+    already_answered = set(room.game_answers.filter(
+        round_number=room.game_round
+    ).values_list("player_id", flat=True))
+    next_member = next((member for member in eligible if member.user_id not in already_answered), None)
+    if next_member is None:
+        _finish_quiz_round(room)
+        return
+    room.current_turn_player = next_member.user
+    room.game_deadline = timezone.now() + timedelta(seconds=30)
+    room.game_status = "live"
+    room.game_result = next_member.user.username + " ki baari hai — 30 seconds mein bolo ya Skip dabao."
+    room.save(update_fields=["current_turn_player", "game_deadline", "game_status", "game_result", "updated_at"])
 
 
 def advance_party_game(room):
     now = timezone.now()
     if room.game_status == "break" and room.game_deadline and now >= room.game_deadline:
         if room.game_round < 3:
-            start_party_game(room, room.game_round + 1)
+            _start_quiz_round(room, room.game_round + 1, clear_round=True)
         else:
-            start_party_game(room, 3)
+            _start_quiz_round(room, 3, clear_round=True)
         return
     if room.game_status != "live" or not room.game_deadline or now < room.game_deadline:
         return
-    answers = list(room.game_answers.filter(round_number=room.game_round).select_related("player").order_by("answered_at", "pk"))
-    correct = [item for item in answers if item.is_correct]
-    if room.game_round == 3 and correct:
-        _award_quiz_winner(room, correct[0].player)
-        return
-    eligible = _eligible_players(room, room.game_round)
-    correct_ids = {item.player_id for item in correct}
-    survivors = [member for member in eligible if member.user_id in correct_ids]
-    if not survivors:
-        room.game_status = "break"
-        room.game_deadline = now + timedelta(seconds=5)
-        room.game_result = "Round " + str(room.game_round) + " DRAW — sabke jawab galat ya time out. 5 sec baad naya sawaal."
-        room.save(update_fields=["game_status", "game_deadline", "game_result", "updated_at"])
-        if room.game_round < 3:
-            # A draw retries the same round with a new question.
-            room.game_round -= 1
-            room.save(update_fields=["game_round", "updated_at"])
-        return
-    if room.game_round < 3:
-        room.game_status = "break"
-        room.game_deadline = now + timedelta(seconds=5)
-        room.game_result = "Round " + str(room.game_round) + " complete — " + str(len(survivors)) + " player(s) advance. Wrong / unanswered players can watch."
-        room.save(update_fields=["game_status", "game_deadline", "game_result", "updated_at"])
-    else:
-        room.game_status = "break"
-        room.game_deadline = now + timedelta(seconds=5)
-        room.game_result = "Final round draw — koi sahi jawab nahi. 5 sec baad naya final question."
-        room.save(update_fields=["game_status", "game_deadline", "game_result", "updated_at"])
+    # A timed-out turn is recorded as unanswered, then the next player gets their own 30 seconds.
+    current = room.current_turn_player
+    if current and not room.game_answers.filter(round_number=room.game_round, player=current).exists():
+        PartyRoomGameAnswer.objects.get_or_create(
+            room=room, round_number=room.game_round, player=current,
+            defaults={"answer": "", "is_correct": False},
+        )
+    _advance_turn(room)
 
 
 @login_required
@@ -343,7 +371,7 @@ def party_game_state(request, room_id):
     advance_party_game(room)
     room.refresh_from_db()
     answers = room.game_answers.filter(round_number=room.game_round)
-    eligible_ids = {m.user_id for m in _eligible_players(room, room.game_round)}
+    eligible_ids = {member.user_id for member in _eligible_players(room, room.game_round)}
     own_answer = answers.filter(player=request.user).first()
     return JsonResponse({
         "status": room.game_status, "round": room.game_round, "question": room.game_question,
@@ -351,6 +379,8 @@ def party_game_state(request, room_id):
         "seconds_left": max(0, int((room.game_deadline - timezone.now()).total_seconds())) if room.game_deadline and room.game_status == "live" else 0,
         "answered": answers.count(), "members": room.memberships.count(),
         "eligible": request.user.pk in eligible_ids, "has_answered": bool(own_answer),
+        "turn_player": room.current_turn_player.username if room.current_turn_player_id else None,
+        "is_my_turn": room.current_turn_player_id == request.user.pk and room.game_status == "live",
         "winner": room.game_winner.username if room.game_winner_id else None,
         "reward_awarded": room.reward_awarded,
         "can_start": request.user.pk == room.host_id and room.game_status in ("waiting", "finished"),
@@ -366,24 +396,36 @@ def party_game_answer(request, room_id):
     advance_party_game(room)
     room.refresh_from_db()
     if room.game_status != "live" or not room.game_deadline or timezone.now() >= room.game_deadline:
-        return JsonResponse({"error": "Answer time khatam ho gaya."}, status=400)
-    if request.user.pk not in {m.user_id for m in _eligible_players(room, room.game_round)}:
-        return JsonResponse({"error": "Aap spectator mode mein hain."}, status=403)
-    answer = request.POST.get("answer", "").strip()[:240]
-    if not answer:
-        return JsonResponse({"error": "Jawab likho."}, status=400)
+        return JsonResponse({"error": "Is turn ka time khatam ho gaya."}, status=400)
+    if room.current_turn_player_id != request.user.pk:
+        return JsonResponse({"error": "Abhi kisi aur player ki baari hai."}, status=403)
+    if room.game_answers.filter(round_number=room.game_round, player=request.user).exists():
+        return JsonResponse({"error": "Aapki baari already complete ho gayi."}, status=409)
+
+    skipped = request.POST.get("skip") == "1"
+    answer = "" if skipped else request.POST.get("answer", "").strip()[:240]
+    if not skipped and not answer:
+        return JsonResponse({"error": "Jawab likho ya Skip dabao."}, status=400)
     normalized = _clean_answer(answer)
     expected = _clean_answer(room.game_answer)
     accepted = {_clean_answer(item) for item in ANSWER_ALIASES.get(expected, {expected})}
-    is_correct = normalized == expected or normalized in accepted
+    is_correct = bool(answer) and (normalized == expected or normalized in accepted)
     try:
         with transaction.atomic():
-            PartyRoomGameAnswer.objects.create(room=room, round_number=room.game_round, player=request.user, answer=answer, is_correct=is_correct)
+            PartyRoomGameAnswer.objects.create(
+                room=room, round_number=room.game_round, player=request.user,
+                answer=answer, is_correct=is_correct,
+            )
     except Exception:
-        return JsonResponse({"error": "Is round mein aap ek jawab de chuke ho."}, status=409)
-    if room.game_round == 3 and is_correct:
-        _award_quiz_winner(room, request.user)
-    return JsonResponse({"ok": True, "correct": is_correct, "message": "Sahi jawab!" if is_correct else "Galat jawab — aap ab spectator hain."})
+        return JsonResponse({"error": "Aapki baari already submit ho chuki hai."}, status=409)
+    _advance_turn(room)
+    room.refresh_from_db()
+    return JsonResponse({
+        "ok": True, "correct": is_correct,
+        "message": "Skip ho gaya." if skipped else ("Sahi jawab note ho gaya." if is_correct else "Jawab note ho gaya; round result ke baad pata chalega."),
+        "status": room.game_status, "result": room.game_result,
+    })
+
 
 @login_required
 @require_POST
