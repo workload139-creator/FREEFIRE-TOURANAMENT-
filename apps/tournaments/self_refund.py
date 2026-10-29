@@ -26,6 +26,74 @@ def request_tournament_diamond_refund(request, registration_id):
     tournament = registration.tournament
     now = timezone.now()
 
+    # Recover older NOT_PLAYING registrations that were marked before the refund fix.
+    # Only verified payments can be claimed, and the row lock + stable reference prevent duplicates.
+    if registration.status == Registration.Status.NOT_PLAYING and not registration.refund_processed:
+        if not registration.payment_verified:
+            messages.error(request, "Payment verified nahi hai; refund credit nahi kiya ja sakta.")
+            return redirect("tournaments:my_registrations")
+        amount = Decimal(str(registration.entry_fee_paid or tournament.entry_fee))
+        reference = f"NOTPLAYING-REFUND-{registration.pk}"
+        if amount <= 0:
+            messages.error(request, "Is registration ki refundable amount nahi hai.")
+            return redirect("tournaments:my_registrations")
+        if registration.payment_method in ("diamonds", "coins", "fan_tokens"):
+            quantity = registration.currency_amount
+            if quantity <= 0:
+                messages.error(request, "Original currency amount nahi mila; admin support se contact karein.")
+                return redirect("tournaments:my_registrations")
+            shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=request.user)
+            shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
+            setattr(shop_wallet, registration.payment_method, getattr(shop_wallet, registration.payment_method) + quantity)
+            shop_wallet.save(update_fields=["diamonds", "coins", "fan_tokens", "updated_at"])
+            currency = registration.payment_method
+        elif registration.payment_method == "upi":
+            wallet, _ = Wallet.objects.get_or_create(user=request.user)
+            wallet = Wallet.objects.select_for_update().get(pk=wallet.pk)
+            wallet.balance += amount
+            wallet.save(update_fields=["balance", "updated_at"])
+            WalletTransaction.objects.get_or_create(
+                reference=reference,
+                defaults={
+                    "wallet": wallet,
+                    "transaction_type": WalletTransaction.TransactionType.REFUND,
+                    "amount": amount,
+                    "status": WalletTransaction.Status.COMPLETED,
+                    "description": f"Refund for previously marked NOT_PLAYING registration {registration.pk}.",
+                },
+            )
+            quantity = 0
+            currency = TournamentLedgerEntry.Currency.INR
+        else:
+            messages.error(request, "Is payment method ka automatic refund supported nahi hai; admin se contact karein.")
+            return redirect("tournaments:my_registrations")
+
+        registration.status = Registration.Status.REFUNDED
+        registration.refund_processed = True
+        registration.refund_processed_at = now
+        registration.refund_reference = reference
+        registration.room_details_sent = False
+        registration.save(update_fields=[
+            "status", "refund_processed", "refund_processed_at",
+            "refund_reference", "room_details_sent", "updated_at",
+        ])
+        TournamentLedgerEntry.objects.get_or_create(
+            reference=reference,
+            defaults={
+                "tournament": tournament,
+                "player": request.user,
+                "registration": registration,
+                "entry_type": TournamentLedgerEntry.EntryType.REFUND,
+                "currency": currency,
+                "quantity": quantity,
+                "amount_inr": amount,
+                "status": TournamentLedgerEntry.Status.COMPLETED,
+                "description": "One-time refund claimed for an older verified NOT_PLAYING registration.",
+            },
+        )
+        messages.success(request, "Refund complete. Amount original wallet mein credit ho gaya.")
+        return redirect("tournaments:my_registrations")
+
     if registration.refund_processed or registration.status in (
         Registration.Status.CANCELLED,
         Registration.Status.REFUNDED,
