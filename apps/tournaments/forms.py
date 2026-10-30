@@ -96,6 +96,21 @@ class KillSubmissionForm(forms.ModelForm):
     class Meta:
         model = KillSubmission
         fields = ("free_fire_uid", "history_video", "history_image_one", "history_image_two")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["history_video"].help_text = (
+            "15–30 second clear video: show the Free Fire result/history screen, "
+            "player UID, personal kills and match details. Avoid cuts or edits."
+        )
+        self.fields["history_image_one"].help_text = (
+            "First clear Free Fire match-history/result screenshot showing your UID, "
+            "individual kills and match details."
+        )
+        self.fields["history_image_two"].help_text = (
+            "Second screenshot from the same match/history sequence. If UID, kills, "
+            "mode or result details are unclear, Admin review will be required."
+        )
         widgets = {
             "free_fire_uid": forms.TextInput(attrs={
                 "inputmode": "numeric",
