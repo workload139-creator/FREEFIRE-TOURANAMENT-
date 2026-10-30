@@ -249,27 +249,31 @@ def award_arena_currency_winner(modeladmin, request, queryset):
             if TournamentLedgerEntry.objects.filter(reference=reference).exists():
                 skipped += 1
                 continue
-            if tournament.mode == Tournament.Mode.BR:
-                currency, field, quantity = TournamentLedgerEntry.Currency.DIAMONDS, "diamonds", 50
-            else:
-                currency, field = TournamentLedgerEntry.Currency.FAN_TOKENS, "fan_tokens"
-                quantity = {"1v1": 10, "2v2": 20, "3v3": 30, "4v4": 40}.get(tournament.vs_format, 10)
             wallet, _ = PlayerShopWallet.objects.get_or_create(user=registration.player)
             wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
-            setattr(wallet, field, getattr(wallet, field) + quantity)
-            wallet.save(update_fields=[field, "updated_at"])
-            TournamentLedgerEntry.objects.create(
-                tournament=tournament,
-                player=registration.player,
-                registration=registration,
-                entry_type=TournamentLedgerEntry.EntryType.REWARD,
-                currency=currency,
-                quantity=quantity,
-                amount_inr=Decimal("0.00"),
-                status=TournamentLedgerEntry.Status.COMPLETED,
-                reference=reference,
-                description=f"Admin-approved tournament winner reward: {quantity} {currency}",
-            )
+            if tournament.mode == Tournament.Mode.BR:
+                wallet.diamonds += 50
+                wallet.save(update_fields=["diamonds", "updated_at"])
+                TournamentLedgerEntry.objects.create(
+                    tournament=tournament, player=registration.player, registration=registration,
+                    entry_type=TournamentLedgerEntry.EntryType.REWARD,
+                    currency=TournamentLedgerEntry.Currency.DIAMONDS, quantity=50,
+                    amount_inr=Decimal("0.00"), status=TournamentLedgerEntry.Status.COMPLETED,
+                    reference=reference, description="Admin-approved BR winner prize: 50 Diamonds",
+                )
+            else:
+                wallet.diamonds += 10
+                wallet.coins += 10
+                wallet.save(update_fields=["diamonds", "coins", "updated_at"])
+                for currency, quantity in ((TournamentLedgerEntry.Currency.DIAMONDS, 10), (TournamentLedgerEntry.Currency.COINS, 10)):
+                    TournamentLedgerEntry.objects.create(
+                        tournament=tournament, player=registration.player, registration=registration,
+                        entry_type=TournamentLedgerEntry.EntryType.REWARD, currency=currency,
+                        quantity=quantity, amount_inr=Decimal("0.00"),
+                        status=TournamentLedgerEntry.Status.COMPLETED,
+                        reference=f"{reference}-{currency.upper()}",
+                        description=f"Admin-approved VS winner prize: {quantity} {currency}",
+                    )
             awarded += 1
     if awarded:
         modeladmin.message_user(request, f"{awarded} winner non-cash reward(s) credited to player wallet.", messages.SUCCESS)
