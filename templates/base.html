@@ -128,7 +128,21 @@
     if (/FFArenaAndroidApp/i.test(navigator.userAgent || "")) {
         document.documentElement.classList.add("ff-android-app");
         var downloadLink = document.getElementById("ffAppDownloadLink");
-        if (downloadLink) downloadLink.hidden = true;
+        if (downloadLink) {
+            downloadLink.textContent = "↗ Share App";
+            downloadLink.href = "#share-ff-arena";
+            downloadLink.setAttribute("aria-label", "Share FF Arena app");
+            downloadLink.addEventListener("click", function (event) {
+                event.preventDefault();
+                if (window.FFArenaShare && typeof window.FFArenaShare.share === "function") {
+                    window.FFArenaShare.share();
+                } else if (navigator.share) {
+                    navigator.share({ title: "FF Arena", text: "Join FF Arena tournaments!", url: "https://freefire-touranament-74nr.onrender.com" }).catch(function () {});
+                } else {
+                    window.prompt("Copy and share FF Arena link:", "https://freefire-touranament-74nr.onrender.com");
+                }
+            });
+        }
     }
 })();
 </script>

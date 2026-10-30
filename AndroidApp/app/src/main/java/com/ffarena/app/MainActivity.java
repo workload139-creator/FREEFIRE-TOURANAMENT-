@@ -18,6 +18,7 @@ import android.webkit.PermissionRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.JavascriptInterface;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ImageView;
@@ -601,6 +602,7 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(false);
         settings.setSupportZoom(false);
         CookieManager.getInstance().setAcceptCookie(true);
+        featureWebView.addJavascriptInterface(new ShareBridge(), "FFArenaShare");
         featureWebView.setWebViewClient(new WebViewClient());
         featureWebView.setWebChromeClient(new WebChromeClient() {
             @Override
@@ -635,6 +637,22 @@ public class MainActivity extends Activity {
         featureWebView.loadUrl(url);
         page.addView(featureWebView, new LinearLayout.LayoutParams(-1, 0, 1));
         root.addView(page, new LinearLayout.LayoutParams(-1, -1));
+    }
+
+    private final class ShareBridge {
+        @JavascriptInterface
+        public void share() {
+            runOnUiThread(() -> {
+                Intent send = new Intent(Intent.ACTION_SEND);
+                send.setType("text/plain");
+                send.putExtra(Intent.EXTRA_SUBJECT, "FF Arena - Free Fire Tournaments");
+                send.putExtra(Intent.EXTRA_TEXT,
+                        "Join FF Arena for Free Fire tournaments! Download the Android app: "
+                        + "https://github.com/workload139-creator/FREEFIRE-TOURANAMENT-/releases/download/ff-arena-latest/app-release.apk"
+                        + "\nWebsite: " + BASE_URL);
+                startActivity(Intent.createChooser(send, "Share FF Arena"));
+            });
+        }
     }
 
     private Button button(String label) {
