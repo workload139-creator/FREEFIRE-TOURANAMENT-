@@ -12,10 +12,10 @@
     <div><small>Entry Fee</small><strong>{% if tournament.is_free_fan_tournament %}FREE{% else %}₹{{ tournament.entry_fee }}{% endif %}</strong></div>
     <div><small>1st Prize</small><strong>{% if tournament.is_free_fan_tournament %}{{ tournament.winner_coins_prize }} Coins{% elif tournament.mode == "VS" %}{% if tournament.vs_format == "2v2" %}38 Diamonds (Admin){% else %}Admin Reward{% endif %}{% elif tournament.br_format == "duo" or tournament.br_format == "squad" %}10 Fan Currency / player{% elif tournament.entry_fee <= 1 %}20 Diamonds{% else %}50 Diamonds{% endif %}</strong></div>
     <div><small>1 Kill Reward</small><strong>{% if tournament.is_free_fan_tournament %}2 Kills = 1 Fan Token{% elif tournament.mode == "VS" %}2 Coins{% elif tournament.br_format == "duo" or tournament.br_format == "squad" %}5 Diamonds + 2 Coins{% else %}5 Diamonds{% endif %}</strong></div>
-    <div><small>Players</small><strong>{{ tournament.confirmed_players_count }}/{{ tournament.max_players }}</strong></div>
+    <div><small>Players</small><strong>{% if tournament.is_unlimited_br %}{{ tournament.paid_players_count }}{% else %}{{ tournament.confirmed_players_count }}{% endif %}/{{ tournament.max_players }}</strong></div>
   </div>
   {% if tournament.mode == "VS" %}<p>VS winner prize admin manually decide aur credit karega. 2v2 ka prize 38 Diamonds hai. Har verified kill par dono teams ko 2 Coins per kill milenge, match jeetne ya haarne se farq nahi padega. Kill proof AI check ke baad admin approve karega.</p>{% elif tournament.mode == "BR" %}<p class="room-note">Kills leaderboard par sirf verified/approved evidence count hota hai. Minimum {{ minimum_verified_kills }} verified kills ke baad reward eligibility hogi.</p>{% endif %}
-  <p><strong>Players:</strong> {{ tournament.confirmed_players_count }}/{{ tournament.max_players }}</p>
+  <p><strong>Players:</strong> {% if tournament.is_unlimited_br %}{{ tournament.paid_players_count }}{% else %}{{ tournament.confirmed_players_count }}{% endif %}/{{ tournament.max_players }}</p>
   {% if tournament.is_unlimited_br %}<p><strong>Start:</strong> Automatically LIVE at full verified capacity; admin can also start manually with complete teams. No date/time is scheduled.</p>{% else %}<p><strong>Schedule:</strong> No public date/time displayed.</p>{% endif %}
   <p><strong>Status:</strong> {{ tournament.get_status_display }}</p>
   {% if tournament.status == "live" %}
