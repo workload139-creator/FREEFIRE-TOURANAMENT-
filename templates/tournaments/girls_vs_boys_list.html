@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Girls vs Boys | FF Arena{% endblock %}
+{% block content %}
+<section class="gvb-page">
+  <header class="gvb-hero">
+    <small>FF ARENA · SPECIAL FACE-OFF</small>
+    <h1>👑 Girls <em>vs</em> Boys</h1>
+    <p>Dedicated Girls vs Boys tournaments. Har event ka registration, team setup, room access aur leaderboard alag rahega.</p>
+    <div class="gvb-pills"><span>BR & VS formats</span><span>Separate tournament listing</span><span>Admin-verified eligibility</span></div>
+  </header>
+  <nav><a href="{% url 'tournaments:list' %}">← All tournament categories</a></nav>
+  <h2>Girls vs Boys tournaments</h2>
+  <div class="gvb-grid">
+    {% for tournament in tournaments %}
+      {% include "tournaments/_tournament_card.html" with tournament=tournament %}
+    {% empty %}
+      <article class="gvb-empty"><h3>Next face-off is waiting</h3><p>Admin panel ke Tournaments section mein Gender Category “Girls vs Boys” select karke event publish karein. Event yahin alag se dikhega.</p></article>
+    {% endfor %}
+  </div>
+</section>
+<style>
+.gvb-page{max-width:1180px;margin:34px auto 70px;padding:clamp(14px,3vw,28px);color:#f6f7ff}
+.gvb-hero{padding:clamp(26px,5vw,50px);border:1px solid #ff9bd866;border-radius:26px;background:radial-gradient(ellipse at 90% 0%,#ff83c52b,transparent 40%),linear-gradient(130deg,#2a1028,#12172b 70%,#100e1d);box-shadow:0 24px 70px #0005}
+.gvb-hero small{color:#ffb6dd;font-weight:950;letter-spacing:3px}.gvb-hero h1{font-size:clamp(36px,7vw,64px);margin:14px 0;font-weight:1000}.gvb-hero h1 em{font-style:normal;color:#ff9dcc}.gvb-hero p{max-width:760px;color:#d8cbd8;line-height:1.7}
+.gvb-pills{display:flex;flex-wrap:wrap;gap:9px;margin-top:22px}.gvb-pills span{padding:9px 12px;border:1px solid #ffffff26;background:#080d16aa;border-radius:999px;font-size:12px;font-weight:800}
+.gvb-page nav{margin:20px 0}.gvb-page nav a{color:#ffb5dc;text-decoration:none;font-weight:800}
+.gvb-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,285px),1fr));gap:20px}.gvb-empty{padding:26px;border:1px dashed #ff9bd866;border-radius:17px;background:#170f1c}.gvb-empty p{color:#d8cbd8;line-height:1.6}
+</style>
+{% endblock %}
