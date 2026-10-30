@@ -233,6 +233,14 @@ public class MainActivity extends Activity {
             request.setAllowedOverRoaming(false);
             pendingApkVersionCode = versionCode;
             pendingApkFileName = "ff-arena-update-" + versionCode + ".apk";
+            File downloadDirectory = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+            if (downloadDirectory != null) {
+                File previousDownload = new File(downloadDirectory, pendingApkFileName);
+                if (previousDownload.exists() && !previousDownload.delete()) {
+                    showUpdateError("The previous update file could not be replaced. Clear FF Arena app downloads and try again.");
+                    return;
+                }
+            }
             request.setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, pendingApkFileName);
             pendingApkDownloadId = apkDownloadManager.enqueue(request);
             Toast.makeText(this, "Update download started. You can continue using FF Arena.", Toast.LENGTH_LONG).show();
@@ -343,6 +351,7 @@ public class MainActivity extends Activity {
 
     private void selectTab(String tab) {
         currentTab = tab;
+        if (featureWebView != null) featureWebView.stopLoading();
         // Reuse the WebView between tabs to retain its page cache and cookies.
         if ("Voice Party".equals(tab)) {
             openFeature("/chat/party/");
