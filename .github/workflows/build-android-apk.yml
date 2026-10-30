@@ -109,13 +109,22 @@ jobs:
             echo "Missing repository secret: ANDROID_KEY_PASSWORD"
             exit 1
           fi
-          gradle --no-daemon bundleRelease -PversionCode=${{ github.run_number }}
+          gradle --no-daemon assembleRelease bundleRelease -PversionCode=${{ github.run_number }}
 
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: ff-arena-android-apk
           path: AndroidApp/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload signed release APK artifact
+        if: steps.validate_signing.outputs.valid == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ff-arena-android-release-apk
+          path: AndroidApp/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14
 
@@ -136,12 +145,14 @@ jobs:
           name: FF Arena Android Builds
           body: |
             FF Arena Android app builds.
-            app-debug.apk: debug-signed APK for direct testing.
+            app-release.apk: release-signed APK for updating installed Android apps.
+            app-debug.apk: debug APK for testing only.
             app-release.aab: release-signed Android App Bundle for Play Console upload.
             versionCode: ${{ github.run_number }}
             Publishing the AAB does not guarantee Google Play policy eligibility.
           files: |
             AndroidApp/app/build/outputs/apk/debug/app-debug.apk
+            AndroidApp/app/build/outputs/apk/release/app-release.apk
             AndroidApp/app/build/outputs/bundle/release/app-release.aab
           overwrite_files: true
           fail_on_unmatched_files: true
