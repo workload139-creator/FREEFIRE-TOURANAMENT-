@@ -37,6 +37,7 @@ def battle_royale_list(request):
         mode=Tournament.Mode.BR,
         is_free_fan_tournament=False,
         is_diwali_offer=False,
+        is_unlimited_br=False,
         gender_category__in=(
             Tournament.GenderCategory.OPEN,
             Tournament.GenderCategory.BOYS,
