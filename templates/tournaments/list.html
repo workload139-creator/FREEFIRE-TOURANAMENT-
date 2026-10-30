@@ -7,7 +7,7 @@
     <h1>Choose Your <span>Tournament</span></h1>
     <p class="tournament-intro">Apna mode chuno, squad banao aur leaderboard par apni jagah banao.</p>
     <nav class="arena-mode-nav" aria-label="Tournament categories">
-      <a href="{% url 'tournaments:free_fan_list' %}">🎁 Free Tournament</a><a href="#unlimited-tournaments">♾️ Unlimited</a><a href="{% url 'tournaments:battle_royale_list' %}">🔥 Battle Royale</a><a href="{% url 'tournaments:clash_squad_list' %}">⚔️ Clash Squad</a><a href="#girls-vs-boys">💜 Girl vs Boy</a>
+      <a href="{% url 'tournaments:free_fan_list' %}">🎁 Free Tournament</a><a href="{% url 'tournaments:diwali_offer_list' %}">🪔 Diwali · 1 Diamond</a><a href="#unlimited-tournaments">♾️ Unlimited</a><a href="{% url 'tournaments:battle_royale_list' %}">🔥 Battle Royale</a><a href="{% url 'tournaments:clash_squad_list' %}">⚔️ Clash Squad</a><a href="#girls-vs-boys">💜 Girl vs Boy</a>
     </nav>
   </header>
 
@@ -17,6 +17,15 @@
     {% for tournament in free_fan_tournaments %}
       {% include "tournaments/_tournament_card.html" with tournament=tournament %}
     {% empty %}<article class="tournament-empty free-fan-empty"><span>🎁</span><h3>Free Fan Arena</h3><p>Free tournament ka separate page ready hai. Admin panel ke <strong>Free Fan Tournaments</strong> mein round create hote hi yahan dikhai dega.</p><a class="button button-primary" href="{% url 'tournaments:free_fan_list' %}">Enter Free Arena</a></article>{% endfor %}
+    </div>
+  </section>
+
+  <section class="mode-section diwali-section" id="diwali-offer">
+    <div class="mode-heading"><span class="mode-label">🪔 FESTIVAL SPECIAL</span><h2>Diwali Solo BR · 1 Diamond Entry</h2><p>49 players · 20 Diamonds first prize · 5 Coins per approved kill · minimum 2 verified kills. Separate Diwali leaderboard and admin controls.</p><p><a class="button button-primary" href="{% url 'tournaments:diwali_offer_list' %}">Open Diwali Arena →</a></p></div>
+    <div class="tournament-grid">
+    {% for tournament in diwali_tournaments %}
+      {% include "tournaments/_tournament_card.html" with tournament=tournament %}
+    {% empty %}<article class="tournament-empty diwali-empty"><span>🪔</span><h3>Diwali Solo Challenge</h3><p>Diwali ke 1-Diamond rounds admin panel ke Festival / Offer section se create honge.</p><a class="button button-primary" href="{% url 'tournaments:diwali_offer_list' %}">Open Diwali Arena</a></article>{% endfor %}
     </div>
   </section>
 
@@ -42,6 +51,7 @@
     <div class="mode-heading"><span class="mode-label">CHOOSE YOUR BATTLE</span><h2>Game Modes</h2><p>Battle Royale aur Clash Squad ke tournaments ab apne alag pages par milenge. Har format ka registration, player list aur leaderboard wahi par dekhein.</p></div>
     <div class="mode-directory-grid">
       <a class="mode-directory-card br-directory" href="{% url 'tournaments:battle_royale_list' %}"><span>🔥 SURVIVAL MODE</span><strong>Battle Royale</strong><small>Solo · Duo · Squad</small><b>Open BR Arena →</b></a>
+      <a class="mode-directory-card diwali-directory" href="{% url 'tournaments:diwali_offer_list' %}"><span>🪔 FESTIVAL SPECIAL</span><strong>Diwali Offer</strong><small>Solo BR · 1 Diamond Entry · 49 Players</small><b>Open Diwali Arena →</b></a>
       <a class="mode-directory-card cs-directory" href="{% url 'tournaments:clash_squad_list' %}"><span>⚔️ SQUAD COMBAT</span><strong>Clash Squad</strong><small>1v1 · 2v2 · 3v3 · 4v4</small><b>Open CS Arena →</b></a>
     </div>
   </section>
@@ -76,7 +86,7 @@
 .arena-mode-nav{display:flex;justify-content:center;flex-wrap:wrap;gap:10px}
 .arena-mode-nav a{padding:10px 15px;border:1px solid #ffffff22;border-radius:999px;background:#0b141e;color:#f5f7ff;text-decoration:none;font-weight:800;font-size:13px}
 .arena-mode-nav a:hover{border-color:#55ffc0;color:#55ffc0;transform:translateY(-2px)}
-.mode-section{margin:44px 0;scroll-margin-top:100px}.free-fan-section{padding:22px;border:1px solid #e9a8ff44;border-radius:24px;background:radial-gradient(ellipse at 10% 10%,#f48dff18,transparent 45%),#160d1c}.free-fan-section .mode-label{color:#f0a6ff}.free-fan-empty{border-color:#e9a8ff44}.mode-section{margin:44px 0;scroll-margin-top:100px}.unlimited-section{padding:22px;border:1px solid #55ffc044;border-radius:24px;background:radial-gradient(ellipse at 10% 10%,#28ff9a12,transparent 45%),#07120f}.unlimited-section .mode-label{color:#58ffb4}.unlimited-empty{border-color:#55ffc044}
+.mode-section{margin:44px 0;scroll-margin-top:100px}.free-fan-section{padding:22px;border:1px solid #e9a8ff44;border-radius:24px;background:radial-gradient(ellipse at 10% 10%,#f48dff18,transparent 45%),#160d1c}.free-fan-section .mode-label{color:#f0a6ff}.free-fan-empty{border-color:#e9a8ff44}.mode-section{margin:44px 0;scroll-margin-top:100px}.diwali-section{padding:22px;border:1px solid #ffc45b55;border-radius:24px;background:radial-gradient(ellipse at 10% 10%,#ffb52b18,transparent 45%),#1a100b}.diwali-section .mode-label{color:#ffd27a}.diwali-empty{border-color:#ffc45b66}.unlimited-section{padding:22px;border:1px solid #55ffc044;border-radius:24px;background:radial-gradient(ellipse at 10% 10%,#28ff9a12,transparent 45%),#07120f}.unlimited-section .mode-label{color:#58ffb4}.unlimited-empty{border-color:#55ffc044}
 .mode-directory-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:18px}.mode-directory-card{display:flex;flex-direction:column;gap:12px;min-height:190px;padding:25px;border:1px solid #ffffff25;border-radius:20px;background:linear-gradient(135deg,#182316,#09130f);color:#f7fff9;text-decoration:none;transition:transform .2s,border-color .2s}.mode-directory-card:hover{transform:translateY(-4px);border-color:#55ffc0}.mode-directory-card span{font-size:11px;font-weight:950;letter-spacing:2px;color:#8bffc5}.mode-directory-card strong{font-size:30px}.mode-directory-card small{color:#bdc9d5;font-size:14px}.mode-directory-card b{margin-top:auto;color:#65ffc0}.cs-directory{background:linear-gradient(135deg,#211638,#100d1c);border-color:#a984ff55}.cs-directory span,.cs-directory b{color:#d4b9ff}
 .mode-heading{margin-bottom:20px}.mode-heading h2{font-size:clamp(27px,4vw,40px);margin:8px 0}.mode-heading p{color:#afbdce;max-width:760px}.mode-label{color:#ffb45c;font-size:11px;font-weight:950;letter-spacing:2px}.cs-title{color:#c4a3ff}
 .tournament-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,285px),1fr));gap:20px}
