@@ -19,7 +19,8 @@ from .forms import KillSubmissionForm, RegistrationForm
 from .ai_review import AIReviewError, analyze_kill_evidence
 from .registration_services import RegistrationError, create_pending_registration
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
-from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry\nfrom .kill_services import reward_for_tournament
+from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry
+from .kill_services import reward_for_tournament\nfrom .kill_services import reward_for_tournament
 from .services import process_expired_ready_registrations, mark_not_playing_and_refund
 
 import qrcode
@@ -427,7 +428,7 @@ def kill_submission(request, registration_id):
                     )
                     proposed_kills = int(proposed_kills or 0)
                     if auto_approved:
-                        reward_quantity = proposed_kills // 2 if registration.tournament.is_free_fan_tournament else proposed_kills * int(settings.DIAMONDS_PER_APPROVED_KILL)
+                        reward_currency_name, reward_quantity, reward_label = reward_for_tournament(registration.tournament, proposed_kills)
                         submission.proposed_reward = Decimal(reward_quantity)
                     with transaction.atomic():
                         submission = KillSubmission.objects.select_for_update().get(pk=submission.pk)
@@ -438,9 +439,8 @@ def kill_submission(request, registration_id):
                         if auto_approved:
                             from apps.social.models import PlayerShopWallet
                             is_free = submission.tournament.is_free_fan_tournament
-                            reward_quantity = proposed_kills // 2 if is_free else proposed_kills * int(settings.DIAMONDS_PER_APPROVED_KILL)
-                            reward_currency = TournamentLedgerEntry.Currency.FAN_TOKENS if is_free else TournamentLedgerEntry.Currency.DIAMONDS
-                            reward_label = "Fan Tokens" if is_free else "Diamonds"
+                            reward_currency_name, reward_quantity, reward_label = reward_for_tournament(submission.tournament, proposed_kills)
+                            reward_currency = reward_currency_name
                             submission.proposed_reward = Decimal(reward_quantity)
                             submission.approved_kills = proposed_kills
                             submission.approved_reward = submission.proposed_reward
@@ -449,11 +449,13 @@ def kill_submission(request, registration_id):
                             if reward_quantity > 0:
                                 shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=submission.player)
                                 shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
-                                if is_free:
+                                if reward_currency_name == "fan_tokens":
                                     shop_wallet.fan_tokens += reward_quantity
+                                elif reward_currency_name == "coins":
+                                    shop_wallet.coins += reward_quantity
                                 else:
                                     shop_wallet.diamonds += reward_quantity
-                                shop_wallet.save(update_fields=("diamonds", "fan_tokens", "updated_at"))
+                                shop_wallet.save(update_fields=("diamonds", "coins", "fan_tokens", "updated_at"))
                                 TournamentLedgerEntry.objects.get_or_create(
                                     reference=f"KILL-REWARD-{submission.pk}",
                                     defaults={
@@ -675,7 +677,7 @@ def retry_ai_kill_review(request, submission_id):
                         "ai_review_notes", "approved_kills", "proposed_reward",
                         "approved_reward", "status", "reviewed_at", "admin_notes",
                     ])
-            reward_name = "Fan Tokens" if submission.tournament.is_free_fan_tournament else "Diamonds"
+            reward_name = reward_for_tournament(submission.tournament, proposed_kills)[2]
             messages.success(request, f"Dual AI agree hua: {proposed} kills verify hue aur {int(submission.approved_reward)} {reward_name} credit kiye gaye.")
         else:
             if not uid_ok:
