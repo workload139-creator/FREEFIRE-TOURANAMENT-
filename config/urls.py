@@ -22,6 +22,7 @@ _PRIVATE_MEDIA_PREFIXES = (
     "shop_payments/",
     "tournament_verification/",
     "ff_tick_payments/",
+    "tournament_room_qr/",
 )
 
 

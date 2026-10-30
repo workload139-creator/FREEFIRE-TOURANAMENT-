@@ -52,6 +52,9 @@ urlpatterns = [
     # Player declines the ready check
     path("registration/<int:registration_id>/decline/", views.decline_playing, name="decline_playing"),
 
+    # Room QR is streamed only to staff or a paid player whose ready check is confirmed.
+    path("room/<int:tournament_id>/qr/", views.room_qr_file, name="room_qr_file"),
+
     # Player room
     path(
         "registration/<int:registration_id>/room/",

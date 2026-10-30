@@ -27,7 +27,7 @@
    <p>QR se join karne ki koshish karein. Agar Free Fire MAX QR ko accept na kare, neeche ID aur Password wala backup use karein.</p>
    {% if tournament.room_qr_code %}
     <div style="text-align:center;padding:12px;background:#fff;border-radius:12px">
-     <img src="{{ tournament.room_qr_code.url }}" alt="Official Free Fire custom room QR code" style="width:min(100%,320px);height:auto;object-fit:contain">
+     <img src="{% url "tournaments:room_qr_file" tournament.id %}" alt="Official Free Fire custom room QR code" style="width:min(100%,320px);height:auto;object-fit:contain">
     </div>
     <p class="help-text">Is QR ko Free Fire MAX ke official Custom Room QR scanner se scan karein, agar aapke game version mein scanner available hai.</p>
     <a class="btn-primary" style="display:inline-block;margin:8px 0" href="intent://#Intent;package=com.dts.freefiremax;end">🎮 Open Free Fire MAX</a>

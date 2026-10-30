@@ -2,6 +2,8 @@ from django.conf import settings
 from django.db import models
 from django.db.models import Q
 
+from apps.core.storage import PrivateMediaStorage
+
 
 class FriendRequest(models.Model):
     class Status(models.TextChoices):
@@ -145,7 +147,7 @@ class FFTickSubscription(models.Model):
     amount = models.DecimalField(max_digits=7, decimal_places=2, default=100)
     duration_months = models.PositiveSmallIntegerField(default=3)
     payment_reference = models.CharField(max_length=100, blank=True)
-    payment_screenshot = models.ImageField(upload_to="ff_tick_payments/", blank=True, null=True)
+    payment_screenshot = models.ImageField(upload_to="ff_tick_payments/", storage=PrivateMediaStorage(), blank=True, null=True)
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDING)
     submitted_at = models.DateTimeField(auto_now_add=True)
     verified_at = models.DateTimeField(blank=True, null=True)
@@ -203,7 +205,7 @@ class ShopPaymentRequest(models.Model):
     quantity = models.PositiveIntegerField()
     amount = models.DecimalField(max_digits=8, decimal_places=2)
     payment_reference = models.CharField(max_length=100)
-    payment_screenshot = models.ImageField(upload_to="shop_payments/")
+    payment_screenshot = models.ImageField(upload_to="shop_payments/", storage=PrivateMediaStorage())
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)
@@ -251,7 +253,7 @@ class CurrencyWithdrawalRequest(models.Model):
     quantity = models.PositiveIntegerField()
     amount_inr = models.DecimalField(max_digits=8, decimal_places=2)
     upi_id = models.CharField(max_length=100)
-    upi_qr_code = models.ImageField(upload_to="currency_withdrawal_qr/", blank=True, null=True)
+    upi_qr_code = models.ImageField(upload_to="currency_withdrawal_qr/", storage=PrivateMediaStorage(), blank=True, null=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING, db_index=True)
     payout_reference = models.CharField(max_length=100, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
