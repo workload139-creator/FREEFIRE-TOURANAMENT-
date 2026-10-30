@@ -1,5 +1,5 @@
 <article class="tournament-card{% if tournament.gender_category == 'girls_vs_boys' %} gvb-card{% endif %}">
-  <span class="mode-label">{% if tournament.is_unlimited_br %}♾️ UNLIMITED TOURNAMENT{% elif tournament.gender_category == "girls_vs_boys" %}💜 GIRLS VS BOYS SHOWDOWN{% elif tournament.mode == "VS" %}CS / CLASH SQUAD{% else %}BATTLE ROYALE{% endif %}</span>
+  <span class="mode-label">{% if tournament.gender_category == "girls_vs_boys" %}💜 GIRLS VS BOYS SHOWDOWN{% elif tournament.mode == "VS" %}CS / CLASH SQUAD{% else %}BATTLE ROYALE{% endif %}</span>
   {% if tournament.status == "live" %}<span class="live-badge" style="display:inline-flex;margin:12px 20px 0;padding:6px 11px;border-radius:999px;background:#d90032;color:#fff;font-size:12px;font-weight:950;letter-spacing:1px;box-shadow:0 0 18px #ff174455">● LIVE NOW</span>{% endif %}
   <h3>{{ tournament.title }}</h3>
   <p class="gender-chip">{{ tournament.get_gender_category_display }}</p>
