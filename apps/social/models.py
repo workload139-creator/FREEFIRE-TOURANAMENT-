@@ -270,6 +270,7 @@ class DailySpin(models.Model):
     class Currency(models.TextChoices):
         DIAMONDS = "diamonds", "Diamonds"
         COINS = "coins", "Coins"
+        FAN_TOKENS = "fan_tokens", "Fan Currency"
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="daily_spins")
     currency = models.CharField(max_length=12, choices=Currency.choices)
