@@ -272,21 +272,89 @@ def award_arena_currency_winner(modeladmin, request, queryset):
         modeladmin.message_user(request, f"{skipped} skipped: set the correct Winner UID, verify the player's registration/payment, mark tournament Completed, and check that no reward was already credited.", messages.WARNING)
 
 
+@admin.action(description="BR winner team: give each listed player 10 Fan Tokens + 50 Coins")
+def award_br_winner_team(modeladmin, request, queryset):
+    """Credit each verified winner once, with one ledger entry per currency and UID."""
+    from apps.social.models import PlayerShopWallet
+
+    awarded_players = 0
+    skipped = 0
+    for selected in queryset:
+        with transaction.atomic():
+            tournament = Tournament.objects.select_for_update().get(pk=selected.pk)
+            if tournament.mode != Tournament.Mode.BR or tournament.status != Tournament.Status.COMPLETED:
+                skipped += 1
+                continue
+            uids = []
+            for raw in (tournament.winner_team_uids or "").replace(",", "\\n").splitlines():
+                uid = raw.strip()
+                if uid and uid not in uids:
+                    uids.append(uid)
+            if not uids:
+                skipped += 1
+                continue
+            registrations = list(Registration.objects.select_for_update().filter(
+                tournament=tournament, free_fire_uid__in=uids, payment_verified=True,
+                refund_processed=False,
+                status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
+            ).select_related("player"))
+            by_uid = {row.free_fire_uid: row for row in registrations}
+            if len(by_uid) != len(uids):
+                skipped += 1
+                continue
+            already_done = False
+            for uid in uids:
+                base = f"BR-TEAM-WIN-{tournament.pk}-{uid}"
+                if TournamentLedgerEntry.objects.filter(reference__in=[base + "-FAN", base + "-COIN"]).exists():
+                    already_done = True
+                    break
+            if already_done:
+                skipped += 1
+                continue
+            for uid in uids:
+                registration = by_uid[uid]
+                wallet, _ = PlayerShopWallet.objects.get_or_create(user=registration.player)
+                wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
+                wallet.fan_tokens += 10
+                wallet.coins += 50
+                wallet.save(update_fields=["fan_tokens", "coins", "updated_at"])
+                base = f"BR-TEAM-WIN-{tournament.pk}-{uid}"
+                TournamentLedgerEntry.objects.create(
+                    tournament=tournament, player=registration.player, registration=registration,
+                    entry_type=TournamentLedgerEntry.EntryType.REWARD,
+                    currency=TournamentLedgerEntry.Currency.FAN_TOKENS, quantity=10,
+                    status=TournamentLedgerEntry.Status.COMPLETED, reference=base + "-FAN",
+                    description="BR winning team reward: 10 Fan Tokens",
+                )
+                TournamentLedgerEntry.objects.create(
+                    tournament=tournament, player=registration.player, registration=registration,
+                    entry_type=TournamentLedgerEntry.EntryType.REWARD,
+                    currency=TournamentLedgerEntry.Currency.COINS, quantity=50,
+                    status=TournamentLedgerEntry.Status.COMPLETED, reference=base + "-COIN",
+                    description="BR winning team reward: 50 Coins",
+                )
+                awarded_players += 1
+    if awarded_players:
+        modeladmin.message_user(request, f"{awarded_players} BR winner-team player(s) received 10 Fan Tokens + 50 Coins each.", messages.SUCCESS)
+    if skipped:
+        modeladmin.message_user(request, f"{skipped} tournament(s) skipped: check BR mode, Completed status, every UID's verified paid registration, and duplicate payout records.", messages.WARNING)
+
+
 @admin.register(Tournament)
 class TournamentAdmin(admin.ModelAdmin):
     form = TournamentAdminForm
     list_display = (
-        "title", "open_tournament_control", "mode", "vs_format", "gender_category",
+        "title", "open_tournament_control", "mode", "br_format", "vs_format", "gender_category",
         "entry_fee", "prize_pool", "max_players", "start_time", "status",
         "is_unlimited_br", "auto_reopen", "winner_prize_paid",
     )
-    list_filter = ("mode", "vs_format", "gender_category", "status", "start_time")
+    list_filter = ("mode", "br_format", "vs_format", "gender_category", "status", "start_time")
     search_fields = ("title", "description")
     ordering = ("start_time",)
     # Keep tournament setup separate from registrations and kill evidence.
     # Those have their own admin sections so adding/editing a tournament stays manageable.
     inlines = ()
-    actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid, award_arena_currency_winner,)
+    actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid, award_arena_currency_winner, award_br_winner_team,)
     readonly_fields = (
         "tournament_control_panel", "series_root", "winner_prize_paid",
         "kill_prize_distributed", "kill_prize_pool", "kill_prize_reference",
@@ -478,12 +546,13 @@ class TournamentAdmin(admin.ModelAdmin):
         return format_html('<img src="data:image/png;base64,{}" width="120" height="120" alt="Winner UPI payment QR" />', encoded)
 
     fieldsets = (
-        ("1. Tournament Details — kya ban raha hai?", {"description": "Title public tournament name hai. Mode mein BR ya CS/VS chunein. CS/VS mein 1v1/2v2/3v3/4v4 format chunein. Gender Category se Open, Boys Only, Girls Only ya Girls vs Boys event banayein. Har saved tournament ka apna alag control panel hai.", "fields": ("tournament_control_panel", "title", "description", "mode", "vs_format", "gender_category")}),
+        ("1. Tournament Details — kya ban raha hai?", {"description": "Title public tournament name hai. Mode mein BR ya CS/VS chunein. CS/VS mein 1v1/2v2/3v3/4v4 format chunein. Gender Category se Open, Boys Only, Girls Only ya Girls vs Boys event banayein. Har saved tournament ka apna alag control panel hai.", "fields": ("tournament_control_panel", "title", "description", "mode", "br_format", "vs_format", "gender_category")}),
         ("2. Fees & Players — entry aur capacity", {"description": "Entry Fee player se li jane wali registration fee hai. Prize Pool tournament ka first-place prize hai; ise admin ke funds aur payout process ke mutabik set karein. Max Players room capacity hai (maximum 49). BR kill reward entry fee par depend karta hai: ₹10 entry = 5 Diamonds/kill; ₹1 entry = 5 Coins/kill. First prize display: ₹10 = 50 Diamonds; ₹1 = 20 Diamonds. Evidence verification zaroori hai.", "fields": ("entry_fee", "prize_pool", "max_players")}),
         ("3. Unlimited BR Series — optional", {"description": "Sirf unlimited BR series ke liye ON karein. Har round mein 49 players. Auto start capacity par round shuru karne ke liye hai; Auto reopen agla round khol sakta hai. Normal tournament ho to in options ko OFF rakhein.", "fields": ("is_unlimited_br", "auto_start_at_capacity", "auto_reopen", "series_root")}),
         ("4. Schedule & Status — publish / LIVE", {"description": "Start Time tournament ka scheduled time hai. Draft public list mein nahi dikhta; Upcoming se listing/registration khulti hai. LIVE karne se pehle Room Details section mein Room ID aur Password bharna zaroori hai. LIVE karne par verified paid players ko YES/NO confirmation email bhejne ki koshish hoti hai; email delivery SMTP setup par depend karti hai.", "fields": ("start_time", "status")}),
         ("5. Room Details — private until YES", {"description": "Room ID aur Password game room ke credentials hain. Tournament LIVE karte waqt dono bharein. Player ko room tabhi dikhega jab woh deadline ke andar YES kare. Credentials public description/website post mein na likhein.", "fields": ("room_id", "room_password")}),
-        ("6. First Place Winner & payout tracking", {"description": "Tournament complete/review ke baad winner ki registered Free Fire UID enter karein. Neeche player ki saved UPI/QR details dekh sakte hain. Winner Prize Reference mein actual transfer ka real UTR enter karne ke baad hi payout action use karein. Is field ko bharna apne-aap paise transfer nahi karta.", "fields": ("winner_uid", "winner_payout_destination", "winner_payout_qr", "winner_prize_reference", "winner_prize_paid")}),
+        ("6. BR Winning Team Rewards", {"description": "Tournament Completed hone ke baad winning BR team ke har player ka registered Free Fire UID yahan alag line ya comma se likhein. Admin action se har verified winner ko 10 Fan Tokens + 50 Coins ek hi baar milenge; har reward ledger mein save hoga.", "fields": ("winner_team_uids",)}),
+        ("7. First Place Winner & payout tracking", {"description": "Tournament complete/review ke baad winner ki registered Free Fire UID enter karein. Neeche player ki saved UPI/QR details dekh sakte hain. Winner Prize Reference mein actual transfer ka real UTR enter karne ke baad hi payout action use karein. Is field ko bharna apne-aap paise transfer nahi karta.", "fields": ("winner_uid", "winner_payout_destination", "winner_payout_qr", "winner_prize_reference", "winner_prize_paid")}),
     )
 
 
