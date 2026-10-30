@@ -101,6 +101,8 @@ class Tournament(models.Model):
 
     # Unlimited BR series: each format-sized round gets its own leaderboard.
     is_unlimited_br = models.BooleanField(default=False)
+    # Diwali offer is a separate Solo BR product with its own page and admin section.
+    is_diwali_offer = models.BooleanField(default=False, db_index=True)
     # Dedicated no-date free arena: one entry per player per rolling 24 hours.
     is_free_fan_tournament = models.BooleanField(default=False, db_index=True)
     winner_coins_prize = models.PositiveIntegerField(default=20, help_text="Non-cash Coins paid to the winner of the free fan tournament.")
@@ -176,6 +178,15 @@ class UnlimitedTournament(Tournament):
         proxy = True
         verbose_name = "Battle Royale Tournament"
         verbose_name_plural = "Battle Royale Tournaments"
+
+
+class DiwaliOfferTournament(Tournament):
+    """Separate admin section for the 1-Diamond Diwali Solo BR offer."""
+
+    class Meta:
+        proxy = True
+        verbose_name = "Diwali Offer Tournament"
+        verbose_name_plural = "Diwali Offer Tournaments"
 
 
 class FreeFanTournament(Tournament):
