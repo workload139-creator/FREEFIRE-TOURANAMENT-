@@ -396,7 +396,8 @@ class TournamentAdmin(admin.ModelAdmin):
     ordering = ("start_time",)
     # Keep tournament setup separate from registrations and kill evidence.
     # Those have their own admin sections so adding/editing a tournament stays manageable.
-    inlines = ()    actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid, award_arena_currency_winner, award_br_winner_team, create_next_round_preserving_history,)
+    inlines = ()
+    actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid, award_arena_currency_winner, award_br_winner_team, create_next_round_preserving_history,)
     readonly_fields = (
         "tournament_control_panel", "winner_prize_paid",
         "kill_prize_distributed", "kill_prize_pool", "kill_prize_reference",
