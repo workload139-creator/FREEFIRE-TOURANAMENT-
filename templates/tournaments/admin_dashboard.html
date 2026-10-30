@@ -5,7 +5,7 @@
     <h2>🔥 Tournament Admin Control</h2>
     <h4>{{ tournament.title }}</h4>
     <p>Yeh page sirf is tournament ka control panel hai. Neeche har section ka kaam diya hai. Pehle payment/UTR verify karein, phir LIVE aur room confirmation manage karein, phir kill evidence aur refunds review karein.</p>
-    <div class="alert alert-warning"><strong>BR reward rule:</strong> minimum 2 verified kills. Solo: 5 Diamonds per approved kill. Duo/Squad: 5 Diamonds + 2 Coins per approved kill. Registered UID, video + 2 screenshots check karein. AI assessment ke baad admin final review karega.</div>
+    <div class="alert alert-warning"><strong>{% if tournament.is_diwali_offer %}🪔 Diwali Offer reward rule:{% else %}BR reward rule:{% endif %}</strong> {% if tournament.is_diwali_offer %}1 Diamond entry · 20 Diamonds first prize · 5 Coins per approved kill · minimum 2 verified kills.{% else %}Minimum 2 verified kills. Solo: 5 Diamonds per approved kill. Duo/Squad: 5 Diamonds + 2 Coins per approved kill.{% endif %} Registered UID, video + 2 screenshots check karein. AI assessment ke baad admin final review karega.</div>
 
     <div class="row g-3 my-3">
         <div class="col-md-4"><div class="card p-3"><h6>Total Registrations</h6><h3>{{ total_players }}</h3></div></div>
