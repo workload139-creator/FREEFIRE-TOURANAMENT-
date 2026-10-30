@@ -9,6 +9,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.IntentFilter;
 import android.graphics.Color;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.content.pm.PackageManager;
@@ -564,12 +566,53 @@ public class MainActivity extends Activity {
                 }
                 JSONObject p = result.optJSONObject("profile");
                 if (p == null) { addNoteToResults("Profile data is unavailable."); return; }
+                String photoUrl = p.optString("profile_photo", "");
+                if (!photoUrl.isEmpty()) loadProfilePhoto(photoUrl);
                 addAccountInfo("PLAYER", p.optString("username", "Player"));
                 addAccountInfo("EMAIL", p.optString("email", "Not added"));
                 addAccountInfo("PHONE", p.optString("phone_number", "Not added")
                         + (p.optBoolean("phone_verified") ? "  •  Verified" : ""));
                 addAccountInfo("FREE FIRE UID", p.optString("free_fire_uid", "Not added")
                         + (p.optBoolean("uid_verified") ? "  •  Verified" : ""));
+            });
+        }).start();
+    }
+
+    private void loadProfilePhoto(String photoUrl) {
+        if (tournamentResults == null || photoUrl == null || photoUrl.isEmpty()) return;
+        ImageView avatar = new ImageView(this);
+        avatar.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        avatar.setBackground(background(new int[]{PANEL, PANEL}, dp(44), ORANGE));
+        avatar.setClipToOutline(true);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dp(88), dp(88));
+        params.bottomMargin = dp(12);
+        tournamentResults.addView(avatar, 0, params);
+
+        new Thread(() -> {
+            HttpURLConnection connection = null;
+            Bitmap bitmap = null;
+            try {
+                connection = (HttpURLConnection) new URL(photoUrl).openConnection();
+                connection.setConnectTimeout(8000);
+                connection.setReadTimeout(10000);
+                connection.setRequestProperty("Accept", "image/*");
+                String cookies = CookieManager.getInstance().getCookie(BASE_URL);
+                if (cookies != null && !cookies.isEmpty()) connection.setRequestProperty("Cookie", cookies);
+                if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
+                    try (InputStream stream = connection.getInputStream()) {
+                        bitmap = BitmapFactory.decodeStream(stream);
+                    }
+                }
+            } catch (Exception ignored) {
+                // Profile text remains available if the photo cannot be fetched.
+            } finally {
+                if (connection != null) connection.disconnect();
+            }
+            final Bitmap loadedBitmap = bitmap;
+            runOnUiThread(() -> {
+                if (!"Profile".equals(currentTab) || tournamentResults == null) return;
+                if (loadedBitmap != null) avatar.setImageBitmap(loadedBitmap);
+                else avatar.setVisibility(View.GONE);
             });
         }).start();
     }
