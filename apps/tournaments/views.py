@@ -435,7 +435,6 @@ def player_room(request, registration_id):
 
 
 @login_required
-@user_passes_test(lambda user: user.is_staff)
 def room_qr_file(request, tournament_id):
     """Stream the room QR only to staff or a paid player cleared for this room."""
     tournament = get_object_or_404(Tournament, pk=tournament_id)
@@ -465,6 +464,8 @@ def room_qr_file(request, tournament_id):
     return response
 
 
+@login_required
+@user_passes_test(lambda user: user.is_staff)
 def admin_tournament_dashboard(request, tournament_id):
     process_expired_ready_registrations()
     tournament = get_object_or_404(Tournament, pk=tournament_id)
