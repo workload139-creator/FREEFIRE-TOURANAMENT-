@@ -10,13 +10,12 @@ def seed_arena_formats(apps, schema_editor):
     active_statuses = ["upcoming", "live"]
     now = timezone.now()
 
-    # Keep exactly one public BR card per Solo/Duo/Squad format.
-    br_formats = (
+    # Keep one public paid BR event for each Solo/Duo/Squad format.
+    for code, label, capacity in (
         ("solo", "Solo", 49),
         ("duo", "Duo", 48),
         ("squad", "Squad", 48),
-    )
-    for code, label, capacity in br_formats:
+    ):
         existing = Tournament.objects.filter(
             mode="BR", is_free_fan_tournament=False,
             gender_category__in=["open", "boys", "girls"],
@@ -43,14 +42,13 @@ def seed_arena_formats(apps, schema_editor):
                 auto_reopen=False,
             )
 
-    # Create/normalize the four permanent Clash Squad formats.
-    cs_formats = (
-        ("1v1", "1 vs 1", 2, Decimal("20.00")),
-        ("2v2", "2 vs 2", 4, Decimal("38.00")),
-        ("3v3", "3 vs 3", 6, Decimal("56.00")),
-        ("4v4", "4 vs 4", 8, Decimal("84.00")),
-    )
-    for code, label, capacity, prize in cs_formats:
+    # Permanent CS formats. Winner prizes are Diamonds, not INR cash payouts.
+    for code, label, capacity, diamonds in (
+        ("1v1", "1 vs 1", 2, 20),
+        ("2v2", "2 vs 2", 4, 38),
+        ("3v3", "3 vs 3", 6, 56),
+        ("4v4", "4 vs 4", 8, 84),
+    ):
         existing = Tournament.objects.filter(
             mode="VS", is_free_fan_tournament=False,
             gender_category__in=["open", "boys", "girls"],
@@ -63,11 +61,12 @@ def seed_arena_formats(apps, schema_editor):
                 gender_category="open",
                 description=(
                     f"{label} Clash Squad. Entry fee ₹10 per player. "
-                    "Each approved kill earns 2 Coins. Admin tournament share: ₹8."
+                    f"Winner prize: {diamonds} Diamonds (admin distributed). "
+                    "Each approved kill earns 2 Coins. Admin share: ₹8 per tournament."
                 ),
-                entry_fee=Decimal("10.00"), prize_pool=prize,
+                entry_fee=Decimal("10.00"), prize_pool=Decimal("0.00"),
                 max_players=capacity,
-                # Keep the standing CS event open for registration until admin starts it.
+                # Standing CS events stay open until admin starts them.
                 start_time=now + timedelta(days=3650),
                 status="upcoming", is_unlimited_br=False,
                 is_free_fan_tournament=False,
@@ -76,7 +75,7 @@ def seed_arena_formats(apps, schema_editor):
         else:
             Tournament.objects.filter(pk=existing.pk).update(
                 entry_fee=Decimal("10.00"),
-                prize_pool=prize,
+                prize_pool=Decimal("0.00"),
                 max_players=capacity,
             )
 
