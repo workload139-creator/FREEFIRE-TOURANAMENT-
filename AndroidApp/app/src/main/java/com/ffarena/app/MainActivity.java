@@ -19,6 +19,7 @@ import android.os.Environment;
 import android.view.Gravity;
 import android.provider.Settings;
 import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.CookieManager;
 import android.webkit.WebChromeClient;
 import android.webkit.PermissionRequest;
@@ -60,7 +61,9 @@ public class MainActivity extends Activity {
     private static final int REQUEST_FILE_CHOOSER = 7022;
     private ValueCallback<Uri[]> pendingFileCallback;
     private PermissionRequest pendingMicRequest;
-    private long pendingApkDownloadId = -1L;\n    private int pendingApkVersionCode = -1;\n    private String pendingApkFileName = "";
+    private long pendingApkDownloadId = -1L;
+    private int pendingApkVersionCode = -1;
+    private String pendingApkFileName = "";
     private Uri pendingInstallUri;
     private DownloadManager apkDownloadManager;
     private BroadcastReceiver apkDownloadReceiver;
@@ -89,7 +92,8 @@ public class MainActivity extends Activity {
                 connection.setRequestMethod("GET");
                 connection.setConnectTimeout(8000);
                 connection.setReadTimeout(8000);
-                connection.setRequestProperty("Accept", "application/vnd.github+json");\n                connection.setRequestProperty("Cache-Control", "no-cache");
+                connection.setRequestProperty("Accept", "application/vnd.github+json");
+                connection.setRequestProperty("Cache-Control", "no-cache");
                 connection.setRequestProperty("X-GitHub-Api-Version", "2022-11-28");
                 int status = connection.getResponseCode();
                 if (status < 200 || status >= 300) return;
@@ -246,7 +250,11 @@ public class MainActivity extends Activity {
             return;
         }
         try {
-            Intent installIntent = new Intent(Intent.ACTION_INSTALL_PACKAGE);\n            installIntent.setData(apkUri);\n            installIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);\n            installIntent.putExtra(Intent.EXTRA_RETURN_RESULT, true);\n            startActivityForResult(installIntent, 7023);
+            Intent installIntent = new Intent(Intent.ACTION_INSTALL_PACKAGE);
+            installIntent.setData(apkUri);
+            installIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            installIntent.putExtra(Intent.EXTRA_RETURN_RESULT, true);
+            startActivityForResult(installIntent, 7023);
         } catch (Exception exception) {
             showUpdateError("Android could not open the installer. The downloaded update is still available in FF Arena's app downloads.");
         }
