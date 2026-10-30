@@ -44,7 +44,13 @@
           <tbody>
           {% for item in submissions %}
             <tr style="border-top:1px solid var(--border-color,#777);vertical-align:top">
-              <td style="padding:10px"><input type="checkbox" name="submission_ids" value="{{ item.pk }}" checked aria-label="Select {{ item.player.username }}"></td>
+              <td style="padding:10px">
+                {% if item.status == "pending" %}
+                  <input type="checkbox" name="submission_ids" value="{{ item.pk }}" checked aria-label="Select {{ item.player.username }}">
+                {% else %}
+                  <strong>{{ item.get_status_display }}</strong>
+                {% endif %}
+              </td>
               <td style="padding:10px">
                 <strong>{{ item.player.username }}</strong><br>
                 <small>Submission #{{ item.pk }} · {{ item.player_id }}</small><br>
@@ -68,12 +74,20 @@
                 {% endfor %}
               </td>
               <td style="padding:10px">
-                <input type="number" name="approved_kills_{{ item.pk }}" min="0" max="99" value="{% if item.ai_proposed_kills != None %}{{ item.ai_proposed_kills }}{% else %}0{% endif %}" style="width:90px;padding:8px">
+                {% if item.status == "pending" %}
+                  <input type="number" name="approved_kills_{{ item.pk }}" min="0" max="99" value="{% if item.ai_proposed_kills != None %}{{ item.ai_proposed_kills }}{% else %}0{% endif %}" style="width:90px;padding:8px">
+                {% else %}
+                  {{ item.approved_kills|default:"Not approved" }}
+                {% endif %}
               </td>
               <td style="padding:10px">
-                <small>Calculated: {{ item.proposed_reward|floatformat:0 }} primary currency</small><br>
-                <input type="number" name="reward_override_{{ item.pk }}" min="0" max="1000000" placeholder="Optional" style="width:130px;padding:8px">
-                <small>Blank = tournament rule</small>
+                {% if item.status == "pending" %}
+                  <small>Calculated: {{ item.proposed_reward|floatformat:0 }} primary currency</small><br>
+                  <input type="number" name="reward_override_{{ item.pk }}" min="0" max="1000000" placeholder="Optional" style="width:130px;padding:8px">
+                  <small>Blank = tournament rule</small>
+                {% else %}
+                  <strong>Credited:</strong> {{ item.approved_reward|floatformat:0 }} primary · {{ item.approved_coins_reward }} Coins
+                {% endif %}
               </td>
               <td style="padding:10px;max-width:260px">
                 <small>{{ item.ai_review_notes|default:"No combined AI notes"|truncatechars:450 }}</small>
@@ -89,7 +103,7 @@
         <label for="bulk-notes" style="display:block;margin-top:16px"><strong>Common Admin notes (optional)</strong></label>
         <textarea id="bulk-notes" name="bulk_admin_notes" rows="2" style="width:100%;padding:10px" placeholder="Evidence checked, kill corrections, tournament result..."></textarea>
         <p><small>Only selected pending rows are processed. Rows with unverified payment, UID mismatch or invalid values are skipped. Reward override blank rakhne par tournament ke existing reward rules apply honge.</small></p>
-        <button class="button button-primary" type="submit" onclick="return confirm('Selected players ke rewards approve aur in-app wallet mein credit karne hain?');">Approve &amp; Credit Selected Players Together</button>
+        <button class="button button-primary" type="submit" onclick="return confirm('Selected pending players ke rewards approve aur in-app wallet mein credit karne hain?');">Approve &amp; Credit Selected Pending Players Together</button>
       {% endif %}
     </form>
   {% else %}
