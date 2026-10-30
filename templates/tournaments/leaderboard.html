@@ -9,8 +9,8 @@
     {% if tournament.winner_uid %}
         <div class="tournament-card" style="padding:16px;margin:16px 0;border:2px solid #eab308">
             <strong>🏆 Admin-confirmed First Place</strong>
-            <p>Free Fire UID: {{ tournament.winner_uid }} — Prize: ₹{{ tournament.prize_pool }}</p>
-            <p>Status: {% if tournament.winner_prize_paid %}Prize marked paid{% else %}Prize pending admin payout{% endif %}</p>
+            <p>Free Fire UID: {{ tournament.winner_uid }} — Prize: {% if tournament.is_diwali_offer %}20 Diamonds{% else %}₹{{ tournament.prize_pool }}{% endif %}</p>
+            <p>Status: {% if tournament.is_diwali_offer %}{% if diwali_winner_reward_awarded %}20 Diamonds credited to wallet{% else %}20 Diamonds pending admin award{% endif %}{% elif tournament.winner_prize_paid %}Prize marked paid{% else %}Prize pending admin payout{% endif %}</p>
         </div>
     {% endif %}
     <div class="tournament-card" style="padding:20px;overflow-x:auto">
