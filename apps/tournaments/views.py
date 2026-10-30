@@ -537,6 +537,7 @@ def kill_submission(request, registration_id):
                         ai_result.get("uid_matches") is True
                         and submitted_uid == registration.free_fire_uid
                         and registration.free_fire_uid == submission.registered_uid
+                        and str(getattr(registration.player, "free_fire_uid", "") or "").strip() == registration.free_fire_uid
                     )
                     proposed_kills = int(proposed_kills or 0)
                     if uid_ok and ai_result.get("proposed_kills") is not None and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS:
@@ -718,6 +719,7 @@ def retry_ai_kill_review(request, submission_id):
             result.get("uid_matches") is True
             and submission.free_fire_uid == submission.registered_uid
             and submission.registered_uid == submission.registration.free_fire_uid
+            and str(getattr(submission.player, "free_fire_uid", "") or "").strip() == submission.registration.free_fire_uid
         )
         if proposed is not None and proposed >= settings.MINIMUM_VERIFIED_KILLS and uid_ok:
             _currency, quantity, _label = reward_for_tournament(submission.tournament, proposed)
@@ -806,6 +808,7 @@ def review_kill_submission(request, submission_id):
         if (
             submission.free_fire_uid != submission.registered_uid
             or submission.registered_uid != submission.registration.free_fire_uid
+            or str(getattr(submission.player, "free_fire_uid", "") or "").strip() != submission.registration.free_fire_uid
         ):
             messages.error(request, "UID mismatch hai; payout eligibility roki gayi.")
             return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
@@ -865,6 +868,7 @@ def admin_kill_batch_review(request):
                     not submission.registration.payment_verified
                     or submission.free_fire_uid != submission.registered_uid
                     or submission.registered_uid != submission.registration.free_fire_uid
+                    or str(getattr(submission.player, "free_fire_uid", "") or "").strip() != submission.registration.free_fire_uid
                 ):
                     skipped.append(str(submission_id))
                     continue
