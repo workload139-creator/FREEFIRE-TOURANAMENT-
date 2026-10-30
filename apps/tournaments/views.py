@@ -20,7 +20,7 @@ from .ai_review import AIReviewError, analyze_kill_evidence
 from .registration_services import RegistrationError, create_pending_registration
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry
-from .kill_services import reward_for_tournament\nfrom .kill_services import reward_for_tournament
+from .kill_services import reward_for_tournament
 from .services import process_expired_ready_registrations, mark_not_playing_and_refund
 
 import qrcode
