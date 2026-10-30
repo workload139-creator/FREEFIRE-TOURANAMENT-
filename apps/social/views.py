@@ -355,6 +355,7 @@ def _shop_payment_details():
     return {
         "configured": True,
         "upi_id": upi_id,
+        "payee_name": "",
         "upi_uri": upi_uri,
         "qr_data_uri": "data:image/png;base64," + encoded,
     }
