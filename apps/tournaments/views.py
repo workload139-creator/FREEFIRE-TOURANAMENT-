@@ -20,7 +20,7 @@ from .ai_review import AIReviewError, analyze_kill_evidence
 from .registration_services import RegistrationError, create_pending_registration
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry
-from .kill_services import reward_for_tournament
+from .kill_services import reward_for_tournament, finalize_dual_ai_reward
 from .services import process_expired_ready_registrations, mark_not_playing_and_refund
 
 import qrcode
@@ -452,21 +452,22 @@ def kill_submission(request, registration_id):
                         submission.proposed_reward = Decimal(proposed_quantity)
                     else:
                         submission.proposed_reward = Decimal("0.00")
-                    # AI is advisory only. Every kill reward waits for a human admin decision.
-                    with transaction.atomic():
-                        submission = KillSubmission.objects.select_for_update().get(pk=submission.pk)
-                        submission.ai_proposed_kills = ai_result["proposed_kills"]
-                        submission.ai_confidence = ai_result["confidence"][:10]
-                        submission.ai_uid_matches = ai_result["uid_matches"]
-                        submission.ai_review_notes = ai_result["reason"]
-                        submission.save(update_fields=[
-                            "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
-                            "ai_review_notes", "proposed_reward",
-                        ])
-                    messages.info(
-                        request,
-                        "AI assessment save ho gaya. Reward ke liye Admin ki manual approval zaroori hai; abhi wallet mein Diamonds/Coins add nahi hue.",
-                    )
+                    submission.ai_proposed_kills = ai_result["proposed_kills"]
+                    submission.ai_confidence = ai_result["confidence"][:10]
+                    submission.ai_uid_matches = ai_result["uid_matches"]
+                    submission.ai_review_notes = ai_result["reason"]
+                    submission.save(update_fields=[
+                        "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
+                        "ai_review_notes", "proposed_reward",
+                    ])
+                    auto_paid, decision_note = finalize_dual_ai_reward(submission, ai_result)
+                    if auto_paid:
+                        messages.success(request, "🤖 Dual AI verified: " + decision_note)
+                    else:
+                        submission.refresh_from_db()
+                        submission.ai_review_notes = (submission.ai_review_notes + "\n\nADMIN REVIEW: " + decision_note)[:4000]
+                        submission.save(update_fields=["ai_review_notes"])
+                        messages.info(request, "AI assessment complete. " + decision_note + " Submission Admin Review queue mein hai.")
                 except AIReviewError as exc:
                     messages.warning(
                         request,
@@ -593,17 +594,18 @@ def retry_ai_kill_review(request, submission_id):
         submission.ai_confidence = (result.get("confidence") or "")[:10]
         submission.ai_uid_matches = result.get("uid_matches")
         submission.ai_review_notes = (result.get("reason") or "")[:2000]
-        if not uid_ok:
-            submission.ai_review_notes += "\n\nADMIN REVIEW REQUIRED: UID mismatch or AI UID verification failed."
-        elif proposed is None or proposed < settings.MINIMUM_VERIFIED_KILLS:
-            submission.ai_review_notes += "\n\nADMIN REVIEW REQUIRED: AI could not verify the minimum kill count."
-        else:
-            submission.ai_review_notes += "\n\nAI assessment is advisory. Admin must inspect evidence and approve before any wallet reward."
         submission.save(update_fields=[
             "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
             "ai_review_notes", "proposed_reward",
         ])
-        messages.info(request, "AI assessment update ho gaya. Admin approval se pehle koi Diamonds/Coins credit nahi honge.")
+        auto_paid, decision_note = finalize_dual_ai_reward(submission, result)
+        if auto_paid:
+            messages.success(request, "🤖 Dual AI verified: " + decision_note)
+        else:
+            submission.refresh_from_db()
+            submission.ai_review_notes = (submission.ai_review_notes + "\n\nADMIN REVIEW: " + decision_note)[:4000]
+            submission.save(update_fields=["ai_review_notes"])
+            messages.info(request, "AI assessment updated. " + decision_note + " Admin review is required.")
     except Exception as exc:
         submission.ai_review_notes = f"AI review failed ({exc.__class__.__name__}): {str(exc).strip()[:850]}"
         submission.save(update_fields=["ai_review_notes"])
