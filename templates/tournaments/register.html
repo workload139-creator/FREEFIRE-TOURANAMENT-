@@ -18,8 +18,8 @@
             <h2>{{ tournament.title }}</h2>
             <p>Mode: {{ tournament.get_mode_display }}{% if tournament.mode == "VS" %} · {{ tournament.get_vs_format_display }}{% endif %}</p>
             <div class="tournament-stats">
-                <div><small>Entry Fee</small><strong>₹{{ tournament.entry_fee }}</strong></div>
-                <div><small>Prize Pool</small><strong>₹{{ tournament.prize_pool }}</strong></div>
+                <div><small>Entry Fee</small><strong>{% if tournament.is_diwali_offer %}1 Diamond{% else %}₹{{ tournament.entry_fee }}{% endif %}</strong></div>
+                <div><small>Prize Pool</small><strong>{% if tournament.is_diwali_offer %}20 Diamonds{% else %}₹{{ tournament.prize_pool }}{% endif %}</strong></div>
                 <div><small>Players</small><strong>{{ tournament.confirmed_players_count }}/{{ tournament.max_players }}</strong></div>
             </div>
         </div>
@@ -48,13 +48,13 @@
                 <small class="help-text">UID yahan enter karein. Isi tournament UID se leaderboard aur kill evidence match hoga.</small>
             </div>
             <section class="entry-currency-choice">
-                <h2>Choose Entry Payment</h2>
+                <h2>{% if tournament.is_diwali_offer %}Diwali Offer Entry{% else %}Choose Entry Payment{% endif %}</h2>
                 <p>Your balance: <strong>💎 {{ shop_wallet.diamonds|default:0 }} Diamonds</strong> · <strong>🪙 {{ shop_wallet.coins|default:0 }} Coins</strong> · <strong>✨ {{ shop_wallet.fan_tokens|default:0 }} Fan Tokens</strong></p>
                 <div class="form-group"><label>{{ form.payment_method.label }}</label>{{ form.payment_method }}{% for error in form.payment_method.errors %}<small class="error-text">{{ error }}</small>{% endfor %}</div>
-                <p class="help-text">Rate: 1 Diamond = ₹1 · 10 Coins = ₹1 · 1 Fan Token = ₹1 entry value. Fan Tokens milte hain har 10 followers par 1; ye withdraw nahi ho sakte. ₹{{ tournament.entry_fee }} entry = utne hi Diamonds, 10× Coins, ya utne hi Fan Tokens (whole-rupee fee par).</p>
+                {% if tournament.is_diwali_offer %}<p class="help-text">🪔 Diwali Special: entry ke liye exactly 1 Diamond lagega. UPI/INR aur Coins payment is offer mein allowed nahi hai.</p>{% else %}<p class="help-text">Rate: 1 Diamond = ₹1 · 10 Coins = ₹1 · 1 Fan Token = ₹1 entry value. Fan Tokens milte hain har 10 followers par 1; ye withdraw nahi ho sakte. ₹{{ tournament.entry_fee }} entry = utne hi Diamonds, 10× Coins, ya utne hi Fan Tokens (whole-rupee fee par).</p>{% endif %}
                 <a class="button button-outline" href="{% url 'social:shop' %}">💎 Need Diamonds/Coins? Open Shop · ✨ Follow milestones se Fan Tokens</a>
             </section>
-            <div id="upiPaymentFields">
+            <div id="upiPaymentFields" {% if tournament.is_diwali_offer %}hidden{% endif %}>
             {% if tournament.entry_fee > 0 %}
             {% if upi_payment_uri %}
             <section class="profile-notice tournament-payment-panel" style="margin:18px 0;padding:20px;border:1px solid #38d9a9;border-radius:16px;background:#0d1718;color:#fff">
@@ -86,11 +86,11 @@
             <div class="profile-notice"><p>Yeh free tournament hai; registration submit karne par confirm ho jayegi.</p></div>
             {% endif %}
             </div>
-            <button type="submit" class="btn-primary" >{% if tournament.entry_fee > 0 %}SUBMIT PAYMENT &amp; REGISTER{% else %}REGISTER FREE{% endif %}</button>
+            <button type="submit" class="btn-primary" >{% if tournament.is_diwali_offer %}JOIN DIWALI OFFER — 1 DIAMOND{% elif tournament.entry_fee > 0 %}SUBMIT PAYMENT &amp; REGISTER{% else %}REGISTER FREE{% endif %}</button>
         </form>
     </div>
 </section>
-{% if tournament.entry_fee > 0 and upi_payment_uri %}
+{% if tournament.entry_fee > 0 and upi_payment_uri and not tournament.is_diwali_offer %}
 <script>
 document.addEventListener("DOMContentLoaded", () => {
  const upiFields=document.getElementById("upiPaymentFields");
