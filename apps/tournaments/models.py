@@ -242,6 +242,9 @@ class Registration(models.Model):
     )
 
     room_details_sent = models.BooleanField(default=False)
+    # Server-assigned team slots are filled when the admin creates/releases the room.
+    team_number = models.PositiveSmallIntegerField(null=True, blank=True, db_index=True)
+    team_position = models.PositiveSmallIntegerField(null=True, blank=True)
 
     ready_deadline = models.DateTimeField(null=True, blank=True)
     ready_confirmed_at = models.DateTimeField(null=True, blank=True)
