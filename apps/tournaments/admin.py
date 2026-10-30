@@ -344,6 +344,40 @@ def award_br_winner_team(modeladmin, request, queryset):
         modeladmin.message_user(request, f"{skipped} tournament(s) skipped: check BR mode, Completed status, every UID's verified paid registration, and duplicate payout records.", messages.WARNING)
 
 
+@admin.action(description="Create a fresh next round; keep this completed round and its history unchanged")
+def create_next_round_preserving_history(modeladmin, request, queryset):
+    created = 0
+    skipped = 0
+    for selected in queryset:
+        with transaction.atomic():
+            old = Tournament.objects.select_for_update().get(pk=selected.pk)
+            if old.status != Tournament.Status.COMPLETED:
+                skipped += 1
+                continue
+            root = old.series_root or old
+            if root.series_rounds.filter(status=Tournament.Status.UPCOMING).exists():
+                skipped += 1
+                continue
+            round_number = root.series_rounds.count() + 2
+            new_round = Tournament.objects.create(
+                title=f"{root.title} - Round {round_number}"[:120],
+                mode=old.mode, br_format=old.br_format, vs_format=old.vs_format,
+                gender_category=old.gender_category, description=old.description,
+                entry_fee=old.entry_fee, prize_pool=old.prize_pool,
+                max_players=old.max_players, start_time=timezone.now() + timedelta(minutes=10),
+                status=Tournament.Status.UPCOMING, is_unlimited_br=old.is_unlimited_br,
+                is_free_fan_tournament=old.is_free_fan_tournament,
+                winner_coins_prize=old.winner_coins_prize,
+                auto_start_at_capacity=old.auto_start_at_capacity,
+                auto_reopen=old.auto_reopen, series_root=root,
+            )
+            created += 1
+    if created:
+        modeladmin.message_user(request, f"{created} new round(s) created. Previous round records and leaderboards remain unchanged.", messages.SUCCESS)
+    if skipped:
+        modeladmin.message_user(request, f"{skipped} skipped: select only Completed tournaments and ensure no Upcoming round already exists in that series.", messages.WARNING)
+
+
 @admin.register(Tournament)
 class TournamentAdmin(admin.ModelAdmin):
     form = TournamentAdminForm
@@ -358,7 +392,7 @@ class TournamentAdmin(admin.ModelAdmin):
     # Keep tournament setup separate from registrations and kill evidence.
     # Those have their own admin sections so adding/editing a tournament stays manageable.
     inlines = ()
-    actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid, award_arena_currency_winner, award_br_winner_team,)
+    actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid, award_arena_currency_winner, award_br_winner_team, create_next_round_preserving_history,)
     readonly_fields = (
         "tournament_control_panel", "series_root", "winner_prize_paid",
         "kill_prize_distributed", "kill_prize_pool", "kill_prize_reference",
