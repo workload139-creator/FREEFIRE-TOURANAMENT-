@@ -175,7 +175,7 @@ def mark_winner_prizes_paid(modeladmin, request, queryset):
     for selected in queryset:
         with transaction.atomic():
             tournament = Tournament.objects.select_for_update().get(pk=selected.pk)
-            if tournament.winner_prize_paid or not tournament.winner_uid or tournament.prize_pool <= 0:
+            if tournament.winner_prize_paid or not tournament.winner_uid or tournament.prize_pool <= 0 or (tournament.mode == Tournament.Mode.BR and tournament.br_format != "solo"):
                 skipped += 1
                 continue
             utr = (tournament.winner_prize_reference or "").strip()
@@ -239,7 +239,7 @@ def award_arena_currency_winner(modeladmin, request, queryset):
     for selected in queryset:
         with transaction.atomic():
             tournament = Tournament.objects.select_for_update().get(pk=selected.pk)
-            if tournament.status != Tournament.Status.COMPLETED or tournament.is_free_fan_tournament:
+            if tournament.status != Tournament.Status.COMPLETED or tournament.is_free_fan_tournament or (tournament.mode == Tournament.Mode.BR and tournament.br_format != "solo"):
                 skipped += 1
                 continue
             winner_uid = str(tournament.winner_uid or "").strip()
@@ -299,7 +299,8 @@ def award_br_winner_team(modeladmin, request, queryset):
                 uid = raw.strip()
                 if uid and uid not in uids:
                     uids.append(uid)
-            if not uids:
+            expected_team_size = 2 if tournament.br_format == "duo" else 4
+            if len(uids) != expected_team_size:
                 skipped += 1
                 continue
             registrations = list(Registration.objects.select_for_update().filter(
@@ -1223,7 +1224,7 @@ class UnlimitedTournamentAdmin(TournamentAdmin):
     )
     search_fields = ("title", "description")
     ordering = ("-created_at",)
-    actions = (manual_start_unlimited_round, cancel_and_refund_tournaments, award_br_winner_team, retry_unlimited_live_notifications)
+    actions = (manual_start_unlimited_round, cancel_and_refund_tournaments, mark_winner_prizes_paid, award_arena_currency_winner, award_br_winner_team, retry_unlimited_live_notifications)
     readonly_fields = (
         "tournament_control_panel", "winner_prize_paid",
         "kill_prize_distributed", "kill_prize_pool", "kill_prize_reference",
