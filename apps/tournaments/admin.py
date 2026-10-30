@@ -53,9 +53,10 @@ class TournamentAdminForm(forms.ModelForm):
             "Website par dikhane aur registration kholne ke liye "
             "'Upcoming' select karein. Draft tournaments public list mein nahi dikhte."
         )
-        self.fields["auto_reopen"].help_text = (
-            "Unlimited BR ke root tournament par ON/OFF karein: ON se 49-player round ke baad next round khulega."
-        )
+        if "auto_reopen" in self.fields:
+            self.fields["auto_reopen"].help_text = (
+                "Internal recurring-series setting; normal tournaments mein zaroorat nahi."
+            )
         self.fields["winner_uid"].label = "First Place Winner — Free Fire UID"
         self.fields["winner_uid"].help_text = (
             "Tournament ka first-place player choose karne ke liye us verified registration ki Free Fire UID enter karein. "
@@ -379,10 +380,10 @@ def create_next_round_preserving_history(modeladmin, request, queryset):
 @admin.register(Tournament)
 class TournamentAdmin(admin.ModelAdmin):
     form = TournamentAdminForm
+    exclude = ("is_unlimited_br", "is_free_fan_tournament", "auto_start_at_capacity", "auto_reopen", "series_root")
     list_display = (
         "title", "open_tournament_control", "mode", "br_format", "vs_format", "gender_category",
-        "entry_fee", "prize_pool", "max_players", "start_time", "status",
-        "is_unlimited_br", "auto_reopen", "winner_prize_paid",
+        "entry_fee", "prize_pool", "max_players", "start_time", "status", "winner_prize_paid",
     )
     list_filter = ("mode", "br_format", "vs_format", "gender_category", "status", "start_time")
     search_fields = ("title", "description")
@@ -392,7 +393,7 @@ class TournamentAdmin(admin.ModelAdmin):
     inlines = ()
     actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid, award_arena_currency_winner, award_br_winner_team, create_next_round_preserving_history,)
     readonly_fields = (
-        "tournament_control_panel", "series_root", "winner_prize_paid",
+        "tournament_control_panel", "winner_prize_paid",
         "kill_prize_distributed", "kill_prize_pool", "kill_prize_reference",
         "winner_payout_destination", "winner_payout_qr",
     )
