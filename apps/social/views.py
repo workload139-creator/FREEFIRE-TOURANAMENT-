@@ -456,7 +456,7 @@ def shop_view(request):
     payment_details = _shop_payment_details()
     return render(request, "social/shop.html", {
         "shop_wallet": wallet,
-        "payment_requests": ShopPaymentRequest.objects.filter(user=request.user)[:10],
+        "payment_requests": ShopPaymentRequest.objects.filter(user=request.user),
         "shop_payment_configured": payment_details["configured"],
         "shop_upi_id": payment_details["upi_id"],
         "shop_payee_name": payment_details["payee_name"],
@@ -555,7 +555,7 @@ def currency_withdrawal_view(request):
                         return redirect("social:currency_withdrawal")
     else:
         form = CurrencyWithdrawalRequestForm(initial={"upi_id": request.user.upi_id})
-    requests = CurrencyWithdrawalRequest.objects.filter(user=request.user)[:20]
+    requests = CurrencyWithdrawalRequest.objects.filter(user=request.user)
     return render(request, "social/currency_withdrawal.html", {
         "form": form,
         "shop_wallet": wallet,
