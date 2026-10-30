@@ -552,7 +552,26 @@ def kill_submission(request, registration_id):
                         "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
                         "ai_review_notes", "proposed_reward", "ai_reviewer_reports",
                     ])
-                    messages.info(request, "Four AI review passes complete. AI reward is only a proposal; Admin approval is required before any credit.")
+                    if (
+                        ai_result.get("four_way_agreement") is True
+                        and uid_ok
+                        and registration.payment_verified
+                        and registration.status == Registration.Status.READY
+                        and registration.tournament.status != Tournament.Status.CANCELLED
+                        and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS
+                    ):
+                        with transaction.atomic():
+                            locked = KillSubmission.objects.select_for_update().get(pk=submission.pk)
+                            if locked.status == KillSubmission.Status.PENDING:
+                                locked.admin_notes = "Automatically approved: all four AI reviewers independently agreed on kills, UID and clean/consistent evidence. Reward follows tournament rules."
+                                credited = _credit_kill_submission_reward(
+                                    locked, proposed_kills, source="Four-AI automatic award"
+                                )
+                                submission.refresh_from_db()
+                                reward_text = ", ".join(f"{qty} {label}" for qty, label in credited) or "0 reward"
+                                messages.success(request, f"Four AI reviewers agreed. {proposed_kills} kills verified; {reward_text} automatically credited to the player's in-app wallet.")
+                    else:
+                        messages.info(request, "AI review saved. Four-way agreement, UID/payment checks or minimum kills were not all satisfied; this player remains in Admin Review.")
                 except Exception as exc:
                     # Keep a durable assessment record even when an AI provider,
                     # network, video decoder, or model response fails. Never pay
