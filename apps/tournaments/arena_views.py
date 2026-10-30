@@ -31,21 +31,34 @@ def _one_event_per_format(queryset, format_field, formats):
     return events
 
 
-def battle_royale_list(request):
-    process_expired_ready_registrations()
-    tournaments = Tournament.objects.filter(
+def _fixed_br_slots():
+    """Return the three permanent BR format records seeded by migration 0019.
+
+    These records are edited in Django Admin under Unlimited BR. Do not create
+    database rows while serving a public GET request, and do not mix in Diwali,
+    Free Fan, Girls-vs-Boys or one-off BR rounds.
+    """
+    base = Tournament.objects.filter(
         mode=Tournament.Mode.BR,
         is_free_fan_tournament=False,
         is_diwali_offer=False,
-        is_unlimited_br=False,
-        gender_category__in=(
-            Tournament.GenderCategory.OPEN,
-            Tournament.GenderCategory.BOYS,
-            Tournament.GenderCategory.GIRLS,
-        ),
-        status__in=PUBLIC_STATUSES,
+        is_unlimited_br=True,
+        gender_category=Tournament.GenderCategory.OPEN,
     )
-    events = _one_event_per_format(tournaments, "br_format", ("solo", "duo", "squad"))
+    return _one_event_per_format(
+        base,
+        "br_format",
+        (
+            Tournament.BRFormat.SOLO,
+            Tournament.BRFormat.DUO,
+            Tournament.BRFormat.SQUAD,
+        ),
+    )
+
+
+def battle_royale_list(request):
+    process_expired_ready_registrations()
+    events = _fixed_br_slots()
     return render(request, "tournaments/battle_royale_list.html", {"tournaments": events})
 
 
