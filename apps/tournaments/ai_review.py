@@ -392,6 +392,8 @@ def analyze_kill_evidence(submission):
                 "reason": (exc.__class__.__name__ + ": " + str(exc).strip())[:500],
             }
 
+    # Recheck after all four independent reads to detect changes during the review window.
+    verify_evidence_integrity(submission)
     expected_uid = str(submission.registered_uid or "").strip()
     completed = [reports[key] for key, *_ in reviewers if reports[key]["status"] == "COMPLETED"]
     all_four_completed = len(completed) == 4
