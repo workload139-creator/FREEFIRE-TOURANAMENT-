@@ -48,9 +48,10 @@ def send_unlimited_live_notifications(tournament_id):
             admin_recipients.append(sender_email)
 
     tournament_url = settings.SITE_URL + reverse("tournaments:detail", args=[tournament.pk])
-    subject = f"FF Arena Battle Royale tournament is LIVE: {tournament.title}"
+    event_label = "Unlimited Tournament" if tournament.is_free_fan_tournament else "Battle Royale Tournament"
+    subject = f"FF Arena {event_label} is LIVE: {tournament.title}"
     admin_message = (
-        f"Battle Royale tournament is now LIVE.\n\n"
+        f"{event_label} is now LIVE.\n\n"
         f"Name: {tournament.title}\n"
         f"Players: {len(registrations)}/{tournament.max_players}\n"
         f"Entry fee: INR {tournament.entry_fee}\n"
