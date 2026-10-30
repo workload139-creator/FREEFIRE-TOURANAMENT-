@@ -49,7 +49,7 @@ class FourAIReviewTests(SimpleTestCase):
         return {
             "proposed_kills": kills, "confidence": "high",
             "uid_matches": True, "observed_uid": uid,
-            "history_consistent": True, "evidence_complete": True,
+            "history_consistent": True, "evidence_complete": True, "tampering_suspected": False,
             "match_mode": "Battle Royale", "match_date": "2026-10-30",
             "match_id": "match-123", "evidence_notes": "UID and personal kills are readable.",
             "reason": "Evidence is clear.",
