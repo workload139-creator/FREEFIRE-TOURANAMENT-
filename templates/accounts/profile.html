@@ -41,7 +41,7 @@
   <header class="profile-cover">
     <span class="profile-cover-label">FF ARENA · PLAYER PROFILE</span>
     <div class="profile-identity">
-      <div class="profile-avatar">{% if player.profile_photo %}<img src="{{ player.profile_photo.url }}" alt="{{ player.username }} profile photo">{% else %}{{ player.username|first|upper }}{% endif %}</div>
+      <div class="profile-avatar">{% if player.profile_photo %}<img src="{{ player.profile_photo.url }}?v={{ player.updated_at|date:'U' }}" alt="" loading="eager" decoding="async" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span hidden>{{ player.username|first|upper }}</span>{% else %}{{ player.username|first|upper }}{% endif %}</div>
       <div><h1>{{ player.username }}{% if player.is_staff %} <small style="font-size:10px;color:#d9bcff">ADMIN</small>{% endif %}</h1><p>Gaming profile · {{ player.get_gender_display|default:"Player" }}</p><span class="profile-player-id">PLAYER ID · FF-{{ player.pk|stringformat:"06d" }}</span></div>
     </div>
   </header>

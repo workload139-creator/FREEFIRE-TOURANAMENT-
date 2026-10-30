@@ -6,7 +6,7 @@
   <article class="public-player-card">
     <div class="public-player-cover"><span>FF ARENA · PLAYER CARD</span></div>
     <div class="public-player-main">
-      <div class="public-player-avatar">{% if player.profile_photo %}<img src="{{ player.profile_photo.url }}" alt="Profile photo of {{ player.username }}">{% else %}{{ player.username|first|upper }}{% endif %}</div>
+      <div class="public-player-avatar">{% if player.profile_photo %}<img src="{{ player.profile_photo.url }}?v={{ player.updated_at|date:'U' }}" alt="" loading="eager" decoding="async" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span hidden>{{ player.username|first|upper }}</span>{% else %}{{ player.username|first|upper }}{% endif %}</div>
       <div class="public-player-identity">
         <span class="public-player-label">{{ player.get_profile_visibility_display|upper }} PLAYER PROFILE</span>
         <h1>{{ player.username }} {% if player.is_staff %}<span class="public-admin-badge">ADMIN</span>{% endif %}</h1>
