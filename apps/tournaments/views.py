@@ -775,4 +775,9 @@ def leaderboard(request, tournament_id):
         "tournament": tournament,
         "leaderboard_rows": rows,
         "verified_player_count": len(rows),
+        "diwali_winner_reward_awarded": TournamentLedgerEntry.objects.filter(
+            tournament=tournament,
+            reference=f"DIWALI-WINNER-20-DIAMONDS-{tournament.pk}",
+            status=TournamentLedgerEntry.Status.COMPLETED,
+        ).exists() if tournament.is_diwali_offer else False,
     })
