@@ -3,18 +3,19 @@
 {% block content %}
 <section class="unlimited-arena">
   <header class="unlimited-hero">
-    <span class="kicker">FF ARENA · ALWAYS OPEN BR</span>
+    <span class="kicker">FF ARENA · ALWAYS OPEN BR SOLO / DUO / SQUAD</span>
     <h1>♾️ Unlimited <span>Arena</span></h1>
-    <p>Entry ₹10. No calendar date or fixed start time. Every round needs 49 confirmed, payment-verified players and then turns LIVE automatically. After admin completes a round, the next waiting round opens.</p>
-    <div class="pills"><span>49 players per round</span><span>₹10 entry</span><span>💎 Existing Diamond / payment verification</span><span>🔐 Room ID/password from admin</span></div>
+    <p>Entry ₹10. No calendar date or fixed start time. Solo rounds need 49 verified players; Duo needs 48 (24 pairs); Squad needs 48 (12 squads). Each player registers and pays separately. A round turns LIVE automatically when its format capacity is reached. After admin completes a round, the next waiting round opens.</p>
+    <div class="pills"><span>Solo · 49 players</span><span>Duo · 48 players / 24 pairs</span><span>Squad · 48 players / 12 squads</span><span>₹10 entry</span><span>💎 Existing Diamond / payment verification</span><span>🔐 Room ID/password from admin</span></div>
   </header>
   <div class="round-grid">
   {% for tournament in tournaments %}
     <article class="round-card">
-      <div class="round-top"><span>♾️ UNLIMITED BR</span>{% if tournament.status == "live" %}<strong class="live">● LIVE</strong>{% else %}<strong class="waiting">● WAITING FOR PLAYERS</strong>{% endif %}</div>
+      <div class="round-top"><span>♾️ UNLIMITED BR · {{ tournament.get_br_format_display }}</span>{% if tournament.status == "live" %}<strong class="live">● LIVE</strong>{% else %}<strong class="waiting">● WAITING FOR PLAYERS</strong>{% endif %}</div>
       <h2>{{ tournament.title }}</h2>
       <p>{{ tournament.description|default:"Battle Royale unlimited round." }}</p>
-      <div class="stats"><div><small>Entry Fee</small><b>₹{{ tournament.entry_fee }}</b></div><div><small>Verified players</small><b>{{ tournament.paid_players_count }}/49</b></div><div><small>Prize pool</small><b>₹{{ tournament.prize_pool }}</b></div></div>
+      <p class="tournament-start-date" style="margin:12px 0;padding:11px 13px;border:1px solid #49ffc044;border-radius:11px;background:#061510;color:#baffdc;font-weight:850">📅 Tournament Date: {{ tournament.start_time|date:"d M Y" }}<br>🕒 Start Time: {{ tournament.start_time|date:"h:i A" }} IST</p>
+      <div class="stats"><div><small>Entry Fee</small><b>₹{{ tournament.entry_fee }}</b></div><div><small>Verified players</small><b>{{ tournament.paid_players_count }}/{{ tournament.unlimited_capacity }}</b></div><div><small>Prize pool</small><b>₹{{ tournament.prize_pool }}</b></div></div>
       <p class="rule">Existing registration and payment checks remain active. Kill evidence uses the same video + two screenshots, UID matching and AI Assessment process. Room ID/password are shared privately by the admin after LIVE.</p>
       <div class="actions"><a class="button button-primary" href="{% url 'tournaments:detail' tournament.pk %}">View / Register</a><a class="button button-outline" href="{% url 'tournaments:leaderboard' tournament.pk %}">Leaderboard</a>{% if tournament.status == "live" %}<a class="button button-primary" style="background:#d90032;border-color:#ff536f;color:#fff" href="https://www.youtube.com/@freefire_tour/live" target="_blank" rel="noopener noreferrer">▶ Watch Live</a>{% endif %}</div>
     </article>

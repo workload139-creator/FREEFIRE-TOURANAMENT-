@@ -60,7 +60,7 @@ class TournamentAdminForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
         if not cleaned.get("gender_category"):
-            cleaned["gender_category"] = Tournament.GenderCategory.OPEN
+            cleaned["gender_category"] = cleaned.get("gender_category") or Tournament.GenderCategory.OPEN
         if cleaned.get("mode") == Tournament.Mode.BR and cleaned.get("vs_format"):
             self.add_error("vs_format", "BR tournament ke liye CS/VS format khaali rakhein.")
         if cleaned.get("mode") == Tournament.Mode.BR and not cleaned.get("is_unlimited_br") and not cleaned.get("is_free_fan_tournament") and not cleaned.get("br_format"):
@@ -433,9 +433,9 @@ class TournamentAdmin(admin.ModelAdmin):
                 next_round_number = root.series_rounds.count() + 2
                 Tournament.objects.create(
                     title=f"{root.title} - Round {next_round_number}"[:120],
-                    mode=Tournament.Mode.BR, vs_format="", description=root.description,
+                    mode=root.mode, br_format=root.br_format, vs_format=root.vs_format, gender_category=root.gender_category, description=root.description,
                     entry_fee=Decimal("0.00") if root.is_free_fan_tournament else root.entry_fee,
-                    prize_pool=root.prize_pool, max_players=49,
+                    prize_pool=root.prize_pool, max_players=root.unlimited_capacity,
                     start_time=timezone.now() + timedelta(minutes=10),
                     status=Tournament.Status.UPCOMING, is_unlimited_br=True,
                     is_free_fan_tournament=root.is_free_fan_tournament,
@@ -1134,7 +1134,9 @@ class UnlimitedTournamentAdminForm(TournamentAdminForm):
         cleaned["is_unlimited_br"] = True
         cleaned["auto_start_at_capacity"] = True
         cleaned["auto_reopen"] = True
-        cleaned["max_players"] = 49
+        fmt = cleaned.get("br_format") or Tournament.BRFormat.SOLO
+        cleaned["br_format"] = fmt
+        cleaned["max_players"] = {"solo": 49, "duo": 48, "squad": 48}.get(fmt, 49)
         return cleaned
 
 
@@ -1145,7 +1147,7 @@ class UnlimitedTournamentAdmin(TournamentAdmin):
     form = UnlimitedTournamentAdminForm
     exclude = ("start_time",)
     fieldsets = (
-        ("Unlimited Tournament Setup", {"description": "No date/time scheduling. Har round mein 49 verified players. Entry ₹10; 49 entries par auto-LIVE. Admin room ID/password LIVE ke baad control panel se send kare.", "fields": ("tournament_control_panel", "title", "description", "entry_fee", "prize_pool", "max_players", "status")}),
+        ("Unlimited BR Tournament Setup", {"description": "BR format chunein: Solo 49 players, Duo 48 players (24 pairs), Squad 48 players (12 squads). Har player separately register aur pay karega. Payment-verified entries capacity par pahunchte hi round auto-LIVE hoga.", "fields": ("tournament_control_panel", "title", "description", "br_format", "gender_category", "entry_fee", "prize_pool", "max_players", "status")}),
         ("Room Credentials", {"fields": ("room_id", "room_password")}),
         ("Unlimited Series & Winner", {"fields": ("is_unlimited_br", "auto_start_at_capacity", "auto_reopen", "series_root", "winner_uid", "winner_payout_destination", "winner_payout_qr", "winner_prize_reference", "winner_prize_paid", "live_notification_sent_at", "live_notification_status")}),
     )
@@ -1160,8 +1162,9 @@ class UnlimitedTournamentAdmin(TournamentAdmin):
         obj.auto_reopen = True
         obj.mode = Tournament.Mode.BR
         obj.vs_format = ""
-        obj.max_players = 49
-        obj.entry_fee = Decimal("10.00")
+        obj.br_format = obj.br_format or Tournament.BRFormat.SOLO
+        obj.max_players = {"solo": 49, "duo": 48, "squad": 48}.get(obj.br_format, 49)
+        obj.entry_fee = obj.entry_fee if obj.entry_fee is not None else Decimal("10.00")
         if not change:
             obj.status = Tournament.Status.UPCOMING
             if not obj.start_time or obj.start_time <= timezone.now():
@@ -1170,7 +1173,7 @@ class UnlimitedTournamentAdmin(TournamentAdmin):
 
     @admin.display(description="Players", ordering="start_time")
     def confirmed_players_count_display(self, obj):
-        return f"{obj.paid_players_count}/49"
+        return f"{obj.paid_players_count}/{obj.unlimited_capacity} · {obj.get_br_format_display()}"
 
     list_filter = ("status", "auto_reopen", "live_notification_status")
     list_display = (

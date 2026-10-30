@@ -135,6 +135,12 @@ class Tournament(models.Model):
         return self.title
 
     @property
+    def unlimited_capacity(self):
+        if self.mode == self.Mode.VS:
+            return {"1v1": 2, "2v2": 4, "3v3": 6, "4v4": 8}.get(self.vs_format, self.max_players)
+        return {"solo": 49, "duo": 48, "squad": 48}.get(self.br_format, self.max_players)
+
+    @property
     def confirmed_players_count(self):
         from django.db.models import Q
 

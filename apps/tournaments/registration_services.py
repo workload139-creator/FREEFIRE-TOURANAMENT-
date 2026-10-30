@@ -114,7 +114,7 @@ def maybe_start_unlimited_tournament(tournament_id):
         payment_verified=True,
         status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
     ).count()
-    if active_count < 49:
+    if active_count < tournament.unlimited_capacity:
         return False
 
     tournament.status = Tournament.Status.LIVE
