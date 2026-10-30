@@ -23,11 +23,12 @@
   <section style="padding:10px 0"><h2>My withdrawal requests</h2>
     {% for item in withdrawal_requests %}
       <article style="margin:10px 0;padding:15px;border-radius:12px;background:#111827;border:1px solid #ffffff18">
-        <strong>{{ item.quantity }} {{ item.get_currency_display }} → ₹{{ item.amount_inr }}</strong>
-        <p>UPI: {{ item.upi_id }} · Status: {{ item.get_status_display }}</p>\n        {% if item.upi_qr_code %}<p><a href="{{ item.upi_qr_code.url }}" target="_blank" rel="noopener"><img src="{{ item.upi_qr_code.url }}" alt="Your uploaded withdrawal UPI QR" style="width:120px;height:120px;object-fit:contain;background:#fff;padding:6px;border-radius:10px"></a></p>{% endif %}
+        <strong>Withdrawal #{{ item.pk }} · {{ item.quantity }} {{ item.get_currency_display }} → ₹{{ item.amount_inr }}</strong>
+        <p>UPI ID: {{ item.upi_id }} · Status: {{ item.get_status_display }}</p>
+        <p>Submitted: {{ item.created_at|date:"d M Y, h:i A" }}{% if item.processed_at %} · Processed: {{ item.processed_at|date:"d M Y, h:i A" }}{% endif %}</p>
+        {% if item.upi_qr_code %}<p><a href="{{ item.upi_qr_code.url }}" target="_blank" rel="noopener"><img src="{{ item.upi_qr_code.url }}" alt="Your uploaded withdrawal UPI QR" style="width:120px;height:120px;object-fit:contain;background:#fff;padding:6px;border-radius:10px"></a></p>{% endif %}
         
-        {% if item.payout_reference %}<p>Admin payout reference: {{ item.payout_reference }}</p>{% endif %}
-        <small>{{ item.created_at|date:"d M Y, h:i A" }}</small>
+        {% if item.payout_reference %}<p>Admin payout UTR/reference: {{ item.payout_reference }}</p>{% endif %}
       </article>
     {% empty %}<p>No withdrawal requests yet.</p>{% endfor %}
   </section>
