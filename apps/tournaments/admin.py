@@ -17,7 +17,7 @@ from apps.accounts.models import (
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry, UnlimitedTournament, FreeFanTournament
 from .services import cancel_tournament_and_refund
-from .kill_services import reward_for_tournament\nfrom .kill_services import reward_for_tournament
+from .kill_services import reward_for_tournament
 
 
 class TournamentAdminForm(forms.ModelForm):
