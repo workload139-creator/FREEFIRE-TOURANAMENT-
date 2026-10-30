@@ -83,8 +83,25 @@ def clash_squad_list(request):
     return render(request, 'tournaments/clash_squad_list.html', {'tournaments': tournaments})
 
 def unlimited_tournament_list(request):
-    """Legacy URL: paid BR formats now live together on the Battle Royale page."""
-    return redirect("tournaments:battle_royale_list")
+    """Dedicated page for recurring Unlimited BR tournaments."""
+    process_expired_ready_registrations()
+    tournaments = Tournament.objects.filter(
+        mode=Tournament.Mode.BR,
+        is_unlimited_br=True,
+        is_diwali_offer=False,
+        is_free_fan_tournament=False,
+        gender_category__in=[
+            Tournament.GenderCategory.OPEN,
+            Tournament.GenderCategory.BOYS,
+            Tournament.GenderCategory.GIRLS,
+        ],
+        status__in=[
+            Tournament.Status.UPCOMING,
+            Tournament.Status.LIVE,
+            Tournament.Status.COMPLETED,
+        ],
+    ).order_by("br_format", "-created_at")
+    return render(request, "tournaments/unlimited_list.html", {"tournaments": tournaments})
 
 
 def free_fan_tournament_list(request):
