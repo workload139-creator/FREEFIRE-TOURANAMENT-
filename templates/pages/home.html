@@ -22,7 +22,7 @@
         </p>
 
         <div class="hero-actions">
-            <a href="#tournaments" class="btn-primary">
+            <a href="{% url 'tournaments:list' %}" class="btn-primary">
                 Explore Tournaments →
             </a>
 
@@ -68,82 +68,33 @@
 </section>
 
 
-<!-- TOURNAMENT SECTION -->
-<section class="tournament-section" id="tournaments">
-    <div class="section-heading">
-        <div>
-            <span class="section-label">CHOOSE YOUR BATTLE</span>
-            <h2>Featured <span>Tournaments</span></h2>
-            <p>Upcoming matches from the live tournament database.</p>
-        </div>
-        <a href="{% url 'tournaments:list' %}" class="btn-secondary">View All →</a>
-    </div>
-
-    <div class="tournament-grid">
-        {% for tournament in featured_tournaments %}
-        <article class="tournament-card">
-            <div class="tournament-banner {% if tournament.mode == 'BR' %}br-banner{% else %}vs-banner{% endif %}">
-                <span class="game-tag">{{ tournament.get_mode_display }}</span>
-                <span class="live-tag">{{ tournament.mode }}</span>
-            </div>
-            <div class="tournament-body">
-                <h3>{{ tournament.title }}</h3>
-                <p class="card-description">{{ tournament.description|default:"Join the battle and compete for the prize pool." }}</p>
-                <div class="tournament-info">
-                    <div><small>ENTRY FEE</small><strong>₹{{ tournament.entry_fee }}</strong></div>
-                    <div><small>PRIZE POOL</small><strong>₹{{ tournament.prize_pool }}</strong></div>
-                </div>
-                <div class="tournament-footer">
-                    <span>👥 {{ tournament.confirmed_players_count }}/{{ tournament.max_players }} players</span>
-                    <span class="status">{{ tournament.get_status_display }}</span>
-                </div>
-                <p>Starts {{ tournament.start_time|date:"d M, h:i A" }}</p>
-                <div style="display:flex;flex-wrap:wrap;gap:9px"><a href="{% url 'tournaments:detail' tournament.id %}" class="btn-join">View Tournament →</a>{% if tournament.status == "live" %}<a href="https://www.youtube.com/@freefire_tour/live" class="btn-join" style="background:#d90032;color:#fff" target="_blank" rel="noopener noreferrer">▶ Watch Live</a>{% endif %}</div>
-            </div>
-        </article>
-        {% empty %}
-        <article class="tournament-card">
-            <div class="tournament-body">
-                <h3>No upcoming tournaments yet</h3>
-                <p>Admin se upcoming tournament publish karwane ke baad yahan dikhega.</p>
-                <a href="{% url 'tournaments:list' %}" class="btn-join">Browse Tournaments →</a>
-            </div>
-        </article>
-        {% endfor %}
-    </div>
+<!-- ARENA DASHBOARD -->
+<section class="home-dashboard">
+  <div class="section-heading"><div><span class="section-label">YOUR ARENA</span><h2>Everything <span>Important</span></h2><p>Tournaments, players, rewards aur community — sab ek jagah.</p></div></div>
+  <div class="home-dashboard-grid">
+    <a class="home-dashboard-card matches" href="{% url 'tournaments:list' %}"><span>⚔️</span><strong>Matches</strong><small>BR · CS · Free · Unlimited · Girl vs Boy</small><b>Explore categories →</b></a>
+    <a class="home-dashboard-card wallet" href="{% if user.is_authenticated %}{% url 'accounts:wallet' %}{% else %}{% url 'login' %}{% endif %}"><span>💎</span><strong>Wallet & Credits</strong><small>Balance, Diamonds, Coins and transaction history</small><b>Open wallet →</b></a>
+    <a class="home-dashboard-card profile" href="{% if user.is_authenticated %}{% url 'accounts:profile' %}{% else %}{% url 'login' %}{% endif %}"><span>👤</span><strong>Player Profile</strong><small>Photo, player ID, followers and account settings</small><b>Open profile →</b></a>
+    <a class="home-dashboard-card leaderboard" href="{% url 'tournaments:results' %}"><span>🏆</span><strong>Leaderboard & Results</strong><small>Track match results and player performance</small><b>View standings →</b></a>
+    <a class="home-dashboard-card community" href="{% url 'social:feed' %}"><span>🌐</span><strong>Community</strong><small>Player posts, friends, followers and updates</small><b>Join community →</b></a>
+    <a class="home-dashboard-card shop" href="{% url 'social:shop' %}"><span>🪙</span><strong>Virtual Credits Shop</strong><small>View available Diamonds and Coins packs</small><b>Visit shop →</b></a>
+    <a class="home-dashboard-card chat" href="{% url 'chat:home' %}"><span>💬</span><strong>Chat & Party Rooms</strong><small>Connect with players and your squad</small><b>Open chat →</b></a>
+    <a class="home-dashboard-card assistant" href="{% url 'assistant' %}"><span>🤖</span><strong>FF Arena Assistant</strong><small>Get help with platform features and tournament rules</small><b>Ask assistant →</b></a>
+  </div>
 </section>
-
-
-<!-- FEATURES -->
-<section class="features-section">
-    <div class="section-heading">
-        <div>
-            <span class="section-label">WHY FF ARENA?</span>
-            <h2>Built for <span>Gamers</span></h2>
-        </div>
-    </div>
-
-    <div class="features-grid">
-        <a class="feature-card" href="{% if user.is_authenticated %}{% url 'accounts:profile' %}{% else %}{% url 'login' %}{% endif %}">
-            <span>👤</span>
-            <h3>Player Profile</h3>
-            <p>Photo, username, email aur player ID manage karo.</p>
-        </a>
-
-        <a class="feature-card" href="{% if user.is_authenticated %}{% url 'accounts:wallet' %}{% else %}{% url 'login' %}{% endif %}">
-            <span>💰</span>
-            <h3>Wallet</h3>
-            <p>Wallet balance aur transaction history dekho.</p>
-        </a>
-
-        <a class="feature-card" href="{% url 'tournaments:results' %}">
-            <span>📊</span>
-            <h3>Results</h3>
-            <p>Matches aur leaderboard results track karo.</p>
-        </a>
-    </div>
-</section>
-
+<style>
+.home-dashboard{max-width:1160px;margin:44px auto;padding:0 18px 22px;color:#f7f9ff}
+.home-dashboard-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,235px),1fr));gap:16px}
+.home-dashboard-card{display:flex;flex-direction:column;gap:10px;min-height:190px;padding:22px;border:1px solid #ffffff20;border-radius:20px;background:radial-gradient(circle at 100% 0%,#36e8a51c,transparent 48%),linear-gradient(145deg,#172538,#0a101a);color:#f8fbff;text-decoration:none;transition:transform .2s,border-color .2s,box-shadow .2s}
+.home-dashboard-card:hover{transform:translateY(-4px);border-color:#5fffc0;box-shadow:0 14px 35px #0007}
+.home-dashboard-card>span{font-size:32px}.home-dashboard-card strong{font-size:21px}.home-dashboard-card small{color:#b5c4d5;line-height:1.55}.home-dashboard-card b{margin-top:auto;color:#66f5c2;font-size:13px}
+.home-dashboard-card.wallet{background:radial-gradient(circle at 100% 0%,#ffcb5a22,transparent 48%),linear-gradient(145deg,#282316,#0d1119)}
+.home-dashboard-card.profile{background:radial-gradient(circle at 100% 0%,#63a8ff25,transparent 48%),linear-gradient(145deg,#17263a,#0a101a)}
+.home-dashboard-card.leaderboard{background:radial-gradient(circle at 100% 0%,#b28aff24,transparent 48%),linear-gradient(145deg,#241a36,#0a101a)}
+.home-dashboard-card.community{background:radial-gradient(circle at 100% 0%,#ff75b522,transparent 48%),linear-gradient(145deg,#321b2b,#0a101a)}
+.home-dashboard-card.shop{background:radial-gradient(circle at 100% 0%,#4edbff22,transparent 48%),linear-gradient(145deg,#16313a,#0a101a)}
+@media(max-width:600px){.home-dashboard{margin:28px auto}.home-dashboard-card{min-height:160px;padding:18px}}
+</style>
 
 <!-- FINAL CTA -->
 <section class="cta-section">
