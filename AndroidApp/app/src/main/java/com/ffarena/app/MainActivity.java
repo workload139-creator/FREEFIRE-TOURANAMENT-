@@ -591,6 +591,9 @@ public class MainActivity extends Activity {
         page.addView(back, new LinearLayout.LayoutParams(-1, dp(48)));
         featureWebView = new WebView(this);
         WebSettings settings = featureWebView.getSettings();
+        // Identify the installed app's WebView so website-only download links can be hidden.
+        String existingUserAgent = settings.getUserAgentString();
+        settings.setUserAgentString(existingUserAgent + " FFArenaAndroidApp");
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
