@@ -48,7 +48,8 @@ class TournamentAdminForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if not self.instance.pk:
             self.initial["status"] = Tournament.Status.UPCOMING
-        self.fields["gender_category"].required = False
+        if "gender_category" in self.fields:
+            self.fields["gender_category"].required = False
         self.fields["status"].help_text = (
             "Website par dikhane aur registration kholne ke liye "
             "'Upcoming' select karein. Draft tournaments public list mein nahi dikhte."
