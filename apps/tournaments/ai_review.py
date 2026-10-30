@@ -254,7 +254,7 @@ def _analyze_with_provider(submission, provider, model_override=None, reviewer_r
         content = [{
             "type": "text",
             "text": (
-                "You are the " + str(reviewer_role) + " reviewer. " + ("Independently audit the first assessment, challenge unsupported kill counts, and prioritize anti-tampering signals. " if reviewer_role == "agent_audit" else "Perform a fresh first-pass evidence assessment without trusting another reviewer. ") + "Strict Free Fire esports match-evidence review. Registered UID: "
+                "You are the " + str(reviewer_role) + " reviewer. " + ("Perform a separate adversarial audit of the same original evidence, challenge unsupported kill counts, and prioritize anti-tampering signals. " if reviewer_role == "agent_audit" else "Perform a fresh first-pass evidence assessment without trusting another reviewer. ") + "Strict Free Fire esports match-evidence review. Registered UID: "
                 + str(submission.registered_uid) + ". Submitted UID: "
                 + str(submission.free_fire_uid) + ". Inspect all attached history screenshots and "
                 "sampled video frames. The official Garena game server/API is not available: never "
@@ -408,7 +408,7 @@ def analyze_kill_evidence(submission):
     )
     four_way_agreement = (
         all_four_completed and len(kills) == 1 and len(uids) == 1
-        and all_valid and len(kills) == 1
+        and all_valid
     )
     first = completed[0] if completed else {}
     combined_uid = True if four_way_agreement else (
