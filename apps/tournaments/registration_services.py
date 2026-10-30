@@ -48,9 +48,9 @@ def send_unlimited_live_notifications(tournament_id):
             admin_recipients.append(sender_email)
 
     tournament_url = settings.SITE_URL + reverse("tournaments:detail", args=[tournament.pk])
-    subject = f"FF Arena Unlimited Tournament is LIVE: {tournament.title}"
+    subject = f"FF Arena Battle Royale tournament is LIVE: {tournament.title}"
     admin_message = (
-        f"Unlimited Tournament is now LIVE.\n\n"
+        f"Battle Royale tournament is now LIVE.\n\n"
         f"Name: {tournament.title}\n"
         f"Players: {len(registrations)}/{tournament.max_players}\n"
         f"Entry fee: INR {tournament.entry_fee}\n"
@@ -75,7 +75,7 @@ def send_unlimited_live_notifications(tournament_id):
             continue
         player_message = (
             f"Hi {registration.player.username},\n\n"
-            f"Your Unlimited Tournament, {tournament.title}, is now LIVE!\n"
+            f"Your Battle Royale tournament, {tournament.title}, is now LIVE!\n"
             f"Your Free Fire UID: {registration.free_fire_uid}\n"
             f"Entry fee paid by: {registration.get_payment_method_display()}\n"
             f"Players: {len(registrations)}/{tournament.max_players}\n\n"
@@ -144,6 +144,8 @@ def maybe_start_unlimited_tournament(tournament_id):
     if active_count < tournament.max_players or active_count % team_size:
         return False
 
+    # Lock in the verified player/team order as the event becomes LIVE.
+    assign_teams_for_tournament(tournament.pk)
     tournament.status = Tournament.Status.LIVE
     tournament.save(update_fields=["status", "updated_at"])
     transaction.on_commit(lambda tournament_id=tournament.pk: send_unlimited_live_notifications(tournament_id))
