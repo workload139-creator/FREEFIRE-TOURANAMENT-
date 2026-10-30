@@ -4,9 +4,10 @@
 <section class="container" style="max-width:1180px;margin:28px auto;padding:18px">
   <header class="tournament-card" style="padding:22px;border-radius:16px">
     <h1>🤖 AI Assessment Queue</h1>
-    <p>Stage 1: website player/profile/registration/payment/UID aur uploaded video + dono screenshots check karta hai. Stage 2: FF Arena AI Assessment aur AI Agent audit, dono OpenAI aur Ollama Cloud se alag-alag chalaye jaate hain (4 reviewer passes). Charon ka same kill count, UID, high confidence aur complete evidence hona zaroori hai. AI sirf reward propose karta hai; final credit ke liye Admin approval mandatory hai. Kisi bhi mismatch, unclear result ya AI failure par Pending Admin Review hota hai. Regular BR: 5 Diamonds per approved kill; Diwali Solo BR: 5 Coins per approved kill; VS: 2 Coins per approved kill; Free Fan: 1 Fan Token per 2 approved kills.</p>
+    <p>Stage 1: website player/profile/registration/payment/UID aur uploaded video + dono screenshots check karta hai. Stage 2: FF Arena AI Assessment aur AI Agent audit, dono OpenAI aur Ollama Cloud se alag-alag chalaye jaate hain (4 reviewer passes). Charon ka same kill count, exact UID, high confidence aur clean/consistent evidence ho to tournament rules ke mutabik in-app reward automatically credit hota hai. Failed ya mismatched reports Admin Review mein jaati hain. Kisi bhi mismatch, unclear result ya AI failure par Pending Admin Review hota hai. Regular BR: 5 Diamonds per approved kill; Diwali Solo BR: 5 Coins per approved kill; VS: 2 Coins per approved kill; Free Fan: 1 Fan Token per 2 approved kills.</p>
     <nav style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0">
       <a class="button button-outline" href="{% url 'tournaments:admin_kill_review' %}">Manual Admin Review</a>
+      <a class="button button-primary" href="{% url 'tournaments:admin_kill_batch_review' %}">Tournament Bulk Reward Review</a>
       <a class="button button-outline" href="{% url 'tournaments:admin_ai_sources' %}">AI Sources / Diagnostics</a>
     </nav>
     <p><strong>Pending:</strong> {{ pending_count }} · <strong>Approved:</strong> {{ approved_count }} · <strong>Rejected:</strong> {{ rejected_count }}</p>

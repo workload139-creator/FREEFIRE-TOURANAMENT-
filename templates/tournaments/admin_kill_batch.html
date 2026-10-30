@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Tournament Bulk Kill Review | FF Arena{% endblock %}
+{% block content %}
+<section class="container" style="max-width:1280px;margin:26px auto;padding:16px">
+  <header class="tournament-card" style="padding:22px;border-radius:16px">
+    <h1>🏆 Tournament Bulk Kill Review</h1>
+    <p>Ek tournament select karke uske pending players ki AI reports, kills aur rewards ek hi jagah check karo. Chaaron AI agree karne wale eligible players ko automatic in-app reward milta hai. Is page par manual review wale players ke kills correct karke ek saath approve kar sakte ho.</p>
+    <p><strong>Important:</strong> Rewards Diamonds, Coins ya Fan Tokens ke roop mein player ke in-app wallet mein credit hote hain. Yeh UPI/bank cash transfer nahi hai. Prize override sirf selected row ki primary reward currency ko badalta hai; Duo/Squad ke extra Coins tournament rule ke hisaab se calculate honge.</p>
+    <nav style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0">
+      <a class="button button-outline" href="{% url 'tournaments:admin_ai_assessments' %}">All AI Reports</a>
+      <a class="button button-outline" href="{% url 'tournaments:admin_kill_review' %}">Individual Evidence Review</a>
+      <a class="button button-outline" href="{% url 'tournaments:admin_ai_sources' %}">AI Sources</a>
+    </nav>
+    <form method="get" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <label for="tournament"><strong>Tournament</strong></label>
+      <select id="tournament" name="tournament" required style="min-width:260px;padding:10px">
+        <option value="">Select tournament</option>
+        {% for tournament in tournaments %}
+          <option value="{{ tournament.pk }}" {% if selected_tournament and selected_tournament.pk == tournament.pk %}selected{% endif %}>{{ tournament.title }} · {{ tournament.get_mode_display }} · #{{ tournament.pk }}</option>
+        {% endfor %}
+      </select>
+      <button class="button button-primary" type="submit">Load Players</button>
+    </form>
+  </header>
+
+  {% if selected_tournament %}
+    <h2 style="margin-top:20px">{{ selected_tournament.title }}</h2>
+    <p>{{ selected_tournament.get_mode_display }} · {{ selected_tournament.get_status_display }} · Minimum kills for reward: {{ minimum_verified_kills }}</p>
+    <form method="post" action="{% url 'tournaments:admin_kill_batch_review' %}?tournament={{ selected_tournament.pk }}">
+      {% csrf_token %}
+      <input type="hidden" name="tournament_id" value="{{ selected_tournament.pk }}">
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;min-width:950px">
+          <thead>
+            <tr>
+              <th style="padding:10px;text-align:left">Select</th>
+              <th style="padding:10px;text-align:left">Player / UID</th>
+              <th style="padding:10px;text-align:left">Four AI kills / status</th>
+              <th style="padding:10px;text-align:left">Verified kills</th>
+              <th style="padding:10px;text-align:left">Reward override</th>
+              <th style="padding:10px;text-align:left">Reason / evidence</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for item in submissions %}
+            <tr style="border-top:1px solid var(--border-color,#777);vertical-align:top">
+              <td style="padding:10px">
+                {% if item.status == "pending" %}
+                  <input type="checkbox" name="submission_ids" value="{{ item.pk }}" checked aria-label="Select {{ item.player.username }}">
+                {% else %}
+                  <strong>{{ item.get_status_display }}</strong>
+                {% endif %}
+              </td>
+              <td style="padding:10px">
+                <strong>{{ item.player.username }}</strong><br>
+                <small>Submission #{{ item.pk }} · {{ item.player_id }}</small><br>
+                <small>Registered UID: {{ item.registered_uid }}</small><br>
+                <small>Submitted UID: {{ item.free_fire_uid }}</small><br>
+                <small>Payment: {{ item.registration.payment_verified|yesno:"Verified,Not verified" }}</small><br>
+                <a href="{% url 'tournaments:admin_kill_review' %}?submission={{ item.pk }}">Open full evidence</a>
+              </td>
+              <td style="padding:10px">
+                <strong>AI combined:</strong> {{ item.ai_proposed_kills|default:"N/A" }} kills<br>
+                {% for key, report in item.ai_reviewer_reports.items %}
+                  <div style="margin:6px 0;padding:6px;border:1px solid var(--border-color,#888);border-radius:6px">
+                    <strong>{{ report.name|default:key }}</strong><br>
+                    {{ report.status|default:"NOT RUN" }} · Kills {{ report.proposed_kills|default:"N/A" }}<br>
+                    UID {{ report.observed_uid|default:"Unreadable" }} · {{ report.confidence|default:"Unknown" }}<br>
+                    Tampering: {{ report.tampering_suspected|yesno:"Yes,No,Unknown" }}<br>
+                    <small>{{ report.reason|default:"No reviewer reason" }}</small>
+                  </div>
+                {% empty %}
+                  <small>No AI report. Admin must inspect original evidence.</small>
+                {% endfor %}
+              </td>
+              <td style="padding:10px">
+                {% if item.status == "pending" %}
+                  <input type="number" name="approved_kills_{{ item.pk }}" min="0" max="99" value="{% if item.ai_proposed_kills != None %}{{ item.ai_proposed_kills }}{% else %}0{% endif %}" style="width:90px;padding:8px">
+                {% else %}
+                  {{ item.approved_kills|default:"Not approved" }}
+                {% endif %}
+              </td>
+              <td style="padding:10px">
+                {% if item.status == "pending" %}
+                  <small>Calculated: {{ item.proposed_reward|floatformat:0 }} primary currency</small><br>
+                  <input type="number" name="reward_override_{{ item.pk }}" min="0" max="1000000" placeholder="Optional" style="width:130px;padding:8px">
+                  <small>Blank = tournament rule</small>
+                {% else %}
+                  <strong>Credited:</strong> {{ item.approved_reward|floatformat:0 }} primary · {{ item.approved_coins_reward }} Coins
+                {% endif %}
+              </td>
+              <td style="padding:10px;max-width:260px">
+                <small>{{ item.ai_review_notes|default:"No combined AI notes"|truncatechars:450 }}</small>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" style="padding:18px">Is tournament ke liye koi pending Admin Review player nahi hai. Four-AI verified rewards already auto-credit ho sakte hain.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if submissions %}
+        <label for="bulk-notes" style="display:block;margin-top:16px"><strong>Common Admin notes (optional)</strong></label>
+        <textarea id="bulk-notes" name="bulk_admin_notes" rows="2" style="width:100%;padding:10px" placeholder="Evidence checked, kill corrections, tournament result..."></textarea>
+        <p><small>Only selected pending rows are processed. Rows with unverified payment, UID mismatch or invalid values are skipped. Reward override blank rakhne par tournament ke existing reward rules apply honge.</small></p>
+        <button class="button button-primary" type="submit" onclick="return confirm('Selected pending players ke rewards approve aur in-app wallet mein credit karne hain?');">Approve &amp; Credit Selected Pending Players Together</button>
+      {% endif %}
+    </form>
+  {% else %}
+    <p class="tournament-card" style="padding:18px;margin-top:18px">Pehle tournament select karo. Us tournament ke pending player evidence reports ek saath yahan dikh jayenge.</p>
+  {% endif %}
+</section>
+{% endblock %}

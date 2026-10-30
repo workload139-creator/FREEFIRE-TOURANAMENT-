@@ -83,6 +83,7 @@ urlpatterns = [
     path("admin/ai-assessments/", views.ai_assessment_dashboard, name="admin_ai_assessments"),
     path("admin/ai-sources/", views.ai_source_settings, name="admin_ai_sources"),
     path("admin/kill-review/", views.admin_kill_review, name="admin_kill_review"),
+    path("admin/kill-review/batch/", views.admin_kill_batch_review, name="admin_kill_batch_review"),
     path("admin/kill-review/<int:submission_id>/retry-ai/", views.retry_ai_kill_review, name="retry_ai_kill_review"),
     path("admin/kill-review/<int:submission_id>/", views.review_kill_submission, name="review_kill_submission"),
 ]

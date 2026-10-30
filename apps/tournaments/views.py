@@ -20,10 +20,74 @@ from .ai_review import AIReviewError, analyze_kill_evidence, fingerprint_evidenc
 from .registration_services import RegistrationError, create_pending_registration, assign_teams_for_tournament
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry
-from .kill_services import reward_for_tournament
+from .kill_services import reward_for_tournament, rewards_for_tournament
 from .services import process_expired_ready_registrations, mark_not_playing_and_refund
 
 import qrcode
+
+
+def _credit_kill_submission_reward(submission, approved_kills, reward_override=None, source="Admin"):
+    """Approve one submission and credit non-cash tournament currencies exactly once."""
+    from apps.social.models import PlayerShopWallet
+
+    rewards = rewards_for_tournament(submission.tournament, approved_kills)
+    if approved_kills < settings.MINIMUM_VERIFIED_KILLS:
+        rewards = []
+    if reward_override is not None:
+        if not rewards:
+            raise ValueError("Prize override is not allowed below the minimum verified kills.")
+        currency, _quantity, label = rewards[0]
+        rewards[0] = (currency, reward_override, label)
+
+    primary_quantity = rewards[0][1] if rewards else 0
+    coin_quantity = sum(quantity for currency, quantity, _label in rewards if currency == "coins")
+    submission.approved_kills = approved_kills
+    submission.proposed_reward = Decimal(primary_quantity)
+    submission.approved_reward = Decimal(primary_quantity)
+    submission.proposed_coins_reward = coin_quantity
+    submission.approved_coins_reward = coin_quantity
+    submission.status = KillSubmission.Status.APPROVED
+    submission.reviewed_at = timezone.now()
+    submission.save(update_fields=[
+        "approved_kills", "proposed_reward", "approved_reward",
+        "proposed_coins_reward", "approved_coins_reward",
+        "status", "reviewed_at", "admin_notes",
+    ])
+
+    if not rewards:
+        return []
+
+    wallet, _ = PlayerShopWallet.objects.get_or_create(user=submission.player)
+    wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
+    credited = []
+    for currency, quantity, label in rewards:
+        if quantity <= 0:
+            continue
+        reference = f"KILL-REWARD-{submission.pk}-{currency}"
+        if TournamentLedgerEntry.objects.filter(reference=reference).exists():
+            continue
+        wallet_field = {
+            "diamonds": "diamonds",
+            "coins": "coins",
+            "fan_tokens": "fan_tokens",
+        }[currency]
+        setattr(wallet, wallet_field, getattr(wallet, wallet_field) + int(quantity))
+        TournamentLedgerEntry.objects.create(
+            reference=reference,
+            tournament=submission.tournament,
+            player=submission.player,
+            registration=submission.registration,
+            entry_type=TournamentLedgerEntry.EntryType.REWARD,
+            currency=currency,
+            quantity=int(quantity),
+            amount_inr=Decimal("0.00"),
+            status=TournamentLedgerEntry.Status.COMPLETED,
+            description=f"{source}: {int(quantity)} {label} for {approved_kills} verified kills",
+        )
+        credited.append((int(quantity), label))
+    if credited:
+        wallet.save(update_fields=("diamonds", "coins", "fan_tokens", "updated_at"))
+    return credited
 
 
 def cleanup_expired_kill_evidence():
@@ -473,6 +537,7 @@ def kill_submission(request, registration_id):
                         ai_result.get("uid_matches") is True
                         and submitted_uid == registration.free_fire_uid
                         and registration.free_fire_uid == submission.registered_uid
+                        and str(getattr(registration.player, "free_fire_uid", "") or "").strip() == registration.free_fire_uid
                     )
                     proposed_kills = int(proposed_kills or 0)
                     if uid_ok and ai_result.get("proposed_kills") is not None and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS:
@@ -488,7 +553,27 @@ def kill_submission(request, registration_id):
                         "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
                         "ai_review_notes", "proposed_reward", "ai_reviewer_reports",
                     ])
-                    messages.info(request, "Four AI review passes complete. AI reward is only a proposal; Admin approval is required before any credit.")
+                    if (
+                        ai_result.get("four_way_agreement") is True
+                        and uid_ok
+                        and registration.payment_verified
+                        and registration.status == Registration.Status.READY
+                        and not registration.refund_processed
+                        and registration.tournament.status != Tournament.Status.CANCELLED
+                        and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS
+                    ):
+                        with transaction.atomic():
+                            locked = KillSubmission.objects.select_for_update().get(pk=submission.pk)
+                            if locked.status == KillSubmission.Status.PENDING:
+                                locked.admin_notes = "Automatically approved: all four AI reviewers independently agreed on kills, UID and clean/consistent evidence. Reward follows tournament rules."
+                                credited = _credit_kill_submission_reward(
+                                    locked, proposed_kills, source="Four-AI automatic award"
+                                )
+                                submission.refresh_from_db()
+                                reward_text = ", ".join(f"{qty} {label}" for qty, label in credited) or "0 reward"
+                                messages.success(request, f"Four AI reviewers agreed. {proposed_kills} kills verified; {reward_text} automatically credited to the player's in-app wallet.")
+                    else:
+                        messages.info(request, "AI review saved. Four-way agreement, UID/payment checks or minimum kills were not all satisfied; this player remains in Admin Review.")
                 except Exception as exc:
                     # Keep a durable assessment record even when an AI provider,
                     # network, video decoder, or model response fails. Never pay
@@ -635,6 +720,7 @@ def retry_ai_kill_review(request, submission_id):
             result.get("uid_matches") is True
             and submission.free_fire_uid == submission.registered_uid
             and submission.registered_uid == submission.registration.free_fire_uid
+            and str(getattr(submission.player, "free_fire_uid", "") or "").strip() == submission.registration.free_fire_uid
         )
         if proposed is not None and proposed >= settings.MINIMUM_VERIFIED_KILLS and uid_ok:
             _currency, quantity, _label = reward_for_tournament(submission.tournament, proposed)
@@ -650,7 +736,26 @@ def retry_ai_kill_review(request, submission_id):
             "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
             "ai_review_notes", "proposed_reward", "ai_reviewer_reports",
         ])
-        messages.info(request, "Four AI review passes updated. This is only a reward proposal; Admin approval is required before credit.")
+        if (
+            result.get("four_way_agreement") is True
+            and uid_ok
+            and submission.registration.payment_verified
+            and submission.registration.status == Registration.Status.READY
+            and not submission.registration.refund_processed
+            and submission.tournament.status != Tournament.Status.CANCELLED
+            and proposed is not None
+            and proposed >= settings.MINIMUM_VERIFIED_KILLS
+        ):
+            with transaction.atomic():
+                locked = KillSubmission.objects.select_for_update().get(pk=submission.pk)
+                if locked.status == KillSubmission.Status.PENDING:
+                    locked.admin_notes = "Automatically approved after four independent AI reviewers agreed on kills, UID and evidence."
+                    credited = _credit_kill_submission_reward(locked, proposed, source="Four-AI automatic award")
+                    submission.refresh_from_db()
+                    reward_text = ", ".join(f"{qty} {label}" for qty, label in credited) or "0 reward"
+                    messages.success(request, f"Four AI reviewers agreed: {proposed} kills; {reward_text} automatically credited.")
+        else:
+            messages.info(request, "AI review updated. Any failed check or disagreement remains in Admin Review.")
     except Exception as exc:
         submission.ai_reviewer_reports = {
             key: {"name": label, "status": "BLOCKED", "proposed_kills": None, "confidence": "low", "reason": "Evidence integrity check failed or original upload fingerprint is missing; manual Admin Review required."}
@@ -703,49 +808,118 @@ def review_kill_submission(request, submission_id):
             messages.error(request, "Approved kills 0 se 99 ke beech hone chahiye.")
             return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
         if (
-            submission.free_fire_uid != submission.registered_uid
+            submission.registration.status != Registration.Status.READY
+            or submission.registration.refund_processed
+            or submission.free_fire_uid != submission.registered_uid
             or submission.registered_uid != submission.registration.free_fire_uid
+            or str(getattr(submission.player, "free_fire_uid", "") or "").strip() != submission.registration.free_fire_uid
         ):
             messages.error(request, "UID mismatch hai; payout eligibility roki gayi.")
             return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
 
-        submission.approved_kills = approved_kills
-        reward_currency_name, reward_quantity, reward_name = reward_for_tournament(submission.tournament, approved_kills)
-        if approved_kills < settings.MINIMUM_VERIFIED_KILLS:
-            reward_quantity = 0
-        submission.proposed_reward = Decimal(reward_quantity)
-        submission.approved_reward = Decimal(reward_quantity)
         submission.admin_notes = notes
-        submission.reviewed_at = timezone.now()
-        submission.status = KillSubmission.Status.APPROVED
-        submission.save(update_fields=[
-            "approved_kills", "proposed_reward", "approved_reward",
-            "admin_notes", "reviewed_at", "status",
-        ])
+        credited = _credit_kill_submission_reward(
+            submission, approved_kills, source="Admin-approved kill reward"
+        )
+        reward_text = ", ".join(f"{qty} {label}" for qty, label in credited) or "0 reward"
 
-        if reward_quantity > 0:
-            from apps.social.models import PlayerShopWallet
-            ledger_reference = f"KILL-REWARD-{submission.pk}"
-            if not TournamentLedgerEntry.objects.filter(reference=ledger_reference).exists():
-                shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=submission.player)
-                shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
-                wallet_field = {"diamonds": "diamonds", "coins": "coins", "fan_tokens": "fan_tokens"}[reward_currency_name]
-                setattr(shop_wallet, wallet_field, getattr(shop_wallet, wallet_field) + reward_quantity)
-                shop_wallet.save(update_fields=("diamonds", "coins", "fan_tokens", "updated_at"))
-                TournamentLedgerEntry.objects.create(
-                    reference=ledger_reference, tournament=submission.tournament,
-                    player=submission.player, registration=submission.registration,
-                    entry_type=TournamentLedgerEntry.EntryType.REWARD,
-                    currency=reward_currency_name, quantity=reward_quantity,
-                    amount_inr=Decimal("0.00"), status=TournamentLedgerEntry.Status.COMPLETED,
-                    description=f"Admin-confirmed {reward_name} award for {approved_kills} verified kills",
-                )
 
     messages.success(
         request,
-        f"Admin confirmation complete: {approved_kills} kills approved; {int(submission.approved_reward)} {reward_name} credited to the player shop wallet. These are non-cash currencies.",
+        f"Admin confirmation complete: {approved_kills} kills approved; {reward_text} credited to the player's in-app wallet. These are non-cash rewards.",
     )
     return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
+
+
+
+@login_required
+@user_passes_test(lambda user: user.is_staff)
+def admin_kill_batch_review(request):
+    """One-tournament batch view for reviewing and crediting many player rewards."""
+    tournaments = Tournament.objects.filter(
+        kill_submissions__isnull=False
+    ).distinct().order_by("-start_time")
+    tournament_id = request.POST.get("tournament_id") if request.method == "POST" else request.GET.get("tournament", "")
+    selected_tournament = None
+    if tournament_id and str(tournament_id).isdigit():
+        selected_tournament = get_object_or_404(Tournament, pk=int(tournament_id))
+
+    if request.method == "POST":
+        if selected_tournament is None:
+            messages.error(request, "Pehle ek tournament select karo.")
+            return redirect("tournaments:admin_kill_batch_review")
+        selected_ids = request.POST.getlist("submission_ids")
+        if not selected_ids:
+            messages.error(request, "Bulk approval ke liye kam se kam ek player select karo.")
+            return redirect(f"{reverse('tournaments:admin_kill_batch_review')}?tournament={selected_tournament.pk}")
+        common_notes = request.POST.get("bulk_admin_notes", "").strip()[:1000]
+        approved_count = 0
+        skipped = []
+        with transaction.atomic():
+            for submission_id in selected_ids:
+                if not str(submission_id).isdigit():
+                    continue
+                submission = (
+                    KillSubmission.objects.select_for_update()
+                    .select_related("player", "registration", "tournament")
+                    .filter(pk=int(submission_id), tournament=selected_tournament)
+                    .first()
+                )
+                if not submission or submission.status != KillSubmission.Status.PENDING:
+                    skipped.append(str(submission_id))
+                    continue
+                if (
+                    not submission.registration.payment_verified
+                    or submission.registration.status != Registration.Status.READY
+                    or submission.registration.refund_processed
+                    or submission.free_fire_uid != submission.registered_uid
+                    or submission.registered_uid != submission.registration.free_fire_uid
+                    or str(getattr(submission.player, "free_fire_uid", "") or "").strip() != submission.registration.free_fire_uid
+                ):
+                    skipped.append(str(submission_id))
+                    continue
+                try:
+                    kills = int(request.POST.get(f"approved_kills_{submission.pk}", ""))
+                except (TypeError, ValueError):
+                    skipped.append(str(submission_id))
+                    continue
+                if kills < 0 or kills > 99:
+                    skipped.append(str(submission_id))
+                    continue
+                raw_override = request.POST.get(f"reward_override_{submission.pk}", "").strip()
+                override = None
+                if raw_override:
+                    try:
+                        override = int(raw_override)
+                    except (TypeError, ValueError):
+                        skipped.append(str(submission_id))
+                        continue
+                    if override < 0 or override > 1000000 or kills < settings.MINIMUM_VERIFIED_KILLS:
+                        skipped.append(str(submission_id))
+                        continue
+                submission.admin_notes = common_notes or "Reviewed in tournament bulk reward panel."
+                _credit_kill_submission_reward(
+                    submission, kills, reward_override=override,
+                    source="Admin bulk-approved tournament reward",
+                )
+                approved_count += 1
+        if skipped:
+            messages.warning(request, f"{approved_count} players approved and credited. {len(skipped)} rows skipped because of status, UID/payment mismatch, or invalid values.")
+        else:
+            messages.success(request, f"{approved_count} players approved and tournament rewards credited in one batch.")
+        return redirect(f"{reverse('tournaments:admin_kill_batch_review')}?tournament={selected_tournament.pk}")
+
+    submissions = KillSubmission.objects.none()
+    if selected_tournament:
+        submissions = KillSubmission.objects.filter(
+            tournament=selected_tournament,
+        ).select_related("player", "registration", "tournament").order_by("-submitted_at")
+    return render(request, "tournaments/admin_kill_batch.html", {
+        "tournaments": tournaments,
+        "selected_tournament": selected_tournament,
+        "submissions": submissions,
+        "minimum_verified_kills": int(settings.MINIMUM_VERIFIED_KILLS),
+    })
 
 
 def results(request):
