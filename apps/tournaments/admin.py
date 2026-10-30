@@ -16,6 +16,10 @@ from apps.accounts.models import (
 )
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry, UnlimitedTournament, FreeFanTournament
+
+# Keep the internal proxy name for compatibility, but show a simple paid BR admin menu.
+UnlimitedTournament._meta.verbose_name = "Battle Royale Tournament"
+UnlimitedTournament._meta.verbose_name_plural = "Battle Royale Tournaments"
 from .services import cancel_tournament_and_refund
 from .kill_services import reward_for_tournament
 from .registration_services import assign_teams_for_tournament, tournament_team_size
@@ -287,7 +291,7 @@ def award_br_winner_team(modeladmin, request, queryset):
     for selected in queryset:
         with transaction.atomic():
             tournament = Tournament.objects.select_for_update().get(pk=selected.pk)
-            if tournament.mode != Tournament.Mode.BR or tournament.status != Tournament.Status.COMPLETED:
+            if tournament.mode != Tournament.Mode.BR or tournament.br_format not in ("duo", "squad") or tournament.status != Tournament.Status.COMPLETED:
                 skipped += 1
                 continue
             uids = []
@@ -321,26 +325,18 @@ def award_br_winner_team(modeladmin, request, queryset):
                 wallet, _ = PlayerShopWallet.objects.get_or_create(user=registration.player)
                 wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
                 wallet.fan_tokens += 10
-                wallet.coins += 50
-                wallet.save(update_fields=["fan_tokens", "coins", "updated_at"])
+                wallet.save(update_fields=["fan_tokens", "updated_at"])
                 base = f"BR-TEAM-WIN-{tournament.pk}-{uid}"
                 TournamentLedgerEntry.objects.create(
                     tournament=tournament, player=registration.player, registration=registration,
                     entry_type=TournamentLedgerEntry.EntryType.REWARD,
                     currency=TournamentLedgerEntry.Currency.FAN_TOKENS, quantity=10,
                     status=TournamentLedgerEntry.Status.COMPLETED, reference=base + "-FAN",
-                    description="BR winning team reward: 10 Fan Tokens",
-                )
-                TournamentLedgerEntry.objects.create(
-                    tournament=tournament, player=registration.player, registration=registration,
-                    entry_type=TournamentLedgerEntry.EntryType.REWARD,
-                    currency=TournamentLedgerEntry.Currency.COINS, quantity=50,
-                    status=TournamentLedgerEntry.Status.COMPLETED, reference=base + "-COIN",
-                    description="BR winning team reward: 50 Coins",
+                    description="BR Duo/Squad winning team reward: 10 Fan Currency",
                 )
                 awarded_players += 1
     if awarded_players:
-        modeladmin.message_user(request, f"{awarded_players} BR winner-team player(s) received 10 Fan Tokens + 50 Coins each.", messages.SUCCESS)
+        modeladmin.message_user(request, f"{awarded_players} winning team player(s) received 10 Fan Currency each.", messages.SUCCESS)
     if skipped:
         modeladmin.message_user(request, f"{skipped} tournament(s) skipped: check BR mode, Completed status, every UID's verified paid registration, and duplicate payout records.", messages.WARNING)
 
@@ -1147,6 +1143,11 @@ def manual_start_unlimited_round(modeladmin, request, queryset):
             if count < team_size or count % team_size:
                 skipped += 1
                 continue
+            try:
+                assign_teams_for_tournament(tournament.pk)
+            except ValueError:
+                skipped += 1
+                continue
             tournament.status = Tournament.Status.LIVE
             tournament.save(update_fields=["status", "updated_at"])
             transaction.on_commit(lambda tid=tournament.pk: __import__("apps.tournaments.registration_services", fromlist=["send_unlimited_live_notifications"]).send_unlimited_live_notifications(tid))
@@ -1167,7 +1168,7 @@ class UnlimitedTournamentAdminForm(TournamentAdminForm):
         cleaned["gender_category"] = Tournament.GenderCategory.OPEN
         cleaned["is_unlimited_br"] = True
         cleaned["auto_start_at_capacity"] = True
-        cleaned["auto_reopen"] = True
+        cleaned["auto_reopen"] = False
         br_format = cleaned.get("br_format") or Tournament.BRFormat.SOLO
         cleaned["br_format"] = br_format
         cleaned["max_players"] = {"solo": 49, "duo": 48, "squad": 48}.get(br_format, 49)
@@ -1176,48 +1177,55 @@ class UnlimitedTournamentAdminForm(TournamentAdminForm):
 
 @admin.register(UnlimitedTournament)
 class UnlimitedTournamentAdmin(TournamentAdmin):
-    """Separate admin menu for the repeating 49-player Unlimited BR series."""
+    """One paid BR admin section; create separate Solo, Duo and Squad event records."""
 
     form = UnlimitedTournamentAdminForm
     exclude = ("start_time",)
     fieldsets = (
-        ("Unlimited BR Setup", {"description": "Solo: 49 players; Duo: 48 players (24 complete teams); Squad: 48 players (12 complete teams). Entry fee format ke hisaab se alag set karein. Full verified capacity par auto-LIVE; Manual Start bhi available hai.", "fields": ("tournament_control_panel", "title", "description", "br_format", "entry_fee", "prize_pool", "max_players", "status")}),
+        ("Battle Royale Event Setup", {
+            "description": "Yahan ek event banayein: Solo = 49 players, Duo = 48 players (24 teams), Squad = 48 players (12 teams). Har event ki entry fee alag set karein. Date/time ki zaroorat nahi. Verified capacity poori hote hi auto-LIVE; Manual Start bhi available hai.",
+            "fields": ("tournament_control_panel", "title", "description", "br_format", "entry_fee", "prize_pool", "max_players", "status"),
+        }),
         ("Room Credentials", {"fields": ("room_id", "room_password")}),
-        ("Unlimited Series & Winner", {"fields": ("is_unlimited_br", "auto_start_at_capacity", "auto_reopen", "series_root", "winner_uid", "winner_payout_destination", "winner_payout_qr", "winner_prize_reference", "winner_prize_paid", "live_notification_sent_at", "live_notification_status")}),
+        ("Winner & Notifications", {
+            "fields": ("winner_uid", "winner_team_uids", "winner_payout_destination", "winner_payout_qr", "winner_prize_reference", "winner_prize_paid", "live_notification_sent_at", "live_notification_status"),
+        }),
     )
 
     def get_queryset(self, request):
         return admin.ModelAdmin.get_queryset(self, request).filter(is_unlimited_br=True, is_free_fan_tournament=False)
 
     def save_model(self, request, obj, form, change):
-        obj.is_unlimited_br = True
+        obj.is_unlimited_br = True  # Internal switch used by date-free BR registration/auto-start logic.
         obj.is_free_fan_tournament = False
         obj.auto_start_at_capacity = True
-        obj.auto_reopen = True
+        obj.auto_reopen = False
+        obj.series_root = None
         obj.mode = Tournament.Mode.BR
         obj.vs_format = ""
+        obj.gender_category = Tournament.GenderCategory.OPEN
         obj.br_format = obj.br_format or Tournament.BRFormat.SOLO
         obj.max_players = {"solo": 49, "duo": 48, "squad": 48}.get(obj.br_format, 49)
         if not change:
             obj.status = Tournament.Status.UPCOMING
-            if not obj.start_time or obj.start_time <= timezone.now():
-                obj.start_time = timezone.now() + timedelta(minutes=10)
+        if not obj.start_time or obj.start_time <= timezone.now():
+            obj.start_time = timezone.now() + timedelta(minutes=10)
         super().save_model(request, obj, form, change)
 
-    @admin.display(description="Players", ordering="start_time")
+    @admin.display(description="Verified Players")
     def confirmed_players_count_display(self, obj):
         return f"{obj.paid_players_count}/{obj.max_players}"
 
-    list_filter = ("br_format", "status", "auto_reopen", "live_notification_status")
+    list_filter = ("br_format", "status", "live_notification_status")
     list_display = (
         "title", "br_format", "entry_fee", "confirmed_players_count_display",
-        "open_tournament_control", "status", "auto_reopen", "live_notification_status",
+        "open_tournament_control", "status", "live_notification_status",
     )
     search_fields = ("title", "description")
     ordering = ("-created_at",)
-    actions = (manual_start_unlimited_round, cancel_and_refund_tournaments, mark_winner_prizes_paid, retry_unlimited_live_notifications)
+    actions = (manual_start_unlimited_round, cancel_and_refund_tournaments, award_br_winner_team, retry_unlimited_live_notifications)
     readonly_fields = (
-        "tournament_control_panel", "series_root", "winner_prize_paid",
+        "tournament_control_panel", "winner_prize_paid",
         "kill_prize_distributed", "kill_prize_pool", "kill_prize_reference",
         "live_notification_sent_at", "live_notification_status",
         "winner_payout_destination", "winner_payout_qr",
