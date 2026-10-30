@@ -4,12 +4,12 @@
   <h3>{{ tournament.title }}</h3>
   <p class="gender-chip">{{ tournament.get_gender_category_display }}</p>
   <p>{{ tournament.description|default:"Join the battle!" }}</p>
-  {% if tournament.mode == "VS" %}<p>Format: {{ tournament.get_vs_format_display|default:"VS Match" }}</p>{% endif %}
+  {% if tournament.mode == "VS" %}<p>Format: {{ tournament.get_vs_format_display|default:"VS Match" }}</p>{% elif tournament.br_format %}<p>Format: {{ tournament.get_br_format_display }}</p>{% endif %}
   {% if tournament.gender_category == "girls_vs_boys" %}<p>📸 Registration selfie required · Admin review</p>{% endif %}
   <div class="tournament-stats tournament-stats-four">
     <div><small>Entry Fee</small><strong>{% if tournament.is_free_fan_tournament %}FREE{% else %}₹{{ tournament.entry_fee }}{% endif %}</strong></div>
     <div><small>1st Prize</small><strong>{% if tournament.is_free_fan_tournament %}{{ tournament.winner_coins_prize }} Coins{% elif tournament.mode == "VS" %}{% if tournament.vs_format == "2v2" %}38 Diamonds (Admin){% else %}Admin Reward{% endif %}{% elif tournament.entry_fee <= 1 %}20 Diamonds{% else %}50 Diamonds{% endif %}</strong></div>
-    <div><small>1 Kill Reward</small><strong>{% if tournament.is_free_fan_tournament %}2 Kills = 1 Fan Token{% elif tournament.mode == "VS" %}2 Coins{% elif tournament.entry_fee <= 1 %}5 Coins{% else %}5 Diamonds{% endif %}</strong></div>
+    <div><small>1 Kill Reward</small><strong>{% if tournament.is_free_fan_tournament %}2 Kills = 1 Fan Token{% elif tournament.mode == "VS" %}2 Coins{% else %}5 Diamonds{% endif %}</strong></div>
     <div><small>Players</small><strong>{% if tournament.is_unlimited_br %}{{ tournament.paid_players_count }}{% else %}{{ tournament.confirmed_players_count }}{% endif %}/{{ tournament.max_players }}</strong></div>
   </div>
   <p>Status: {{ tournament.get_status_display }}</p>{% if not tournament.is_unlimited_br %}<p>Start: {{ tournament.start_time|date:"d M Y, h:i A" }}</p>{% endif %}
