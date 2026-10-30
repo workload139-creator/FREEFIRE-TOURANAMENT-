@@ -10,11 +10,11 @@
   <p><strong>Player Category:</strong> {{ tournament.get_gender_category_display }}</p>
   <div class="tournament-stats tournament-detail-stats" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0">
     <div><small>Entry Fee</small><strong>{% if tournament.is_free_fan_tournament %}FREE{% else %}₹{{ tournament.entry_fee }}{% endif %}</strong></div>
-    <div><small>1st Prize</small><strong>{% if tournament.is_free_fan_tournament %}{{ tournament.winner_coins_prize }} Coins{% elif tournament.mode == "VS" %}10 Diamonds + 10 Coins{% elif tournament.entry_fee <= 1 %}20 Diamonds{% else %}50 Diamonds{% endif %}</strong></div>
+    <div><small>1st Prize</small><strong>{% if tournament.is_free_fan_tournament %}{{ tournament.winner_coins_prize }} Coins{% elif tournament.mode == "VS" %}{% if tournament.vs_format == "2v2" %}38 Diamonds (Admin){% else %}Admin Reward{% endif %}{% elif tournament.entry_fee <= 1 %}20 Diamonds{% else %}50 Diamonds{% endif %}</strong></div>
     <div><small>1 Kill Reward</small><strong>{% if tournament.is_free_fan_tournament %}2 Kills = 1 Fan Token{% elif tournament.mode == "VS" %}2 Coins{% elif tournament.entry_fee <= 1 %}5 Coins{% else %}5 Diamonds{% endif %}</strong></div>
     <div><small>Players</small><strong>{{ tournament.confirmed_players_count }}/{{ tournament.max_players }}</strong></div>
   </div>
-  {% if tournament.mode == "VS" %}<p>VS winner prize: 10 Diamonds + 10 Coins. Har verified kill par dono teams ko 2 Coins per kill milenge, match jeetne ya haarne se farq nahi padega.</p>{% elif tournament.mode == "BR" %}<p class="room-note">Kills leaderboard par sirf verified/approved evidence count hota hai. Minimum {{ minimum_verified_kills }} verified kills ke baad reward eligibility hogi.</p>{% endif %}
+  {% if tournament.mode == "VS" %}<p>VS winner prize admin manually decide aur credit karega. 2v2 ka prize 38 Diamonds hai. Har verified kill par dono teams ko 2 Coins per kill milenge, match jeetne ya haarne se farq nahi padega. Kill proof AI check ke baad admin approve karega.</p>{% elif tournament.mode == "BR" %}<p class="room-note">Kills leaderboard par sirf verified/approved evidence count hota hai. Minimum {{ minimum_verified_kills }} verified kills ke baad reward eligibility hogi.</p>{% endif %}
   <p><strong>Players:</strong> {{ tournament.confirmed_players_count }}/{{ tournament.max_players }}</p>
   {% if not tournament.is_unlimited_br %}<p><strong>Start Time:</strong> {{ tournament.start_time|date:"d M Y, h:i A" }}</p>{% else %}<p><strong>Schedule:</strong> Always open; 49 players par LIVE</p>{% endif %}
   <p><strong>Status:</strong> {{ tournament.get_status_display }}</p>
