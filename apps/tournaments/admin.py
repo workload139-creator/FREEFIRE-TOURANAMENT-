@@ -796,3 +796,35 @@ class RegistrationAdmin(admin.ModelAdmin):
     @admin.display(description="Player Email")
     def player_email(self, obj):
         return obj.player.email or "Email not provided"
+
+    @admin.display(description="Player Phone")
+    def player_phone(self, obj):
+        return obj.player.phone_number or "Phone not provided"
+
+    @admin.display(description="Player Photo")
+    def player_photo(self, obj):
+        photo = obj.player.profile_photo
+        if not photo:
+            return "No profile photo"
+        try:
+            return format_html('<a href="{}" target="_blank" rel="noopener"><img src="{}" width="80" height="80" style="object-fit:cover;border-radius:8px" alt="Player profile photo"></a>', photo.url, photo.url)
+        except (ValueError, OSError):
+            return "Profile photo unavailable"
+
+    @admin.display(description="Player UPI Details")
+    def player_upi_destination(self, obj):
+        player = obj.player
+        upi = player.upi_id or "UPI ID not provided"
+        if player.upi_qr_code:
+            try:
+                return format_html('{}<br><a href="{}" target="_blank" rel="noopener">Open player UPI QR</a>', upi, player.upi_qr_code.url)
+            except (ValueError, OSError):
+                return f"{upi} · QR unavailable"
+        return upi
+
+    @admin.display(description="Player Wallet Balance")
+    def player_wallet_balance(self, obj):
+        try:
+            return f"₹{obj.player.wallet.balance}"
+        except Exception:
+            return "Wallet not created"
