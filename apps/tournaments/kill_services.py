@@ -11,6 +11,9 @@ def rewards_for_tournament(tournament, kills):
         raise ValueError("Kill count cannot be negative.")
     if tournament.mode == "VS":
         return [("coins", kills * 2, "Coins")]
+    if getattr(tournament, "is_diwali_offer", False):
+        quantity = kills * 5
+        return [("coins", quantity, "Coins")] if quantity else []
     if tournament.is_free_fan_tournament:
         quantity = kills // 2
         return [("fan_tokens", quantity, "Fan Tokens")] if quantity else []
