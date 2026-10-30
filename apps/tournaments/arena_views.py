@@ -1,6 +1,5 @@
 from django.db.models import Case, IntegerField, Value, When
 from django.shortcuts import render
-from django.utils import timezone
 
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import Tournament
@@ -33,45 +32,28 @@ def _one_event_per_format(queryset, format_field, formats):
 
 
 def _fixed_br_slots():
-    """Return exactly one persistent admin-editable BR slot for Solo, Duo and Squad."""
+    """Return the three permanent BR format records seeded by migration 0019.
+
+    These records are edited in Django Admin under Unlimited BR. Do not create
+    database rows while serving a public GET request, and do not mix in Diwali,
+    Free Fan, Girls-vs-Boys or one-off BR rounds.
+    """
     base = Tournament.objects.filter(
         mode=Tournament.Mode.BR,
         is_free_fan_tournament=False,
         is_diwali_offer=False,
-        is_unlimited_br=False,
+        is_unlimited_br=True,
         gender_category=Tournament.GenderCategory.OPEN,
     )
-    capacities = {
-        Tournament.BRFormat.SOLO: 49,
-        Tournament.BRFormat.DUO: 48,
-        Tournament.BRFormat.SQUAD: 48,
-    }
-    slots = []
-    for format_code, label in (
-        (Tournament.BRFormat.SOLO, "Solo"),
-        (Tournament.BRFormat.DUO, "Duo"),
-        (Tournament.BRFormat.SQUAD, "Squad"),
-    ):
-        slot = base.filter(br_format=format_code).order_by("-created_at", "-pk").first()
-        if slot is None:
-            # Create the fixed placeholder once. Draft keeps registration closed until
-            # an admin fills the details and changes status to Upcoming.
-            slot = Tournament.objects.create(
-                title=f"BR {label}",
-                mode=Tournament.Mode.BR,
-                br_format=format_code,
-                vs_format="",
-                gender_category=Tournament.GenderCategory.OPEN,
-                description="Fixed Battle Royale slot. Admin: edit this card in Tournament Admin to publish it.",
-                max_players=capacities[format_code],
-                start_time=timezone.now(),
-                status=Tournament.Status.DRAFT,
-                is_unlimited_br=False,
-                is_diwali_offer=False,
-                is_free_fan_tournament=False,
-            )
-        slots.append(slot)
-    return slots
+    return _one_event_per_format(
+        base,
+        "br_format",
+        (
+            Tournament.BRFormat.SOLO,
+            Tournament.BRFormat.DUO,
+            Tournament.BRFormat.SQUAD,
+        ),
+    )
 
 
 def battle_royale_list(request):
