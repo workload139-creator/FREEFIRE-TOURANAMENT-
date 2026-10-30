@@ -132,16 +132,20 @@ def reject_shop_payments(modeladmin, request, queryset):
 
 @admin.register(ShopPaymentRequest)
 class ShopPaymentRequestAdmin(admin.ModelAdmin):
-    list_display = ("id", "player_id_display", "user", "player_phone_display", "player_uid_display", "product", "quantity", "amount", "payment_reference", "status", "created_at", "reviewed_by")
+    list_display = ("id", "player_id_display", "user", "player_email_display", "player_phone_display", "player_uid_display", "product", "quantity", "amount", "payment_reference", "status", "created_at", "reviewed_by")
     list_filter = ("status", "product", "created_at")
     search_fields = ("user__username", "user__email", "user__phone_number", "user__free_fire_uid", "payment_reference")
-    readonly_fields = ("user", "player_id_display", "player_phone_display", "player_uid_display", "player_upi_display", "player_profile_qr_preview", "product", "quantity", "amount", "payment_reference", "payment_screenshot_preview", "payment_screenshot", "created_at", "reviewed_at", "reviewed_by")
-    fields = ("user", "player_id_display", "player_phone_display", "player_uid_display", "player_upi_display", "player_profile_qr_preview", "product", "quantity", "amount", "payment_reference", "payment_screenshot_preview", "payment_screenshot", "status", "admin_note", "created_at", "reviewed_at", "reviewed_by")
+    readonly_fields = ("user", "player_id_display", "player_email_display", "player_phone_display", "player_uid_display", "player_upi_display", "player_profile_qr_preview", "product", "quantity", "amount", "payment_reference", "payment_screenshot_preview", "payment_screenshot", "created_at", "reviewed_at", "reviewed_by")
+    fields = ("user", "player_id_display", "player_email_display", "player_phone_display", "player_uid_display", "player_upi_display", "player_profile_qr_preview", "product", "quantity", "amount", "payment_reference", "payment_screenshot_preview", "payment_screenshot", "status", "admin_note", "created_at", "reviewed_at", "reviewed_by")
     actions = (approve_shop_payments, reject_shop_payments)
 
     @admin.display(description="Player ID")
     def player_id_display(self, obj):
         return f"FF-{obj.user_id}" if obj and obj.user_id else "—"
+
+    @admin.display(description="Player email")
+    def player_email_display(self, obj):
+        return (obj.user.email or "Not provided") if obj and obj.user else "—"
 
     @admin.display(description="Player phone")
     def player_phone_display(self, obj):
