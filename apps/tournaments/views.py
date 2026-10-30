@@ -19,7 +19,7 @@ from .forms import KillSubmissionForm, RegistrationForm
 from .ai_review import AIReviewError, analyze_kill_evidence
 from .registration_services import RegistrationError, create_pending_registration
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
-from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry
+from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry\nfrom .kill_services import reward_for_tournament
 from .services import process_expired_ready_registrations, mark_not_playing_and_refund
 
 import qrcode
@@ -474,7 +474,7 @@ def kill_submission(request, registration_id):
                             "approved_reward", "status", "reviewed_at",
                         ])
                     if auto_approved:
-                        reward_name = "Fan Tokens" if submission.tournament.is_free_fan_tournament else "Diamonds"
+                        reward_name = reward_for_tournament(submission.tournament, proposed_kills)[2]
                         messages.success(
                             request,
                             f"Dual AI ne high-confidence evidence verify ki. {proposed_kills} kills ke liye {int(submission.approved_reward)} {reward_name} wallet mein add hue.",
