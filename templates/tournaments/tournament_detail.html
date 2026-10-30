@@ -8,8 +8,13 @@
   <p>{{ tournament.description|default:"Tournament ki details yahan dikhengi." }}</p>
   <p><strong>Mode:</strong> {% if tournament.mode == "VS" %}CS / Clash Squad{% else %}Battle Royale (BR){% endif %}{% if tournament.mode == "VS" %} — {{ tournament.get_vs_format_display }}{% endif %}</p>
   <p><strong>Player Category:</strong> {{ tournament.get_gender_category_display }}</p>
-  <p><strong>Entry Fee:</strong> ₹{{ tournament.entry_fee }}</p>
-  {% if tournament.is_free_fan_tournament %}<p><strong>Winner Prize:</strong> {{ tournament.winner_coins_prize }} Coins</p>{% elif tournament.mode == "VS" %}<p><strong>Fan Token Prize Pool:</strong> {% if tournament.vs_format == "1v1" %}10{% elif tournament.vs_format == "2v2" %}20{% elif tournament.vs_format == "3v3" %}30{% elif tournament.vs_format == "4v4" %}40{% else %}10{% endif %} Fan Tokens</p><p>Reward guide: team format ke hisaab se winner pool. Fan Tokens non-cash website currency hain.</p>{% else %}<p><strong>1st Prize:</strong> 50 Diamonds</p><p><strong>Kill Reward:</strong> {{ diamonds_per_kill }} Diamonds per approved kill</p><p class="room-note">Kills leaderboard par sirf verified/approved evidence count hota hai. Diamonds non-cash website currency hain.</p>{% endif %}
+  <div class="tournament-stats tournament-detail-stats" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0">
+    <div><small>Entry Fee</small><strong>{% if tournament.is_free_fan_tournament %}FREE{% else %}₹{{ tournament.entry_fee }}{% endif %}</strong></div>
+    <div><small>1st Prize</small><strong>{% if tournament.is_free_fan_tournament %}{{ tournament.winner_coins_prize }} Coins{% elif tournament.mode == "VS" %}{% if tournament.vs_format == "1v1" %}10{% elif tournament.vs_format == "2v2" %}20{% elif tournament.vs_format == "3v3" %}30{% elif tournament.vs_format == "4v4" %}40{% else %}10{% endif %} Fan Tokens{% elif tournament.entry_fee <= 1 %}20 Diamonds{% else %}50 Diamonds{% endif %}</strong></div>
+    <div><small>1 Kill Reward</small><strong>{% if tournament.is_free_fan_tournament %}2 Kills = 1 Fan Token{% elif tournament.mode == "VS" %}—{% elif tournament.entry_fee <= 1 %}5 Coins{% else %}5 Diamonds{% endif %}</strong></div>
+    <div><small>Players</small><strong>{{ tournament.confirmed_players_count }}/{{ tournament.max_players }}</strong></div>
+  </div>
+  {% if tournament.mode == "VS" %}<p>Winner pool format ke hisaab se hai. Fan Tokens non-cash website currency hain.</p>{% elif tournament.mode == "BR" %}<p class="room-note">Kills leaderboard par sirf verified/approved evidence count hota hai. Minimum {{ minimum_verified_kills }} verified kills ke baad reward eligibility hogi.</p>{% endif %}
   <p><strong>Players:</strong> {{ tournament.confirmed_players_count }}/{{ tournament.max_players }}</p>
   {% if not tournament.is_unlimited_br %}<p><strong>Start Time:</strong> {{ tournament.start_time|date:"d M Y, h:i A" }}</p>{% else %}<p><strong>Schedule:</strong> Always open; 49 players par LIVE</p>{% endif %}
   <p><strong>Status:</strong> {{ tournament.get_status_display }}</p>
