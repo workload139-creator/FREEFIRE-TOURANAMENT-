@@ -28,7 +28,7 @@
     <p><strong>AI reason / mistake:</strong><br>{{ item.ai_review_notes|default:"Assessment not run yet." }}</p>
     <h3>Four reviewer audit</h3>
     {% for reviewer_key, report in item.ai_reviewer_reports.items %}
-      <p><strong>{{ report.name|default:reviewer_key }}:</strong> {{ report.status|default:"NOT RUN" }} · Kills {{ report.proposed_kills|default:"N/A" }} · UID {{ report.observed_uid|default:"Unreadable" }} · {{ report.confidence|default:"Unknown" }} confidence · {{ report.reason|default:"No reason returned" }}</p>
+      <p><strong>{{ report.name|default:reviewer_key }}:</strong> {{ report.status|default:"NOT RUN" }} · Kills {{ report.proposed_kills|default:"N/A" }} · UID {{ report.observed_uid|default:"Unreadable" }} · {{ report.confidence|default:"Unknown" }} confidence · Tampering suspected: {{ report.tampering_suspected|yesno:"Yes,No,Unknown" }} · {{ report.tampering_notes|default:"No manipulation notes" }} · {{ report.reason|default:"No reason returned" }}</p>
     {% empty %}<p>Four reviewer reports not available.</p>{% endfor %}
     <p><strong>Evidence integrity:</strong> {% if item.evidence_sha256 %}Original file fingerprints stored{% else %}Fingerprint missing — Admin Review only{% endif %}.</p>
     <p><strong>Admin correction notes:</strong> {{ item.admin_notes|default:"None" }}</p>
