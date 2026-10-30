@@ -70,7 +70,7 @@ def seed_arena_formats(apps, schema_editor):
                 start_time=now + timedelta(days=3650),
                 status="upcoming", is_unlimited_br=False,
                 is_free_fan_tournament=False,
-                auto_start_at_capacity=False, auto_reopen=False,
+                auto_start_at_capacity=True, auto_reopen=False,
             )
         else:
             Tournament.objects.filter(pk=existing.pk).update(
