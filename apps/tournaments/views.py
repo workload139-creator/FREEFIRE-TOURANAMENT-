@@ -1,4 +1,5 @@
 from datetime import timedelta
+import mimetypes
 import os
 from decimal import Decimal
 import base64
@@ -8,6 +9,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db import IntegrityError, transaction
+from django.http import FileResponse, Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -434,6 +436,35 @@ def player_room(request, registration_id):
 
 @login_required
 @user_passes_test(lambda user: user.is_staff)
+def room_qr_file(request, tournament_id):
+    """Stream the room QR only to staff or a paid player cleared for this room."""
+    tournament = get_object_or_404(Tournament, pk=tournament_id)
+    if not request.user.is_staff:
+        allowed = Registration.objects.filter(
+            tournament=tournament,
+            player=request.user,
+            payment_verified=True,
+            room_details_sent=True,
+            status=Registration.Status.READY,
+        ).exists()
+        if not allowed:
+            return HttpResponseForbidden("Room QR access is available only to confirmed players.")
+
+    if not tournament.room_qr_code:
+        raise Http404("Room QR is not available.")
+
+    try:
+        file_handle = tournament.room_qr_code.open("rb")
+    except (FileNotFoundError, OSError, ValueError):
+        raise Http404("Room QR file is unavailable.")
+
+    content_type = mimetypes.guess_type(tournament.room_qr_code.name)[0] or "application/octet-stream"
+    response = FileResponse(file_handle, content_type=content_type)
+    response["Cache-Control"] = "private, no-store"
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
 def admin_tournament_dashboard(request, tournament_id):
     process_expired_ready_registrations()
     tournament = get_object_or_404(Tournament, pk=tournament_id)
