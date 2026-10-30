@@ -500,7 +500,7 @@ def daily_spin(request):
         wallet.save(update_fields=("diamonds", "coins", "fan_tokens", "updated_at"))
         DailySpin.objects.create(user=request.user, currency=currency, quantity=quantity)
 
-    messages.success(request, f"🎉 Daily Spin reward: +{quantity} {currency.title()}! Come back after 24 hours for another spin.")
+    messages.success(request, f"🎉 Daily Spin reward: +{quantity} {dict(DailySpin.Currency.choices)[currency]}! Come back after 24 hours for another spin.")
     return redirect("accounts:wallet")
 
 
