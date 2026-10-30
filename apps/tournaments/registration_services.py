@@ -16,7 +16,7 @@ class RegistrationError(Exception):
 
 
 def send_unlimited_live_notifications(tournament_id):
-    """Email the admin and all verified entrants after a 49-player Unlimited round starts."""
+    """Email the admin and verified entrants when a date-free BR/CS event starts."""
     tournament = Tournament.objects.filter(
         pk=tournament_id, status=Tournament.Status.LIVE
     ).filter(
