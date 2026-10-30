@@ -446,76 +446,27 @@ def kill_submission(request, registration_id):
                         and submitted_uid == registration.free_fire_uid
                         and registration.free_fire_uid == submission.registered_uid
                     )
-                    dual_agreement = (
-                        os.getenv("KILL_REVIEW_PROVIDER", "openai").strip().lower() == "dual"
-                        and ai_result.get("dual_agreement") is True
-                        and ai_result.get("confidence") == "high"
-                    )
-                    auto_approved = (
-                        dual_agreement and uid_ok and proposed_kills is not None
-                        and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS
-                        and submission.history_video and submission.history_image_one and submission.history_image_two
-                    )
                     proposed_kills = int(proposed_kills or 0)
-                    if auto_approved:
-                        reward_currency_name, reward_quantity, reward_label = reward_for_tournament(registration.tournament, proposed_kills)
-                        submission.proposed_reward = Decimal(reward_quantity)
+                    if uid_ok and ai_result.get("proposed_kills") is not None and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS:
+                        _currency, proposed_quantity, _label = reward_for_tournament(registration.tournament, proposed_kills)
+                        submission.proposed_reward = Decimal(proposed_quantity)
+                    else:
+                        submission.proposed_reward = Decimal("0.00")
+                    # AI is advisory only. Every kill reward waits for a human admin decision.
                     with transaction.atomic():
                         submission = KillSubmission.objects.select_for_update().get(pk=submission.pk)
                         submission.ai_proposed_kills = ai_result["proposed_kills"]
                         submission.ai_confidence = ai_result["confidence"][:10]
                         submission.ai_uid_matches = ai_result["uid_matches"]
                         submission.ai_review_notes = ai_result["reason"]
-                        if auto_approved:
-                            from apps.social.models import PlayerShopWallet
-                            is_free = submission.tournament.is_free_fan_tournament
-                            reward_currency_name, reward_quantity, reward_label = reward_for_tournament(submission.tournament, proposed_kills)
-                            reward_currency = reward_currency_name
-                            submission.proposed_reward = Decimal(reward_quantity)
-                            submission.approved_kills = proposed_kills
-                            submission.approved_reward = submission.proposed_reward
-                            submission.status = KillSubmission.Status.APPROVED
-                            submission.reviewed_at = timezone.now()
-                            if reward_quantity > 0:
-                                shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=submission.player)
-                                shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
-                                if reward_currency_name == "fan_tokens":
-                                    shop_wallet.fan_tokens += reward_quantity
-                                elif reward_currency_name == "coins":
-                                    shop_wallet.coins += reward_quantity
-                                else:
-                                    shop_wallet.diamonds += reward_quantity
-                                shop_wallet.save(update_fields=("diamonds", "coins", "fan_tokens", "updated_at"))
-                                TournamentLedgerEntry.objects.get_or_create(
-                                    reference=f"KILL-REWARD-{submission.pk}",
-                                    defaults={
-                                        "tournament": submission.tournament,
-                                        "player": submission.player,
-                                        "registration": submission.registration,
-                                        "entry_type": TournamentLedgerEntry.EntryType.REWARD,
-                                        "currency": reward_currency,
-                                        "quantity": reward_quantity,
-                                        "amount_inr": Decimal("0.00"),
-                                        "status": TournamentLedgerEntry.Status.COMPLETED,
-                                        "description": f"Dual-AI verified reward: {reward_quantity} {reward_label} for {proposed_kills} kills",
-                                    },
-                                )
                         submission.save(update_fields=[
                             "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
-                            "ai_review_notes", "proposed_reward", "approved_kills",
-                            "approved_reward", "status", "reviewed_at",
+                            "ai_review_notes", "proposed_reward",
                         ])
-                    if auto_approved:
-                        reward_name = reward_for_tournament(submission.tournament, proposed_kills)[2]
-                        messages.success(
-                            request,
-                            f"Dual AI ne high-confidence evidence verify ki. {proposed_kills} kills ke liye {int(submission.approved_reward)} {reward_name} wallet mein add hue.",
-                        )
-                    else:
-                        messages.info(
-                            request,
-                            "Evidence save ho gaya. Dual-AI agreement, high confidence, exact UID match aur website checks sab pass nahi hue; Admin AI Assessment queue mein review hoga.",
-                        )
+                    messages.info(
+                        request,
+                        "AI assessment save ho gaya. Reward ke liye Admin ki manual approval zaroori hai; abhi wallet mein Diamonds/Coins add nahi hue.",
+                    )
                 except AIReviewError as exc:
                     messages.warning(
                         request,
@@ -627,108 +578,38 @@ def retry_ai_kill_review(request, submission_id):
 
     try:
         result = analyze_kill_evidence(submission)
-        submission.ai_proposed_kills = result["proposed_kills"]
-        submission.ai_confidence = result["confidence"][:10]
-        submission.ai_uid_matches = result["uid_matches"]
-        submission.ai_review_notes = result["reason"]
-        proposed = result["proposed_kills"]
+        proposed = result.get("proposed_kills")
         uid_ok = (
-            result["uid_matches"] is True
+            result.get("uid_matches") is True
             and submission.free_fire_uid == submission.registered_uid
             and submission.registered_uid == submission.registration.free_fire_uid
         )
         if proposed is not None and proposed >= settings.MINIMUM_VERIFIED_KILLS and uid_ok:
-            _currency, proposed_quantity, _label = reward_for_tournament(submission.tournament, proposed)
-            submission.proposed_reward = Decimal(proposed_quantity)
+            _currency, quantity, _label = reward_for_tournament(submission.tournament, proposed)
+            submission.proposed_reward = Decimal(quantity)
         else:
             submission.proposed_reward = Decimal("0.00")
-        # Auto-award only when website file/duration checks pass, UID is exact,
-        # and both configured AI providers explicitly agree with high confidence.
-        dual_agreement = (
-            os.getenv("KILL_REVIEW_PROVIDER", "openai").strip().lower() == "dual"
-            and result.get("dual_agreement") is True
-            and result["confidence"] == "high"
-            and result["uid_matches"] is True
-        )
-        eligible = (
-            submission.tournament.mode == "BR"
-            and dual_agreement
-            and uid_ok
-            and proposed is not None
-            and proposed >= settings.MINIMUM_VERIFIED_KILLS
-            and submission.history_video
-            and submission.history_image_one
-            and submission.history_image_two
-        )
-        if eligible:
-            with transaction.atomic():
-                submission = KillSubmission.objects.select_for_update().select_related(
-                    "registration", "player", "tournament"
-                ).get(pk=submission.pk)
-                if submission.status == KillSubmission.Status.PENDING:
-                    from apps.social.models import PlayerShopWallet
-                    reward_currency_name, reward_quantity, reward_label = reward_for_tournament(submission.tournament, proposed)
-                    approved_reward = Decimal(reward_quantity)
-                    ledger_reference = f"KILL-REWARD-{submission.pk}"
-                    if not TournamentLedgerEntry.objects.filter(reference=ledger_reference).exists():
-                        shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=submission.player)
-                        shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
-                        wallet_field = {"diamonds": "diamonds", "coins": "coins", "fan_tokens": "fan_tokens"}[reward_currency_name]
-                        setattr(shop_wallet, wallet_field, getattr(shop_wallet, wallet_field) + reward_quantity)
-                        shop_wallet.save(update_fields=("diamonds", "coins", "fan_tokens", "updated_at"))
-                        reward_currency = reward_currency_name
-                        TournamentLedgerEntry.objects.create(
-                            reference=ledger_reference,
-                            tournament=submission.tournament,
-                            player=submission.player,
-                            registration=submission.registration,
-                            entry_type=TournamentLedgerEntry.EntryType.REWARD,
-                            currency=reward_currency,
-                            quantity=reward_quantity,
-                            amount_inr=Decimal("0.00"),
-                            status=TournamentLedgerEntry.Status.COMPLETED,
-                            description=f"Dual-AI verified automatic reward: {reward_quantity} {reward_label} for {proposed} kills",
-                        )
-                    submission.approved_kills = proposed
-                    submission.proposed_reward = approved_reward
-                    submission.approved_reward = approved_reward
-                    submission.status = KillSubmission.Status.APPROVED
-                    submission.reviewed_at = timezone.now()
-                    submission.admin_notes = (
-                        "Automatically approved: website evidence checks passed, registered UID matched, "
-                        "and OpenAI plus configured open-source AI agreed at high confidence."
-                    )
-                    submission.save(update_fields=[
-                        "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
-                        "ai_review_notes", "approved_kills", "proposed_reward",
-                        "approved_reward", "status", "reviewed_at", "admin_notes",
-                    ])
-            reward_name = reward_for_tournament(submission.tournament, proposed_kills)[2]
-            messages.success(request, f"Dual AI agree hua: {proposed} kills verify hue aur {int(submission.approved_reward)} {reward_name} credit kiye gaye.")
+        submission.ai_proposed_kills = proposed
+        submission.ai_confidence = (result.get("confidence") or "")[:10]
+        submission.ai_uid_matches = result.get("uid_matches")
+        submission.ai_review_notes = (result.get("reason") or "")[:2000]
+        if not uid_ok:
+            submission.ai_review_notes += "\n\nADMIN REVIEW REQUIRED: UID mismatch or AI UID verification failed."
+        elif proposed is None or proposed < settings.MINIMUM_VERIFIED_KILLS:
+            submission.ai_review_notes += "\n\nADMIN REVIEW REQUIRED: AI could not verify the minimum kill count."
         else:
-            if not uid_ok:
-                issue = "UID mismatch: registered, submitted, aur AI UID match ko verify karein."
-            elif result["proposed_kills"] is None:
-                issue = "AI kills count confirm nahi kar saka; evidence admin ko manually check karna hoga."
-            elif result["confidence"] != "high" or not dual_agreement:
-                issue = "AI sources agree nahi hue, dual mode configured nahi hai, ya confidence high nahi hai. Manual admin review required."
-            elif proposed < settings.MINIMUM_VERIFIED_KILLS:
-                issue = f"Minimum {settings.MINIMUM_VERIFIED_KILLS} verified kills chahiye; admin evidence check kare."
-            else:
-                issue = "Website evidence validation complete nahi hui; admin evidence manually revise kare."
-            submission.ai_review_notes = (submission.ai_review_notes + "\\n\\nAUTOMATION CHECK: " + issue)[:2000]
-            submission.save(update_fields=[
-                "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
-                "ai_review_notes", "proposed_reward",
-            ])
-            messages.warning(request, "AI assessment complete, lekin auto-award ki shartein puri nahi hui. Mistake aur reason AI Assessment page par dekhein; Admin Review se manually revise karein.")
+            submission.ai_review_notes += "\n\nAI assessment is advisory. Admin must inspect evidence and approve before any wallet reward."
+        submission.save(update_fields=[
+            "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
+            "ai_review_notes", "proposed_reward",
+        ])
+        messages.info(request, "AI assessment update ho gaya. Admin approval se pehle koi Diamonds/Coins credit nahi honge.")
     except Exception as exc:
         submission.ai_review_notes = f"AI review failed ({exc.__class__.__name__}): {str(exc).strip()[:850]}"
         submission.save(update_fields=["ai_review_notes"])
         messages.error(request, f"AI review abhi fail hua: {str(exc).strip()[:250]}")
 
     return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
-
 
 @login_required
 @user_passes_test(lambda user: user.is_staff)
