@@ -638,7 +638,8 @@ def retry_ai_kill_review(request, submission_id):
             and result["uid_matches"] is True
         )
         eligible = (
-            dual_agreement
+            submission.tournament.mode == "BR"
+            and dual_agreement
             and uid_ok
             and proposed is not None
             and proposed >= settings.MINIMUM_VERIFIED_KILLS
