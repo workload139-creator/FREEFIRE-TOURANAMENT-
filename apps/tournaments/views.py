@@ -20,7 +20,7 @@ from .ai_review import AIReviewError, analyze_kill_evidence, fingerprint_evidenc
 from .registration_services import RegistrationError, create_pending_registration, assign_teams_for_tournament
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry
-from .kill_services import reward_for_tournament, finalize_dual_ai_reward
+from .kill_services import reward_for_tournament
 from .services import process_expired_ready_registrations, mark_not_playing_and_refund
 
 import qrcode
@@ -641,12 +641,19 @@ def retry_ai_kill_review(request, submission_id):
             "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
             "ai_review_notes", "proposed_reward", "ai_reviewer_reports",
         ])
-        submission.ai_reviewer_reports = result.get("reviewer_reports", {})
-        submission.save(update_fields=["ai_reviewer_reports"])
         messages.info(request, "Four AI review passes updated. This is only a reward proposal; Admin approval is required before credit.")
     except Exception as exc:
-        submission.ai_review_notes = f"AI review failed ({exc.__class__.__name__}): {str(exc).strip()[:850]}"
-        submission.save(update_fields=["ai_review_notes"])
+        submission.ai_reviewer_reports = {
+            key: {"name": label, "status": "BLOCKED", "proposed_kills": None, "confidence": "low", "reason": "Evidence integrity check failed or original upload fingerprint is missing; manual Admin Review required."}
+            for key, label in [
+                ("ff_arena_assessment_openai", "FF Arena AI Assessment · OpenAI"),
+                ("ff_arena_assessment_ollama", "FF Arena AI Assessment · Ollama Cloud"),
+                ("ff_arena_agent_openai", "FF Arena AI Agent Audit · OpenAI"),
+                ("ff_arena_agent_ollama", "FF Arena AI Agent Audit · Ollama Cloud"),
+            ]
+        }
+        submission.ai_review_notes = f"AI review blocked ({exc.__class__.__name__}): {str(exc).strip()[:850]}"
+        submission.save(update_fields=["ai_review_notes", "ai_reviewer_reports"])
         messages.error(request, f"AI review abhi fail hua: {str(exc).strip()[:250]}")
 
     return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
