@@ -341,7 +341,7 @@ def _shop_payment_details():
         or "6232481135@fam"
     )
     if not upi_id or "@" not in upi_id or any(char.isspace() for char in upi_id):
-        return {"configured": False, "upi_id": "", "upi_uri": "", "qr_data_uri": ""}
+        return {"configured": False, "upi_id": "", "payee_name": "", "upi_uri": "", "qr_data_uri": ""}
 
     upi_uri = "upi://pay?" + urlencode({"pa": upi_id, "cu": "INR"})
     import base64
