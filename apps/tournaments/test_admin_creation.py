@@ -25,7 +25,7 @@ class TournamentAdminCreationTests(TestCase):
         self.assertContains(response, 'type="datetime-local"')
         self.assertContains(response, 'value="upcoming" selected')
 
-    def test_admin_can_create_tournament_that_appears_on_public_list(self):
+    def test_admin_can_create_tournament_and_public_hub_shows_categories(self):
         start_time = timezone.localtime(
             timezone.now() + timedelta(days=1)
         ).strftime("%Y-%m-%dT%H:%M")
@@ -67,4 +67,6 @@ class TournamentAdminCreationTests(TestCase):
         )
 
         public_response = self.client.get(reverse("tournaments:list"))
-        self.assertContains(public_response, "Admin Created Test Tournament")
+        self.assertContains(public_response, "Battle Royale")
+        self.assertContains(public_response, "Girls vs Boys")
+        self.assertNotContains(public_response, "Admin Created Test Tournament")
