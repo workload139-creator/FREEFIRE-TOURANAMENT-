@@ -8,7 +8,7 @@
       <a class="button button-outline" href="{% url 'tournaments:admin_ai_assessments' %}">AI Assessment Queue</a>
       <a class="button button-outline" href="{% url 'tournaments:admin_ai_sources' %}">AI Sources / Diagnostics</a>
     </nav>
-    <p>Yahin evidence check, AI retry aur manual revision manage karein. Dono AI high-confidence par agree karein aur saare website checks pass hon to reward automatically credit ho sakta hai; Free Fan mein Fan Tokens, VS mein 2 Coins per kill, aur BR mein configured Coins/Diamonds milte hain.</p>
+    <p>Yahin evidence check, AI retry aur manual revision manage karein. Four independent AI review passes evidence ko cross-check karte hain; AI sirf reward propose karta hai aur final credit se pehle Admin approval mandatory hai; Free Fan mein Fan Tokens, VS mein 2 Coins per kill, aur BR mein configured Coins/Diamonds milte hain.</p>
     <p><strong>AI provider:</strong> {{ ai_provider }} · <strong>Model:</strong> {{ ai_model }}</p>
     <p><strong>OpenAI key configured:</strong> {{ ai_openai_configured|yesno:"Yes,No" }} · <strong>Compatible vision endpoint configured:</strong> {{ ai_compatible_configured|yesno:"Yes,No" }}</p>
     <p><strong>Reward rule:</strong> Minimum {{ minimum_verified_kills }} verified kills. Free Fan: har 2 approved kills = 1 Fan Token. VS: har verified kill = 2 Coins (dono teams). BR: configured Coins/Diamonds per kill. Rewards non-cash website currency hain.</p>
@@ -43,6 +43,16 @@
       <h3>2. AI assessment</h3>
       <p><strong>AI proposed kills:</strong> {% if submission.ai_proposed_kills != None %}{{ submission.ai_proposed_kills }}{% else %}Not available — run AI review or enter the verified count below{% endif %} · <strong>Admin-approved kills:</strong> {% if submission.approved_kills != None %}{{ submission.approved_kills }}{% else %}Not approved yet{% endif %} · <strong>Confidence:</strong> {{ submission.ai_confidence|default:"Unknown" }} · <strong>AI UID match:</strong> {{ submission.ai_uid_matches|yesno:"Yes,No,Unknown" }}</p>
       <p><strong>AI review notes/error:</strong><br>{{ submission.ai_review_notes|default:"AI has not returned a result yet." }}</p>
+      <h4>Four independent reviewer reports</h4>
+      {% for reviewer_key, report in submission.ai_reviewer_reports.items %}
+        <div style="padding:10px;margin:8px 0;border:1px solid var(--border-color, #777);border-radius:8px">
+          <strong>{{ report.name|default:reviewer_key }}</strong> — {{ report.status|default:"NOT RUN" }}<br>
+          Kills: {{ report.proposed_kills|default:"Not available" }} · UID: {{ report.observed_uid|default:"Unreadable" }} · Confidence: {{ report.confidence|default:"Unknown" }}<br>
+          UID match: {{ report.uid_matches|yesno:"Yes,No,Unknown" }} · Evidence complete: {{ report.evidence_complete|yesno:"Yes,No,Unknown" }}<br>
+          Reason: {{ report.reason|default:"No result" }}
+        </div>
+      {% empty %}<p>Four-reviewer audit not available yet. Run AI review or inspect manually.</p>{% endfor %}
+      <p><strong>Evidence fingerprint:</strong> {% if submission.evidence_sha256 %}Captured for uploaded originals{% else %}Missing — manual verification required{% endif %}. This detects post-upload file changes; it cannot prove an image/video was genuine before upload.</p>
       <p><strong>Suggested reward:</strong> {{ submission.proposed_reward|floatformat:0 }} {% if submission.tournament.is_free_fan_tournament %}Fan Tokens{% elif submission.tournament.is_diwali_offer or submission.tournament.mode == "VS" %}Coins{% else %}Diamonds{% endif %} (only if the evidence and UID are accepted; final count is set below).</p>
       <form method="post" action="{% url 'tournaments:retry_ai_kill_review' submission.id %}" style="margin-top:12px">
         {% csrf_token %}
