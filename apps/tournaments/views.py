@@ -64,6 +64,7 @@ def tournament_list(request):
             "br_tournaments": tournaments.filter(mode=Tournament.Mode.BR, is_free_fan_tournament=False, is_diwali_offer=False, is_unlimited_br=False).exclude(gender_category=Tournament.GenderCategory.GIRLS_VS_BOYS),
             "vs_tournaments": tournaments.filter(mode=Tournament.Mode.VS).exclude(gender_category=Tournament.GenderCategory.GIRLS_VS_BOYS),
             "unlimited_tournaments": tournaments.filter(is_unlimited_br=True, is_diwali_offer=False),
+            "diwali_tournaments": tournaments.filter(is_diwali_offer=True, mode=Tournament.Mode.BR, br_format=Tournament.BRFormat.SOLO),
             "girls_vs_boys_tournaments": tournaments.filter(gender_category=Tournament.GenderCategory.GIRLS_VS_BOYS),
         },
     )
