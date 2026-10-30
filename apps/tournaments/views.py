@@ -334,10 +334,28 @@ def admin_tournament_dashboard(request, tournament_id):
     kill_submissions = KillSubmission.objects.filter(
         tournament=tournament
     ).select_related("player", "registration").order_by("-submitted_at")
+    from apps.social.models import PlayerShopWallet
+    from apps.accounts.models import Wallet
+    player_ids = list(registrations.values_list("player_id", flat=True).distinct())
+    shop_wallets = {
+        wallet.user_id: wallet
+        for wallet in PlayerShopWallet.objects.filter(user_id__in=player_ids)
+    }
+    inr_wallets = {
+        wallet.user_id: wallet
+        for wallet in Wallet.objects.filter(user_id__in=player_ids)
+    }
+    for registration in registrations:
+        registration.shop_wallet = shop_wallets.get(registration.player_id)
+        registration.inr_wallet = inr_wallets.get(registration.player_id)
+    tournament_history = TournamentLedgerEntry.objects.filter(
+        tournament=tournament
+    ).select_related("player", "registration").order_by("-created_at")
     context = {
         "tournament": tournament,
         "registrations": registrations,
         "kill_submissions": kill_submissions,
+        "tournament_history": tournament_history,
         "pending_payments": registrations.filter(payment_verified=False, entry_fee_paid__gt=0),
         "refund_queue": registrations.filter(
             payment_verified=True,
