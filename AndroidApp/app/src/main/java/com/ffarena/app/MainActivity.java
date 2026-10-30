@@ -60,7 +60,7 @@ public class MainActivity extends Activity {
     private static final int REQUEST_FILE_CHOOSER = 7022;
     private ValueCallback<Uri[]> pendingFileCallback;
     private PermissionRequest pendingMicRequest;
-    private long pendingApkDownloadId = -1L;
+    private long pendingApkDownloadId = -1L;\n    private int pendingApkVersionCode = -1;\n    private String pendingApkFileName = "";
     private Uri pendingInstallUri;
     private DownloadManager apkDownloadManager;
     private BroadcastReceiver apkDownloadReceiver;
@@ -84,12 +84,12 @@ public class MainActivity extends Activity {
         new Thread(() -> {
             HttpURLConnection connection = null;
             try {
-                URL url = new URL("https://api.github.com/repos/workload139-creator/FREEFIRE-TOURANAMENT-/releases/tags/ff-arena-latest");
+                URL url = new URL("https://api.github.com/repos/workload139-creator/FREEFIRE-TOURANAMENT-/releases/tags/ff-arena-latest?cache=" + System.currentTimeMillis());
                 connection = (HttpURLConnection) url.openConnection();
                 connection.setRequestMethod("GET");
                 connection.setConnectTimeout(8000);
                 connection.setReadTimeout(8000);
-                connection.setRequestProperty("Accept", "application/vnd.github+json");
+                connection.setRequestProperty("Accept", "application/vnd.github+json");\n                connection.setRequestProperty("Cache-Control", "no-cache");
                 connection.setRequestProperty("X-GitHub-Api-Version", "2022-11-28");
                 int status = connection.getResponseCode();
                 if (status < 200 || status >= 300) return;
@@ -129,7 +129,7 @@ public class MainActivity extends Activity {
                             .setCancelable(true)
                             .setNegativeButton("Later", (dialog, which) -> dialog.dismiss())
                             .setPositiveButton("Download & install", (dialog, which) -> {
-                                enqueueApkDownload(downloadUrl);
+                                enqueueApkDownload(downloadUrl, latestVersion);
                             })
                             .show();
                 });
@@ -168,6 +168,32 @@ public class MainActivity extends Activity {
                         showUpdateError("The downloaded update file could not be opened. Please download it again.");
                         return;
                     }
+                    File downloadDirectory = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                    File apkFile = downloadDirectory == null ? null : new File(downloadDirectory, pendingApkFileName);
+                    if (apkFile == null || !apkFile.isFile() || apkFile.length() < 1024) {
+                        showUpdateError("The update file is incomplete. Please download it again.");
+                        return;
+                    }
+                    android.content.pm.PackageInfo archive = getPackageManager().getPackageArchiveInfo(
+                            apkFile.getAbsolutePath(), PackageManager.GET_SIGNATURES);
+                    if (archive == null || !getPackageName().equals(archive.packageName)
+                            || archive.versionCode < pendingApkVersionCode
+                            || archive.versionCode <= BuildConfig.VERSION_CODE) {
+                        showUpdateError("The downloaded APK is not a valid newer FF Arena update. Please try again later.");
+                        return;
+                    }
+                    try {
+                        android.content.pm.PackageInfo installed = getPackageManager().getPackageInfo(
+                                getPackageName(), PackageManager.GET_SIGNATURES);
+                        if (archive.signatures != null && installed.signatures != null
+                                && archive.signatures.length > 0 && installed.signatures.length > 0
+                                && !archive.signatures[0].equals(installed.signatures[0])) {
+                            showUpdateError("This phone has an older test-signed FF Arena APK. Uninstall that test version once, then install the official release APK. Your online FF Arena account and tournament data will remain safe; you may need to log in again.");
+                            return;
+                        }
+                    } catch (Exception signatureCheckError) {
+                        // Android's installer performs the final signature validation.
+                    }
                     installDownloadedApk(apkUri);
                 } catch (Exception exception) {
                     pendingApkDownloadId = -1L;
@@ -183,7 +209,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void enqueueApkDownload(String downloadUrl) {
+    private void enqueueApkDownload(String downloadUrl, int versionCode) {
         try {
             if (apkDownloadManager == null) {
                 apkDownloadManager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
@@ -220,11 +246,7 @@ public class MainActivity extends Activity {
             return;
         }
         try {
-            Intent installIntent = new Intent(Intent.ACTION_VIEW);
-            installIntent.setDataAndType(apkUri, "application/vnd.android.package-archive");
-            installIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            installIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(installIntent);
+            Intent installIntent = new Intent(Intent.ACTION_INSTALL_PACKAGE);\n            installIntent.setData(apkUri);\n            installIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);\n            installIntent.putExtra(Intent.EXTRA_RETURN_RESULT, true);\n            startActivityForResult(installIntent, 7023);
         } catch (Exception exception) {
             showUpdateError("Android could not open the installer. The downloaded update is still available in FF Arena's app downloads.");
         }
@@ -309,13 +331,7 @@ public class MainActivity extends Activity {
 
     private void selectTab(String tab) {
         currentTab = tab;
-        if (featureWebView != null) {
-            featureWebView.stopLoading();
-            featureWebView.destroy();
-            featureWebView = null;
-        }
-        // Open the game selection page directly; it contains the game title,
-        // Create Room and Join Room options without an extra intermediate screen.
+        // Reuse the WebView between tabs to retain its page cache and cookies.
         if ("Voice Party".equals(tab)) {
             openFeature("/chat/party/");
             return;
@@ -722,54 +738,58 @@ public class MainActivity extends Activity {
                 featureWebView.reload();
                 return;
             }
-            if (featureWebView != null) {
-                featureWebView.stopLoading();
-                featureWebView.destroy();
-                featureWebView = null;
-            }
             showNativeShell();
         });
         page.addView(back, new LinearLayout.LayoutParams(-1, dp(48)));
-        featureWebView = new WebView(this);
-        WebSettings settings = featureWebView.getSettings();
-        // Identify the installed app's WebView so website-only download links can be hidden.
-        String existingUserAgent = settings.getUserAgentString();
-        settings.setUserAgentString(existingUserAgent + " FFArenaAndroidApp");
+        if (featureWebView == null) {
+            featureWebView = createFeatureWebView();
+        } else if (featureWebView.getParent() instanceof ViewGroup) {
+            ((ViewGroup) featureWebView.getParent()).removeView(featureWebView);
+        }
+        page.addView(featureWebView, new LinearLayout.LayoutParams(-1, 0, 1));
+        root.addView(page, new LinearLayout.LayoutParams(-1, -1));
+        setContentView(root);
+        featureWebView.loadUrl(url);
+    }
+
+    private WebView createFeatureWebView() {
+        WebView webView = new WebView(this);
+        WebSettings settings = webView.getSettings();
+        settings.setUserAgentString(settings.getUserAgentString() + " FFArenaAndroidApp");
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
-        // WebRTC microphone capture in Android WebView needs native audio routing permission.
         settings.setJavaScriptCanOpenWindowsAutomatically(true);
         settings.setSupportMultipleWindows(false);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setDatabaseEnabled(true);
         settings.setAllowFileAccess(false);
         settings.setSupportZoom(false);
+        settings.setLoadsImagesAutomatically(true);
         CookieManager.getInstance().setAcceptCookie(true);
-        CookieManager.getInstance().setAcceptThirdPartyCookies(featureWebView, true);
-        featureWebView.addJavascriptInterface(new ShareBridge(), "FFArenaShare");
-        featureWebView.setWebViewClient(new WebViewClient() {
+        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
+        webView.addJavascriptInterface(new ShareBridge(), "FFArenaShare");
+        webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 return handleWebViewNavigation(view, request.getUrl().toString());
             }
-
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
                 return handleWebViewNavigation(view, url);
             }
         });
-        featureWebView.setWebChromeClient(new WebChromeClient() {
+        webView.setWebChromeClient(new WebChromeClient() {
             @Override
-            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback,
-                                             FileChooserParams fileChooserParams) {
+            public boolean onShowFileChooser(WebView target, ValueCallback<Uri[]> callback,
+                                             FileChooserParams params) {
                 if (pendingFileCallback != null) {
                     pendingFileCallback.onReceiveValue(null);
                     pendingFileCallback = null;
                 }
-                pendingFileCallback = filePathCallback;
+                pendingFileCallback = callback;
                 try {
-                    Intent chooserIntent = fileChooserParams.createIntent();
+                    Intent chooserIntent = params.createIntent();
                     if (chooserIntent.getType() == null || chooserIntent.getType().isEmpty()) {
                         chooserIntent.setType("image/*");
                     }
@@ -778,11 +798,10 @@ public class MainActivity extends Activity {
                     return true;
                 } catch (Exception exception) {
                     pendingFileCallback = null;
-                    filePathCallback.onReceiveValue(null);
+                    callback.onReceiveValue(null);
                     return false;
                 }
             }
-
             @Override
             public void onPermissionRequest(PermissionRequest request) {
                 runOnUiThread(() -> {
@@ -801,7 +820,6 @@ public class MainActivity extends Activity {
                     if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                         request.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
                     } else {
-                        // Keep the WebView request alive until Android's runtime permission dialog returns.
                         if (pendingMicRequest != null && pendingMicRequest != request) {
                             try { pendingMicRequest.deny(); } catch (Exception ignored) {}
                         }
@@ -810,15 +828,12 @@ public class MainActivity extends Activity {
                     }
                 });
             }
-
             @Override
             public void onPermissionRequestCanceled(PermissionRequest request) {
                 if (pendingMicRequest == request) pendingMicRequest = null;
             }
         });
-        featureWebView.loadUrl(url);
-        page.addView(featureWebView, new LinearLayout.LayoutParams(-1, 0, 1));
-        root.addView(page, new LinearLayout.LayoutParams(-1, -1));
+        return webView;
     }
 
     private boolean handleWebViewNavigation(WebView view, String url) {
@@ -900,6 +915,12 @@ public class MainActivity extends Activity {
             Uri[] results = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
             pendingFileCallback.onReceiveValue(results);
             pendingFileCallback = null;
+        } else if (requestCode == 7023) {
+            if (resultCode == RESULT_OK) {
+                Toast.makeText(this, "FF Arena update installed. Reopen the app.", Toast.LENGTH_LONG).show();
+            } else {
+                Toast.makeText(this, "Installer closed. If the app did not update, approve Android's install prompt and try again.", Toast.LENGTH_LONG).show();
+            }
         }
     }
 
