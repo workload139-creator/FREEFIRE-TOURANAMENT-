@@ -20,7 +20,7 @@
    <button type="button" class="btn-primary" id="saveRoomDetails">☆ Save Room Details</button>
    <p id="roomSaveStatus" class="help-text" aria-live="polite"></p>
   </section>
-  <button type="button" class="btn-primary" id="joinTournamentButton" hidden style="display:block;width:100%;margin:14px 0;padding:16px;font-size:18px">🚀 JOIN TOURNAMENT</button>
+  <button type="button" class="btn-primary" id="joinTournamentButton" hidden style="width:100%;margin:14px 0;padding:16px;font-size:18px">🚀 JOIN TOURNAMENT</button>
 
   <section id="qrJoinStep" hidden style="padding:18px;margin:18px 0;border:1px solid var(--border-color, #555);border-radius:14px">
    <h3>2. Join Tournament</h3>
@@ -34,6 +34,7 @@
    {% else %}
     <p class="help-text">Admin ne is tournament ka QR upload nahi kiya. ID aur Password se join karein.</p>
    {% endif %}
+   <p id="roomActionStatus" class="help-text" aria-live="polite"></p>
    <button type="button" class="button button-outline" id="qrFallbackButton">QR se join nahi hua? Room ID & Password use karein</button>
   </section>
 
@@ -87,6 +88,9 @@
    const showButton = document.getElementById("showRoomDetails");
    const showMessage = document.getElementById("showDetailsMessage");
    const reveal = document.getElementById("roomDetailsReveal");
+   const roomActionStatus = document.getElementById("roomActionStatus");
+   let qrFlowOpen = false;
+   let passwordFlowOpen = false;
 
    function isSaved() {
      try { return localStorage.getItem(savedKey) === "1"; } catch (error) { return false; }
@@ -101,9 +105,15 @@
      const saved = isSaved();
      saveStep.hidden = saved;
      joinButton.hidden = !saved;
-     qrJoinStep.hidden = true;
-     actions.hidden = true;
-     if (!saved) return;
+     qrJoinStep.hidden = !qrFlowOpen;
+     actions.hidden = !passwordFlowOpen;
+     if (!saved) {
+       qrFlowOpen = false;
+       passwordFlowOpen = false;
+       qrJoinStep.hidden = true;
+       actions.hidden = true;
+       return;
+     }
 
      const copiedAt = firstCopiedAt();
      if (!copiedAt) {
@@ -122,11 +132,13 @@
    }
 
    joinButton.addEventListener("click", function () {
-     qrJoinStep.hidden = false;
+     qrFlowOpen = true;
+     refreshRoomFlow();
      qrJoinStep.scrollIntoView({behavior: "smooth", block: "start"});
    });
    qrFallbackButton.addEventListener("click", function () {
-     actions.hidden = false;
+     passwordFlowOpen = true;
+     refreshRoomFlow();
      actions.scrollIntoView({behavior: "smooth", block: "start"});
    });
 
@@ -158,9 +170,11 @@
          if (!localStorage.getItem(copiedAtKey)) localStorage.setItem(copiedAtKey, String(Date.now()));
        } catch (storageError) {}
        saveStatus.textContent = label + " clipboard mein copy ho gaya. Free Fire MAX mein sahi field par Paste karein.";
+       roomActionStatus.textContent = saveStatus.textContent;
        refreshRoomFlow();
      } catch (error) {
        saveStatus.textContent = "Copy nahi ho saka. Dobara try karein ya manually copy karein.";
+       roomActionStatus.textContent = saveStatus.textContent;
      }
    }
 
