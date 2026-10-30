@@ -2,15 +2,22 @@ package com.ffarena.app;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.DownloadManager;
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.IntentFilter;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Build;
+import android.os.Environment;
 import android.view.Gravity;
+import android.provider.Settings;
 import android.view.View;
 import android.webkit.CookieManager;
 import android.webkit.WebChromeClient;
@@ -25,9 +32,12 @@ import android.widget.LinearLayout;
 import android.widget.ImageView;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.BufferedReader;
+import java.io.File;
+import android.database.Cursor;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -49,6 +59,10 @@ public class MainActivity extends Activity {
     private static final int REQUEST_FILE_CHOOSER = 7022;
     private ValueCallback<Uri[]> pendingFileCallback;
     private PermissionRequest pendingMicRequest;
+    private long pendingApkDownloadId = -1L;
+    private Uri pendingInstallUri;
+    private DownloadManager apkDownloadManager;
+    private BroadcastReceiver apkDownloadReceiver;
 
     @Override
     public void onCreate(Bundle state) {
@@ -61,6 +75,7 @@ public class MainActivity extends Activity {
         root.setBackgroundColor(BG);
         setContentView(root);
         openFeature("/");
+        registerApkDownloadReceiver();
         checkForAppUpdate();
     }
 
@@ -112,13 +127,8 @@ public class MainActivity extends Activity {
                                     + "). Update the app to get the latest features.")
                             .setCancelable(true)
                             .setNegativeButton("Later", (dialog, which) -> dialog.dismiss())
-                            .setPositiveButton("Download update", (dialog, which) -> {
-                                try {
-                                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl));
-                                    startActivity(intent);
-                                } catch (Exception ignored) {
-                                    // The player can still use the website inside the app.
-                                }
+                            .setPositiveButton("Download & install", (dialog, which) -> {
+                                enqueueApkDownload(downloadUrl);
                             })
                             .show();
                 });
@@ -128,6 +138,117 @@ public class MainActivity extends Activity {
                 if (connection != null) connection.disconnect();
             }
         }).start();
+    }
+
+    private void registerApkDownloadReceiver() {
+        apkDownloadManager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+        apkDownloadReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (intent == null || !DownloadManager.ACTION_DOWNLOAD_COMPLETE.equals(intent.getAction())) return;
+                long completedId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L);
+                if (completedId != pendingApkDownloadId || apkDownloadManager == null) return;
+
+                DownloadManager.Query query = new DownloadManager.Query().setFilterById(completedId);
+                try (Cursor cursor = apkDownloadManager.query(query)) {
+                    if (cursor == null || !cursor.moveToFirst()) {
+                        showUpdateError("The update download could not be checked. Please try again.");
+                        return;
+                    }
+                    int statusColumn = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
+                    int status = statusColumn >= 0 ? cursor.getInt(statusColumn) : -1;
+                    pendingApkDownloadId = -1L;
+                    if (status != DownloadManager.STATUS_SUCCESSFUL) {
+                        showUpdateError("The update download failed. Check your internet connection and try again.");
+                        return;
+                    }
+                    Uri apkUri = apkDownloadManager.getUriForDownloadedFile(completedId);
+                    if (apkUri == null) {
+                        showUpdateError("The downloaded update file could not be opened. Please download it again.");
+                        return;
+                    }
+                    installDownloadedApk(apkUri);
+                } catch (Exception exception) {
+                    pendingApkDownloadId = -1L;
+                    showUpdateError("Could not prepare the update installer. Please try again.");
+                }
+            }
+        };
+        IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(apkDownloadReceiver, filter, Context.RECEIVER_EXPORTED);
+        } else {
+            registerReceiver(apkDownloadReceiver, filter);
+        }
+    }
+
+    private void enqueueApkDownload(String downloadUrl) {
+        try {
+            if (apkDownloadManager == null) {
+                apkDownloadManager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+            }
+            if (apkDownloadManager == null) {
+                showUpdateError("Android's download service is unavailable on this device.");
+                return;
+            }
+            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(downloadUrl));
+            request.setTitle("FF Arena update");
+            request.setDescription("Downloading the latest FF Arena app version");
+            request.setMimeType("application/vnd.android.package-archive");
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            request.setAllowedOverMetered(true);
+            request.setAllowedOverRoaming(false);
+            request.setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, "ff-arena-update.apk");
+            pendingApkDownloadId = apkDownloadManager.enqueue(request);
+            Toast.makeText(this, "Update download started. You can continue using FF Arena.", Toast.LENGTH_LONG).show();
+        } catch (Exception exception) {
+            showUpdateError("Could not start the update download. Please try again.");
+        }
+    }
+
+    private void installDownloadedApk(Uri apkUri) {
+        if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
+            pendingInstallUri = apkUri;
+            try {
+                Intent settingsIntent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:" + getPackageName()));
+                startActivity(settingsIntent);
+            } catch (Exception exception) {
+                showUpdateError("Allow FF Arena to install updates from this source in Android settings, then try again.");
+            }
+            return;
+        }
+        try {
+            Intent installIntent = new Intent(Intent.ACTION_VIEW);
+            installIntent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+            installIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            installIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(installIntent);
+        } catch (Exception exception) {
+            showUpdateError("Android could not open the installer. The downloaded update is still available in FF Arena's app downloads.");
+        }
+    }
+
+    private void showUpdateError(String message) {
+        runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) return;
+            new AlertDialog.Builder(MainActivity.this)
+                    .setTitle("FF Arena update")
+                    .setMessage(message)
+                    .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
+                    .show();
+        });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (pendingInstallUri != null
+                && (Build.VERSION.SDK_INT < 26 || getPackageManager().canRequestPackageInstalls())) {
+            Uri uri = pendingInstallUri;
+            pendingInstallUri = null;
+            installDownloadedApk(uri);
+        }
     }
 
     private void showNativeShell() {
@@ -756,6 +877,10 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (apkDownloadReceiver != null) {
+            try { unregisterReceiver(apkDownloadReceiver); } catch (IllegalArgumentException ignored) {}
+            apkDownloadReceiver = null;
+        }
         if (featureWebView != null) {
             featureWebView.stopLoading();
             featureWebView.destroy();
