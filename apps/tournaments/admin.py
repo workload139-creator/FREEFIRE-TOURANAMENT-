@@ -432,6 +432,19 @@ class TournamentAdmin(admin.ModelAdmin):
         if change and obj.pk:
             previous_status = Tournament.objects.filter(pk=obj.pk).values_list("status", flat=True).first()
 
+        # All newly-created paid BR events belong to the unlimited BR series and its public listing.
+        # Free Fan events remain separate; CS/VS events are not changed by this rule.
+        if not change and obj.mode == Tournament.Mode.BR and not obj.is_free_fan_tournament:
+            obj.is_unlimited_br = True
+            obj.auto_start_at_capacity = True
+            capacities = {
+                Tournament.BRFormat.SOLO: 49,
+                Tournament.BRFormat.DUO: 48,
+                Tournament.BRFormat.SQUAD: 48,
+            }
+            obj.max_players = capacities.get(obj.br_format or Tournament.BRFormat.SOLO, 49)
+            obj.br_format = obj.br_format or Tournament.BRFormat.SOLO
+
         was_live = previous_status == Tournament.Status.LIVE
         super().save_model(request, obj, form, change)
 
