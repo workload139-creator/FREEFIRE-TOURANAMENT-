@@ -653,22 +653,16 @@ def retry_ai_kill_review(request, submission_id):
                 ).get(pk=submission.pk)
                 if submission.status == KillSubmission.Status.PENDING:
                     from apps.social.models import PlayerShopWallet
-                    is_free = submission.tournament.is_free_fan_tournament
-                    reward_quantity = proposed // 2 if is_free else int(Decimal(proposed) * Decimal(str(settings.DIAMONDS_PER_APPROVED_KILL)))
+                    reward_currency_name, reward_quantity, reward_label = reward_for_tournament(submission.tournament, proposed)
                     approved_reward = Decimal(reward_quantity)
                     ledger_reference = f"KILL-REWARD-{submission.pk}"
                     if not TournamentLedgerEntry.objects.filter(reference=ledger_reference).exists():
                         shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=submission.player)
                         shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
-                        if is_free:
-                            shop_wallet.fan_tokens += reward_quantity
-                            reward_currency = TournamentLedgerEntry.Currency.FAN_TOKENS
-                            reward_label = "Fan Tokens"
-                        else:
-                            shop_wallet.diamonds += reward_quantity
-                            reward_currency = TournamentLedgerEntry.Currency.DIAMONDS
-                            reward_label = "Diamonds"
-                        shop_wallet.save(update_fields=("diamonds", "fan_tokens", "updated_at"))
+                        wallet_field = {"diamonds": "diamonds", "coins": "coins", "fan_tokens": "fan_tokens"}[reward_currency_name]
+                        setattr(shop_wallet, wallet_field, getattr(shop_wallet, wallet_field) + reward_quantity)
+                        shop_wallet.save(update_fields=("diamonds", "coins", "fan_tokens", "updated_at"))
+                        reward_currency = reward_currency_name
                         TournamentLedgerEntry.objects.create(
                             reference=ledger_reference,
                             tournament=submission.tournament,
@@ -765,12 +759,11 @@ def review_kill_submission(request, submission_id):
             return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
 
         submission.approved_kills = approved_kills
-        reward_per_kill = Decimal("0.5") if submission.tournament.is_free_fan_tournament else Decimal(str(settings.DIAMONDS_PER_APPROVED_KILL))
-        if approved_kills >= settings.MINIMUM_VERIFIED_KILLS:
-            submission.proposed_reward = Decimal(approved_kills) * reward_per_kill
-        else:
-            submission.proposed_reward = Decimal("0.00")
-        submission.approved_reward = submission.proposed_reward
+        reward_currency_name, reward_quantity, reward_name = reward_for_tournament(submission.tournament, approved_kills)
+        if approved_kills < settings.MINIMUM_VERIFIED_KILLS:
+            reward_quantity = 0
+        submission.proposed_reward = Decimal(reward_quantity)
+        submission.approved_reward = Decimal(reward_quantity)
         submission.admin_notes = notes
         submission.reviewed_at = timezone.now()
         submission.status = KillSubmission.Status.APPROVED
@@ -779,41 +772,24 @@ def review_kill_submission(request, submission_id):
             "admin_notes", "reviewed_at", "status",
         ])
 
-        # Credit non-cash tournament currency exactly once after admin confirmation.
-        if submission.approved_reward > 0:
+        if reward_quantity > 0:
             from apps.social.models import PlayerShopWallet
             ledger_reference = f"KILL-REWARD-{submission.pk}"
             if not TournamentLedgerEntry.objects.filter(reference=ledger_reference).exists():
                 shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=submission.player)
                 shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
-                if submission.tournament.is_free_fan_tournament:
-                    reward_quantity = approved_kills // 2
-                    reward_currency = TournamentLedgerEntry.Currency.FAN_TOKENS
-                    reward_label = "Fan Tokens"
-                    shop_wallet.fan_tokens += reward_quantity
-                else:
-                    reward_quantity = int(submission.approved_reward)
-                    reward_currency = TournamentLedgerEntry.Currency.DIAMONDS
-                    reward_label = "Diamonds"
-                    shop_wallet.diamonds += reward_quantity
-                shop_wallet.save(update_fields=("diamonds", "fan_tokens", "updated_at"))
-                if reward_quantity > 0:
-                    TournamentLedgerEntry.objects.create(
-                        reference=ledger_reference,
-                        tournament=submission.tournament,
-                        player=submission.player,
-                        registration=submission.registration,
-                        entry_type=TournamentLedgerEntry.EntryType.REWARD,
-                        currency=reward_currency,
-                        quantity=reward_quantity,
-                        amount_inr=Decimal("0.00"),
-                        status=TournamentLedgerEntry.Status.COMPLETED,
-                        description=f"Admin-confirmed {reward_label} award for {approved_kills} verified kills",
-                    )
-                    submission.approved_reward = Decimal(reward_quantity)
-                    submission.save(update_fields=["approved_reward"])
+                wallet_field = {"diamonds": "diamonds", "coins": "coins", "fan_tokens": "fan_tokens"}[reward_currency_name]
+                setattr(shop_wallet, wallet_field, getattr(shop_wallet, wallet_field) + reward_quantity)
+                shop_wallet.save(update_fields=("diamonds", "coins", "fan_tokens", "updated_at"))
+                TournamentLedgerEntry.objects.create(
+                    reference=ledger_reference, tournament=submission.tournament,
+                    player=submission.player, registration=submission.registration,
+                    entry_type=TournamentLedgerEntry.EntryType.REWARD,
+                    currency=reward_currency_name, quantity=reward_quantity,
+                    amount_inr=Decimal("0.00"), status=TournamentLedgerEntry.Status.COMPLETED,
+                    description=f"Admin-confirmed {reward_name} award for {approved_kills} verified kills",
+                )
 
-    reward_name = "Fan Tokens" if submission.tournament.is_free_fan_tournament else "Diamonds"
     messages.success(
         request,
         f"Admin confirmation complete: {approved_kills} kills approved; {int(submission.approved_reward)} {reward_name} credited to the player shop wallet. These are non-cash currencies.",
