@@ -25,7 +25,7 @@ Set secrets in Render Dashboard → your web service → Environment; never comm
 - Permanent player photos, UPI QR images and match evidence: set `CLOUDINARY_URL` from your Cloudinary Console. Without it, Render local media is temporary; new uploads will not be durable.
 - Email OTP/password reset: `BREVO_API_KEY` and `DEFAULT_FROM_EMAIL` (the sender must be verified in Brevo). SMTP fallback uses `EMAIL_HOST_USER` and `EMAIL_HOST_PASSWORD`.
 - Tournament entry UPI: `FF_ARENA_UPI_ID` and optional `FF_ARENA_UPI_NAME`. The registration page shows an amount-specific QR and an “Open UPI app” link, then asks for the player's Profile UID, Free Fire UID and UTR. Registration remains pending until admin checks the actual incoming UPI/bank statement and verifies it.
-- AI evidence proposal: default provider uses `OPENAI_API_KEY` and `OPENAI_KILL_REVIEW_MODEL`. To use an OpenAI-compatible vision endpoint instead, set `KILL_REVIEW_PROVIDER=compatible`, `KILL_REVIEW_BASE_URL`, `KILL_REVIEW_API_KEY`, and `OPENAI_KILL_REVIEW_MODEL`. Keep all keys in Render Environment, never in GitHub. A Render service cannot reach your PC's `localhost`; a PC-hosted model needs a secure, reachable endpoint or tunnel.
+- Dual AI evidence review: set `OPENAI_API_KEY`, `OPENAI_KILL_REVIEW_MODEL`, `KILL_REVIEW_PROVIDER=dual`, `KILL_REVIEW_BASE_URL`, `KILL_REVIEW_API_KEY`, and `OLLAMA_KILL_REVIEW_MODEL`. The secondary endpoint must support image inputs and be reachable from Render. If either reviewer fails, the evidence goes to Admin Review. Keep all keys in Render Environment, never in GitHub.
 
 ## Local setup (Windows / PowerShell)
 
@@ -103,7 +103,7 @@ Set `FF_ARENA_UPI_ID` in the Render environment to the UPI ID owned by the recei
 
 The automatic checkout route is `/accounts/wallet/deposit/automatic/`. It creates a server-side Cashfree order, opens the existing secure checkout template, and credits the wallet only after the server verifies the order and successful payment. The browser redirect by itself never credits a wallet.
 
-For sandbox testing, add these Render Environment variables (do not commit values):
+If `CASHFREE_CLIENT_ID` or `CASHFREE_CLIENT_SECRET` is blank, the automatic deposit gateway intentionally remains unavailable and the deposit page displays a setup message. I cannot create or retrieve Cashfree credentials from source code. For sandbox testing, add these Render Environment variables (do not commit values):
 - `CASHFREE_CLIENT_ID` — Cashfree sandbox App ID
 - `CASHFREE_CLIENT_SECRET` — Cashfree sandbox secret
 - `CASHFREE_MODE=sandbox`
