@@ -808,7 +808,9 @@ def review_kill_submission(request, submission_id):
             messages.error(request, "Approved kills 0 se 99 ke beech hone chahiye.")
             return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
         if (
-            submission.free_fire_uid != submission.registered_uid
+            submission.registration.status != Registration.Status.READY
+            or submission.registration.refund_processed
+            or submission.free_fire_uid != submission.registered_uid
             or submission.registered_uid != submission.registration.free_fire_uid
             or str(getattr(submission.player, "free_fire_uid", "") or "").strip() != submission.registration.free_fire_uid
         ):
@@ -868,6 +870,8 @@ def admin_kill_batch_review(request):
                     continue
                 if (
                     not submission.registration.payment_verified
+                    or submission.registration.status != Registration.Status.READY
+                    or submission.registration.refund_processed
                     or submission.free_fire_uid != submission.registered_uid
                     or submission.registered_uid != submission.registration.free_fire_uid
                     or str(getattr(submission.player, "free_fire_uid", "") or "").strip() != submission.registration.free_fire_uid
