@@ -29,21 +29,11 @@
     </div>
   </section>
 
-  <section class="mode-section" id="br-tournaments">
-    <div class="mode-heading"><span class="mode-label">01 / SURVIVAL MODE</span><h2>Battle Royale</h2><p>Solo survival, kill-based results aur BR leaderboard.</p></div>
-    <div class="tournament-grid">
-    {% for tournament in br_tournaments %}
-      {% include "tournaments/_tournament_card.html" with tournament=tournament %}
-    {% empty %}<article class="tournament-empty"><span>🔥</span><h3>BR arena is waiting</h3><p>Naye Battle Royale events yahan show honge.</p></article>{% endfor %}
-    </div>
-  </section>
-
-  <section class="mode-section" id="cs-tournaments">
-    <div class="mode-heading"><span class="mode-label">02 / SQUAD COMBAT</span><h2>Clash Squad <span class="cs-title">CS</span></h2><p>1v1, 2v2, 3v3 aur 4v4 — har format ki apni registration aur leaderboard.</p></div>
-    <div class="tournament-grid">
-    {% for tournament in vs_tournaments %}
-      {% include "tournaments/_tournament_card.html" with tournament=tournament %}
-    {% empty %}<article class="tournament-empty"><span>⚔️</span><h3>Squad up, champion</h3><p>Naye Clash Squad events yahan show honge.</p></article>{% endfor %}
+  <section class="mode-section mode-directory" id="game-modes">
+    <div class="mode-heading"><span class="mode-label">CHOOSE YOUR BATTLE</span><h2>Game Modes</h2><p>Battle Royale aur Clash Squad ke tournaments ab apne alag pages par milenge. Har format ka registration, player list aur leaderboard wahi par dekhein.</p></div>
+    <div class="mode-directory-grid">
+      <a class="mode-directory-card br-directory" href="{% url 'tournaments:battle_royale_list' %}"><span>🔥 SURVIVAL MODE</span><strong>Battle Royale</strong><small>Solo · Duo · Squad</small><b>Open BR Arena →</b></a>
+      <a class="mode-directory-card cs-directory" href="{% url 'tournaments:clash_squad_list' %}"><span>⚔️ SQUAD COMBAT</span><strong>Clash Squad</strong><small>1v1 · 2v2 · 3v3 · 4v4</small><b>Open CS Arena →</b></a>
     </div>
   </section>
 
@@ -78,6 +68,7 @@
 .arena-mode-nav a{padding:10px 15px;border:1px solid #ffffff22;border-radius:999px;background:#0b141e;color:#f5f7ff;text-decoration:none;font-weight:800;font-size:13px}
 .arena-mode-nav a:hover{border-color:#55ffc0;color:#55ffc0;transform:translateY(-2px)}
 .mode-section{margin:44px 0;scroll-margin-top:100px}.free-fan-section{padding:22px;border:1px solid #e9a8ff44;border-radius:24px;background:radial-gradient(ellipse at 10% 10%,#f48dff18,transparent 45%),#160d1c}.free-fan-section .mode-label{color:#f0a6ff}.free-fan-empty{border-color:#e9a8ff44}.mode-section{margin:44px 0;scroll-margin-top:100px}.unlimited-section{padding:22px;border:1px solid #55ffc044;border-radius:24px;background:radial-gradient(ellipse at 10% 10%,#28ff9a12,transparent 45%),#07120f}.unlimited-section .mode-label{color:#58ffb4}.unlimited-empty{border-color:#55ffc044}
+.mode-directory-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:18px}.mode-directory-card{display:flex;flex-direction:column;gap:12px;min-height:190px;padding:25px;border:1px solid #ffffff25;border-radius:20px;background:linear-gradient(135deg,#182316,#09130f);color:#f7fff9;text-decoration:none;transition:transform .2s,border-color .2s}.mode-directory-card:hover{transform:translateY(-4px);border-color:#55ffc0}.mode-directory-card span{font-size:11px;font-weight:950;letter-spacing:2px;color:#8bffc5}.mode-directory-card strong{font-size:30px}.mode-directory-card small{color:#bdc9d5;font-size:14px}.mode-directory-card b{margin-top:auto;color:#65ffc0}.cs-directory{background:linear-gradient(135deg,#211638,#100d1c);border-color:#a984ff55}.cs-directory span,.cs-directory b{color:#d4b9ff}
 .mode-heading{margin-bottom:20px}.mode-heading h2{font-size:clamp(27px,4vw,40px);margin:8px 0}.mode-heading p{color:#afbdce;max-width:760px}.mode-label{color:#ffb45c;font-size:11px;font-weight:950;letter-spacing:2px}.cs-title{color:#c4a3ff}
 .tournament-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,285px),1fr));gap:20px}
 .tournament-card{padding:0 0 22px!important;border:1px solid #ffffff18!important;border-radius:18px!important;background:linear-gradient(145deg,#111e2b,#070d15)!important;color:#f8faff!important;overflow:hidden;box-shadow:0 18px 45px #0005;transition:transform .2s,border-color .2s}
