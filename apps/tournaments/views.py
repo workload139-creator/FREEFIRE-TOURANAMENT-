@@ -112,6 +112,8 @@ def tournament_detail(request, tournament_id):
 
 def build_entry_payment_uri(tournament):
     """Build a UPI deep link only when the configured receiving UPI ID exists."""
+    if getattr(tournament, "is_diwali_offer", False):
+        return ""  # Diwali offer accepts exactly one Diamond, never UPI/INR.
     if tournament.entry_fee <= Decimal("0.00"):
         return ""
     upi_id = os.getenv("FF_ARENA_UPI_ID", "").strip()
