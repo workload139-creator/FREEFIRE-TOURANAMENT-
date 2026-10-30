@@ -732,6 +732,18 @@ def mark_manual_upi_refunds_paid(modeladmin, request, queryset):
         modeladmin.message_user(request, f"{skipped} refund(s) skipped: verify payment/status, enter unique real UTR, and check Admin Wallet ledger balance.", messages.WARNING)
 
 
+@admin.register(UnlimitedTournament)
+class UnlimitedTournamentAdmin(TournamentAdmin):
+    """Dedicated admin list for paid BR Solo/Duo/Squad unlimited events."""
+
+    def get_queryset(self, request):
+        return super(TournamentAdmin, self).get_queryset(request).filter(
+            is_unlimited_br=True,
+            is_free_fan_tournament=False,
+            mode=Tournament.Mode.BR,
+        )
+
+
 @admin.register(FreeFanTournament)
 class FreeFanTournamentAdmin(admin.ModelAdmin):
     """Dedicated admin list for the existing Free Fan Tournament proxy."""
