@@ -290,7 +290,7 @@ def award_br_winner_team(modeladmin, request, queryset):
                 skipped += 1
                 continue
             uids = []
-            for raw in (tournament.winner_team_uids or "").replace(",", "\\n").splitlines():
+            for raw in (tournament.winner_team_uids or "").replace(",", "\n").splitlines():
                 uid = raw.strip()
                 if uid and uid not in uids:
                     uids.append(uid)
