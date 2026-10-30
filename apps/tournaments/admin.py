@@ -17,9 +17,6 @@ from apps.accounts.models import (
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry, UnlimitedTournament, FreeFanTournament
 
-# Keep the internal proxy name for compatibility, but show a simple paid BR admin menu.
-UnlimitedTournament._meta.verbose_name = "Battle Royale Tournament"
-UnlimitedTournament._meta.verbose_name_plural = "Battle Royale Tournaments"
 from .services import cancel_tournament_and_refund
 from .kill_services import reward_for_tournament
 from .registration_services import assign_teams_for_tournament, tournament_team_size
@@ -48,6 +45,9 @@ class TournamentAdminForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if not self.instance.pk:
             self.initial["status"] = Tournament.Status.UPCOMING
+            # New entries created from the dedicated BR proxy admin are always paid unlimited BR rounds.
+            if self.instance._meta.proxy and self.instance._meta.model_name == "unlimitedtournament":
+                self.initial["is_unlimited_br"] = True
         if "gender_category" in self.fields:
             self.fields["gender_category"].required = False
         self.fields["status"].help_text = (
@@ -68,6 +68,9 @@ class TournamentAdminForm(forms.ModelForm):
         cleaned = super().clean()
         if not cleaned.get("gender_category"):
             cleaned["gender_category"] = Tournament.GenderCategory.OPEN
+        # The dedicated proxy admin must never create a normal/non-series tournament.
+        if self.instance._meta.proxy and self.instance._meta.model_name == "unlimitedtournament":
+            cleaned["is_unlimited_br"] = True
         if cleaned.get("mode") == Tournament.Mode.BR and cleaned.get("vs_format"):
             self.add_error("vs_format", "BR tournament ke liye CS/VS format khaali rakhein.")
         if cleaned.get("mode") == Tournament.Mode.BR and not cleaned.get("is_unlimited_br") and not cleaned.get("is_free_fan_tournament") and not cleaned.get("br_format"):
@@ -600,7 +603,6 @@ class TournamentAdmin(admin.ModelAdmin):
     fieldsets = (
         ("1. Tournament Details — kya ban raha hai?", {"description": "Title public tournament name hai. Mode mein BR ya CS/VS chunein. CS/VS mein 1v1/2v2/3v3/4v4 format chunein. Gender Category se Open, Boys Only, Girls Only ya Girls vs Boys event banayein. Har saved tournament ka apna alag control panel hai.", "fields": ("tournament_control_panel", "title", "description", "mode", "br_format", "vs_format", "gender_category")}),
         ("2. Fees & Players — entry aur capacity", {"description": "Entry Fee player se li jane wali registration fee hai. Prize Pool tournament ka first-place prize hai; ise admin ke funds aur payout process ke mutabik set karein. Max Players room capacity hai (maximum 49). BR format Solo/Duo/Squad chunein. Normal BR mein har approved kill par 5 Diamonds; minimum 2 verified kills. Free Fan event ka alag Fan Token rule rahega. Evidence verification zaroori hai.", "fields": ("entry_fee", "prize_pool", "max_players")}),
-        ("3. Unlimited BR Series — optional", {"description": "Sirf unlimited BR series ke liye ON karein. Har round mein 49 players. Auto start capacity par round shuru karne ke liye hai; Auto reopen agla round khol sakta hai. Normal tournament ho to in options ko OFF rakhein.", "fields": ("is_unlimited_br", "auto_start_at_capacity", "auto_reopen", "series_root")}),
         ("4. Schedule & Status — publish / LIVE", {"description": "Start Time tournament ka scheduled time hai. Draft public list mein nahi dikhta; Upcoming se listing/registration khulti hai. LIVE karne se pehle Room Details section mein Room ID aur Password bharna zaroori hai. LIVE karne par verified paid players ko YES/NO confirmation email bhejne ki koshish hoti hai; email delivery SMTP setup par depend karti hai.", "fields": ("start_time", "status")}),
         ("5. Room Details — private until YES", {"description": "Room ID aur Password game room ke credentials hain. Tournament LIVE karte waqt dono bharein. Player ko room tabhi dikhega jab woh deadline ke andar YES kare. Credentials public description/website post mein na likhein.", "fields": ("room_id", "room_password")}),
         ("6. BR Winning Team Rewards", {"description": "Tournament Completed hone ke baad winning BR team ke har player ka registered Free Fire UID yahan alag line ya comma se likhein. Admin action se har verified winner ko 10 Fan Tokens + 50 Coins ek hi baar milenge; har reward ledger mein save hoga.", "fields": ("winner_team_uids",)}),
@@ -735,6 +737,20 @@ def mark_manual_upi_refunds_paid(modeladmin, request, queryset):
 @admin.register(UnlimitedTournament)
 class UnlimitedTournamentAdmin(TournamentAdmin):
     """Dedicated admin list for paid BR Solo/Duo/Squad unlimited events."""
+
+    # Unlike the general Tournament admin, this proxy exposes its series controls.
+    exclude = ("is_free_fan_tournament",)
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = list(super().get_fieldsets(request, obj))
+        fieldsets.insert(
+            2,
+            ("3. Unlimited BR Series", {
+                "description": "Paid BR Solo/Duo/Squad series settings. New records in this section are automatically marked as Unlimited BR. Capacity is set from the selected format.",
+                "fields": ("is_unlimited_br", "auto_start_at_capacity", "auto_reopen", "series_root"),
+            }),
+        )
+        return tuple(fieldsets)
 
     def get_queryset(self, request):
         return super(TournamentAdmin, self).get_queryset(request).filter(
