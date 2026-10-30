@@ -281,7 +281,7 @@ def award_arena_currency_winner(modeladmin, request, queryset):
         modeladmin.message_user(request, f"{skipped} skipped: set the correct Winner UID, verify the player's registration/payment, mark tournament Completed, and check that no reward was already credited.", messages.WARNING)
 
 
-@admin.action(description="BR winner team: give each listed player 10 Fan Tokens + 50 Coins")
+@admin.action(description="Duo/Squad winner team: give each listed player 10 Fan Currency")
 def award_br_winner_team(modeladmin, request, queryset):
     """Credit each verified winner once, with one ledger entry per currency and UID."""
     from apps.social.models import PlayerShopWallet
@@ -1161,6 +1161,14 @@ def manual_start_unlimited_round(modeladmin, request, queryset):
 class UnlimitedTournamentAdminForm(TournamentAdminForm):
     class Meta(TournamentAdminForm.Meta):
         fields = "__all__"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["winner_team_uids"].help_text = (
+            "Duo winner team: exactly 2 registered Free Fire UIDs. "
+            "Squad winner team: exactly 4 registered Free Fire UIDs. "
+            "Completed event ke baad admin action se har listed player ko 10 Fan Currency milegi."
+        )
 
     def clean(self):
         cleaned = super(TournamentAdminForm, self).clean()
