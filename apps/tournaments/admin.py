@@ -16,7 +16,8 @@ from apps.accounts.models import (
 )
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry, UnlimitedTournament, FreeFanTournament
-from .services import cancel_tournament_and_refund\nfrom .kill_services import reward_for_tournament
+from .services import cancel_tournament_and_refund
+from .kill_services import reward_for_tournament\nfrom .kill_services import reward_for_tournament
 
 
 class TournamentAdminForm(forms.ModelForm):
@@ -797,10 +798,8 @@ def run_ai_review_for_selected(modeladmin, request, queryset):
                 and result["confidence"] == "high"
                 and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS
             )
-            selected.proposed_reward = (
-                Decimal(proposed_kills) * Decimal(str(settings.DIAMONDS_PER_APPROVED_KILL))
-                if auto_approved and proposed_kills > 0 else Decimal("0.00")
-            )
+            selected_reward_currency, selected_reward_quantity, selected_reward_label = reward_for_tournament(selected.tournament, proposed_kills)
+            selected.proposed_reward = Decimal(selected_reward_quantity if auto_approved and proposed_kills > 0 else 0)
             if auto_approved:
                 with transaction.atomic():
                     locked = KillSubmission.objects.select_for_update().get(pk=selected.pk)
@@ -820,8 +819,14 @@ def run_ai_review_for_selected(modeladmin, request, queryset):
                         from apps.social.models import PlayerShopWallet
                         shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=locked.player)
                         shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
-                        shop_wallet.diamonds += int(locked.approved_reward)
-                        shop_wallet.save(update_fields=("diamonds", "updated_at"))
+                        reward_currency, reward_quantity, _ = reward_for_tournament(locked.tournament, proposed_kills)
+                        if reward_currency == "coins":
+                            shop_wallet.coins += reward_quantity
+                        elif reward_currency == "fan_tokens":
+                            shop_wallet.fan_tokens += reward_quantity
+                        else:
+                            shop_wallet.diamonds += reward_quantity
+                        shop_wallet.save(update_fields=("diamonds", "coins", "fan_tokens", "updated_at"))
                     locked.save(update_fields=[
                         "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
                         "ai_review_notes", "proposed_reward", "approved_kills",
