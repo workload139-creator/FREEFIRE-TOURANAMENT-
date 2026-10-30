@@ -20,6 +20,22 @@
    <button type="button" class="btn-primary" id="saveRoomDetails">☆ Save Room Details</button>
    <p id="roomSaveStatus" class="help-text" aria-live="polite"></p>
   </section>
+  <button type="button" class="btn-primary" id="joinTournamentButton" hidden style="display:block;width:100%;margin:14px 0;padding:16px;font-size:18px">🚀 JOIN TOURNAMENT</button>
+
+  <section id="qrJoinStep" hidden style="padding:18px;margin:18px 0;border:1px solid var(--border-color, #555);border-radius:14px">
+   <h3>2. Join Tournament</h3>
+   <p>QR se join karne ki koshish karein. Agar Free Fire MAX QR ko accept na kare, neeche ID aur Password wala backup use karein.</p>
+   {% if tournament.room_qr_code %}
+    <div style="text-align:center;padding:12px;background:#fff;border-radius:12px">
+     <img src="{{ tournament.room_qr_code.url }}" alt="Official Free Fire custom room QR code" style="width:min(100%,320px);height:auto;object-fit:contain">
+    </div>
+    <p class="help-text">Is QR ko Free Fire MAX ke official Custom Room QR scanner se scan karein, agar aapke game version mein scanner available hai.</p>
+    <a class="btn-primary" style="display:inline-block;margin:8px 0" href="intent://#Intent;package=com.dts.freefiremax;end">🎮 Open Free Fire MAX</a>
+   {% else %}
+    <p class="help-text">Admin ne is tournament ka QR upload nahi kiya. ID aur Password se join karein.</p>
+   {% endif %}
+   <button type="button" class="button button-outline" id="qrFallbackButton">QR se join nahi hua? Room ID & Password use karein</button>
+  </section>
 
   <section id="roomActions" hidden style="padding:18px;margin:18px 0;border:1px solid var(--border-color, #555);border-radius:14px">
    <h3>2. Room ID copy karein</h3>
@@ -65,6 +81,9 @@
    const saveButton = document.getElementById("saveRoomDetails");
    const saveStatus = document.getElementById("roomSaveStatus");
    const actions = document.getElementById("roomActions");
+   const qrJoinStep = document.getElementById("qrJoinStep");
+   const joinButton = document.getElementById("joinTournamentButton");
+   const qrFallbackButton = document.getElementById("qrFallbackButton");
    const showButton = document.getElementById("showRoomDetails");
    const showMessage = document.getElementById("showDetailsMessage");
    const reveal = document.getElementById("roomDetailsReveal");
@@ -81,7 +100,9 @@
    function refreshRoomFlow() {
      const saved = isSaved();
      saveStep.hidden = saved;
-     actions.hidden = !saved;
+     joinButton.hidden = !saved;
+     qrJoinStep.hidden = true;
+     actions.hidden = true;
      if (!saved) return;
 
      const copiedAt = firstCopiedAt();
@@ -99,6 +120,15 @@
        showMessage.textContent = "Pehli copy ke 2 minute baad Show Details option unlock hoga.";
      }
    }
+
+   joinButton.addEventListener("click", function () {
+     qrJoinStep.hidden = false;
+     qrJoinStep.scrollIntoView({behavior: "smooth", block: "start"});
+   });
+   qrFallbackButton.addEventListener("click", function () {
+     actions.hidden = false;
+     actions.scrollIntoView({behavior: "smooth", block: "start"});
+   });
 
    saveButton.addEventListener("click", function () {
      try {
