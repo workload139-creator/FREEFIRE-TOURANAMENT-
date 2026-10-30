@@ -626,7 +626,8 @@ def retry_ai_kill_review(request, submission_id):
             and submission.registered_uid == submission.registration.free_fire_uid
         )
         if proposed is not None and proposed >= settings.MINIMUM_VERIFIED_KILLS and uid_ok:
-            submission.proposed_reward = Decimal(proposed // 2) if submission.tournament.is_free_fan_tournament else Decimal(proposed) * Decimal(str(settings.DIAMONDS_PER_APPROVED_KILL))
+            _currency, proposed_quantity, _label = reward_for_tournament(submission.tournament, proposed)
+            submission.proposed_reward = Decimal(proposed_quantity)
         else:
             submission.proposed_reward = Decimal("0.00")
         # Auto-award only when website file/duration checks pass, UID is exact,
