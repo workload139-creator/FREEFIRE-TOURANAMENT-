@@ -2,7 +2,7 @@
 {% block title %}Tournament Room | FF Arena{% endblock %}
 {% block content %}
 <section class="container" style="max-width:800px;margin:35px auto;padding:20px">
- <div class="tournament-card" style="padding:24px;border-radius:16px"><h1>🎮 Tournament Room</h1><h2>{{ tournament.title }}</h2><p><strong>Free Fire UID:</strong> {{ registration.free_fire_uid }}</p><p><strong>Status:</strong> {{ registration.get_status_display }}</p></div>
+ <div class="tournament-card" style="padding:24px;border-radius:16px"><h1>🎮 Tournament Room</h1><h2>{{ tournament.title }}</h2><p><strong>Free Fire UID:</strong> {{ registration.free_fire_uid }}</p>{% if registration.team_number %}<p><strong>Your Team:</strong> Team {{ registration.team_number }} · Player {{ registration.team_position }}</p>{% endif %}<p><strong>Status:</strong> {{ registration.get_status_display }}</p></div>
  {% if registration.status == "waiting_ready" and registration.payment_verified %}
  <div class="tournament-card" style="padding:24px;margin-top:20px;border-radius:16px"><h2>⚠️ Confirm Before Entering</h2><p>Match join karne ke liye <strong>5 minute ke andar YES</strong> dabao. Room ID aur password sirf YES confirm karne ke baad dikhenge.</p><p><strong>Confirmation deadline:</strong> {{ registration.ready_deadline|date:"d M Y, h:i:s A" }}</p>
  <p><strong>Time left:</strong> <span id="readyCountdown" data-deadline="{{ registration.ready_deadline|date:'c' }}">05:00</span></p>

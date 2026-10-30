@@ -1,8 +1,8 @@
 from decimal import Decimal, InvalidOperation
 
 
-def reward_for_tournament(tournament, kills):
-    """Return (currency, quantity, label) for an approved BR kill reward."""
+def rewards_for_tournament(tournament, kills):
+    """Return every wallet currency reward for approved kills."""
     try:
         kills = int(kills)
     except (TypeError, ValueError, InvalidOperation):
@@ -10,12 +10,28 @@ def reward_for_tournament(tournament, kills):
     if kills < 0:
         raise ValueError("Kill count cannot be negative.")
     if tournament.mode == "VS":
-        return "coins", kills * 2, "Coins"
+        return [("coins", kills * 2, "Coins")]
     if tournament.is_free_fan_tournament:
-        return "fan_tokens", kills // 2, "Fan Tokens"
+        quantity = kills // 2
+        return [("fan_tokens", quantity, "Fan Tokens")] if quantity else []
     if tournament.mode == "BR":
-        return "diamonds", kills * 5, "Diamonds"
-    return "coins", kills * 2, "Coins"
+        rewards = [("diamonds", kills * 5, "Diamonds")]
+        if tournament.br_format in ("duo", "squad"):
+            rewards.append(("coins", kills * 2, "Coins"))
+        return [item for item in rewards if item[1] > 0]
+    return [("coins", kills * 2, "Coins")]
+
+
+def reward_for_tournament(tournament, kills):
+    """Backward-compatible primary reward tuple for existing callers."""
+    rewards = rewards_for_tournament(tournament, kills)
+    if rewards:
+        return rewards[0]
+    if tournament.is_free_fan_tournament:
+        return "fan_tokens", 0, "Fan Tokens"
+    if tournament.mode == "VS":
+        return "coins", 0, "Coins"
+    return "diamonds", 0, "Diamonds"
 
 
 def calculate_proposed_reward(kills):
@@ -76,8 +92,8 @@ def finalize_dual_ai_reward(submission, result):
     ):
         return False, "Player profile, UID, payment or registration details need Admin review."
 
-    currency, quantity, label = reward_for_tournament(submission.tournament, kills)
-    if quantity <= 0:
+    rewards = rewards_for_tournament(submission.tournament, kills)
+    if not rewards:
         return False, "Verified kills do not produce a reward under this tournament's rules."
 
     from apps.social.models import PlayerShopWallet
@@ -88,34 +104,34 @@ def finalize_dual_ai_reward(submission, result):
         ).get(pk=submission.pk)
         if locked.status != KillSubmission.Status.PENDING:
             return False, "Submission was already reviewed."
-        reference = f"KILL-REWARD-{locked.pk}"
-        if TournamentLedgerEntry.objects.filter(reference=reference).exists():
+        references = [f"KILL-REWARD-{locked.pk}" if index == 0 else f"KILL-REWARD-{locked.pk}-{currency.upper()}" for index, (currency, quantity, label) in enumerate(rewards)]
+        if TournamentLedgerEntry.objects.filter(reference__in=references).exists():
             return False, "A reward ledger entry already exists; Admin must reconcile this record."
 
         wallet, _ = PlayerShopWallet.objects.get_or_create(user=locked.player)
         wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
-        wallet_field = {"diamonds": "diamonds", "coins": "coins", "fan_tokens": "fan_tokens"}[currency]
-        setattr(wallet, wallet_field, getattr(wallet, wallet_field) + quantity)
+        for index, (currency, quantity, label) in enumerate(rewards):
+            wallet_field = {"diamonds": "diamonds", "coins": "coins", "fan_tokens": "fan_tokens"}[currency]
+            setattr(wallet, wallet_field, getattr(wallet, wallet_field) + quantity)
+            TournamentLedgerEntry.objects.create(
+                reference=references[index], tournament=locked.tournament,
+                player=locked.player, registration=locked.registration,
+                entry_type=TournamentLedgerEntry.EntryType.REWARD,
+                currency=currency, quantity=quantity, amount_inr=Decimal("0.00"),
+                status=TournamentLedgerEntry.Status.COMPLETED,
+                description=f"Dual-AI verified: {kills} kills; {quantity} {label} credited automatically.",
+            )
         wallet.save(update_fields=("diamonds", "coins", "fan_tokens", "updated_at"))
-
-        TournamentLedgerEntry.objects.create(
-            reference=reference,
-            tournament=locked.tournament,
-            player=locked.player,
-            registration=locked.registration,
-            entry_type=TournamentLedgerEntry.EntryType.REWARD,
-            currency=currency,
-            quantity=quantity,
-            amount_inr=Decimal("0.00"),
-            status=TournamentLedgerEntry.Status.COMPLETED,
-            description=f"Dual-AI verified: {kills} kills; {quantity} {label} credited automatically.",
-        )
+        primary_quantity = rewards[0][1]
+        coins_quantity = next((quantity for currency, quantity, label in rewards if currency == "coins"), 0)
         locked.ai_proposed_kills = kills
         locked.ai_confidence = "high"
         locked.ai_uid_matches = True
-        locked.proposed_reward = Decimal(quantity)
+        locked.proposed_reward = Decimal(primary_quantity)
         locked.approved_kills = kills
-        locked.approved_reward = Decimal(quantity)
+        locked.approved_reward = Decimal(primary_quantity)
+        locked.proposed_coins_reward = coins_quantity
+        locked.approved_coins_reward = coins_quantity
         locked.admin_notes = (
             "Automatically approved: both independent AI assessments agreed with high confidence; "
             "website UID, profile, payment, registration and evidence checks passed."
@@ -125,7 +141,9 @@ def finalize_dual_ai_reward(submission, result):
         locked.save(update_fields=[
             "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
             "proposed_reward", "approved_kills", "approved_reward",
+            "proposed_coins_reward", "approved_coins_reward",
             "admin_notes", "reviewed_at", "status",
         ])
-    return True, f"{kills} verified kills: {quantity} {label} credited."
+    detail = " + ".join(f"{quantity} {label}" for currency, quantity, label in rewards)
+    return True, f"{kills} verified kills: {detail} credited."
 

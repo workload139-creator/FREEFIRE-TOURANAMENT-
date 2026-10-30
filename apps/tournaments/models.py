@@ -99,7 +99,7 @@ class Tournament(models.Model):
     room_id = models.CharField(max_length=100, blank=True)
     room_password = models.CharField(max_length=100, blank=True)
 
-    # Unlimited BR series: each 49-player round gets its own leaderboard.
+    # Unlimited BR series: each format-sized round gets its own leaderboard.
     is_unlimited_br = models.BooleanField(default=False)
     # Dedicated no-date free arena: one entry per player per rolling 24 hours.
     is_free_fan_tournament = models.BooleanField(default=False, db_index=True)
@@ -174,8 +174,8 @@ class UnlimitedTournament(Tournament):
 
     class Meta:
         proxy = True
-        verbose_name = "Unlimited Tournament"
-        verbose_name_plural = "Unlimited Tournaments"
+        verbose_name = "BR Unlimited Tournament"
+        verbose_name_plural = "BR Unlimited Tournaments"
 
 
 class FreeFanTournament(Tournament):

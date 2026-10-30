@@ -5,7 +5,7 @@
     <h2>🔥 Tournament Admin Control</h2>
     <h4>{{ tournament.title }}</h4>
     <p>Yeh page sirf is tournament ka control panel hai. Neeche har section ka kaam diya hai. Pehle payment/UTR verify karein, phir LIVE aur room confirmation manage karein, phir kill evidence aur refunds review karein.</p>
-    <div class="alert alert-warning"><strong>BR reward rule:</strong> minimum 2 verified kills; har admin-approved kill par ₹5 (2 kills = ₹10, 5 = ₹25, 10 = ₹50). Registered UID match aur video + 2 screenshots check karein. VS tournaments par yeh BR kill reward lagu nahi hota. AI sirf suggestion deta hai; final approval admin karega.</div>
+    <div class="alert alert-warning"><strong>BR reward rule:</strong> minimum 2 verified kills. Solo: 5 Diamonds per approved kill. Duo/Squad: 5 Diamonds + 2 Coins per approved kill. Registered UID, video + 2 screenshots check karein. AI assessment ke baad admin final review karega.</div>
 
     <div class="row g-3 my-3">
         <div class="col-md-4"><div class="card p-3"><h6>Total Registrations</h6><h3>{{ total_players }}</h3></div></div>
@@ -44,7 +44,7 @@
             <tbody>
             {% for registration in registrations %}
             <tr>
-                <td>{{ registration.player.username }} / #{{ registration.player_id }}</td>
+                <td>{{ registration.player.username }} / #{{ registration.player_id }}{% if registration.team_number %}<br><small>Team {{ registration.team_number }} · Player {{ registration.team_position }}</small>{% endif %}</td>
                 <td>{{ registration.free_fire_uid }}</td>
                 <td>₹{{ registration.entry_fee_paid }}</td>
                 <td>{{ registration.payment_reference|default:"—" }}</td>
@@ -76,7 +76,7 @@
                 <td>{{ item.ai_confidence|default:"Not assessed" }} · {% if item.ai_uid_matches is True %}UID MATCH{% elif item.ai_uid_matches is False %}UID MISMATCH{% else %}Not checked{% endif %}</td>
                 <td>{{ item.ai_review_notes|default:"AI notes not available"|truncatechars:220 }}</td>
                 <td>{{ item.approved_kills|default_if_none:"Pending" }}</td>
-                <td>{{ item.approved_reward }} ({{ item.status }})</td>
+                <td>{{ item.approved_reward }} Diamonds{% if item.approved_coins_reward %} + {{ item.approved_coins_reward }} Coins{% endif %} ({{ item.status }})</td>
                 <td>{{ item.get_status_display }}</td>
                 <td>{{ item.get_payout_status_display }}</td>
             </tr>
@@ -94,7 +94,7 @@
             <tbody>
             {% for registration in refund_queue %}
             <tr>
-                <td>{{ registration.player.username }} / #{{ registration.player_id }}</td>
+                <td>{{ registration.player.username }} / #{{ registration.player_id }}{% if registration.team_number %}<br><small>Team {{ registration.team_number }} · Player {{ registration.team_position }}</small>{% endif %}</td>
                 <td>{{ registration.free_fire_uid }}</td>
                 <td>₹{{ registration.entry_fee_paid }}</td>
                 <td>{{ registration.player.upi_id|default:"Use uploaded QR" }}</td>
@@ -103,6 +103,14 @@
             </tr>
             {% empty %}<tr><td colspan="6">Is waqt koi pending UPI refund nahi hai.</td></tr>{% endfor %}
             </tbody>
+        </table></div>
+    </div>
+
+    <div class="card p-3 my-3">
+        <h4>4A. Refund / Cancel History — all player records</h4>
+        <div class="table-responsive"><table class="table table-striped table-bordered">
+            <thead><tr><th>Player</th><th>UID</th><th>Entry Amount</th><th>Payment</th><th>Status</th><th>Refund Status</th><th>Refund Reference</th><th>Refund Time</th></tr></thead>
+            <tbody>{% for registration in refund_history %}<tr><td>{{ registration.player.username }} / #{{ registration.player_id }}</td><td>{{ registration.free_fire_uid }}</td><td>₹{{ registration.entry_fee_paid }}</td><td>{{ registration.get_payment_method_display }} · {% if registration.payment_verified %}Verified{% else %}Unverified{% endif %}</td><td>{{ registration.get_status_display }}</td><td>{% if registration.refund_processed %}Refund recorded{% else %}Not refunded / no verified payment{% endif %}</td><td>{{ registration.refund_reference|default:"—" }}</td><td>{{ registration.refund_processed_at|date:"d M Y, h:i A"|default:"—" }}</td></tr>{% empty %}<tr><td colspan="8">No refund or cancellation records yet.</td></tr>{% endfor %}</tbody>
         </table></div>
     </div>
 

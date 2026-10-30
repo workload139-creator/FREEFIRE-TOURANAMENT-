@@ -18,6 +18,7 @@ from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry, UnlimitedTournament, FreeFanTournament
 from .services import cancel_tournament_and_refund
 from .kill_services import reward_for_tournament
+from .registration_services import assign_teams_for_tournament, tournament_team_size
 
 
 class TournamentAdminForm(forms.ModelForm):
@@ -95,13 +96,13 @@ class RegistrationInline(admin.TabularInline):
         "player", "player_contact", "player_payout_qr", "free_fire_uid",
         "payment_method", "currency_amount", "entry_fee_paid",
         "payment_reference", "payment_verified", "status", "verification_photo",
-        "room_details_sent", "ready_deadline", "ready_confirmed_at",
+        "team_number", "team_position", "room_details_sent", "ready_deadline", "ready_confirmed_at",
         "refund_processed", "refund_reference", "registered_at",
     )
     readonly_fields = (
         "player", "player_contact", "player_payout_qr", "free_fire_uid",
         "payment_method", "currency_amount", "entry_fee_paid", "payment_reference",
-        "verification_photo", "room_details_sent", "ready_deadline",
+        "verification_photo", "team_number", "team_position", "room_details_sent", "ready_deadline",
         "ready_confirmed_at", "refund_processed", "refund_reference", "registered_at",
     )
     can_delete = False
@@ -433,9 +434,10 @@ class TournamentAdmin(admin.ModelAdmin):
                 next_round_number = root.series_rounds.count() + 2
                 Tournament.objects.create(
                     title=f"{root.title} - Round {next_round_number}"[:120],
-                    mode=Tournament.Mode.BR, vs_format="", description=root.description,
+                    mode=Tournament.Mode.BR, br_format=root.br_format or Tournament.BRFormat.SOLO,
+                    vs_format="", description=root.description,
                     entry_fee=Decimal("0.00") if root.is_free_fan_tournament else root.entry_fee,
-                    prize_pool=root.prize_pool, max_players=49,
+                    prize_pool=root.prize_pool, max_players=root.max_players,
                     start_time=timezone.now() + timedelta(minutes=10),
                     status=Tournament.Status.UPCOMING, is_unlimited_br=True,
                     is_free_fan_tournament=root.is_free_fan_tournament,
@@ -452,6 +454,15 @@ class TournamentAdmin(admin.ModelAdmin):
         from django.core.mail import send_mail
         from django.urls import reverse
         from django.utils import timezone
+
+        if obj.is_unlimited_br:
+            try:
+                assign_teams_for_tournament(obj.pk)
+            except ValueError as exc:
+                obj.status = Tournament.Status.UPCOMING
+                obj.save(update_fields=["status", "updated_at"])
+                messages.error(request, str(exc))
+                return
 
         now = timezone.now()
         eligible_ids = list(Registration.objects.filter(
@@ -1122,6 +1133,29 @@ def retry_unlimited_live_notifications(modeladmin, request, queryset):
     )
 
 
+@admin.action(description="MANUAL START: start this Unlimited BR round with complete teams")
+def manual_start_unlimited_round(modeladmin, request, queryset):
+    started = skipped = 0
+    for selected in queryset:
+        with transaction.atomic():
+            tournament = Tournament.objects.select_for_update().get(pk=selected.pk)
+            if tournament.status != Tournament.Status.UPCOMING or not tournament.is_unlimited_br:
+                skipped += 1
+                continue
+            count = Registration.objects.filter(tournament=tournament, payment_verified=True, refund_processed=False, status=Registration.Status.CONFIRMED).count()
+            team_size = tournament_team_size(tournament)
+            if count < team_size or count % team_size:
+                skipped += 1
+                continue
+            tournament.status = Tournament.Status.LIVE
+            tournament.save(update_fields=["status", "updated_at"])
+            transaction.on_commit(lambda tid=tournament.pk: __import__("apps.tournaments.registration_services", fromlist=["send_unlimited_live_notifications"]).send_unlimited_live_notifications(tid))
+            started += 1
+    if started:
+        modeladmin.message_user(request, f"{started} round(s) manually started. Ab Room Control se Room ID/Password release karein.", messages.SUCCESS)
+    if skipped:
+        modeladmin.message_user(request, f"{skipped} skipped: Upcoming status aur complete verified teams zaroori hain.", messages.WARNING)
+
 class UnlimitedTournamentAdminForm(TournamentAdminForm):
     class Meta(TournamentAdminForm.Meta):
         fields = "__all__"
@@ -1134,7 +1168,9 @@ class UnlimitedTournamentAdminForm(TournamentAdminForm):
         cleaned["is_unlimited_br"] = True
         cleaned["auto_start_at_capacity"] = True
         cleaned["auto_reopen"] = True
-        cleaned["max_players"] = 49
+        br_format = cleaned.get("br_format") or Tournament.BRFormat.SOLO
+        cleaned["br_format"] = br_format
+        cleaned["max_players"] = {"solo": 49, "duo": 48, "squad": 48}.get(br_format, 49)
         return cleaned
 
 
@@ -1145,7 +1181,7 @@ class UnlimitedTournamentAdmin(TournamentAdmin):
     form = UnlimitedTournamentAdminForm
     exclude = ("start_time",)
     fieldsets = (
-        ("Unlimited Tournament Setup", {"description": "No date/time scheduling. Har round mein 49 verified players. Entry ₹10; 49 entries par auto-LIVE. Admin room ID/password LIVE ke baad control panel se send kare.", "fields": ("tournament_control_panel", "title", "description", "entry_fee", "prize_pool", "max_players", "status")}),
+        ("Unlimited BR Setup", {"description": "Solo: 49 players; Duo: 48 players (24 complete teams); Squad: 48 players (12 complete teams). Entry fee format ke hisaab se alag set karein. Full verified capacity par auto-LIVE; Manual Start bhi available hai.", "fields": ("tournament_control_panel", "title", "description", "br_format", "entry_fee", "prize_pool", "max_players", "status")}),
         ("Room Credentials", {"fields": ("room_id", "room_password")}),
         ("Unlimited Series & Winner", {"fields": ("is_unlimited_br", "auto_start_at_capacity", "auto_reopen", "series_root", "winner_uid", "winner_payout_destination", "winner_payout_qr", "winner_prize_reference", "winner_prize_paid", "live_notification_sent_at", "live_notification_status")}),
     )
@@ -1160,8 +1196,8 @@ class UnlimitedTournamentAdmin(TournamentAdmin):
         obj.auto_reopen = True
         obj.mode = Tournament.Mode.BR
         obj.vs_format = ""
-        obj.max_players = 49
-        obj.entry_fee = Decimal("10.00")
+        obj.br_format = obj.br_format or Tournament.BRFormat.SOLO
+        obj.max_players = {"solo": 49, "duo": 48, "squad": 48}.get(obj.br_format, 49)
         if not change:
             obj.status = Tournament.Status.UPCOMING
             if not obj.start_time or obj.start_time <= timezone.now():
@@ -1170,16 +1206,16 @@ class UnlimitedTournamentAdmin(TournamentAdmin):
 
     @admin.display(description="Players", ordering="start_time")
     def confirmed_players_count_display(self, obj):
-        return f"{obj.paid_players_count}/49"
+        return f"{obj.paid_players_count}/{obj.max_players}"
 
-    list_filter = ("status", "auto_reopen", "live_notification_status")
+    list_filter = ("br_format", "status", "auto_reopen", "live_notification_status")
     list_display = (
-        "title", "entry_fee", "confirmed_players_count_display",
-        "status", "auto_reopen", "live_notification_status",
+        "title", "br_format", "entry_fee", "confirmed_players_count_display",
+        "open_tournament_control", "status", "auto_reopen", "live_notification_status",
     )
     search_fields = ("title", "description")
     ordering = ("-created_at",)
-    actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid, retry_unlimited_live_notifications)
+    actions = (manual_start_unlimited_round, cancel_and_refund_tournaments, mark_winner_prizes_paid, retry_unlimited_live_notifications)
     readonly_fields = (
         "tournament_control_panel", "series_root", "winner_prize_paid",
         "kill_prize_distributed", "kill_prize_pool", "kill_prize_reference",

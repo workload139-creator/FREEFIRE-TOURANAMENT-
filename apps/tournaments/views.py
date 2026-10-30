@@ -17,7 +17,7 @@ from django.views.decorators.http import require_POST
 from apps.accounts.models import Wallet, WalletTransaction, AdminWallet, AdminWalletTransaction
 from .forms import KillSubmissionForm, RegistrationForm
 from .ai_review import AIReviewError, analyze_kill_evidence
-from .registration_services import RegistrationError, create_pending_registration
+from .registration_services import RegistrationError, create_pending_registration, assign_teams_for_tournament
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry
 from .kill_services import reward_for_tournament, finalize_dual_ai_reward
@@ -285,6 +285,12 @@ def send_room_details(request, tournament_id):
             messages.error(request, "Room details sirf tournament LIVE hone ke baad release ki ja sakti hain.")
             return redirect("tournaments:admin_room_page", tournament_id=tournament_id)
 
+        try:
+            assigned_count, team_size = assign_teams_for_tournament(tournament.pk)
+        except ValueError as exc:
+            messages.error(request, str(exc))
+            return redirect("tournaments:admin_room_page", tournament_id=tournament_id)
+
         tournament.room_id = room_id
         tournament.room_password = room_password
         tournament.save(update_fields=["room_id", "room_password", "updated_at"])
@@ -302,7 +308,7 @@ def send_room_details(request, tournament_id):
             ready_confirmed_at=None,
         )
 
-    messages.success(request, "Room details set ho gayi. Eligible paid players ko 5 minute ke andar YES confirm karna hoga.")
+    messages.success(request, f"Room details set ho gayi. {assigned_count} verified players ko {team_size}-player teams mein assign kiya. Eligible players ko 5 minute ke andar YES confirm karna hoga.")
     return redirect("tournaments:admin_room_page", tournament_id=tournament_id)
 
 
@@ -363,6 +369,10 @@ def admin_tournament_dashboard(request, tournament_id):
     tournament_history = TournamentLedgerEntry.objects.filter(
         tournament=tournament
     ).select_related("player", "registration").order_by("-created_at")
+    from django.db.models import Q
+    refund_history = registrations.filter(
+        Q(refund_processed=True) | Q(status__in=[Registration.Status.CANCELLED, Registration.Status.NOT_PLAYING])
+    ).select_related("player").order_by("-refund_processed_at", "-registered_at")
     context = {
         "tournament": tournament,
         "registrations": registrations,
@@ -375,6 +385,7 @@ def admin_tournament_dashboard(request, tournament_id):
             refund_processed=False,
             status__in=[Registration.Status.CANCELLED, Registration.Status.NOT_PLAYING],
         ).select_related("player"),
+        "refund_history": refund_history,
         "total_players": registrations.count(),
         "verified_payments": registrations.filter(payment_verified=True).count(),
         "waiting_players": registrations.filter(status=Registration.Status.WAITING_READY).count(),

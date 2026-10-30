@@ -102,9 +102,35 @@ def send_unlimited_live_notifications(tournament_id):
     ])
 
 
+def tournament_team_size(tournament):
+    if tournament.mode != Tournament.Mode.BR:
+        return 1
+    return {"duo": 2, "squad": 4}.get(tournament.br_format, 1)
+
+
+@transaction.atomic
+def assign_teams_for_tournament(tournament_id):
+    """Assign complete teams in verified registration order when room is created."""
+    tournament = Tournament.objects.select_for_update().get(pk=tournament_id)
+    team_size = tournament_team_size(tournament)
+    registrations = list(Registration.objects.select_for_update().filter(
+        tournament=tournament, payment_verified=True, refund_processed=False,
+        status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
+    ).order_by("registered_at", "pk"))
+    if not registrations:
+        raise ValueError("Room banane se pehle verified players zaroori hain.")
+    if len(registrations) % team_size:
+        raise ValueError(f"{len(registrations)} verified players se complete {team_size}-player teams nahi ban sakti.")
+    for index, registration in enumerate(registrations):
+        registration.team_number = index // team_size + 1
+        registration.team_position = index % team_size + 1
+    Registration.objects.bulk_update(registrations, ["team_number", "team_position"])
+    return len(registrations), team_size
+
+
 @transaction.atomic
 def maybe_start_unlimited_tournament(tournament_id):
-    """Start a 49-player Unlimited BR round once all 49 entries are confirmed and paid."""
+    """Auto-start when the format's configured verified-player capacity is full."""
     tournament = Tournament.objects.select_for_update().get(pk=tournament_id)
     if not tournament.is_unlimited_br or not tournament.auto_start_at_capacity or tournament.status != Tournament.Status.UPCOMING:
         return False
@@ -114,7 +140,8 @@ def maybe_start_unlimited_tournament(tournament_id):
         payment_verified=True,
         status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
     ).count()
-    if active_count < 49:
+    team_size = tournament_team_size(tournament)
+    if active_count < tournament.max_players or active_count % team_size:
         return False
 
     tournament.status = Tournament.Status.LIVE
