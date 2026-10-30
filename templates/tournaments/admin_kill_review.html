@@ -48,7 +48,7 @@
         <div style="padding:10px;margin:8px 0;border:1px solid var(--border-color, #777);border-radius:8px">
           <strong>{{ report.name|default:reviewer_key }}</strong> — {{ report.status|default:"NOT RUN" }}<br>
           Kills: {{ report.proposed_kills|default:"Not available" }} · UID: {{ report.observed_uid|default:"Unreadable" }} · Confidence: {{ report.confidence|default:"Unknown" }}<br>
-          UID match: {{ report.uid_matches|yesno:"Yes,No,Unknown" }} · Evidence complete: {{ report.evidence_complete|yesno:"Yes,No,Unknown" }}<br>
+          UID match: {{ report.uid_matches|yesno:"Yes,No,Unknown" }} · Evidence complete: {{ report.evidence_complete|yesno:"Yes,No,Unknown" }} · Tampering suspected: {{ report.tampering_suspected|yesno:"Yes,No,Unknown" }}<br>Manipulation notes: {{ report.tampering_notes|default:"No notes" }}<br>
           Reason: {{ report.reason|default:"No result" }}
         </div>
       {% empty %}<p>Four-reviewer audit not available yet. Run AI review or inspect manually.</p>{% endfor %}
