@@ -7,7 +7,7 @@
     <h1>Choose Your <span>Tournament</span></h1>
     <p class="tournament-intro">Apna mode chuno, squad banao aur leaderboard par apni jagah banao.</p>
     <nav class="arena-mode-nav" aria-label="Tournament categories">
-      <a href="{% url 'tournaments:free_fan_list' %}">🎁 Free Tournament</a><a href="{% url 'tournaments:diwali_offer_list' %}">♾️ Unlimited</a><a href="{% url 'tournaments:battle_royale_list' %}">🔥 Battle Royale</a><a href="{% url 'tournaments:clash_squad_list' %}">⚔️ Clash Squad</a><a href="#girls-vs-boys">💜 Girl vs Boy</a>
+      <a href="{% url 'tournaments:free_fan_list' %}">🎁 Free Tournament</a><a href="#unlimited-tournaments">♾️ Unlimited</a><a href="{% url 'tournaments:battle_royale_list' %}">🔥 Battle Royale</a><a href="{% url 'tournaments:clash_squad_list' %}">⚔️ Clash Squad</a><a href="#girls-vs-boys">💜 Girl vs Boy</a>
     </nav>
   </header>
 
@@ -42,7 +42,6 @@
     <div class="mode-heading"><span class="mode-label">CHOOSE YOUR BATTLE</span><h2>Game Modes</h2><p>Battle Royale aur Clash Squad ke tournaments ab apne alag pages par milenge. Har format ka registration, player list aur leaderboard wahi par dekhein.</p></div>
     <div class="mode-directory-grid">
       <a class="mode-directory-card br-directory" href="{% url 'tournaments:battle_royale_list' %}"><span>🔥 SURVIVAL MODE</span><strong>Battle Royale</strong><small>Solo · Duo · Squad</small><b>Open BR Arena →</b></a>
-      <a class="mode-directory-card diwali-directory" href="{% url 'tournaments:diwali_offer_list' %}"><span>🪔 FESTIVAL SPECIAL</span><strong>Diwali Offer</strong><small>Solo BR · 1 Diamond Entry</small><b>Open Diwali Arena →</b></a>
       <a class="mode-directory-card cs-directory" href="{% url 'tournaments:clash_squad_list' %}"><span>⚔️ SQUAD COMBAT</span><strong>Clash Squad</strong><small>1v1 · 2v2 · 3v3 · 4v4</small><b>Open CS Arena →</b></a>
     </div>
   </section>
