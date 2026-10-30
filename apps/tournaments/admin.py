@@ -262,18 +262,9 @@ def award_arena_currency_winner(modeladmin, request, queryset):
                     reference=reference, description="Admin-approved BR winner prize: 50 Diamonds",
                 )
             else:
-                wallet.diamonds += 10
-                wallet.coins += 10
-                wallet.save(update_fields=["diamonds", "coins", "updated_at"])
-                for currency, quantity in ((TournamentLedgerEntry.Currency.DIAMONDS, 10), (TournamentLedgerEntry.Currency.COINS, 10)):
-                    TournamentLedgerEntry.objects.create(
-                        tournament=tournament, player=registration.player, registration=registration,
-                        entry_type=TournamentLedgerEntry.EntryType.REWARD, currency=currency,
-                        quantity=quantity, amount_inr=Decimal("0.00"),
-                        status=TournamentLedgerEntry.Status.COMPLETED,
-                        reference=f"{reference}-{currency.upper()}",
-                        description=f"Admin-approved VS winner prize: {quantity} {currency}",
-                    )
+                # VS winner prizes are paid manually by the admin, never auto-credited here.
+                skipped += 1
+                continue
             awarded += 1
     if awarded:
         modeladmin.message_user(request, f"{awarded} winner non-cash reward(s) credited to player wallet.", messages.SUCCESS)
