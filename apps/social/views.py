@@ -482,16 +482,22 @@ def daily_spin(request):
             messages.info(request, f"Daily Spin already used. Next spin in about {hours}h {minutes}m.")
             return redirect("accounts:wallet")
 
-        # Only the requested small rewards are possible.
-        if random.choice((True, False)):
+        # 20-slot weighted wheel: 1 diamond slot, 2 Fan Currency slots,
+        # and 17 coin slots. One spin is granted every 24 hours.
+        roll = random.randint(1, 20)
+        if roll == 1:
             currency = DailySpin.Currency.DIAMONDS
-            quantity = random.choice((1, 2))
+            quantity = 1
             wallet.diamonds += quantity
+        elif roll in (2, 3):
+            currency = DailySpin.Currency.FAN_TOKENS
+            quantity = random.randint(1, 2)
+            wallet.fan_tokens += quantity
         else:
             currency = DailySpin.Currency.COINS
-            quantity = random.choice((5, 10, 15, 20, 25))
+            quantity = random.randint(1, 20)
             wallet.coins += quantity
-        wallet.save(update_fields=("diamonds", "coins", "updated_at"))
+        wallet.save(update_fields=("diamonds", "coins", "fan_tokens", "updated_at"))
         DailySpin.objects.create(user=request.user, currency=currency, quantity=quantity)
 
     messages.success(request, f"🎉 Daily Spin reward: +{quantity} {currency.title()}! Come back after 24 hours for another spin.")
