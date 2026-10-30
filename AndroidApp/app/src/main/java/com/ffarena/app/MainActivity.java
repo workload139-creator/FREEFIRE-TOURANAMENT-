@@ -328,7 +328,7 @@ public class MainActivity extends Activity {
         if ("Home".equals(currentTab)) {
             addHero();
             addSectionTitle("ARENA DASHBOARD", "Your important FF Arena features");
-            addFeatureCard("MATCHES", "BR • CS • Free • Unlimited • Girl vs Boy", "Explore tournament categories", "/tournaments/");
+            addFeatureCard("MATCHES", "BR • CS • Free • Diwali (1 Diamond) • Unlimited • Girl vs Boy", "Explore tournament categories", "/tournaments/");
             addFeatureCard("WALLET & VIRTUAL CREDITS", "Wallet, Diamonds, Coins and transaction history", "Open wallet", "/accounts/wallet/");
             addFeatureCard("LEADERBOARD & RESULTS", "Track your performance and match results", "View standings", "/tournaments/results/");
             addFeatureCard("COMMUNITY", "Player posts, friends, followers and updates", "Open community", "/friends/feed/");
@@ -346,6 +346,7 @@ public class MainActivity extends Activity {
             addFeatureCard("CLASH SQUAD (CS)", "1v1 • 2v2 • 3v3 • 4v4", "Open CS tournaments", "/tournaments/#game-modes");
             addFeatureCard("FREE TOURNAMENTS", "Free entry community events", "Open Free tournaments", "/tournaments/#free-fan-tournaments");
             addFeatureCard("UNLIMITED", "Unlimited BR and open-entry formats", "Open Unlimited arena", "/tournaments/#unlimited-tournaments");
+            addFeatureCard("DIWALI SOLO BR", "1 Diamond entry • 49 players • 20 Diamonds first prize", "Open Diwali Offer", "/tournaments/diwali-offer/");
             addFeatureCard("GIRL VS BOY", "Special community showdown", "Open Girl vs Boy", "/tournaments/#girls-vs-boys");
             addActionRow("My registrations", "See joined matches and room updates", "/tournaments/my-registrations/");
             addActionRow("Results", "Completed matches and standings", "/tournaments/results/");
