@@ -353,6 +353,7 @@ def decline_playing(request, registration_id):
 def send_room_details(request, tournament_id):
     room_id = request.POST.get("room_id", "").strip()
     room_password = request.POST.get("room_password", "").strip()
+    room_qr_code = request.FILES.get("room_qr_code")
     if not room_id or not room_password:
         messages.error(request, "Room ID aur password dono bharo.")
         return redirect("tournaments:admin_room_page", tournament_id=tournament_id)
@@ -371,7 +372,17 @@ def send_room_details(request, tournament_id):
 
         tournament.room_id = room_id
         tournament.room_password = room_password
-        tournament.save(update_fields=["room_id", "room_password", "updated_at"])
+        update_fields = ["room_id", "room_password", "updated_at"]
+        if room_qr_code:
+            if getattr(room_qr_code, "content_type", "") not in ("image/jpeg", "image/png", "image/webp"):
+                messages.error(request, "Room QR ke liye JPG, PNG ya WebP image upload karein.")
+                return redirect("tournaments:admin_room_page", tournament_id=tournament_id)
+            if room_qr_code.size > 5 * 1024 * 1024:
+                messages.error(request, "Room QR image 5 MB se chhoti honi chahiye.")
+                return redirect("tournaments:admin_room_page", tournament_id=tournament_id)
+            tournament.room_qr_code = room_qr_code
+            update_fields.append("room_qr_code")
+        tournament.save(update_fields=update_fields)
 
         now = timezone.now()
         eligible = Registration.objects.select_for_update().filter(
