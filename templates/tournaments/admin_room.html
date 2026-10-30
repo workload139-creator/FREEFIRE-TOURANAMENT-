@@ -14,7 +14,7 @@
     {% endif %}
 
     {% if tournament.status == "live" %}
-    <form method="post"
+    <form method="post" enctype="multipart/form-data"
           action="{% url 'tournaments:send_room_details' tournament.id %}">
         {% csrf_token %}
 
@@ -28,6 +28,13 @@
             <label for="room_password">Room Password</label>
             <input id="room_password" type="password"
                    name="room_password" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="room_qr_code">Free Fire Room QR Code (optional)</label>
+            <input id="room_qr_code" type="file" name="room_qr_code" class="form-control" accept="image/png,image/jpeg,image/webp">
+            <small>Free Fire se generate kiya hua asli Custom Room QR upload karein.</small>
+            {% if tournament.room_qr_code %}<img src="{{ tournament.room_qr_code.url }}" alt="Current room QR" style="max-width:220px;width:100%;background:#fff;padding:8px">{% endif %}
         </div>
 
         <button type="submit" class="btn btn-primary">
