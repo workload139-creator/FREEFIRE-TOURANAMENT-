@@ -22,6 +22,7 @@ The public `/health/` endpoint returns HTTP 200 with `{"status":"ok","database":
 Set secrets in Render Dashboard → your web service → Environment; never commit real keys to GitHub:
 
 - Required: `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS` (include the `onrender.com` hostname), and `DATABASE_URL` when using PostgreSQL.
+- Permanent player photos, UPI QR images and match evidence: set `CLOUDINARY_URL` from your Cloudinary Console. Without it, Render local media is temporary; new uploads will not be durable.
 - Email OTP/password reset: `BREVO_API_KEY` and `DEFAULT_FROM_EMAIL` (the sender must be verified in Brevo). SMTP fallback uses `EMAIL_HOST_USER` and `EMAIL_HOST_PASSWORD`.
 - Tournament entry UPI: `FF_ARENA_UPI_ID` and optional `FF_ARENA_UPI_NAME`. The registration page shows an amount-specific QR and an “Open UPI app” link, then asks for the player's Profile UID, Free Fire UID and UTR. Registration remains pending until admin checks the actual incoming UPI/bank statement and verifies it.
 - AI evidence proposal: default provider uses `OPENAI_API_KEY` and `OPENAI_KILL_REVIEW_MODEL`. To use an OpenAI-compatible vision endpoint instead, set `KILL_REVIEW_PROVIDER=compatible`, `KILL_REVIEW_BASE_URL`, `KILL_REVIEW_API_KEY`, and `OPENAI_KILL_REVIEW_MODEL`. Keep all keys in Render Environment, never in GitHub. A Render service cannot reach your PC's `localhost`; a PC-hosted model needs a secure, reachable endpoint or tunnel.
@@ -82,11 +83,17 @@ This command is not a background scheduler. Configure Windows Task Scheduler or 
 
 ## AI match-history review
 
-The optional adapter in `apps/tournaments/ai_review.py` samples frames from the submitted video using FFmpeg and sends those frames plus two screenshots to the configured vision model. By default it uses the OpenAI Responses API. Alternatively, `KILL_REVIEW_PROVIDER=compatible` uses an OpenAI-compatible `/chat/completions` vision endpoint (for example a suitably configured Ollama endpoint). Configure `KILL_REVIEW_BASE_URL`, `KILL_REVIEW_API_KEY`, and `OPENAI_KILL_REVIEW_MODEL` for that provider. The endpoint must be reachable from Render; `localhost` on Render refers to the Render container, not your Windows PC. A model must support image inputs. Keep API keys in environment variables, never source control.
+The kill-review flow runs two independent multimodal vision checks in dual mode: OpenAI assessment (`OPENAI_API_KEY`, `OPENAI_KILL_REVIEW_MODEL`) and an AI Agent through the configured OpenAI-compatible vision endpoint (`KILL_REVIEW_BASE_URL`, `KILL_REVIEW_API_KEY`, `OLLAMA_KILL_REVIEW_MODEL`). Both receive the two uploaded Free Fire history screenshots and five sampled frames from the submitted 15–30 second video. The prompt checks visible player UID, personal (not team) kills, BR/Clash Squad mode, match date/ID/result where shown, and whether the screenshots and video appear to show the same match.
 
-Both modes require FFmpeg installed on the server and available on `PATH`, or set `FFMPEG_PATH`.
+The app does not have an official Garena match-history API connection. AI must not claim it queried Garena or verified a match online; it can only assess the evidence uploaded by the player. A reward is automatically credited only when both models independently return the same kill count, high confidence, exact registered UID, complete evidence and consistent history, and the website's own payment/registration/UID checks also pass. If either model fails, a field is unreadable, the evidence is incomplete, or the models disagree, the submission remains pending for Admin Review and no automatic reward is issued. The AI Agent is still attempted even if the first AI fails.
 
-Players must consent to AI processing on the upload form. If AI is unavailable, the evidence is still saved for manual review. AI output is only a proposal; an admin must inspect the evidence and approve/correct the kill count before wallet reward accounting. The upload checks file extensions and size; verify the match video duration and evidence manually.
+FFmpeg samples the video; install it or use the bundled `imageio-ffmpeg` binary. Players must consent to AI processing. Keep all AI keys in Render Environment, never in GitHub.
+
+## Durable media and Android app data
+
+Set `CLOUDINARY_URL` in Render Environment to enable Cloudinary-backed storage for profile photos, UPI QR images, match-history screenshots and videos. The repository config keeps local storage for development when the variable is blank. After enabling Cloudinary, players should re-upload any old profile photo that was previously stored only on Render's temporary disk. Pending match evidence is retained until review; reviewed evidence is retained for a 90-day audit window.
+
+The Android app keeps WebView DOM storage and cookies enabled and flushes session cookies when the app pauses. Normal APK updates with the same package and signing key preserve app data. The website database remains the source of truth, so player accounts, wallets and tournament records are not dependent on the phone cache. Uninstalling the app, clearing its storage or losing/resetting the phone can still remove local app data; no app can guarantee otherwise.
 
 ## UPI deposit setup
 
@@ -116,6 +123,6 @@ For real money, switch to production credentials and `CASHFREE_MODE=production` 
 - Phone-number OTP verification provider.
 - Verified automatic UPI deposit and payout provider/webhooks.
 - Automatic WhatsApp message delivery via an approved WhatsApp Business API/provider. The existing notification helper only builds click-to-chat links.
-- Production-grade private media storage and access controls. Local media serving is enabled only in development.
+- Cloudinary media storage requires the owner's `CLOUDINARY_URL` to be added to Render Environment and a first successful upload test.
 
 GitHub Actions is configured to check migration consistency, apply migrations, run `manage.py check`, and run tests on pushes and pull requests. Passing these checks is not a substitute for payment-provider and production security review.
