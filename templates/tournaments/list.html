@@ -20,6 +20,15 @@
     </div>
   </section>
 
+  <section class="mode-section regular-br-section" id="regular-br-tournaments">
+    <div class="mode-heading"><span class="mode-label">🔥 REGULAR BATTLE ROYALE</span><h2>Battle Royale Tournaments</h2><p>Regular Solo, Duo aur Squad events yahan dekhein. Diwali Festival Offer apne alag page par hi rahega.</p><p><a class="button button-primary" href="{% url 'tournaments:battle_royale_list' %}">Open Full BR Arena →</a></p></div>
+    <div class="tournament-grid">
+    {% for tournament in br_tournaments %}
+      {% include "tournaments/_tournament_card.html" with tournament=tournament %}
+    {% empty %}<article class="tournament-empty"><span>🔥</span><h3>BR Arena is ready</h3><p>Regular BR Solo, Duo aur Squad events admin ke Battle Royale section se manage hote hain. Diwali Offer is list se alag rahega.</p></article>{% endfor %}
+    </div>
+  </section>
+
   <section class="mode-section mode-directory" id="game-modes">
     <div class="mode-heading"><span class="mode-label">CHOOSE YOUR BATTLE</span><h2>Game Modes</h2><p>Battle Royale aur Clash Squad ke tournaments ab apne alag pages par milenge. Har format ka registration, player list aur leaderboard wahi par dekhein.</p></div>
     <div class="mode-directory-grid">
