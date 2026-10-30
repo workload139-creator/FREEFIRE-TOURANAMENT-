@@ -13,9 +13,9 @@ def reward_for_tournament(tournament, kills):
         return "coins", kills * 2, "Coins"
     if tournament.is_free_fan_tournament:
         return "fan_tokens", kills // 2, "Fan Tokens"
-    if Decimal(str(tournament.entry_fee)) <= Decimal("1.00"):
-        return "coins", kills * 5, "Coins"
-    return "diamonds", kills * 5, "Diamonds"
+    if tournament.mode == "BR":
+        return "diamonds", kills * 5, "Diamonds"
+    return "coins", kills * 2, "Coins"
 
 
 def calculate_proposed_reward(kills):
