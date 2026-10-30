@@ -586,13 +586,14 @@ class TournamentAdmin(admin.ModelAdmin):
                 room_url = request.build_absolute_uri(
                     reverse("tournaments:player_room", args=[registration.pk])
                 )
+                entry_fee_label = "1 Diamond" if obj.is_diwali_offer else f"INR {registration.entry_fee_paid}"
                 delivered = send_mail(
                     subject=f"FF Arena: {obj.title} is LIVE — confirm YES/NO",
                     message=(
                         f"Hi {player.username},\n\n"
                         f"Tournament: {obj.title} is now LIVE.\n"
                         f"Your registered Free Fire UID: {registration.free_fire_uid}\n"
-                        f"Entry fee: {'1 Diamond' if obj.is_diwali_offer else f'INR {registration.entry_fee_paid}'}\n\n"
+                        f"Entry fee: {entry_fee_label}\n\n"
                         "Open the secure tournament page and press YES if you want to play, "
                         "or NO if you cannot play. Room ID/password are shown only after YES. "
                         "Please respond within 5 minutes. If you press NO or do not respond, "
