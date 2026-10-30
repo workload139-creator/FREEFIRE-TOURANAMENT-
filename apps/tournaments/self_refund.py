@@ -1,4 +1,3 @@
-from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib import messages
@@ -117,10 +116,10 @@ def request_tournament_diamond_refund(request, registration_id):
         messages.error(request, "Tournament live, completed ya cancelled hai; self-refund available nahi hai.")
         return redirect("tournaments:my_registrations")
 
-    # Self-refund closes exactly one hour before the scheduled start.
-    # Players may cancel any time before that cutoff, but never during the final hour.
-    if now > tournament.start_time - timedelta(hours=1) or now >= tournament.start_time:
-        messages.error(request, "Self-refund sirf tournament start hone se 1 ghante se zyada pehle available hai.")
+    # Players may cancel and receive the original entry currency back any time
+    # before the tournament is moved to LIVE by an admin.
+    if tournament.status != tournament.Status.UPCOMING:
+        messages.error(request, "Self-refund sirf LIVE hone se pehle available hai.")
         return redirect("tournaments:my_registrations")
 
     amount = Decimal(str(registration.entry_fee_paid or tournament.entry_fee))
