@@ -1,5 +1,6 @@
 """Dual-model Free Fire evidence review; incomplete evidence is sent to Admin Review."""
 import base64
+import hashlib
 import json
 import mimetypes
 import os
@@ -14,6 +15,37 @@ from urllib.request import Request, urlopen
 
 class AIReviewError(RuntimeError):
     pass
+
+
+def fingerprint_evidence(submission):
+    """Hash the exact uploaded originals; this is an integrity check, not proof of authenticity."""
+    fingerprints = {}
+    for name in ("history_video", "history_image_one", "history_image_two"):
+        field_file = getattr(submission, name, None)
+        if not field_file or not field_file.name:
+            raise AIReviewError(f"Required evidence file missing: {name}.")
+        digest = hashlib.sha256()
+        try:
+            field_file.open("rb")
+            try:
+                for chunk in field_file.chunks():
+                    digest.update(chunk)
+            finally:
+                field_file.close()
+        except Exception as exc:
+            raise AIReviewError(f"Could not fingerprint evidence file: {name}.") from exc
+        fingerprints[name] = digest.hexdigest()
+    return fingerprints
+
+
+def verify_evidence_integrity(submission):
+    expected = getattr(submission, "evidence_sha256", None) or {}
+    if set(expected) != {"history_video", "history_image_one", "history_image_two"}:
+        raise AIReviewError("EVIDENCE_FINGERPRINT_MISSING: original upload fingerprint unavailable; Admin Review required.")
+    actual = fingerprint_evidence(submission)
+    if actual != expected:
+        raise AIReviewError("EVIDENCE_TAMPER_CHECK_FAILED: uploaded evidence changed after submission; Admin Review required.")
+    return actual
 
 
 def _ffmpeg_binary():
@@ -337,6 +369,7 @@ def _analyze_with_provider(submission, provider, model_override=None, reviewer_r
 
 def analyze_kill_evidence(submission):
     """Run four separately prompted reviewer passes using the two configured vision providers."""
+    verify_evidence_integrity(submission)
     primary_model = os.getenv("OPENAI_KILL_REVIEW_MODEL", "gpt-4.1-mini").strip()
     secondary_model = os.getenv("OLLAMA_KILL_REVIEW_MODEL", "gemma4").strip()
     reviewers = [
