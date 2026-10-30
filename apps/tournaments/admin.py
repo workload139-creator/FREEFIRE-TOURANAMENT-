@@ -855,7 +855,7 @@ class UnlimitedTournamentAdmin(TournamentAdmin):
 class FreeFanTournamentAdmin(admin.ModelAdmin):
     """Dedicated admin list for the existing Free Fan Tournament proxy."""
     list_display = ("id", "title", "status", "max_players", "start_time", "created_at")
-    list_filter = ("status", "mode", "br_format", "is_diwali_offer")
+    list_filter = ("status", "mode", "br_format")
     search_fields = ("title",)
     ordering = ("-created_at",)
 
@@ -920,7 +920,7 @@ class KillSubmissionAdmin(admin.ModelAdmin):
         "ai_proposed_kills", "ai_confidence", "ai_uid_matches", "status",
         "payout_status", "submitted_at",
     )
-    list_filter = ("status", "payout_status", "ai_confidence", "ai_uid_matches", "tournament__mode")
+    list_filter = ("status", "payout_status", "ai_confidence", "ai_uid_matches", "tournament__mode", "tournament__is_diwali_offer")
     search_fields = ("player__username", "registered_uid", "free_fire_uid", "tournament__title")
     list_select_related = ("player", "tournament", "registration")
     readonly_fields = (
