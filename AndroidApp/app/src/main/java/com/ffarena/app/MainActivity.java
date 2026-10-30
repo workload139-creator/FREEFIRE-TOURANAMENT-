@@ -229,7 +229,9 @@ public class MainActivity extends Activity {
             request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
             request.setAllowedOverMetered(true);
             request.setAllowedOverRoaming(false);
-            request.setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, "ff-arena-update.apk");
+            pendingApkVersionCode = versionCode;
+            pendingApkFileName = "ff-arena-update-" + versionCode + ".apk";
+            request.setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, pendingApkFileName);
             pendingApkDownloadId = apkDownloadManager.enqueue(request);
             Toast.makeText(this, "Update download started. You can continue using FF Arena.", Toast.LENGTH_LONG).show();
         } catch (Exception exception) {
