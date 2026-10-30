@@ -456,6 +456,8 @@ def award_diwali_winner_diamonds(modeladmin, request, queryset):
                 reference=reference,
                 description="Diwali Solo BR first-place prize: 20 Diamonds, admin-confirmed winner.",
             )
+            tournament.winner_prize_paid = True
+            tournament.save(update_fields=["winner_prize_paid", "updated_at"])
             awarded += 1
     if awarded:
         modeladmin.message_user(request, f"{awarded} Diwali winner(s) received 20 Diamonds.", messages.SUCCESS)
