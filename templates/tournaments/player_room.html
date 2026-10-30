@@ -10,9 +10,74 @@
  <form method="post" action="{% url 'tournaments:decline_playing' registration.id %}" style="display:inline-block;margin-top:10px">{% csrf_token %}<button type="submit" class="button button-outline">NO, I CAN'T PLAY</button></form>
  <p class="help-text">5 minute mein YES na kiya ya NO chuna, to aap NOT PLAYING mark honge aur leaderboard se hataye jayenge. Direct UPI payment ka refund admin ko actual UPI transfer karke process karna hoga.</p></div>
  {% elif registration.status == "ready" and can_view_room %}
- <div class="tournament-card" style="padding:24px;margin-top:20px;border-radius:16px"><h2>🔥 Room Details — Confirmed Player</h2><p><strong>Room ID:</strong> {{ tournament.room_id }}</p><p><strong>Room Password:</strong> {{ tournament.room_password }}</p><p class="message success">Aapki participation confirm ho gayi hai. Ab game room join karein. Match se eliminate hone ke baad kill evidence submit karein.</p>
- <a class="btn-primary" style="display:inline-block;margin-top:14px" href="{% url 'tournaments:kill_submission' registration.id %}">🎯 KILL VERIFY — Submit Video + 2 Screenshots</a>
- <p class="help-text">Apni registered Free Fire UID hi use karein. AI evidence ko check karke proposal admin ko bhejega; final approval aur payout admin karega.</p></div>
+ <div class="tournament-card" style="padding:24px;margin-top:20px;border-radius:16px">
+  <h2>🔥 Room Details — Confirmed Player</h2>
+  <p>Room ID: <strong id="ffRoomId">{{ tournament.room_id }}</strong></p>
+  <p>Room Password: <strong id="ffRoomPassword">{{ tournament.room_password }}</strong></p>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin:14px 0">
+   <button type="button" class="btn-primary" id="saveRoomDetails">☆ Save Room Details</button>
+   <button type="button" class="button button-outline" id="copyRoomId">Copy Room ID</button>
+   <button type="button" class="button button-outline" id="copyRoomPassword">Copy Password</button>
+   <button type="button" class="button button-outline" id="copyBothRoomDetails">Copy Both</button>
+  </div>
+  <p id="roomSaveStatus" class="help-text" aria-live="polite">Save this room shortcut on this device. Your password stays on your signed-in FF Arena account and is not copied into local device storage.</p>
+  <a class="btn-primary" style="display:inline-block;margin-top:8px" href="intent://#Intent;package=com.dts.freefiremax;end">🎮 Open Free Fire MAX</a>
+  <p class="help-text">Free Fire MAX will open if it is installed. Then enter the copied Room ID and Password in the game's Custom Room screen. FF Arena cannot fill another app's fields or directly join a room unless Garena provides an official room-entry link.</p>
+  <p class="message success">Aapki participation confirm ho gayi hai. Match ke baad kill evidence submit karein.</p>
+  <a class="btn-primary" style="display:inline-block;margin-top:14px" href="{% url 'tournaments:kill_submission' registration.id %}">🎯 KILL VERIFY — Submit Video + 2 Screenshots</a>
+  <p class="help-text">Apni registered Free Fire UID hi use karein. AI evidence review aur reward rules tournament ke mutabik apply honge.</p>
+ </div>
+ <script>
+ (function () {
+   const id = "{{ registration.id }}";
+   const roomId = document.getElementById("ffRoomId").textContent.trim();
+   const roomPassword = document.getElementById("ffRoomPassword").textContent.trim();
+   const saveKey = "ffarena_saved_room_" + id;
+   const saveButton = document.getElementById("saveRoomDetails");
+   const status = document.getElementById("roomSaveStatus");
+   function refreshSavedState() {
+     const saved = localStorage.getItem(saveKey) === "1";
+     saveButton.textContent = saved ? "★ Room Details Saved" : "☆ Save Room Details";
+     status.textContent = saved
+       ? "Room shortcut saved on this device. Open this registration again to view the current ID and Password."
+       : "Save this room shortcut on this device. Your password stays on your signed-in FF Arena account and is not copied into local device storage.";
+   }
+   saveButton.addEventListener("click", function () {
+     try {
+       localStorage.setItem(saveKey, "1");
+       refreshSavedState();
+     } catch (error) {
+       status.textContent = "Device save is unavailable. You can still copy the room details below.";
+     }
+   });
+   async function copyText(value, label) {
+     try {
+       if (navigator.clipboard && window.isSecureContext) {
+         await navigator.clipboard.writeText(value);
+       } else {
+         const field = document.createElement("textarea");
+         field.value = value;
+         field.style.position = "fixed";
+         field.style.opacity = "0";
+         document.body.appendChild(field);
+         field.select();
+         const copied = document.execCommand("copy");
+         field.remove();
+         if (!copied) throw new Error("Clipboard unavailable");
+       }
+       status.textContent = label + " copied. Open Free Fire MAX and paste it in the matching field.";
+     } catch (error) {
+       status.textContent = "Copy nahi ho saka. Details ko select karke manually copy karein.";
+     }
+   }
+   document.getElementById("copyRoomId").addEventListener("click", function () { copyText(roomId, "Room ID"); });
+   document.getElementById("copyRoomPassword").addEventListener("click", function () { copyText(roomPassword, "Room Password"); });
+   document.getElementById("copyBothRoomDetails").addEventListener("click", function () {
+     copyText("Room ID: " + roomId + "\\nRoom Password: " + roomPassword, "Room ID and Password");
+   });
+   refreshSavedState();
+ })();
+ </script>
  {% elif registration.status == "not_playing" %}<p class="message error">Aap NOT PLAYING mark ho chuke hain. Room access band hai. Agar entry fee UPI se di thi, refund ki actual transfer status admin se confirm karein.</p>
  {% elif not registration.payment_verified %}<p class="message warning">Payment verify nahi hui hai. Admin ke payment verify karne ke baad hi participation confirmation aur room access milega.</p>
  {% else %}<p class="message">Room details abhi available nahi hain. Admin ke tournament room details release karne ka wait karein.</p>{% endif %}
