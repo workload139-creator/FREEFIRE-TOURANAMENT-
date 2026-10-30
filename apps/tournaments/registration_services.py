@@ -83,7 +83,7 @@ def send_unlimited_live_notifications(tournament_id):
             continue
         player_message = (
             f"Hi {registration.player.username},\n\n"
-            f"Your Battle Royale tournament, {tournament.title}, is now LIVE!\n"
+            f"Your {event_label}, {tournament.title}, is now LIVE!\n"
             f"Your Free Fire UID: {registration.free_fire_uid}\n"
             f"Entry fee paid by: {registration.get_payment_method_display()}\n"
             f"Players: {len(registrations)}/{tournament.max_players}\n\n"
