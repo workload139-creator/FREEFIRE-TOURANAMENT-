@@ -32,11 +32,10 @@
           <p>Registration cancel hai. Agar payment ki thi aur refund status update nahi hua, admin ko registration ID {{ registration.id }} ke saath contact karein.</p>
         {% elif registration.payment_verified and registration.status in "confirmed,waiting_ready,ready" and registration.tournament.status == "upcoming" %}
           {% if registration.tournament.entry_fee > 0 or registration.currency_amount > 0 %}
-          <p class="refund-policy-copy"><strong>Self-refund policy:</strong> tournament start hone mein kam se kam 1 ghanta baaki ho to verified entry fee INR wallet mein ya Diamonds/Coins/Fan Tokens apni original currency mein return hogi. 1 ghante se kam time bachte hi refund option hat jayega. Refund lene par registration cancel ho jayegi.</p>
-          <form method="post" action="{% url 'tournaments:self_refund' registration.id %}" class="self-refund-form" data-start="{{ registration.tournament.start_time|date:'c' }}" style="margin:12px 0">
+          <p class="refund-policy-copy"><strong>Self-refund policy:</strong> BR, VS aur Unlimited BR mein verified entry fee ka refund tournament LIVE hone se pehle kabhi bhi le sakte hain — start hone mein 1 ghanta ho ya 1 minute. Refund lene par registration cancel hogi aur amount original currency (INR wallet, Diamonds, Coins ya Fan Tokens) mein wapas milega. Tournament LIVE hote hi self-refund band ho jayega.</p>
+          <form method="post" action="{% url 'tournaments:self_refund' registration.id %}" class="self-refund-form" style="margin:12px 0">
             {% csrf_token %}
-            <p class="refund-window-status" role="status" aria-live="polite">Refund window check ho rahi hai…</p>
-            <button class="button button-primary" type="submit" disabled onclick="return confirm('Refund lene par registration cancel hogi aur amount aapke in-app wallet mein return hoga. Continue?')">Refund to wallet</button>
+            <button class="button button-primary" type="submit" onclick="return confirm('Refund lene par registration cancel hogi aur amount aapke original wallet currency mein return hoga. Continue?')">Refund to wallet</button>
           </form>
           {% else %}
             <p>Is registration mein refundable entry amount nahi hai.</p>
@@ -101,21 +100,5 @@
     {% empty %}<p>No tournament ledger records yet.</p>{% endfor %}
   </section>
 </section>
-<script>
-(function () {
-  const now = Date.now();
-  document.querySelectorAll(".self-refund-form[data-start]").forEach(function (form) {
-    const start = Date.parse(form.dataset.start);
-    const button = form.querySelector('button[type="submit"]');
-    const status = form.querySelector(".refund-window-status");
-    const eligible = Number.isFinite(start) && start - now >= 60 * 60 * 1000;
-    if (button) { button.disabled = !eligible; button.hidden = !eligible; button.style.display = eligible ? "" : "none"; }
-    if (status) status.textContent = eligible
-      ? "Refund window open hai. Tournament start hone mein kam se kam 1 ghanta baaki hai; refund lene par original wallet currency return hogi aur registration cancel hogi."
-      : (Number.isFinite(start) && start > now
-        ? "Refund button tournament start hone mein 1 ghante se kam time bachne par band rahega."
-        : "Tournament start time nikal chuka hai; self-refund window band hai.");
-  });
-})();
-</script>
+
 {% endblock %}
