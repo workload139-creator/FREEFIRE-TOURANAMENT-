@@ -22,7 +22,7 @@
         </p>
 
         <div class="hero-actions">
-            <a href="#tournaments" class="btn-primary">
+            <a href="{% url 'tournaments:list' %}" class="btn-primary">
                 Explore Tournaments →
             </a>
 
@@ -95,37 +95,6 @@
 .home-dashboard-card.shop{background:radial-gradient(circle at 100% 0%,#4edbff22,transparent 48%),linear-gradient(145deg,#16313a,#0a101a)}
 @media(max-width:600px){.home-dashboard{margin:28px auto}.home-dashboard-card{min-height:160px;padding:18px}}
 </style>
-
-<!-- FEATURES -->
-<section class="features-section">
-    <div class="section-heading">
-        <div>
-            <span class="section-label">WHY FF ARENA?</span>
-            <h2>Built for <span>Gamers</span></h2>
-        </div>
-    </div>
-
-    <div class="features-grid">
-        <a class="feature-card" href="{% if user.is_authenticated %}{% url 'accounts:profile' %}{% else %}{% url 'login' %}{% endif %}">
-            <span>👤</span>
-            <h3>Player Profile</h3>
-            <p>Photo, username, email aur player ID manage karo.</p>
-        </a>
-
-        <a class="feature-card" href="{% if user.is_authenticated %}{% url 'accounts:wallet' %}{% else %}{% url 'login' %}{% endif %}">
-            <span>💰</span>
-            <h3>Wallet</h3>
-            <p>Wallet balance aur transaction history dekho.</p>
-        </a>
-
-        <a class="feature-card" href="{% url 'tournaments:results' %}">
-            <span>📊</span>
-            <h3>Results</h3>
-            <p>Matches aur leaderboard results track karo.</p>
-        </a>
-    </div>
-</section>
-
 
 <!-- FINAL CTA -->
 <section class="cta-section">
