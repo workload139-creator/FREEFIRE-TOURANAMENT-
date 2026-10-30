@@ -334,10 +334,19 @@ def community_feed(request):
 
 
 def _shop_payment_details():
-    """Use only administrator-configured shop payment details; never hard-code a personal UPI."""
-    upi_id = os.getenv("FF_ARENA_SHOP_UPI_ID", "").strip()
-    payee_name = os.getenv("FF_ARENA_SHOP_PAYEE_NAME", "").strip()
-    if not upi_id or "@" not in upi_id or any(char.isspace() for char in upi_id) or not payee_name:
+    """Build the Diamond Shop QR from the payment details supplied by the owner."""
+    # Render variables can override these values without changing source code.
+    upi_id = (
+        os.getenv("FF_ARENA_SHOP_UPI_ID", "").strip()
+        or os.getenv("FF_ARENA_UPI_ID", "").strip()
+        or "6232481135@fam"
+    )
+    payee_name = (
+        os.getenv("FF_ARENA_SHOP_PAYEE_NAME", "").strip()
+        or os.getenv("FF_ARENA_UPI_NAME", "").strip()
+        or "Ravibaghel"
+    )
+    if not upi_id or "@" not in upi_id or any(char.isspace() for char in upi_id):
         return {"configured": False, "upi_id": "", "payee_name": "", "upi_uri": "", "qr_data_uri": ""}
 
     upi_uri = "upi://pay?" + urlencode({"pa": upi_id, "pn": payee_name, "cu": "INR"})

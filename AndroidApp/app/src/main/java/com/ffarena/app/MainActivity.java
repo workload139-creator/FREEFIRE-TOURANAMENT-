@@ -25,6 +25,7 @@ import android.webkit.PermissionRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.WebResourceRequest;
 import android.webkit.ValueCallback;
 import android.webkit.JavascriptInterface;
 import android.widget.Button;
@@ -723,12 +724,26 @@ public class MainActivity extends Activity {
         settings.setDomStorageEnabled(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
         // WebRTC microphone capture in Android WebView needs native audio routing permission.
-        settings.setJavaScriptCanOpenWindowsAutomatically(false);
+        settings.setJavaScriptCanOpenWindowsAutomatically(true);
+        settings.setSupportMultipleWindows(false);
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        settings.setDatabaseEnabled(true);
         settings.setAllowFileAccess(false);
         settings.setSupportZoom(false);
         CookieManager.getInstance().setAcceptCookie(true);
+        CookieManager.getInstance().setAcceptThirdPartyCookies(featureWebView, true);
         featureWebView.addJavascriptInterface(new ShareBridge(), "FFArenaShare");
-        featureWebView.setWebViewClient(new WebViewClient());
+        featureWebView.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                return handleWebViewNavigation(view, request.getUrl().toString());
+            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                return handleWebViewNavigation(view, url);
+            }
+        });
         featureWebView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback,
@@ -789,6 +804,30 @@ public class MainActivity extends Activity {
         featureWebView.loadUrl(url);
         page.addView(featureWebView, new LinearLayout.LayoutParams(-1, 0, 1));
         root.addView(page, new LinearLayout.LayoutParams(-1, -1));
+    }
+
+    private boolean handleWebViewNavigation(WebView view, String url) {
+        if (url == null || url.isEmpty()) return false;
+        Uri uri = Uri.parse(url);
+        String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase();
+        String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase();
+        if ("https".equals(scheme) && "freefire-touranament-74nr.onrender.com".equals(host)) {
+            return false;
+        }
+        if ("http".equals(scheme) || "https".equals(scheme)
+                || "upi".equals(scheme) || "tel".equals(scheme)
+                || "mailto".equals(scheme) || "intent".equals(scheme)) {
+            try {
+                Intent intent = "intent".equals(scheme)
+                        ? Intent.parseUri(url, Intent.URI_INTENT_SCHEME)
+                        : new Intent(Intent.ACTION_VIEW, uri);
+                startActivity(intent);
+            } catch (Exception ignored) {
+                Toast.makeText(this, "Is link ko kholne ke liye compatible app nahi mili.", Toast.LENGTH_SHORT).show();
+            }
+            return true;
+        }
+        return true;
     }
 
     private final class ShareBridge {
