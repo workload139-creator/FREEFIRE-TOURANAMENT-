@@ -732,6 +732,61 @@ def mark_manual_upi_refunds_paid(modeladmin, request, queryset):
         modeladmin.message_user(request, f"{skipped} refund(s) skipped: verify payment/status, enter unique real UTR, and check Admin Wallet ledger balance.", messages.WARNING)
 
 
+@admin.register(FreeFanTournament)
+class FreeFanTournamentAdmin(admin.ModelAdmin):
+    """Dedicated admin list for the existing Free Fan Tournament proxy."""
+    list_display = ("id", "title", "status", "max_players", "start_time", "created_at")
+    list_filter = ("status", "mode", "br_format")
+    search_fields = ("title",)
+    ordering = ("-created_at",)
+
+
+@admin.register(KillSubmission)
+class KillSubmissionAdmin(admin.ModelAdmin):
+    """Admin evidence queue; uploaded evidence and AI output remain auditable."""
+    list_display = (
+        "id", "tournament", "player", "registered_uid", "free_fire_uid",
+        "ai_proposed_kills", "ai_confidence", "ai_uid_matches", "status",
+        "payout_status", "submitted_at",
+    )
+    list_filter = ("status", "payout_status", "ai_confidence", "ai_uid_matches", "tournament__mode")
+    search_fields = ("player__username", "registered_uid", "free_fire_uid", "tournament__title")
+    list_select_related = ("player", "tournament", "registration")
+    readonly_fields = (
+        "registration", "player", "tournament", "registered_uid", "free_fire_uid",
+        "history_video", "history_image_one", "history_image_two",
+        "ai_proposed_kills", "ai_confidence", "ai_uid_matches", "ai_review_notes",
+        "proposed_reward", "proposed_coins_reward", "submitted_at",
+    )
+    fields = (
+        "registration", "player", "tournament", "registered_uid", "free_fire_uid",
+        "history_video", "history_image_one", "history_image_two",
+        "ai_proposed_kills", "ai_confidence", "ai_uid_matches", "ai_review_notes",
+        "approved_kills", "proposed_reward", "approved_reward",
+        "proposed_coins_reward", "approved_coins_reward", "status", "admin_notes",
+        "payout_reference", "payout_status", "payout_paid_at", "submitted_at", "reviewed_at",
+    )
+
+
+@admin.register(TournamentLedgerEntry)
+class TournamentLedgerEntryAdmin(admin.ModelAdmin):
+    """Immutable audit view for entry, reward and refund ledger records."""
+    list_display = (
+        "id", "tournament", "player", "entry_type", "currency", "quantity",
+        "amount_inr", "status", "reference", "created_at",
+    )
+    list_filter = ("entry_type", "currency", "status", "tournament__mode")
+    search_fields = ("reference", "player__username", "tournament__title", "description")
+    list_select_related = ("tournament", "player", "registration")
+    readonly_fields = tuple(field.name for field in TournamentLedgerEntry._meta.fields)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(Registration)
 class RegistrationAdmin(admin.ModelAdmin):
     list_display = (
