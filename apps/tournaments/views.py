@@ -824,6 +824,95 @@ def review_kill_submission(request, submission_id):
     return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
 
 
+
+@login_required
+@user_passes_test(lambda user: user.is_staff)
+def admin_kill_batch_review(request):
+    """One-tournament batch view for reviewing and crediting many player rewards."""
+    tournaments = Tournament.objects.filter(
+        kill_submissions__isnull=False
+    ).distinct().order_by("-start_time")
+    tournament_id = request.POST.get("tournament_id") if request.method == "POST" else request.GET.get("tournament", "")
+    selected_tournament = None
+    if tournament_id and str(tournament_id).isdigit():
+        selected_tournament = get_object_or_404(Tournament, pk=int(tournament_id))
+
+    if request.method == "POST":
+        if selected_tournament is None:
+            messages.error(request, "Pehle ek tournament select karo.")
+            return redirect("tournaments:admin_kill_batch_review")
+        selected_ids = request.POST.getlist("submission_ids")
+        if not selected_ids:
+            messages.error(request, "Bulk approval ke liye kam se kam ek player select karo.")
+            return redirect(f"{reverse('tournaments:admin_kill_batch_review')}?tournament={selected_tournament.pk}")
+        common_notes = request.POST.get("bulk_admin_notes", "").strip()[:1000]
+        approved_count = 0
+        skipped = []
+        with transaction.atomic():
+            for submission_id in selected_ids:
+                if not str(submission_id).isdigit():
+                    continue
+                submission = (
+                    KillSubmission.objects.select_for_update()
+                    .select_related("player", "registration", "tournament")
+                    .filter(pk=int(submission_id), tournament=selected_tournament)
+                    .first()
+                )
+                if not submission or submission.status != KillSubmission.Status.PENDING:
+                    skipped.append(str(submission_id))
+                    continue
+                if (
+                    not submission.registration.payment_verified
+                    or submission.free_fire_uid != submission.registered_uid
+                    or submission.registered_uid != submission.registration.free_fire_uid
+                ):
+                    skipped.append(str(submission_id))
+                    continue
+                try:
+                    kills = int(request.POST.get(f"approved_kills_{submission.pk}", ""))
+                except (TypeError, ValueError):
+                    skipped.append(str(submission_id))
+                    continue
+                if kills < 0 or kills > 99:
+                    skipped.append(str(submission_id))
+                    continue
+                raw_override = request.POST.get(f"reward_override_{submission.pk}", "").strip()
+                override = None
+                if raw_override:
+                    try:
+                        override = int(raw_override)
+                    except (TypeError, ValueError):
+                        skipped.append(str(submission_id))
+                        continue
+                    if override < 0 or override > 1000000 or kills < settings.MINIMUM_VERIFIED_KILLS:
+                        skipped.append(str(submission_id))
+                        continue
+                submission.admin_notes = common_notes or "Reviewed in tournament bulk reward panel."
+                _credit_kill_submission_reward(
+                    submission, kills, reward_override=override,
+                    source="Admin bulk-approved tournament reward",
+                )
+                approved_count += 1
+        if skipped:
+            messages.warning(request, f"{approved_count} players approved and credited. {len(skipped)} rows skipped because of status, UID/payment mismatch, or invalid values.")
+        else:
+            messages.success(request, f"{approved_count} players approved and tournament rewards credited in one batch.")
+        return redirect(f"{reverse('tournaments:admin_kill_batch_review')}?tournament={selected_tournament.pk}")
+
+    submissions = KillSubmission.objects.none()
+    if selected_tournament:
+        submissions = KillSubmission.objects.filter(
+            tournament=selected_tournament,
+            status=KillSubmission.Status.PENDING,
+        ).select_related("player", "registration", "tournament").order_by("-submitted_at")
+    return render(request, "tournaments/admin_kill_batch.html", {
+        "tournaments": tournaments,
+        "selected_tournament": selected_tournament,
+        "submissions": submissions,
+        "minimum_verified_kills": int(settings.MINIMUM_VERIFIED_KILLS),
+    })
+
+
 def results(request):
     completed_tournaments = Tournament.objects.filter(
         status=Tournament.Status.COMPLETED
