@@ -733,7 +733,25 @@ def retry_ai_kill_review(request, submission_id):
             "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
             "ai_review_notes", "proposed_reward", "ai_reviewer_reports",
         ])
-        messages.info(request, "Four AI review passes updated. This is only a reward proposal; Admin approval is required before credit.")
+        if (
+            result.get("four_way_agreement") is True
+            and uid_ok
+            and submission.registration.payment_verified
+            and submission.registration.status == Registration.Status.READY
+            and submission.tournament.status != Tournament.Status.CANCELLED
+            and proposed is not None
+            and proposed >= settings.MINIMUM_VERIFIED_KILLS
+        ):
+            with transaction.atomic():
+                locked = KillSubmission.objects.select_for_update().get(pk=submission.pk)
+                if locked.status == KillSubmission.Status.PENDING:
+                    locked.admin_notes = "Automatically approved after four independent AI reviewers agreed on kills, UID and evidence."
+                    credited = _credit_kill_submission_reward(locked, proposed, source="Four-AI automatic award")
+                    submission.refresh_from_db()
+                    reward_text = ", ".join(f"{qty} {label}" for qty, label in credited) or "0 reward"
+                    messages.success(request, f"Four AI reviewers agreed: {proposed} kills; {reward_text} automatically credited.")
+        else:
+            messages.info(request, "AI review updated. Any failed check or disagreement remains in Admin Review.")
     except Exception as exc:
         submission.ai_reviewer_reports = {
             key: {"name": label, "status": "BLOCKED", "proposed_kills": None, "confidence": "low", "reason": "Evidence integrity check failed or original upload fingerprint is missing; manual Admin Review required."}
