@@ -246,7 +246,7 @@ def award_arena_currency_winner(modeladmin, request, queryset):
                 continue
             registration = winners.first()
             reference = f"ARENA-CURRENCY-WIN-{tournament.pk}"
-            if TournamentLedgerEntry.objects.filter(reference=reference).exists():
+            if TournamentLedgerEntry.objects.filter(reference=reference).exists() or TournamentLedgerEntry.objects.filter(reference__startswith=f"{reference}-").exists():
                 skipped += 1
                 continue
             wallet, _ = PlayerShopWallet.objects.get_or_create(user=registration.player)
