@@ -9,6 +9,8 @@ def reward_for_tournament(tournament, kills):
         raise ValueError("Kill count must be a whole number.")
     if kills < 0:
         raise ValueError("Kill count cannot be negative.")
+    if tournament.mode == "VS":
+        return "coins", kills * 2, "Coins"
     if tournament.is_free_fan_tournament:
         return "fan_tokens", kills // 2, "Fan Tokens"
     if Decimal(str(tournament.entry_fee)) <= Decimal("1.00"):
