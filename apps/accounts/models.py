@@ -8,6 +8,8 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.utils import timezone
 
+from apps.core.storage import PrivateMediaStorage
+
 
 class User(AbstractUser):
     phone_number = models.CharField(
@@ -24,7 +26,7 @@ class User(AbstractUser):
     uid_verified = models.BooleanField(default=False)
 
     upi_id = models.CharField(max_length=100, blank=True)
-    upi_qr_code = models.ImageField(upload_to="player_upi_qr/", blank=True, null=True)
+    upi_qr_code = models.ImageField(upload_to="player_upi_qr/", storage=PrivateMediaStorage(), blank=True, null=True)
     upi_verified = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
