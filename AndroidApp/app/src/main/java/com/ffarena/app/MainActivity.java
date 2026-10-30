@@ -18,6 +18,7 @@ import android.webkit.PermissionRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.ValueCallback;
 import android.webkit.JavascriptInterface;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -45,6 +46,8 @@ public class MainActivity extends Activity {
     private WebView featureWebView;
     private String currentTab = "Home";
     private static final int REQUEST_MIC_PERMISSION = 7021;
+    private static final int REQUEST_FILE_CHOOSER = 7022;
+    private ValueCallback<Uri[]> pendingFileCallback;
     private PermissionRequest pendingMicRequest;
 
     @Override
@@ -607,6 +610,29 @@ public class MainActivity extends Activity {
         featureWebView.setWebViewClient(new WebViewClient());
         featureWebView.setWebChromeClient(new WebChromeClient() {
             @Override
+            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback,
+                                             FileChooserParams fileChooserParams) {
+                if (pendingFileCallback != null) {
+                    pendingFileCallback.onReceiveValue(null);
+                    pendingFileCallback = null;
+                }
+                pendingFileCallback = filePathCallback;
+                try {
+                    Intent chooserIntent = fileChooserParams.createIntent();
+                    if (chooserIntent.getType() == null || chooserIntent.getType().isEmpty()) {
+                        chooserIntent.setType("image/*");
+                    }
+                    chooserIntent.addCategory(Intent.CATEGORY_OPENABLE);
+                    startActivityForResult(Intent.createChooser(chooserIntent, "Select photo"), REQUEST_FILE_CHOOSER);
+                    return true;
+                } catch (Exception exception) {
+                    pendingFileCallback = null;
+                    filePathCallback.onReceiveValue(null);
+                    return false;
+                }
+            }
+
+            @Override
             public void onPermissionRequest(PermissionRequest request) {
                 runOnUiThread(() -> {
                     Uri origin = request.getOrigin();
@@ -690,6 +716,16 @@ public class MainActivity extends Activity {
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_FILE_CHOOSER && pendingFileCallback != null) {
+            Uri[] results = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
+            pendingFileCallback.onReceiveValue(results);
+            pendingFileCallback = null;
+        }
     }
 
     @Override
