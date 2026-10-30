@@ -73,8 +73,9 @@ class TournamentAdminForm(forms.ModelForm):
             cleaned["is_unlimited_br"] = True
         if cleaned.get("mode") == Tournament.Mode.BR and cleaned.get("vs_format"):
             self.add_error("vs_format", "BR tournament ke liye CS/VS format khaali rakhein.")
-        if cleaned.get("mode") == Tournament.Mode.BR and not cleaned.get("is_unlimited_br") and not cleaned.get("is_free_fan_tournament") and not cleaned.get("br_format"):
-            self.add_error("br_format", "BR tournament ke liye Solo, Duo ya Squad format chunein.")
+        if cleaned.get("mode") == Tournament.Mode.BR and not cleaned.get("br_format"):
+            # Older/simple admin submissions may omit the optional format; keep them usable as Solo.
+            cleaned["br_format"] = Tournament.BRFormat.SOLO
         if cleaned.get("mode") == Tournament.Mode.VS and cleaned.get("br_format"):
             self.add_error("br_format", "CS/VS tournament ke liye BR format khaali rakhein.")
         if cleaned.get("mode") == Tournament.Mode.VS and not cleaned.get("vs_format"):
