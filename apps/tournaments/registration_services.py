@@ -145,8 +145,10 @@ def maybe_start_unlimited_tournament(tournament_id):
     if active_count < tournament.max_players or active_count % team_size:
         return False
 
-    # Lock in the verified player/team order as the event becomes LIVE.
-    assign_teams_for_tournament(tournament.pk)
+    # Paid Duo/Squad BR team slots are locked in as the event becomes LIVE.
+    # The separate Free Fan tournament keeps its original solo-entry flow unchanged.
+    if not tournament.is_free_fan_tournament:
+        assign_teams_for_tournament(tournament.pk)
     tournament.status = Tournament.Status.LIVE
     tournament.save(update_fields=["status", "updated_at"])
     transaction.on_commit(lambda tournament_id=tournament.pk: send_unlimited_live_notifications(tournament_id))
