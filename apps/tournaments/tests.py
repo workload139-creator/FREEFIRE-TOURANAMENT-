@@ -42,56 +42,57 @@ class KillRewardTests(SimpleTestCase):
         with self.assertRaises(ValueError):
             calculate_proposed_reward(-1)
 
-class DualAIReviewTests(SimpleTestCase):
+class FourAIReviewTests(SimpleTestCase):
 
     def _result(self, kills=4, uid="1234567890"):
         return {
-            "proposed_kills": kills,
-            "confidence": "high",
-            "uid_matches": True,
-            "observed_uid": uid,
-            "history_consistent": True,
-            "evidence_complete": True,
-            "match_mode": "Battle Royale",
-            "match_date": "2026-10-30",
-            "match_id": "match-123",
-            "evidence_notes": "UID and personal kills are readable.",
+            "proposed_kills": kills, "confidence": "high",
+            "uid_matches": True, "observed_uid": uid,
+            "history_consistent": True, "evidence_complete": True,
+            "match_mode": "Battle Royale", "match_date": "2026-10-30",
+            "match_id": "match-123", "evidence_notes": "UID and personal kills are readable.",
             "reason": "Evidence is clear.",
         }
 
-    @patch.dict(os.environ, {
-        "KILL_REVIEW_PROVIDER": "dual",
-        "OPENAI_KILL_REVIEW_MODEL": "primary-test",
-        "OLLAMA_KILL_REVIEW_MODEL": "agent-test",
-    })
+    @patch("apps.tournaments.ai_review.verify_evidence_integrity")
     @patch("apps.tournaments.ai_review._analyze_with_provider")
-    def test_ai_agent_runs_even_if_primary_fails(self, review):
-        review.side_effect = [AIReviewError("primary unavailable"), self._result()]
+    def test_four_independent_passes_must_agree(self, review, integrity):
+        review.side_effect = [self._result(), self._result(), self._result(), self._result()]
         result = analyze_kill_evidence(SimpleNamespace(registered_uid="1234567890"))
-        self.assertEqual(review.call_count, 2)
-        self.assertFalse(result["dual_agreement"])
-        self.assertEqual(result["confidence"], "low")
-        self.assertIn("Admin Review required", result["reason"])
+        self.assertEqual(review.call_count, 4)
+        self.assertTrue(result["four_way_agreement"])
+        self.assertEqual(len(result["reviewer_reports"]), 4)
+        self.assertEqual(result["proposed_kills"], 4)
 
-    @patch.dict(os.environ, {
-        "KILL_REVIEW_PROVIDER": "dual",
-        "OPENAI_KILL_REVIEW_MODEL": "primary-test",
-        "OLLAMA_KILL_REVIEW_MODEL": "agent-test",
-    })
+    @patch("apps.tournaments.ai_review.verify_evidence_integrity")
     @patch("apps.tournaments.ai_review._analyze_with_provider")
-    def test_dual_agreement_requires_matching_uid_and_kills(self, review):
-        review.side_effect = [self._result(), self._result(uid="9999999999")]
+    def test_one_reviewer_failure_is_recorded_and_does_not_stop_others(self, review, integrity):
+        review.side_effect = [AIReviewError("OpenAI unavailable"), self._result(), self._result(), self._result()]
         result = analyze_kill_evidence(SimpleNamespace(registered_uid="1234567890"))
-        self.assertFalse(result["dual_agreement"])
+        self.assertEqual(review.call_count, 4)
+        self.assertFalse(result["four_way_agreement"])
+        self.assertEqual(list(result["reviewer_reports"].values())[0]["status"], "FAILED")
+
+    @patch("apps.tournaments.ai_review.verify_evidence_integrity")
+    @patch("apps.tournaments.ai_review._analyze_with_provider")
+    def test_kill_disagreement_blocks_four_way_agreement(self, review, integrity):
+        review.side_effect = [self._result(4), self._result(4), self._result(5), self._result(4)]
+        result = analyze_kill_evidence(SimpleNamespace(registered_uid="1234567890"))
+        self.assertFalse(result["four_way_agreement"])
         self.assertEqual(result["confidence"], "low")
 
-    @patch.dict(os.environ, {"KILL_REVIEW_PROVIDER": "dual"})
+    @patch("apps.tournaments.ai_review.verify_evidence_integrity")
     @patch("apps.tournaments.ai_review._analyze_with_provider")
-    def test_incomplete_evidence_never_passes_dual_review(self, review):
-        first = self._result()
-        second = self._result()
-        second["evidence_complete"] = False
-        review.side_effect = [first, second]
+    def test_uid_mismatch_blocks_four_way_agreement(self, review, integrity):
+        review.side_effect = [self._result(), self._result(), self._result(uid="9999999999"), self._result()]
         result = analyze_kill_evidence(SimpleNamespace(registered_uid="1234567890"))
-        self.assertFalse(result["dual_agreement"])
-        self.assertFalse(result["evidence_complete"])
+        self.assertFalse(result["four_way_agreement"])
+
+    @patch("apps.tournaments.ai_review.verify_evidence_integrity")
+    @patch("apps.tournaments.ai_review._analyze_with_provider")
+    def test_low_confidence_or_incomplete_evidence_blocks_agreement(self, review, integrity):
+        incomplete = self._result()
+        incomplete["evidence_complete"] = False
+        review.side_effect = [self._result(), self._result(), incomplete, self._result()]
+        result = analyze_kill_evidence(SimpleNamespace(registered_uid="1234567890"))
+        self.assertFalse(result["four_way_agreement"])
