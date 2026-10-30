@@ -16,6 +16,11 @@ class Tournament(models.Model):
         BR = "BR", "Battle Royale"
         VS = "VS", "Clash Squad VS"
 
+    class BRFormat(models.TextChoices):
+        SOLO = "solo", "Solo"
+        DUO = "duo", "Duo"
+        SQUAD = "squad", "Squad"
+
     class VSFormat(models.TextChoices):
         ONE_V_ONE = "1v1", "1 vs 1"
         TWO_V_TWO = "2v2", "2 vs 2"
@@ -43,6 +48,8 @@ class Tournament(models.Model):
         default=Mode.BR,
         db_index=True,
     )
+
+    br_format = models.CharField(max_length=8, choices=BRFormat.choices, blank=True, default="", help_text="Battle Royale format: Solo, Duo or Squad.")
 
     vs_format = models.CharField(
         max_length=3,
@@ -109,6 +116,7 @@ class Tournament(models.Model):
 
     # Admin-selected winner receives the admin-configured prize_pool into their internal wallet once.
     winner_uid = models.CharField(max_length=30, blank=True, default="")
+    winner_team_uids = models.TextField(blank=True, default="", help_text="BR winning team ke registered Free Fire UIDs; har line ya comma mein ek UID. Har eligible player ko 10 Fan Tokens + 50 Coins.")
     winner_prize_paid = models.BooleanField(default=False)
     winner_prize_reference = models.CharField(max_length=100, blank=True, default="")
 
