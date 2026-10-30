@@ -16,6 +16,7 @@ urlpatterns = [
     path("battle-royale/", arena_views.battle_royale_list, name="battle_royale_list"),
     path("diwali-offer/", arena_views.diwali_offer_list, name="diwali_offer_list"),
     path("clash-squad/", arena_views.clash_squad_list, name="clash_squad_list"),
+    path("girls-vs-boys/", arena_views.girls_vs_boys_list, name="girls_vs_boys_list"),
 
     # Dedicated date-free tournament pages
     path("free-tournament/", views.free_fan_tournament_list, name="free_fan_list"),
