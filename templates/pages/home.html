@@ -1,6 +1,12 @@
 {% extends "base.html" %}
 
 {% block title %}Home | FF Arena{% endblock %}
+{% block extra_css %}
+<style>
+.hero{background-image:linear-gradient(90deg,rgba(5,10,18,.92) 0%,rgba(5,10,18,.62) 52%,rgba(5,10,18,.30) 100%),url('/static/images/ff-arena-hero.jpg') !important;background-size:cover;background-position:center 38%;border:1px solid #55ffc044;box-shadow:0 24px 70px #0008}
+.hero-card{background:linear-gradient(145deg,rgba(8,16,27,.88),rgba(8,16,27,.70));backdrop-filter:blur(5px)}
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="home-play-notice" role="note"><span aria-hidden="true">⚠️</span><p><strong>Play responsibly:</strong> Game mein paise ka nuksaan ho sakta hai. Sirf apni zimmedari par khelein aur apne area ke kanoon follow karein.</p></div>

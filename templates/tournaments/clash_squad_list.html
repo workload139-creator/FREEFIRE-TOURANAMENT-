@@ -1,5 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Clash Squad | FF Arena{% endblock %}
+{% block extra_css %}
+<style>
+.mode-page>.hero{background-image:linear-gradient(90deg,rgba(15,8,31,.91),rgba(13,15,30,.65)),url('/static/images/ff-clash-squad.jpg') !important;background-size:cover;background-position:center 45%;box-shadow:0 22px 60px #0008}
+</style>
+{% endblock %}
 {% block content %}
 <section class="mode-page">
 <header class="hero"><small>FF ARENA · SQUAD COMBAT</small><h1>⚔️ Clash Squad</h1><p>1v1, 2v2, 3v3 aur 4v4 — har format ka alag tournament, registration aur leaderboard.</p><div class="pills"><span>Entry ₹10 / player</span><span>1v1 · 20 Diamonds</span><span>2v2 · 38 Diamonds</span><span>3v3 · 56 Diamonds</span><span>4v4 · 84 Diamonds</span><span>2 Coins per approved kill</span></div></header>

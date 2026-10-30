@@ -1,5 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Unlimited Tournament | FF Arena{% endblock %}
+{% block extra_css %}
+<style>
+.unlimited-hero{background-image:linear-gradient(90deg,rgba(3,20,21,.93),rgba(8,17,35,.66)),url('/static/images/ff-battle-royale.jpg') !important;background-size:cover;background-position:center 58%}
+</style>
+{% endblock %}
 {% block content %}
 <section class="unlimited-arena">
   <header class="unlimited-hero">
