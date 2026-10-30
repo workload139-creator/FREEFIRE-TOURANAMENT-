@@ -66,9 +66,12 @@ def finalize_dual_ai_reward(submission, result):
         result.get("dual_agreement") is not True
         or result.get("confidence") != "high"
         or result.get("uid_matches") is not True
+        or result.get("history_consistent") is not True
+        or result.get("evidence_complete") is not True
+        or str(result.get("observed_uid") or "").strip() != str(submission.registered_uid or "").strip()
         or proposed is None
     ):
-        return False, "AI models did not both agree with high confidence."
+        return False, "Both AI reviews must agree with high confidence and complete matching Free Fire evidence."
 
     try:
         kills = int(proposed)
