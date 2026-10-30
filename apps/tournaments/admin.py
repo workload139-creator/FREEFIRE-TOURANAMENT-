@@ -63,6 +63,10 @@ class TournamentAdminForm(forms.ModelForm):
             cleaned["gender_category"] = Tournament.GenderCategory.OPEN
         if cleaned.get("mode") == Tournament.Mode.BR and cleaned.get("vs_format"):
             self.add_error("vs_format", "BR tournament ke liye CS/VS format khaali rakhein.")
+        if cleaned.get("mode") == Tournament.Mode.BR and not cleaned.get("is_unlimited_br") and not cleaned.get("is_free_fan_tournament") and not cleaned.get("br_format"):
+            self.add_error("br_format", "BR tournament ke liye Solo, Duo ya Squad format chunein.")
+        if cleaned.get("mode") == Tournament.Mode.VS and cleaned.get("br_format"):
+            self.add_error("br_format", "CS/VS tournament ke liye BR format khaali rakhein.")
         if cleaned.get("mode") == Tournament.Mode.VS and not cleaned.get("vs_format"):
             self.add_error("vs_format", "CS/VS tournament ke liye 1v1, 2v2, 3v3 ya 4v4 format chunein.")
         if cleaned.get("is_unlimited_br"):
@@ -547,7 +551,7 @@ class TournamentAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ("1. Tournament Details — kya ban raha hai?", {"description": "Title public tournament name hai. Mode mein BR ya CS/VS chunein. CS/VS mein 1v1/2v2/3v3/4v4 format chunein. Gender Category se Open, Boys Only, Girls Only ya Girls vs Boys event banayein. Har saved tournament ka apna alag control panel hai.", "fields": ("tournament_control_panel", "title", "description", "mode", "br_format", "vs_format", "gender_category")}),
-        ("2. Fees & Players — entry aur capacity", {"description": "Entry Fee player se li jane wali registration fee hai. Prize Pool tournament ka first-place prize hai; ise admin ke funds aur payout process ke mutabik set karein. Max Players room capacity hai (maximum 49). BR kill reward entry fee par depend karta hai: ₹10 entry = 5 Diamonds/kill; ₹1 entry = 5 Coins/kill. First prize display: ₹10 = 50 Diamonds; ₹1 = 20 Diamonds. Evidence verification zaroori hai.", "fields": ("entry_fee", "prize_pool", "max_players")}),
+        ("2. Fees & Players — entry aur capacity", {"description": "Entry Fee player se li jane wali registration fee hai. Prize Pool tournament ka first-place prize hai; ise admin ke funds aur payout process ke mutabik set karein. Max Players room capacity hai (maximum 49). BR format Solo/Duo/Squad chunein. Normal BR mein har approved kill par 5 Diamonds; minimum 2 verified kills. Free Fan event ka alag Fan Token rule rahega. Evidence verification zaroori hai.", "fields": ("entry_fee", "prize_pool", "max_players")}),
         ("3. Unlimited BR Series — optional", {"description": "Sirf unlimited BR series ke liye ON karein. Har round mein 49 players. Auto start capacity par round shuru karne ke liye hai; Auto reopen agla round khol sakta hai. Normal tournament ho to in options ko OFF rakhein.", "fields": ("is_unlimited_br", "auto_start_at_capacity", "auto_reopen", "series_root")}),
         ("4. Schedule & Status — publish / LIVE", {"description": "Start Time tournament ka scheduled time hai. Draft public list mein nahi dikhta; Upcoming se listing/registration khulti hai. LIVE karne se pehle Room Details section mein Room ID aur Password bharna zaroori hai. LIVE karne par verified paid players ko YES/NO confirmation email bhejne ki koshish hoti hai; email delivery SMTP setup par depend karti hai.", "fields": ("start_time", "status")}),
         ("5. Room Details — private until YES", {"description": "Room ID aur Password game room ke credentials hain. Tournament LIVE karte waqt dono bharein. Player ko room tabhi dikhega jab woh deadline ke andar YES kare. Credentials public description/website post mein na likhein.", "fields": ("room_id", "room_password")}),
