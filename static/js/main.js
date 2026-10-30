@@ -5,6 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initializeFormSubmission();
     initializeArenaEffects();
     initializeThemeSettings();
+    initializeAndroidLiveSync();
 });
 
 function initializeMobileMenu() {
@@ -148,4 +149,84 @@ function initializeThemeSettings() {
     };
     buttons.forEach((button) => button.addEventListener("click", () => applyTheme(button.dataset.themeChoice)));
     applyTheme(savedTheme);
+}
+
+
+/*
+ * The installed APK is a WebView. Poll the public tournament feed every 15 seconds
+ * so admin-side tournament changes appear without asking players to reinstall,
+ * tap Update, or manually refresh. Never reload over unsaved form input.
+ */
+function initializeAndroidLiveSync() {
+    if (!/FFArenaAndroidApp/i.test(navigator.userAgent || "")) return;
+
+    const endpoint = "/tournaments/api/?limit=50";
+    const storageKey = "ff-arena-tournament-snapshot-v1";
+    let lastSnapshot = "";
+    let checkInProgress = false;
+    let refreshPending = false;
+
+    try {
+        lastSnapshot = window.sessionStorage.getItem(storageKey) || "";
+    } catch (_) { /* Polling still works without storage. */ }
+
+    function hasUnsavedFormData() {
+        return Array.from(document.querySelectorAll("form")).some((form) => {
+            return Array.from(form.elements).some((field) => {
+                if (!field.name || field.disabled || field.type === "submit" || field.type === "button" || field.type === "hidden") return false;
+                if (field.type === "file") return Boolean(field.files && field.files.length);
+                if (field.type === "checkbox" || field.type === "radio") return field.checked !== field.defaultChecked;
+                return field.value !== field.defaultValue;
+            });
+        });
+    }
+
+    function refreshIfSafe() {
+        if (!refreshPending || document.visibilityState !== "visible" || hasUnsavedFormData()) return;
+        window.location.reload();
+    }
+
+    async function checkForAdminChanges() {
+        if (checkInProgress || document.visibilityState !== "visible") return;
+        checkInProgress = true;
+        try {
+            const response = await fetch(endpoint, {
+                method: "GET",
+                cache: "no-store",
+                credentials: "same-origin",
+                headers: { "Accept": "application/json" }
+            });
+            if (!response.ok) return;
+            const payload = await response.json();
+            if (!payload || payload.success !== true || !Array.isArray(payload.results)) return;
+
+            const snapshot = JSON.stringify(payload.results);
+            if (lastSnapshot && snapshot !== lastSnapshot) {
+                refreshPending = true;
+                refreshIfSafe();
+            }
+            lastSnapshot = snapshot;
+            try { window.sessionStorage.setItem(storageKey, snapshot); } catch (_) { /* Non-fatal. */ }
+        } catch (_) {
+            // A temporary network outage must not interrupt the player's current screen.
+        } finally {
+            checkInProgress = false;
+        }
+    }
+
+    // Establish a baseline immediately, then check regularly while the app is open.
+    checkForAdminChanges();
+    window.setInterval(checkForAdminChanges, 15000);
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+            if (refreshPending) refreshIfSafe();
+            else checkForAdminChanges();
+        }
+    });
+    window.addEventListener("focus", () => {
+        if (refreshPending) refreshIfSafe();
+        else checkForAdminChanges();
+    });
+    document.addEventListener("input", refreshIfSafe, true);
+    document.addEventListener("change", refreshIfSafe, true);
 }
