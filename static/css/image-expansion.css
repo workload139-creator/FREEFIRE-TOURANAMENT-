@@ -1,10 +1,65 @@
 /* FF Arena artwork expansion */
-.tournament-grid .tournament-card{position:relative;overflow:hidden;background-image:linear-gradient(180deg,rgba(5,9,17,.80),rgba(5,9,17,.96)),url("../images/ff-battle-royale.jpg");background-size:cover;background-position:center 28%;border:1px solid rgba(255,255,255,.13)}
-.tournament-grid .tournament-card:nth-child(3n + 2){background-image:linear-gradient(180deg,rgba(5,9,17,.80),rgba(5,9,17,.96)),url("../images/ff-clash-squad.jpg")}
-.tournament-grid .tournament-card:nth-child(3n){background-image:linear-gradient(180deg,rgba(5,9,17,.80),rgba(5,9,17,.96)),url("../images/ff-free-fan-squad.jpg")}
-.tournament-detail-page{background-image:linear-gradient(180deg,rgba(5,9,17,.88),rgba(5,9,17,.97)),url("../images/ff-battle-royale.jpg");background-size:cover;background-position:center top;background-repeat:no-repeat;border:1px solid rgba(255,255,255,.10);border-radius:22px}
-.profile-cover{background-image:linear-gradient(100deg,rgba(4,12,18,.88),rgba(5,12,23,.78)),url("../images/ff-arena-hero.jpg")!important}
-.wallet-hero{background-image:linear-gradient(100deg,rgba(5,10,20,.88),rgba(8,14,27,.78)),url("../images/ff-clash-squad.jpg")!important;background-size:cover!important;background-position:center 35%!important}
-.community-hero,.feed-hero{background-image:linear-gradient(110deg,rgba(7,15,26,.90),rgba(18,12,31,.82)),url("../images/ff-free-fan-squad.jpg")!important;background-size:cover!important;background-position:center 35%!important}
-.container > .tournament-card:has(table){background-image:linear-gradient(180deg,rgba(5,9,17,.90),rgba(5,9,17,.97)),url("../images/ff-clash-squad.jpg");background-size:cover;background-position:center}
-@media(max-width:640px){.tournament-grid .tournament-card{background-position:center top}.tournament-detail-page{padding:14px!important}}
+/* Keep category artwork visible on every tournament listing layout. */
+.tournament-grid .tournament-card,
+.mode-page .grid > .tournament-card {
+  position: relative;
+  overflow: hidden;
+  background-image: linear-gradient(180deg,rgba(5,9,17,.80),rgba(5,9,17,.96)),url("../images/ff-battle-royale.jpg");
+  background-size: cover;
+  background-position: center 28%;
+  border: 1px solid rgba(255,255,255,.13);
+}
+.tournament-grid .tournament-card:nth-child(3n + 2),
+.mode-page .grid > .tournament-card:nth-child(3n + 2) {
+  background-image: linear-gradient(180deg,rgba(5,9,17,.80),rgba(5,9,17,.96)),url("../images/ff-clash-squad.jpg");
+}
+.tournament-grid .tournament-card:nth-child(3n),
+.mode-page .grid > .tournament-card:nth-child(3n) {
+  background-image: linear-gradient(180deg,rgba(5,9,17,.80),rgba(5,9,17,.96)),url("../images/ff-free-fan-squad.jpg");
+}
+.diwali-tournament-grid > .tournament-card {
+  background-image: linear-gradient(180deg,rgba(35,12,5,.84),rgba(18,8,20,.96)),url("../images/ff-diwali-characters.jpg") !important;
+  background-size: cover !important;
+  background-position: center 30% !important;
+}
+.free-arena .round-grid > .round-card {
+  background-image: linear-gradient(180deg,rgba(5,15,24,.84),rgba(7,12,22,.97)),url("../images/ff-free-fan-squad.jpg") !important;
+  background-size: cover !important;
+  background-position: center 30% !important;
+}
+.gvb-card {
+  background-image: linear-gradient(180deg,rgba(36,12,34,.84),rgba(16,10,28,.96)),url("../images/ff-diwali-characters.jpg") !important;
+  background-size: cover !important;
+  background-position: center 30% !important;
+}
+.tournament-detail-page {
+  background-image: linear-gradient(180deg,rgba(5,9,17,.88),rgba(5,9,17,.97)),url("../images/ff-battle-royale.jpg");
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 22px;
+}
+.profile-cover {
+  background-image: linear-gradient(100deg,rgba(4,12,18,.88),rgba(5,12,23,.78)),url("../images/ff-arena-hero.jpg") !important;
+}
+.wallet-hero {
+  background-image: linear-gradient(100deg,rgba(5,10,20,.88),rgba(8,14,27,.78)),url("../images/ff-clash-squad.jpg") !important;
+  background-size: cover !important;
+  background-position: center 35% !important;
+}
+.community-hero,.feed-hero {
+  background-image: linear-gradient(110deg,rgba(7,15,26,.90),rgba(18,12,31,.82)),url("../images/ff-free-fan-squad.jpg") !important;
+  background-size: cover !important;
+  background-position: center 35% !important;
+}
+.container > .tournament-card:has(table) {
+  background-image: linear-gradient(180deg,rgba(5,9,17,.90),rgba(5,9,17,.97)),url("../images/ff-clash-squad.jpg");
+  background-size: cover;
+  background-position: center;
+}
+@media(max-width:640px) {
+  .tournament-grid .tournament-card,
+  .mode-page .grid > .tournament-card { background-position: center top; }
+  .tournament-detail-page { padding: 14px !important; }
+}
