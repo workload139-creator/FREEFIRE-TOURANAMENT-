@@ -327,25 +327,31 @@ public class MainActivity extends Activity {
         content.removeAllViews();
         if ("Home".equals(currentTab)) {
             addHero();
-            addSectionTitle("QUICK ACCESS", "Your tournament hub");
-            addFeatureCard("Battle Royale", "Solo and squad tournaments", "Explore BR tournaments", "/tournaments/");
-            addFeatureCard("VS ARENA", "1v1 • 2v2 • 3v3 • 4v4", "Explore VS matches", "/tournaments/");
-            addFeatureCard("PARTY ROOMS", "Create a room, set Public or Private privacy, and play with your squad", "Open Party Rooms", "/chat/party/");
-            addFeatureCard("VOICE PARTY", "Join your squad, allow microphone access and talk live in party rooms", "Open Voice Party", "/chat/party/");
-            addFeatureCard("MY REGISTRATIONS & REFUNDS", "Check tournament status, request eligible refunds, and review your complete transaction history", "Open Registration History", "/tournaments/my-registrations/");
-            addFeatureCard("Leaderboard", "Check tournament standings and results", "View leaderboard & results", "/tournaments/results/");
-            addSectionTitle("PLAYER ZONE", "Everything for your account");
-            addActionRow("My registrations", "Track your joined matches", "/tournaments/my-registrations/");
-            addActionRow("AI Tournament Assistant", "Get help about FF Arena tournaments", "/assistant/");
+            addSectionTitle("ARENA DASHBOARD", "Your important FF Arena features");
+            addFeatureCard("MATCHES", "BR • CS • Free • Unlimited • Girl vs Boy", "Explore tournament categories", "/tournaments/");
+            addFeatureCard("WALLET & VIRTUAL CREDITS", "Wallet, Diamonds, Coins and transaction history", "Open wallet", "/accounts/wallet/");
+            addFeatureCard("LEADERBOARD & RESULTS", "Track your performance and match results", "View standings", "/tournaments/results/");
+            addFeatureCard("COMMUNITY", "Player posts, friends, followers and updates", "Open community", "/friends/feed/");
+            addFeatureCard("DIAMOND & COIN SHOP", "View virtual credit packs and payment QR", "Open Shop", "/shop/");
+            addFeatureCard("CHAT & PARTY ROOMS", "Connect with players and your squad", "Open Chat", "/chat/");
+            addFeatureCard("PLAYER PROFILE", "Your photo, player ID and account settings", "Open profile", "/accounts/profile/");
+            addFeatureCard("AI ARENA ASSISTANT", "Get help about FF Arena features and rules", "Ask assistant", "/assistant/");
+            addSectionTitle("OFFICIAL COMMUNITY LINKS", "Follow FF Arena outside the app");
+            addExternalLinkRow("WhatsApp Channel", "Tournament announcements and updates", "https://whatsapp.com/channel/0029Vb9NpfeBadmbTK4XDJ3p");
+            addExternalLinkRow("YouTube", "Gameplay and live tournaments", "https://www.youtube.com/@freefire_tour");
+            addExternalLinkRow("Instagram", "Photos and tournament news", "https://www.instagram.com/freefiretournament0/");
         } else if ("Matches".equals(currentTab)) {
             addSectionTitle("TOURNAMENTS", "Live tournament data from FF Arena");
             LinearLayout filters = new LinearLayout(this);
             filters.setOrientation(LinearLayout.HORIZONTAL);
-            String[] modes = {"ALL", "BR", "VS"};
-            for (String mode : modes) {
+            String[] modes = {"ALL", "BR", "CS", "FREE", "UNLIMITED", "GIRL VS BOY"};
+            String[] routes = {"/tournaments/", "/tournaments/#regular-br-tournaments", "/tournaments/#game-modes", "/tournaments/#free-fan-tournaments", "/tournaments/#unlimited-tournaments", "/tournaments/#girls-vs-boys"};
+            for (int modeIndex = 0; modeIndex < modes.length; modeIndex++) {
+                final String mode = modes[modeIndex];
+                final String categoryRoute = routes[modeIndex];
                 Button filter = button(mode);
-                filter.setTextSize(12);
-                filter.setOnClickListener(v -> loadTournamentCards("ALL".equals(mode) ? "" : mode));
+                filter.setTextSize(10);
+                filter.setOnClickListener(v -> openFeature(categoryRoute));
                 LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(0, dp(42), 1);
                 fp.setMargins(dp(2), 0, dp(2), dp(10));
                 filters.addView(filter, fp);
@@ -683,6 +689,29 @@ public class MainActivity extends Activity {
         TextView arrow = text("›", 28, ORANGE, true);
         row.addView(arrow);
         row.setOnClickListener(v -> openFeature(route));
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
+        p.bottomMargin = dp(10);
+        content.addView(row, p);
+    }
+
+    private void addExternalLinkRow(String title, String desc, String url) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setPadding(dp(15), dp(13), dp(12), dp(13));
+        row.setBackground(background(new int[]{PANEL, PANEL}, dp(14), Color.rgb(48, 57, 75)));
+        LinearLayout labels = new LinearLayout(this);
+        labels.setOrientation(LinearLayout.VERTICAL);
+        labels.addView(text(title, 15, Color.WHITE, true));
+        TextView d = text(desc, 12, MUTED, false);
+        d.setPadding(0, dp(4), 0, 0);
+        labels.addView(d);
+        row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
+        row.addView(text("↗", 22, ORANGE, true));
+        row.setOnClickListener(v -> {
+            try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); }
+            catch (Exception ignored) { Toast.makeText(this, "Compatible app nahi mili.", Toast.LENGTH_SHORT).show(); }
+        });
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
         p.bottomMargin = dp(10);
         content.addView(row, p);
