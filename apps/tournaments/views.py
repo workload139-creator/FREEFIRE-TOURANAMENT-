@@ -903,7 +903,6 @@ def admin_kill_batch_review(request):
     if selected_tournament:
         submissions = KillSubmission.objects.filter(
             tournament=selected_tournament,
-            status=KillSubmission.Status.PENDING,
         ).select_related("player", "registration", "tournament").order_by("-submitted_at")
     return render(request, "tournaments/admin_kill_batch.html", {
         "tournaments": tournaments,
