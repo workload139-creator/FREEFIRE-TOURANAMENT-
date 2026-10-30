@@ -60,7 +60,7 @@ class TournamentAdminForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
         if not cleaned.get("gender_category"):
-            cleaned["gender_category"] = Tournament.GenderCategory.OPEN
+            cleaned["gender_category"] = cleaned.get("gender_category") or Tournament.GenderCategory.OPEN
         if cleaned.get("mode") == Tournament.Mode.BR and cleaned.get("vs_format"):
             self.add_error("vs_format", "BR tournament ke liye CS/VS format khaali rakhein.")
         if cleaned.get("mode") == Tournament.Mode.BR and not cleaned.get("is_unlimited_br") and not cleaned.get("is_free_fan_tournament") and not cleaned.get("br_format"):
