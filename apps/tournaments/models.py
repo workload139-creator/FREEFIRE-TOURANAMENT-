@@ -174,8 +174,8 @@ class UnlimitedTournament(Tournament):
 
     class Meta:
         proxy = True
-        verbose_name = "BR Unlimited Tournament"
-        verbose_name_plural = "BR Unlimited Tournaments"
+        verbose_name = "Battle Royale Tournament"
+        verbose_name_plural = "Battle Royale Tournaments"
 
 
 class FreeFanTournament(Tournament):
