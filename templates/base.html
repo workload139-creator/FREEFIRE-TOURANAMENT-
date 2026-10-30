@@ -79,8 +79,9 @@
 {% if user.is_authenticated %}
 <nav class="ff-mobile-bottom-nav" aria-label="App navigation">
     <a href="{% url 'home' %}"><span aria-hidden="true">⌂</span><small>Home</small></a>
-    <a href="{% url 'tournaments:list' %}"><span aria-hidden="true">⚔</span><small>Tournaments</small></a>
-    <a href="{% url 'accounts:wallet' %}"><span aria-hidden="true">₹</span><small>Wallet</small></a>
+    <a href="{% url 'tournaments:list' %}"><span aria-hidden="true">⚔</span><small>Matches</small></a>
+    <a href="{% url 'social:feed' %}"><span aria-hidden="true">▧</span><small>Community</small></a>
+    <a href="{% url 'chat:home' %}"><span aria-hidden="true">✉</span><small>Chat</small></a>
     <a href="{% url 'accounts:profile' %}"><span aria-hidden="true">◉</span><small>Profile</small></a>
 </nav>
 {% endif %}
@@ -122,6 +123,18 @@
         <a href="{% url 'support' %}">Support</a>
     </nav>
 </footer>
+<style>
+/* Installed Android app gets app navigation instead of a website-style footer menu. */
+.ff-mobile-bottom-nav{display:none}
+@media(max-width:800px){.ff-mobile-bottom-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:fixed;z-index:1000;left:0;right:0;bottom:0;padding:8px 5px calc(8px + env(safe-area-inset-bottom));background:rgba(7,12,20,.97);border-top:1px solid #55ffb533;backdrop-filter:blur(16px)}.ff-mobile-bottom-nav a{display:grid;justify-items:center;gap:3px;color:#9eafc1;text-decoration:none;font-size:19px}.ff-mobile-bottom-nav small{font-size:10px}.ff-mobile-bottom-nav a:focus,.ff-mobile-bottom-nav a:hover{color:#8dffc0}}
+.ff-android-app .main-nav,.ff-android-app .menu-toggle,.ff-android-app .site-footer,.ff-android-app .ff-social-hub,.ff-android-app .ff-sound-toggle{display:none!important}
+.ff-android-app .site-header{position:sticky;top:0;z-index:900;background:rgba(7,12,20,.97);border-bottom:1px solid #55ffb522}
+.ff-android-app .nav-container{min-height:54px;justify-content:center}
+.ff-android-app .brand{margin:auto}
+.ff-android-app main{padding-bottom:82px}
+.ff-android-app .ff-mobile-bottom-nav{display:grid!important}
+@media(min-width:801px){.ff-android-app .ff-mobile-bottom-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:fixed;z-index:1000;left:50%;transform:translateX(-50%);bottom:12px;width:min(520px,calc(100% - 24px));padding:9px 8px;background:rgba(7,12,20,.97);border:1px solid #55ffb533;border-radius:16px;box-shadow:0 12px 40px #0009}.ff-android-app .ff-mobile-bottom-nav a{display:grid;justify-items:center;gap:3px;color:#9eafc1;text-decoration:none;font-size:19px}.ff-android-app .ff-mobile-bottom-nav small{font-size:10px}.ff-android-app main{padding-bottom:95px}}
+</style>
 <script>
 /* Hide the APK download CTA only inside the installed Android WebView. */
 (function () {
