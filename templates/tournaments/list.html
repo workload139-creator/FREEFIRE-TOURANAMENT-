@@ -13,6 +13,7 @@
     <a class="hub-card free" href="{% url 'tournaments:free_fan_list' %}"><span>🎁 ZERO ENTRY</span><strong>Free Tournament</strong><small>Free entry · Separate leaderboard</small><b>Open Free Arena →</b></a>
     <a class="hub-card diwali" href="{% url 'tournaments:diwali_offer_list' %}"><span>🪔 FESTIVAL SPECIAL</span><strong>Diwali · 1 Diamond</strong><small>Solo BR · 49 players · 20 Diamonds prize</small><b>Open Diwali Arena →</b></a>
     <a class="hub-card unlimited" href="{% url 'tournaments:unlimited_list' %}"><span>♾️ ALWAYS OPEN</span><strong>Unlimited BR</strong><small>Solo · Duo · Squad recurring rounds</small><b>Open Unlimited Arena →</b></a>
+    <a class="hub-card girls" href="{% url 'tournaments:girls_vs_boys_list' %}"><span>👑 SPECIAL FACE-OFF</span><strong>Girls vs Boys</strong><small>Dedicated BR & VS challenge</small><b>Open Girls vs Boys →</b></a>
   </div>
 </section>
 <style>
@@ -33,5 +34,6 @@
 .hub-card.free{background:linear-gradient(145deg,#12302a,#0a1718);border-color:#5bffd055}.hub-card.free span,.hub-card.free b{color:#7affd0}
 .hub-card.diwali{background:radial-gradient(circle at 90% 5%,#ffbd4b30,transparent 42%),linear-gradient(145deg,#351408,#160d1d);border-color:#ffc45b77}.hub-card.diwali span,.hub-card.diwali b{color:#ffd27a}
 .hub-card.unlimited{background:linear-gradient(145deg,#102d25,#091410);border-color:#55ffc055}.hub-card.unlimited span,.hub-card.unlimited b{color:#72ffc1}
+.hub-card.girls{background:radial-gradient(circle at 90% 5%,#ff83c52b,transparent 42%),linear-gradient(145deg,#30152c,#111225);border-color:#ff9bd866}.hub-card.girls span,.hub-card.girls b{color:#ffb5dc}
 </style>
 {% endblock %}
