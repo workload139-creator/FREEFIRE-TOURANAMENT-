@@ -121,3 +121,8 @@ class TournamentSpecificRewardTests(SimpleTestCase):
     def test_free_fan_rewards_one_token_per_two_kills(self):
         tournament = SimpleNamespace(mode="BR", is_diwali_offer=False, is_free_fan_tournament=True, br_format="solo")
         self.assertEqual(rewards_for_tournament(tournament, 5), [("fan_tokens", 2, "Fan Tokens")])
+
+    def test_negative_tournament_kills_are_rejected(self):
+        tournament = SimpleNamespace(mode="BR", is_diwali_offer=False, is_free_fan_tournament=False, br_format="solo")
+        with self.assertRaises(ValueError):
+            rewards_for_tournament(tournament, -1)
