@@ -24,7 +24,7 @@
             <tbody>
             {% for registration in pending_payments %}
             <tr>
-                <td>{{ registration.player.username }} / #{{ registration.player_id }}</td>
+                <td><a href="/admin/accounts/user/{{ registration.player_id }}/change/" target="_blank" rel="noopener">{{ registration.player.username }} / #{{ registration.player_id }}</a><br><small>INR ₹{{ registration.inr_wallet.balance|default:"0.00" }} · 💎 {{ registration.shop_wallet.diamonds|default:"0" }} · 🪙 {{ registration.shop_wallet.coins|default:"0" }} · 🎟️ {{ registration.shop_wallet.fan_tokens|default:"0" }}</small></td>
                 <td>{{ registration.free_fire_uid }}</td>
                 <td>₹{{ registration.entry_fee_paid }}</td>
                 <td>{{ registration.payment_reference|default:"Missing UTR" }}</td>
@@ -61,11 +61,11 @@
         <h4>3. Kill Evidence & Prize Queue — video/screenshots review aur reward</h4>
         <p>Video aur dono screenshots verify karein. BR mein minimum 2 approved kills par ₹5 per kill; VS mein kill reward nahi. Prize player ke saved UPI/QR par manually bhejne ke baad real UTR record karein.</p>
         <div class="table-responsive"><table class="table table-striped table-bordered">
-            <thead><tr><th>Player / Profile ID</th><th>UID</th><th>Evidence</th><th>AI Kills</th><th>Admin Kills</th><th>Prize</th><th>Payout</th></tr></thead>
+            <thead><tr><th>Player / Profile ID</th><th>UID</th><th>Evidence</th><th>AI Kills</th><th>AI Confidence / UID</th><th>AI Notes</th><th>Admin Kills</th><th>Reward</th><th>Review Status</th><th>Payout</th></tr></thead>
             <tbody>
             {% for item in kill_submissions %}
             <tr>
-                <td>{{ item.player.username }} / #{{ item.player_id }}</td>
+                <td><a href="/admin/accounts/user/{{ item.player_id }}/change/" target="_blank" rel="noopener">{{ item.player.username }} / #{{ item.player_id }}</a></td>
                 <td>{{ item.registered_uid }}{% if item.free_fire_uid != item.registered_uid %}<span class="text-danger"> (UID mismatch)</span>{% endif %}</td>
                 <td>
                     {% if item.history_video %}<a href="{{ item.history_video.url }}" target="_blank" rel="noopener">Video</a>{% else %}No video{% endif %}
@@ -73,11 +73,14 @@
                     · {% if item.history_image_two %}<a href="{{ item.history_image_two.url }}" target="_blank" rel="noopener">Screenshot 2</a>{% else %}No screenshot 2{% endif %}
                 </td>
                 <td>{{ item.ai_proposed_kills|default_if_none:"—" }}</td>
+                <td>{{ item.ai_confidence|default:"Not assessed" }} · {% if item.ai_uid_matches is True %}UID MATCH{% elif item.ai_uid_matches is False %}UID MISMATCH{% else %}Not checked{% endif %}</td>
+                <td>{{ item.ai_review_notes|default:"AI notes not available"|truncatechars:220 }}</td>
                 <td>{{ item.approved_kills|default_if_none:"Pending" }}</td>
-                <td>₹{{ item.approved_reward }}</td>
+                <td>{{ item.approved_reward }} ({{ item.status }})</td>
+                <td>{{ item.get_status_display }}</td>
                 <td>{{ item.get_payout_status_display }}</td>
             </tr>
-            {% empty %}<tr><td colspan="7">Is tournament ke liye abhi kill evidence submit nahi hua.</td></tr>{% endfor %}
+            {% empty %}<tr><td colspan="10">Is tournament ke liye abhi kill evidence submit nahi hua.</td></tr>{% endfor %}
             </tbody>
         </table></div>
         <a href="{% url 'tournaments:admin_kill_review' %}?tournament={{ tournament.id }}" class="btn btn-outline-primary">Open This Tournament's Kill Review</a>
@@ -99,6 +102,28 @@
                 <td>Refund pending · {{ registration.refund_reference|default:"UTR not entered" }}</td>
             </tr>
             {% empty %}<tr><td colspan="6">Is waqt koi pending UPI refund nahi hai.</td></tr>{% endfor %}
+            </tbody>
+        </table></div>
+    </div>
+
+    <div class="card p-3 my-3">
+        <h4>5. Tournament History — entry, rewards, refunds aur wallet credits</h4>
+        <p>Yahan is tournament ke ledger mein saved har payment, reward aur refund ka record timestamp aur reference ke saath dikhega. Player ke naam par click karke uska account/wallet admin record khol sakte hain.</p>
+        <div class="table-responsive"><table class="table table-striped table-bordered">
+            <thead><tr><th>Date / Time</th><th>Player</th><th>Action</th><th>Currency</th><th>Quantity</th><th>INR Value</th><th>Status</th><th>Reference / Details</th></tr></thead>
+            <tbody>
+            {% for entry in tournament_history %}
+            <tr>
+                <td>{{ entry.created_at|date:"d M Y, h:i A" }}</td>
+                <td><a href="/admin/accounts/user/{{ entry.player_id }}/change/" target="_blank" rel="noopener">{{ entry.player.username }} / #{{ entry.player_id }}</a></td>
+                <td>{{ entry.get_entry_type_display }}</td>
+                <td>{{ entry.get_currency_display }}</td>
+                <td>{{ entry.quantity }}</td>
+                <td>₹{{ entry.amount_inr }}</td>
+                <td>{{ entry.get_status_display }}</td>
+                <td>{{ entry.reference|default:"—" }}<br><small>{{ entry.description }}</small></td>
+            </tr>
+            {% empty %}<tr><td colspan="8">Abhi is tournament ki ledger history nahi hai.</td></tr>{% endfor %}
             </tbody>
         </table></div>
     </div>
