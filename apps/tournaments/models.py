@@ -353,6 +353,9 @@ class KillSubmission(models.Model):
     approved_reward = models.DecimalField(
         max_digits=10, decimal_places=2, default=Decimal("0.00")
     )
+    # Duo/Squad BR additionally credit Coins for each approved kill.
+    proposed_coins_reward = models.PositiveSmallIntegerField(default=0)
+    approved_coins_reward = models.PositiveSmallIntegerField(default=0)
     status = models.CharField(
         max_length=12, choices=Status.choices, default=Status.PENDING, db_index=True
     )
