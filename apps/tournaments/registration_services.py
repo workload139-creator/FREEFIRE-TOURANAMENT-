@@ -4,6 +4,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.core.mail import send_mail
 from django.db import transaction
+from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
 
@@ -17,7 +18,10 @@ class RegistrationError(Exception):
 def send_unlimited_live_notifications(tournament_id):
     """Email the admin and all verified entrants after a 49-player Unlimited round starts."""
     tournament = Tournament.objects.filter(
-        pk=tournament_id, is_unlimited_br=True, status=Tournament.Status.LIVE
+        pk=tournament_id, status=Tournament.Status.LIVE
+    ).filter(
+        Q(is_unlimited_br=True)
+        | Q(mode=Tournament.Mode.VS, auto_start_at_capacity=True)
     ).first()
     if not tournament:
         return
@@ -48,7 +52,10 @@ def send_unlimited_live_notifications(tournament_id):
             admin_recipients.append(sender_email)
 
     tournament_url = settings.SITE_URL + reverse("tournaments:detail", args=[tournament.pk])
-    event_label = "Unlimited Tournament" if tournament.is_free_fan_tournament else "Battle Royale Tournament"
+    event_label = (
+        "Free Fan Tournament" if tournament.is_free_fan_tournament
+        else ("Clash Squad Tournament" if tournament.mode == Tournament.Mode.VS else "Battle Royale Tournament")
+    )
     subject = f"FF Arena {event_label} is LIVE: {tournament.title}"
     admin_message = (
         f"{event_label} is now LIVE.\n\n"
@@ -136,9 +143,8 @@ def assign_teams_for_tournament(tournament_id):
 def maybe_start_unlimited_tournament(tournament_id):
     """Auto-start when the format's configured verified-player capacity is full."""
     tournament = Tournament.objects.select_for_update().get(pk=tournament_id)
-    if not tournament.is_unlimited_br or not tournament.auto_start_at_capacity or tournament.status != Tournament.Status.UPCOMING:
+    if not (tournament.is_unlimited_br or tournament.mode == Tournament.Mode.VS) or not tournament.auto_start_at_capacity or tournament.status != Tournament.Status.UPCOMING:
         return False
-
     active_count = Registration.objects.filter(
         tournament=tournament,        payment_verified=True,
         status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
@@ -264,6 +270,6 @@ def create_pending_registration(*, tournament_id, player, free_fire_uid, payment
         description="Tournament entry payment",
     )
     # Wallet entries start immediately at capacity; UPI entries start after admin verifies payment.
-    if tournament.is_unlimited_br and tournament.auto_start_at_capacity:
+    if tournament.auto_start_at_capacity:
         maybe_start_unlimited_tournament(tournament.pk)
     return registration
