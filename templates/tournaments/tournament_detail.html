@@ -10,16 +10,24 @@
   <p><strong>Player Category:</strong> {{ tournament.get_gender_category_display }}</p>
   <div class="tournament-stats tournament-detail-stats" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0">
     <div><small>Entry Fee</small><strong>{% if tournament.is_free_fan_tournament %}FREE{% else %}₹{{ tournament.entry_fee }}{% endif %}</strong></div>
-    <div><small>1st Prize</small><strong>{% if tournament.is_free_fan_tournament %}{{ tournament.winner_coins_prize }} Coins{% elif tournament.mode == "VS" %}{% if tournament.vs_format == "1v1" %}10{% elif tournament.vs_format == "2v2" %}20{% elif tournament.vs_format == "3v3" %}30{% elif tournament.vs_format == "4v4" %}40{% else %}10{% endif %} Fan Tokens{% elif tournament.entry_fee <= 1 %}20 Diamonds{% else %}50 Diamonds{% endif %}</strong></div>
-    <div><small>1 Kill Reward</small><strong>{% if tournament.is_free_fan_tournament %}2 Kills = 1 Fan Token{% elif tournament.mode == "VS" %}—{% elif tournament.entry_fee <= 1 %}5 Coins{% else %}5 Diamonds{% endif %}</strong></div>
+    <div><small>1st Prize</small><strong>{% if tournament.is_free_fan_tournament %}{{ tournament.winner_coins_prize }} Coins{% elif tournament.mode == "VS" %}10 Diamonds + 10 Coins{% elif tournament.entry_fee <= 1 %}20 Diamonds{% else %}50 Diamonds{% endif %}</strong></div>
+    <div><small>1 Kill Reward</small><strong>{% if tournament.is_free_fan_tournament %}2 Kills = 1 Fan Token{% elif tournament.mode == "VS" %}2 Coins{% elif tournament.entry_fee <= 1 %}5 Coins{% else %}5 Diamonds{% endif %}</strong></div>
     <div><small>Players</small><strong>{{ tournament.confirmed_players_count }}/{{ tournament.max_players }}</strong></div>
   </div>
-  {% if tournament.mode == "VS" %}<p>Winner pool format ke hisaab se hai. Fan Tokens non-cash website currency hain.</p>{% elif tournament.mode == "BR" %}<p class="room-note">Kills leaderboard par sirf verified/approved evidence count hota hai. Minimum {{ minimum_verified_kills }} verified kills ke baad reward eligibility hogi.</p>{% endif %}
+  {% if tournament.mode == "VS" %}<p>VS winner prize: 10 Diamonds + 10 Coins. Har verified kill par dono teams ko 2 Coins per kill milenge, match jeetne ya haarne se farq nahi padega.</p>{% elif tournament.mode == "BR" %}<p class="room-note">Kills leaderboard par sirf verified/approved evidence count hota hai. Minimum {{ minimum_verified_kills }} verified kills ke baad reward eligibility hogi.</p>{% endif %}
   <p><strong>Players:</strong> {{ tournament.confirmed_players_count }}/{{ tournament.max_players }}</p>
   {% if not tournament.is_unlimited_br %}<p><strong>Start Time:</strong> {{ tournament.start_time|date:"d M Y, h:i A" }}</p>{% else %}<p><strong>Schedule:</strong> Always open; 49 players par LIVE</p>{% endif %}
   <p><strong>Status:</strong> {{ tournament.get_status_display }}</p>
   {% if tournament.status == "live" %}
     <p><a class="button button-primary" style="display:inline-flex;background:#d90032;border-color:#ff536f;color:#fff;margin:8px 0" href="https://www.youtube.com/@freefire_tour/live" target="_blank" rel="noopener noreferrer">▶ Watch Tournament Live on YouTube</a></p>
+  {% endif %}
+  {% if tournament.mode == "VS" %}
+  <section class="tournament-card" style="margin:20px 0;padding:18px;border:1px solid #45d6ff;border-radius:14px;background:linear-gradient(135deg,#102331,#171923);color:#fff">
+    <h2 style="margin-top:0">⚔️ VS Kill Verification</h2>
+    <ol><li>Register karke isi VS match mein kheliye.</li><li>My Registrations se Submit Kill Proof kholiye.</li><li>15–30 second ki match video aur 2 clear game-history screenshots upload karein.</li><li>AI evidence aur registered UID check karega; AI result ke baad admin final approval karega.</li></ol>
+    <p><strong>Reward:</strong> Har verified kill par 2 Coins — dono teams ko, win/lose dono mein. Minimum verified kills rule BR jaisa hi rahega.</p>
+    <p>Winner bonus: 10 Diamonds + 10 Coins (selected winner UID par). Rewards admin approval ke baad wallet mein credit honge.</p>
+  </section>
   {% endif %}
   {% if tournament.mode == "BR" %}
   <section class="tournament-card" style="margin:20px 0;padding:18px;border:1px solid #ff7a45;border-radius:14px;background:linear-gradient(135deg,#241712,#171923);color:#fff">
