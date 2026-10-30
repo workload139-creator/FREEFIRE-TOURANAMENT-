@@ -497,7 +497,16 @@ def kill_submission(request, registration_id):
                     submission.ai_confidence = "low"
                     submission.ai_uid_matches = None
                     submission.proposed_reward = Decimal("0.00")
-                    submission.ai_reviewer_reports = ai_result.get("reviewer_reports", {}) if "ai_result" in locals() else {}
+                    submission.ai_reviewer_reports = ai_result.get("reviewer_reports", {}) if "ai_result" in locals() else {
+                        key: {"name": label, "status": "BLOCKED", "proposed_kills": None, "confidence": "low",
+                              "reason": "Evidence fingerprint could not be established or verified; Admin Review required."}
+                        for key, label in [
+                            ("ff_arena_assessment_openai", "FF Arena AI Assessment · OpenAI"),
+                            ("ff_arena_assessment_ollama", "FF Arena AI Assessment · Ollama Cloud"),
+                            ("ff_arena_agent_openai", "FF Arena AI Agent Audit · OpenAI"),
+                            ("ff_arena_agent_ollama", "FF Arena AI Agent Audit · Ollama Cloud"),
+                        ]
+                    }
                     submission.ai_review_notes = (
                         "AI ASSESSMENT STATUS: PROVIDER_UNAVAILABLE_OR_FAILED. "
                         "The evidence was saved, but no reliable AI result was returned. "
