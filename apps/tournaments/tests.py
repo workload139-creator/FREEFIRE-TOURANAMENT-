@@ -11,6 +11,7 @@ from .ai_review import AIReviewError, analyze_kill_evidence
 from .kill_services import (
     calculate_proposed_reward,
     calculate_approved_reward,
+    finalize_dual_ai_reward,
 )
 
 
@@ -96,3 +97,16 @@ class FourAIReviewTests(SimpleTestCase):
         review.side_effect = [self._result(), self._result(), incomplete, self._result()]
         result = analyze_kill_evidence(SimpleNamespace(registered_uid="1234567890"))
         self.assertFalse(result["four_way_agreement"])
+
+
+class NoAutomaticAIPayoutTests(SimpleTestCase):
+
+    def test_ai_never_credits_reward_without_admin_action(self):
+        paid, reason = finalize_dual_ai_reward(SimpleNamespace(), {
+            "four_way_agreement": True, "dual_agreement": True,
+            "confidence": "high", "uid_matches": True,
+            "history_consistent": True, "evidence_complete": True,
+            "observed_uid": "1234567890", "proposed_kills": 20,
+        })
+        self.assertFalse(paid)
+        self.assertIn("Admin", reason)
