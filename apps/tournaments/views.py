@@ -61,7 +61,7 @@ def tournament_list(request):
         {
             "tournaments": tournaments,
             "free_fan_tournaments": tournaments.filter(is_free_fan_tournament=True),
-            "br_tournaments": tournaments.filter(mode=Tournament.Mode.BR, is_free_fan_tournament=False),
+            "br_tournaments": tournaments.filter(mode=Tournament.Mode.BR, is_free_fan_tournament=False, is_diwali_offer=False),
             "vs_tournaments": tournaments.filter(mode=Tournament.Mode.VS).exclude(gender_category=Tournament.GenderCategory.GIRLS_VS_BOYS),
             "girls_vs_boys_tournaments": tournaments.filter(gender_category=Tournament.GenderCategory.GIRLS_VS_BOYS, is_unlimited_br=False),
         },
@@ -112,6 +112,8 @@ def tournament_detail(request, tournament_id):
 
 def build_entry_payment_uri(tournament):
     """Build a UPI deep link only when the configured receiving UPI ID exists."""
+    if getattr(tournament, "is_diwali_offer", False):
+        return ""  # Diwali offer accepts exactly one Diamond, never UPI/INR.
     if tournament.entry_fee <= Decimal("0.00"):
         return ""
     upi_id = os.getenv("FF_ARENA_UPI_ID", "").strip()
@@ -773,4 +775,9 @@ def leaderboard(request, tournament_id):
         "tournament": tournament,
         "leaderboard_rows": rows,
         "verified_player_count": len(rows),
+        "diwali_winner_reward_awarded": TournamentLedgerEntry.objects.filter(
+            tournament=tournament,
+            reference=f"DIWALI-WINNER-20-DIAMONDS-{tournament.pk}",
+            status=TournamentLedgerEntry.Status.COMPLETED,
+        ).exists() if tournament.is_diwali_offer else False,
     })

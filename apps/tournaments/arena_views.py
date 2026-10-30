@@ -36,6 +36,7 @@ def battle_royale_list(request):
     tournaments = Tournament.objects.filter(
         mode=Tournament.Mode.BR,
         is_free_fan_tournament=False,
+        is_diwali_offer=False,
         gender_category__in=(
             Tournament.GenderCategory.OPEN,
             Tournament.GenderCategory.BOYS,
@@ -46,6 +47,24 @@ def battle_royale_list(request):
     events = _one_event_per_format(tournaments, "br_format", ("solo", "duo", "squad"))
     return render(request, "tournaments/battle_royale_list.html", {"tournaments": events})
 
+
+
+def diwali_offer_list(request):
+    """Dedicated public page for the date-free 1-Diamond Solo BR Diwali offer."""
+    process_expired_ready_registrations()
+    events = Tournament.objects.filter(
+        mode=Tournament.Mode.BR,
+        br_format=Tournament.BRFormat.SOLO,
+        is_diwali_offer=True,
+        is_free_fan_tournament=False,
+        status__in=PUBLIC_STATUSES,
+    ).order_by(Case(
+        When(status=Tournament.Status.LIVE, then=Value(0)),
+        When(status=Tournament.Status.UPCOMING, then=Value(1)),
+        default=Value(2),
+        output_field=IntegerField(),
+    ), "-created_at", "-pk")
+    return render(request, "tournaments/diwali_offer_list.html", {"tournaments": events})
 
 def clash_squad_list(request):
     process_expired_ready_registrations()

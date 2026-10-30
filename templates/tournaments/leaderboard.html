@@ -5,12 +5,12 @@
     <h1>🏆 {{ tournament.title }} — Leaderboard</h1>
     <p>Payment verified players: <strong>{{ verified_player_count }}</strong>. Har tournament ka leaderboard alag hai.</p>
     <p>Payment verify hone ke baad player yahan dikhai deta hai. Kills aur kill-reward sirf admin-approved evidence ke baad show honge.</p>
-    {% if tournament.mode == "BR" %}<div style="padding:14px;margin:14px 0;border:1px solid #ff8a24;border-radius:10px;background:#241712;color:#fff"><strong>🔥 BR Kill Reward Rule</strong><p style="margin:6px 0 0">Minimum 2 verified kills. Solo: 5 Diamonds per approved kill. Duo/Squad: 5 Diamonds + 2 Coins per approved kill. UID match, video + 2 screenshots, and final admin approval are required.</p></div>{% endif %}
+    {% if tournament.is_diwali_offer %}<div style="padding:14px;margin:14px 0;border:1px solid #ffc04d;border-radius:10px;background:linear-gradient(135deg,#351408,#171020);color:#fff"><strong>🪔 Diwali Offer — Solo BR</strong><p style="margin:6px 0 0">Entry: 1 Diamond · First prize: 20 Diamonds · 5 Coins per approved kill · Minimum 2 verified kills. UID, video + 2 screenshots, AI assessment and admin final review apply.</p></div>{% elif tournament.mode == "BR" %}<div style="padding:14px;margin:14px 0;border:1px solid #ff8a24;border-radius:10px;background:#241712;color:#fff"><strong>🔥 BR Kill Reward Rule</strong><p style="margin:6px 0 0">Minimum 2 verified kills. Solo: 5 Diamonds per approved kill. Duo/Squad: 5 Diamonds + 2 Coins per approved kill. UID match, video + 2 screenshots, and final admin approval are required.</p></div>{% endif %}
     {% if tournament.winner_uid %}
         <div class="tournament-card" style="padding:16px;margin:16px 0;border:2px solid #eab308">
             <strong>🏆 Admin-confirmed First Place</strong>
-            <p>Free Fire UID: {{ tournament.winner_uid }} — Prize: ₹{{ tournament.prize_pool }}</p>
-            <p>Status: {% if tournament.winner_prize_paid %}Prize marked paid{% else %}Prize pending admin payout{% endif %}</p>
+            <p>Free Fire UID: {{ tournament.winner_uid }} — Prize: {% if tournament.is_diwali_offer %}20 Diamonds{% else %}₹{{ tournament.prize_pool }}{% endif %}</p>
+            <p>Status: {% if tournament.is_diwali_offer %}{% if diwali_winner_reward_awarded %}20 Diamonds credited to wallet{% else %}20 Diamonds pending admin award{% endif %}{% elif tournament.winner_prize_paid %}Prize marked paid{% else %}Prize pending admin payout{% endif %}</p>
         </div>
     {% endif %}
     <div class="tournament-card" style="padding:20px;overflow-x:auto">
@@ -24,7 +24,7 @@
                     <td>{{ row.registration.free_fire_uid }}</td>
                     <td><span style="color:#38d9a9">Verified</span></td>
                     <td>{% if row.submission %}{{ row.submission.approved_kills }}{% else %}Pending review{% endif %}</td>
-                    <td>{% if row.submission %}{{ row.submission.approved_reward }} {% if tournament.br_format == "duo" or tournament.br_format == "squad" %}Diamonds + {{ row.submission.approved_coins_reward }} Coins{% elif tournament.is_free_fan_tournament %}Fan Tokens{% elif tournament.mode == "VS" %}Coins{% else %}Diamonds{% endif %}{% elif row.is_winner %}Winner reward pending review{% else %}—{% endif %}</td>
+                    <td>{% if row.submission %}{{ row.submission.approved_reward }} {% if tournament.is_diwali_offer %}Coins{% elif tournament.br_format == "duo" or tournament.br_format == "squad" %}Diamonds + {{ row.submission.approved_coins_reward }} Coins{% elif tournament.is_free_fan_tournament %}Fan Tokens{% elif tournament.mode == "VS" %}Coins{% else %}Diamonds{% endif %}{% elif row.is_winner %}Winner reward pending review{% else %}—{% endif %}</td>
                 </tr>
             {% empty %}
                 <tr><td colspan="6">Abhi koi payment-verified player nahi hai. Payment verify hone ke baad entries yahan aayengi.</td></tr>

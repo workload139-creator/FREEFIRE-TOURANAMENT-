@@ -1,5 +1,5 @@
-<article class="tournament-card{% if tournament.gender_category == 'girls_vs_boys' %} gvb-card{% endif %}">
-  <span class="mode-label">{% if tournament.gender_category == "girls_vs_boys" %}💜 GIRLS VS BOYS SHOWDOWN{% elif tournament.mode == "VS" %}CS / CLASH SQUAD{% else %}BATTLE ROYALE{% endif %}</span>
+<article class="tournament-card{% if tournament.gender_category == 'girls_vs_boys' %} gvb-card{% endif %}{% if tournament.is_diwali_offer %} diwali-offer-card{% endif %}">
+  <span class="mode-label">{% if tournament.is_diwali_offer %}🪔 DIWALI FESTIVAL OFFER{% elif tournament.gender_category == "girls_vs_boys" %}💜 GIRLS VS BOYS SHOWDOWN{% elif tournament.mode == "VS" %}CS / CLASH SQUAD{% else %}BATTLE ROYALE{% endif %}</span>
   {% if tournament.status == "live" %}<span class="live-badge" style="display:inline-flex;margin:12px 20px 0;padding:6px 11px;border-radius:999px;background:#d90032;color:#fff;font-size:12px;font-weight:950;letter-spacing:1px;box-shadow:0 0 18px #ff174455">● LIVE NOW</span>{% endif %}
   <h3>{{ tournament.title }}</h3>
   <p class="gender-chip">{{ tournament.get_gender_category_display }}</p>
@@ -7,11 +7,13 @@
   {% if tournament.mode == "VS" %}<p>Format: {{ tournament.get_vs_format_display|default:"VS Match" }}</p>{% elif tournament.br_format %}<p>Format: {{ tournament.get_br_format_display }}</p>{% endif %}
   {% if tournament.gender_category == "girls_vs_boys" %}<p>📸 Registration selfie required · Admin review</p>{% endif %}
   <div class="tournament-stats tournament-stats-four">
-    <div><small>Entry Fee</small><strong>{% if tournament.is_free_fan_tournament %}FREE{% else %}₹{{ tournament.entry_fee }}{% endif %}</strong></div>
-    <div><small>1st Prize</small><strong>{% if tournament.is_free_fan_tournament %}{{ tournament.winner_coins_prize }} Coins{% elif tournament.mode == "VS" %}{% if tournament.vs_format == "1v1" %}20{% elif tournament.vs_format == "2v2" %}38{% elif tournament.vs_format == "3v3" %}56{% elif tournament.vs_format == "4v4" %}84{% endif %} Diamonds (Admin){% elif tournament.br_format == "duo" or tournament.br_format == "squad" %}10 Fan Currency / player{% elif tournament.entry_fee <= 1 %}20 Diamonds{% else %}50 Diamonds{% endif %}</strong></div>
-    <div><small>1 Kill Reward</small><strong>{% if tournament.is_free_fan_tournament %}2 Kills = 1 Fan Token{% elif tournament.mode == "VS" %}2 Coins{% elif tournament.br_format == "duo" or tournament.br_format == "squad" %}5 Diamonds + 2 Coins{% else %}5 Diamonds{% endif %}</strong></div>
+    <div><small>Entry Fee</small><strong>{% if tournament.is_diwali_offer %}1 Diamond{% elif tournament.is_free_fan_tournament %}FREE{% else %}₹{{ tournament.entry_fee }}{% endif %}</strong></div>
+    <div><small>1st Prize</small><strong>{% if tournament.is_diwali_offer %}20 Diamonds{% elif tournament.is_free_fan_tournament %}{{ tournament.winner_coins_prize }} Coins{% elif tournament.mode == "VS" %}{% if tournament.vs_format == "1v1" %}20{% elif tournament.vs_format == "2v2" %}38{% elif tournament.vs_format == "3v3" %}56{% elif tournament.vs_format == "4v4" %}84{% endif %} Diamonds (Admin){% elif tournament.br_format == "duo" or tournament.br_format == "squad" %}10 Fan Currency / player{% elif tournament.entry_fee <= 1 %}20 Diamonds{% else %}50 Diamonds{% endif %}</strong></div>
+    <div><small>1 Kill Reward</small><strong>{% if tournament.is_diwali_offer %}5 Coins{% elif tournament.is_free_fan_tournament %}2 Kills = 1 Fan Token{% elif tournament.mode == "VS" %}2 Coins{% elif tournament.br_format == "duo" or tournament.br_format == "squad" %}5 Diamonds + 2 Coins{% else %}5 Diamonds{% endif %}</strong></div>
     <div><small>Players</small><strong>{% if tournament.is_unlimited_br %}{{ tournament.paid_players_count }}{% else %}{{ tournament.confirmed_players_count }}{% endif %}/{{ tournament.max_players }}</strong></div>
   </div>
   <p>Status: {{ tournament.get_status_display }}</p>
   <div><a class="button button-primary" href="{% url 'tournaments:detail' tournament.id %}">View / Register</a><a class="button button-outline" href="{% url 'tournaments:leaderboard' tournament.id %}">Leaderboard</a>{% if tournament.status == "live" %}<a class="button button-primary" style="background:#d90032;border-color:#ff536f;color:#fff" href="https://www.youtube.com/@freefire_tour/live" target="_blank" rel="noopener noreferrer">▶ Watch Live</a>{% endif %}</div>
 </article>
+
+<style>.diwali-offer-card{border:1px solid #ffbd4a!important;background:radial-gradient(circle at 90% 0%,#ff9d2430,transparent 38%),linear-gradient(145deg,#321408,#160b18)!important;box-shadow:0 18px 45px #ff8b2430}.diwali-offer-card .mode-label{color:#ffd27a}.diwali-offer-card h3{color:#fff1c7}.diwali-offer-card .gender-chip{border-color:#ffc45b66;background:#ffb52a18;color:#ffe0a0}</style>

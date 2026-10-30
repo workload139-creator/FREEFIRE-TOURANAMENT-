@@ -7,7 +7,7 @@
     <h1>Choose Your <span>Tournament</span></h1>
     <p class="tournament-intro">Apna mode chuno, squad banao aur leaderboard par apni jagah banao.</p>
     <nav class="arena-mode-nav" aria-label="Tournament categories">
-      <a href="{% url 'tournaments:free_fan_list' %}">🎁 Free Tournament</a><a href="{% url 'tournaments:battle_royale_list' %}">🔥 Battle Royale</a><a href="{% url 'tournaments:clash_squad_list' %}">⚔️ Clash Squad</a><a href="#girls-vs-boys">💜 Girls vs Boys</a>
+      <a href="{% url 'tournaments:free_fan_list' %}">🎁 Free Tournament</a><a href="{% url 'tournaments:diwali_offer_list' %}">🪔 Diwali Offer</a><a href="{% url 'tournaments:battle_royale_list' %}">🔥 Battle Royale</a><a href="{% url 'tournaments:clash_squad_list' %}">⚔️ Clash Squad</a><a href="#girls-vs-boys">💜 Girls vs Boys</a>
     </nav>
   </header>
 
@@ -20,10 +20,20 @@
     </div>
   </section>
 
+  <section class="mode-section regular-br-section" id="regular-br-tournaments">
+    <div class="mode-heading"><span class="mode-label">🔥 REGULAR BATTLE ROYALE</span><h2>Battle Royale Tournaments</h2><p>Regular Solo, Duo aur Squad events yahan dekhein. Diwali Festival Offer apne alag page par hi rahega.</p><p><a class="button button-primary" href="{% url 'tournaments:battle_royale_list' %}">Open Full BR Arena →</a></p></div>
+    <div class="tournament-grid">
+    {% for tournament in br_tournaments %}
+      {% include "tournaments/_tournament_card.html" with tournament=tournament %}
+    {% empty %}<article class="tournament-empty"><span>🔥</span><h3>BR Arena is ready</h3><p>Regular BR Solo, Duo aur Squad events admin ke Battle Royale section se manage hote hain. Diwali Offer is list se alag rahega.</p></article>{% endfor %}
+    </div>
+  </section>
+
   <section class="mode-section mode-directory" id="game-modes">
     <div class="mode-heading"><span class="mode-label">CHOOSE YOUR BATTLE</span><h2>Game Modes</h2><p>Battle Royale aur Clash Squad ke tournaments ab apne alag pages par milenge. Har format ka registration, player list aur leaderboard wahi par dekhein.</p></div>
     <div class="mode-directory-grid">
       <a class="mode-directory-card br-directory" href="{% url 'tournaments:battle_royale_list' %}"><span>🔥 SURVIVAL MODE</span><strong>Battle Royale</strong><small>Solo · Duo · Squad</small><b>Open BR Arena →</b></a>
+      <a class="mode-directory-card diwali-directory" href="{% url 'tournaments:diwali_offer_list' %}"><span>🪔 FESTIVAL SPECIAL</span><strong>Diwali Offer</strong><small>Solo BR · 1 Diamond Entry</small><b>Open Diwali Arena →</b></a>
       <a class="mode-directory-card cs-directory" href="{% url 'tournaments:clash_squad_list' %}"><span>⚔️ SQUAD COMBAT</span><strong>Clash Squad</strong><small>1v1 · 2v2 · 3v3 · 4v4</small><b>Open CS Arena →</b></a>
     </div>
   </section>
@@ -80,5 +90,6 @@
 .tournament-card.gvb-card{border-color:#bd7cff70!important;background:linear-gradient(145deg,#1c1028,#100b18)!important}.tournament-card.gvb-card:hover{border-color:#ff8bc8!important;box-shadow:0 18px 50px #a13eff22}.tournament-card.gvb-card .mode-label{color:#e2b4ff}.tournament-card.gvb-card .gender-chip{border-color:#dc9aff60;background:#ad54ff19;color:#f0d5ff}
 @media(max-width:700px){.gv-b-section{padding:12px}.gvb-hero{align-items:flex-start;min-height:300px}.gvb-emblem{position:absolute;right:18px;bottom:18px;opacity:.22}.gvb-hero-copy{max-width:100%}.gvb-rules{max-width:270px}.tournament-heading{padding-top:18px}.tournament-card>div:last-child a{flex-basis:100%}}
 @media(prefers-reduced-motion:reduce){.tournament-card,.arena-mode-nav a{transition:none}}
+.diwali-directory{background:radial-gradient(circle at 85% 5%,#ffbd4b30,transparent 42%),linear-gradient(135deg,#351408,#160d1d);border-color:#ffc45b77}.diwali-directory span,.diwali-directory b{color:#ffd27a}
 </style>
 {% endblock %}

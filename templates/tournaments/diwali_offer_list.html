@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Diwali Festival Offer | FF Arena{% endblock %}
+{% block content %}
+<section class="diwali-page">
+  <header class="diwali-hero">
+    <div class="diwali-glow diwali-glow-one"></div><div class="diwali-glow diwali-glow-two"></div>
+    <div class="diwali-copy">
+      <span class="diwali-kicker">FF ARENA · FESTIVAL SPECIAL</span>
+      <h1>🪔 DIWALI <em>OFFER</em></h1>
+      <p>Ek Diamond entry. Solo Battle Royale. Apne kills prove karo aur leaderboard par jagah banao.</p>
+      <div class="diwali-prize-row"><span>💎 1 Diamond Entry</span><span>🏆 20 Diamonds First Prize</span><span>🪙 5 Coins / Approved Kill</span></div>
+    </div>
+    <div class="diwali-lamp" aria-hidden="true">🪔</div>
+  </header>
+
+  <nav class="diwali-nav"><a href="{% url 'tournaments:list' %}">← All Tournaments</a> · <a href="{% url 'tournaments:battle_royale_list' %}">Regular Battle Royale</a></nav>
+
+  <section class="diwali-rules">
+    <h2>✨ Diwali Solo Challenge Rules</h2>
+    <div class="diwali-rule-grid">
+      <article><b>01 · Entry</b><p>Entry ke liye exactly 1 Diamond lagega. UPI, INR aur Coins entry is offer mein allowed nahi hai.</p></article>
+      <article><b>02 · First Prize</b><p>Admin-confirmed winner ko 20 Diamonds milenge. Prize admin ke separate Diwali Offer panel se award hoga.</p></article>
+      <article><b>03 · Kill Reward</b><p>Har approved kill par 5 Coins. Reward ke liye minimum 2 verified kills zaroori hain.</p></article>
+      <article><b>04 · Verification</b><p>Registered Free Fire UID match, gameplay/history video aur 2 game-history screenshots. Same AI assessment aur admin final review lagu rahega.</p></article>
+      <article><b>05 · Room Access</b><p>Round 49 verified players par automatically LIVE hoga. Eligible players ko room details private milengi aur YES confirmation karna hoga.</p></article>
+      <article><b>06 · Separate Records</b><p>Is offer ka registration, kill submissions, rewards aur leaderboard regular BR se alag rahenge. Koi public date/time nahi dikhaya jayega.</p></article>
+    </div>
+  </section>
+
+  <h2 class="diwali-available-title">🔥 Available Diwali Offer Rounds</h2>
+  <div class="diwali-tournament-grid">
+    {% for tournament in tournaments %}
+      {% include "tournaments/_tournament_card.html" with tournament=tournament %}
+    {% empty %}
+      <article class="diwali-empty"><span>🪔</span><h3>Diwali round coming soon</h3><p>Admin ke Festival / Offer section mein Diwali Solo round create hote hi yahan show hoga.</p></article>
+    {% endfor %}
+  </div>
+</section>
+
+<style>
+.diwali-page{max-width:1200px;margin:32px auto 76px;padding:clamp(14px,3vw,28px);color:#fff8e8}
+.diwali-hero{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;justify-content:space-between;min-height:300px;padding:clamp(25px,5vw,54px);border:1px solid #ffc45b77;border-radius:28px;background:radial-gradient(ellipse at 15% 20%,#ffb52b32,transparent 42%),linear-gradient(120deg,#351408,#1d1020 60%,#120d19);box-shadow:0 20px 60px #ff8c2520}
+.diwali-copy{position:relative;z-index:2;max-width:760px}.diwali-kicker{font-size:11px;font-weight:950;letter-spacing:3px;color:#ffd27a}.diwali-hero h1{font-size:clamp(42px,8vw,82px);line-height:1;margin:16px 0;color:#fff4cf;letter-spacing:-2px;text-shadow:0 0 32px #ffb52b44}.diwali-hero h1 em{font-style:normal;color:#ffb53f}.diwali-hero p{max-width:640px;color:#f3d9bd;font-size:16px;line-height:1.7}.diwali-prize-row{display:flex;flex-wrap:wrap;gap:9px;margin-top:22px}.diwali-prize-row span{padding:10px 13px;border:1px solid #ffcf7770;border-radius:999px;background:#180e18aa;color:#ffe5a8;font-weight:850;font-size:12px}
+.diwali-lamp{position:relative;z-index:1;font-size:clamp(95px,17vw,190px);filter:drop-shadow(0 0 35px #ff9f2c88);margin-right:5%}.diwali-glow{position:absolute;border-radius:50%;filter:blur(4px);z-index:-1}.diwali-glow-one{width:240px;height:240px;right:18%;top:-130px;background:#ffbd4b22}.diwali-glow-two{width:300px;height:300px;right:-120px;bottom:-190px;background:#ff6a1e22}
+.diwali-nav{margin:20px 0 28px;color:#f7d79b}.diwali-nav a{color:#ffd27a;text-decoration:none;font-weight:850}.diwali-rules{padding:22px;border:1px solid #ffc45b55;border-radius:20px;background:linear-gradient(145deg,#24120f,#15101b)}.diwali-rules h2{margin-top:0;color:#ffe1a1}.diwali-rule-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,245px),1fr));gap:12px}.diwali-rule-grid article{padding:16px;border:1px solid #ffffff18;border-radius:13px;background:#100d15}.diwali-rule-grid b{color:#ffc45b}.diwali-rule-grid p{color:#dfd0c2;line-height:1.6;margin-bottom:0;font-size:13px}.diwali-available-title{margin:32px 0 16px;color:#ffe1a1}.diwali-tournament-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,285px),1fr));gap:20px}.diwali-empty{padding:28px;border:1px dashed #ffc45b66;border-radius:17px;background:#1c1116}.diwali-empty>span{font-size:34px}.diwali-empty p{color:#e0cdb8}
+@media(max-width:700px){.diwali-hero{min-height:350px;align-items:flex-start}.diwali-lamp{position:absolute;right:10px;bottom:4px;opacity:.22}.diwali-copy{max-width:100%}}
+</style>
+{% endblock %}
