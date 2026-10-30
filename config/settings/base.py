@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "cloudinary_storage",
+    "cloudinary",
 
     "apps.core.apps.CoreConfig",
     "apps.accounts.apps.AccountsConfig",
@@ -151,6 +153,28 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# Render Free local disk is ephemeral. When CLOUDINARY_URL is configured,
+# all new player media uses durable Cloudinary storage. Local storage remains
+# available for development and until the account credentials are added.
+CLOUDINARY_URL = os.getenv("CLOUDINARY_URL", "").strip()
+CLOUDINARY_MEDIA_ENABLED = bool(CLOUDINARY_URL)
+CLOUDINARY_STORAGE = {
+    "SECURE": True,
+    "MEDIA_TAG": "ff-arena-media",
+}
+STORAGES = {
+    "default": {
+        "BACKEND": (
+            "cloudinary_storage.storage.MediaCloudinaryStorage"
+            if CLOUDINARY_MEDIA_ENABLED
+            else "django.core.files.storage.FileSystemStorage"
+        ),
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

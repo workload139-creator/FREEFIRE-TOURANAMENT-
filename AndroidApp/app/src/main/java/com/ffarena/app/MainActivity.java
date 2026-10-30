@@ -286,12 +286,22 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (featureWebView != null) featureWebView.onResume();
+        CookieManager.getInstance().flush();
         if (pendingInstallUri != null
                 && (Build.VERSION.SDK_INT < 26 || getPackageManager().canRequestPackageInstalls())) {
             Uri uri = pendingInstallUri;
             pendingInstallUri = null;
             installDownloadedApk(uri);
         }
+    }
+
+    @Override
+    protected void onPause() {
+        if (featureWebView != null) featureWebView.onPause();
+        // Persist WebView cookies/session data so normal app updates and restarts keep the login.
+        CookieManager.getInstance().flush();
+        super.onPause();
     }
 
     private void showNativeShell() {
@@ -820,6 +830,7 @@ public class MainActivity extends Activity {
         settings.setUserAgentString(settings.getUserAgentString() + " FFArenaAndroidApp");
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
+        settings.setSaveFormData(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setJavaScriptCanOpenWindowsAutomatically(true);
         settings.setSupportMultipleWindows(false);

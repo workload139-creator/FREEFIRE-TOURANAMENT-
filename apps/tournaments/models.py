@@ -9,6 +9,12 @@ from django.core.validators import (
 from django.db import models
 from django.db.models import Q
 
+if getattr(settings, "CLOUDINARY_MEDIA_ENABLED", False):
+    from cloudinary_storage.storage import VideoMediaCloudinaryStorage
+    KILL_VIDEO_STORAGE = VideoMediaCloudinaryStorage()
+else:
+    KILL_VIDEO_STORAGE = None
+
 
 class Tournament(models.Model):
 
@@ -326,7 +332,7 @@ class TournamentLedgerEntry(models.Model):
         return f"{self.tournament} · {self.player} · {self.get_entry_type_display()} · {self.quantity} {self.currency}"
 
 class KillSubmission(models.Model):
-    """Evidence submitted by a player; a human admin must approve the final kill count."""
+    """Evidence submitted by a player for independent AI checks and Admin fallback review."""
 
     class Status(models.TextChoices):
         PENDING = "pending", "Pending Admin Review"
@@ -350,7 +356,7 @@ class KillSubmission(models.Model):
     )
     registered_uid = models.CharField(max_length=32)
     free_fire_uid = models.CharField(max_length=32)
-    history_video = models.FileField(upload_to="kill-evidence/videos/")
+    history_video = models.FileField(upload_to="kill-evidence/videos/", storage=KILL_VIDEO_STORAGE)
     history_image_one = models.ImageField(upload_to="kill-evidence/images/")
     history_image_two = models.ImageField(upload_to="kill-evidence/images/")
     ai_proposed_kills = models.PositiveSmallIntegerField(null=True, blank=True)
