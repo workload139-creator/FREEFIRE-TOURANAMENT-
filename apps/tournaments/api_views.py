@@ -20,19 +20,21 @@ def _serialize_tournament(tournament):
         "start_time": tournament.start_time.isoformat(),
         "status": tournament.status,
         "is_full": tournament.is_full,
+        # Any admin edit updates this timestamp and triggers an app refresh.
+        "updated_at": tournament.updated_at.isoformat(),
     }
 
 
 @require_GET
 def public_tournament_list_api(request):
-    """Read-only JSON API for the native Android tournament list."""
+    """Read-only JSON API used by the Android app to detect admin changes."""
     queryset = Tournament.objects.filter(
         status__in=[
             Tournament.Status.UPCOMING,
             Tournament.Status.LIVE,
             Tournament.Status.COMPLETED,
         ]
-    ).order_by("start_time")
+    ).order_by("start_time", "pk")
 
     mode = request.GET.get("mode", "").upper()
     if mode in (Tournament.Mode.BR, Tournament.Mode.VS):
@@ -49,9 +51,12 @@ def public_tournament_list_api(request):
 
     now = timezone.now()
     items = [_serialize_tournament(t) for t in queryset[:limit]]
-    return JsonResponse({
+    response = JsonResponse({
         "success": True,
         "server_time": now.isoformat(),
         "count": len(items),
         "results": items,
     })
+    response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response["Pragma"] = "no-cache"
+    return response
