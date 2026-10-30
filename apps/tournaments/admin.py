@@ -15,7 +15,7 @@ from apps.accounts.models import (
     WalletTransaction,
 )
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
-from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry, UnlimitedTournament, FreeFanTournament
+from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry, UnlimitedTournament, FreeFanTournament, DiwaliOfferTournament
 
 from .services import cancel_tournament_and_refund
 from .kill_services import reward_for_tournament
@@ -48,6 +48,13 @@ class TournamentAdminForm(forms.ModelForm):
             # New entries created from the dedicated BR proxy admin are always paid unlimited BR rounds.
             if self.instance._meta.proxy and self.instance._meta.model_name == "unlimitedtournament":
                 self.initial["is_unlimited_br"] = True
+            if self.instance._meta.proxy and self.instance._meta.model_name == "diwalioffertournament":
+                self.initial.update({
+                    "mode": Tournament.Mode.BR, "br_format": Tournament.BRFormat.SOLO,
+                    "entry_fee": Decimal("1.00"), "max_players": 49,
+                    "is_unlimited_br": True, "auto_start_at_capacity": True,
+                })
+                self.fields["start_time"].required = False
         if "gender_category" in self.fields:
             self.fields["gender_category"].required = False
         self.fields["status"].help_text = (
@@ -71,6 +78,20 @@ class TournamentAdminForm(forms.ModelForm):
         # The dedicated proxy admin must never create a normal/non-series tournament.
         if self.instance._meta.proxy and self.instance._meta.model_name == "unlimitedtournament":
             cleaned["is_unlimited_br"] = True
+        if self.instance._meta.proxy and self.instance._meta.model_name == "diwalioffertournament":
+            cleaned.update({
+                "mode": Tournament.Mode.BR,
+                "br_format": Tournament.BRFormat.SOLO,
+                "vs_format": "",
+                "gender_category": Tournament.GenderCategory.OPEN,
+                "entry_fee": Decimal("1.00"),
+                "max_players": 49,
+                "is_unlimited_br": True,
+                "is_diwali_offer": True,
+                "is_free_fan_tournament": False,
+                "auto_start_at_capacity": True,
+                "start_time": cleaned.get("start_time") or timezone.now(),
+            })
         if cleaned.get("mode") == Tournament.Mode.BR and cleaned.get("vs_format"):
             self.add_error("vs_format", "BR tournament ke liye CS/VS format khaali rakhein.")
         if cleaned.get("mode") == Tournament.Mode.BR and not cleaned.get("br_format"):
@@ -385,6 +406,61 @@ def create_next_round_preserving_history(modeladmin, request, queryset):
         modeladmin.message_user(request, f"{created} new round(s) created. Previous round records and leaderboards remain unchanged.", messages.SUCCESS)
     if skipped:
         modeladmin.message_user(request, f"{skipped} skipped: select only Completed tournaments and ensure no Upcoming round already exists in that series.", messages.WARNING)
+
+
+@admin.action(description="Award 20 Diwali Diamonds to the verified winner")
+def award_diwali_winner_diamonds(modeladmin, request, queryset):
+    """Credit the Diwali first prize once to the unique verified tournament winner."""
+    from apps.social.models import PlayerShopWallet
+
+    awarded = 0
+    skipped = 0
+    for selected in queryset:
+        with transaction.atomic():
+            tournament = Tournament.objects.select_for_update().get(pk=selected.pk)
+            if (
+                not tournament.is_diwali_offer
+                or tournament.status != Tournament.Status.COMPLETED
+                or not str(tournament.winner_uid or "").strip()
+            ):
+                skipped += 1
+                continue
+            winners = Registration.objects.select_for_update().filter(
+                tournament=tournament,
+                free_fire_uid=str(tournament.winner_uid).strip(),
+                payment_verified=True,
+                refund_processed=False,
+                status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
+            ).select_related("player")
+            if winners.count() != 1:
+                skipped += 1
+                continue
+            registration = winners.first()
+            reference = f"DIWALI-WINNER-20-DIAMONDS-{tournament.pk}"
+            if TournamentLedgerEntry.objects.filter(reference=reference).exists():
+                skipped += 1
+                continue
+            wallet, _ = PlayerShopWallet.objects.get_or_create(user=registration.player)
+            wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
+            wallet.diamonds += 20
+            wallet.save(update_fields=("diamonds", "updated_at"))
+            TournamentLedgerEntry.objects.create(
+                tournament=tournament,
+                player=registration.player,
+                registration=registration,
+                entry_type=TournamentLedgerEntry.EntryType.REWARD,
+                currency=TournamentLedgerEntry.Currency.DIAMONDS,
+                quantity=20,
+                amount_inr=Decimal("0.00"),
+                status=TournamentLedgerEntry.Status.COMPLETED,
+                reference=reference,
+                description="Diwali Solo BR first-place prize: 20 Diamonds, admin-confirmed winner.",
+            )
+            awarded += 1
+    if awarded:
+        modeladmin.message_user(request, f"{awarded} Diwali winner(s) received 20 Diamonds.", messages.SUCCESS)
+    if skipped:
+        modeladmin.message_user(request, f"{skipped} skipped: select only completed Diwali rounds, set a unique verified Winner UID, and check the reward ledger for duplicates.", messages.WARNING)
 
 
 @admin.register(Tournament)
@@ -781,6 +857,58 @@ class FreeFanTournamentAdmin(admin.ModelAdmin):
     list_filter = ("status", "mode", "br_format")
     search_fields = ("title",)
     ordering = ("-created_at",)
+
+
+@admin.register(DiwaliOfferTournament)
+class DiwaliOfferTournamentAdmin(TournamentAdmin):
+    """Dedicated Festival / Offers admin page; all round records remain separate from regular BR."""
+
+    exclude = (
+        "is_unlimited_br", "is_free_fan_tournament", "is_diwali_offer",
+        "auto_start_at_capacity", "auto_reopen", "series_root", "start_time",
+    )
+    list_display = ("title", "open_tournament_control", "entry_fee", "max_players", "status", "winner_uid", "created_at")
+    list_filter = ("status",)
+    ordering = ("-created_at",)
+    actions = (cancel_and_refund_tournaments, award_diwali_winner_diamonds)
+
+    def get_queryset(self, request):
+        return super(TournamentAdmin, self).get_queryset(request).filter(
+            is_diwali_offer=True,
+            mode=Tournament.Mode.BR,
+            br_format=Tournament.BRFormat.SOLO,
+        )
+
+    def get_fieldsets(self, request, obj=None):
+        return (
+            ("🪔 Diwali Festival Offer — Solo BR", {
+                "description": "Yeh event regular BR se alag hai. System fixed rakha gaya hai: 1 Diamond entry, 49 Solo players, 20 Diamonds first prize, 5 Coins per approved kill, minimum 2 verified kills. Public page par date/time nahi dikhega.",
+                "fields": ("tournament_control_panel", "title", "description", "entry_fee", "max_players", "status"),
+            }),
+            ("🎮 Private Room Details", {
+                "description": "Round LIVE hone par eligible players ko room details private bhejne ke liye yahan Room ID aur Password set karein.",
+                "fields": ("room_id", "room_password"),
+            }),
+            ("🏆 Winner & Diwali Prize", {
+                "description": "Round Completed karne ke baad verified winner ka registered Free Fire UID enter karein. Neeche action se 20 Diamonds ek baar credit honge.",
+                "fields": ("winner_uid",),
+            }),
+        )
+
+    def save_model(self, request, obj, form, change):
+        obj.is_diwali_offer = True
+        obj.mode = Tournament.Mode.BR
+        obj.br_format = Tournament.BRFormat.SOLO
+        obj.vs_format = ""
+        obj.gender_category = Tournament.GenderCategory.OPEN
+        obj.entry_fee = Decimal("1.00")
+        obj.max_players = 49
+        obj.is_unlimited_br = True
+        obj.is_free_fan_tournament = False
+        obj.auto_start_at_capacity = True
+        if not obj.start_time:
+            obj.start_time = timezone.now()
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(KillSubmission)
