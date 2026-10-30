@@ -141,9 +141,9 @@
      copyValue(roomPassword, "Password");
    });
    showButton.addEventListener("click", function () {
-     reveal.hidden = false;
-     showButton.textContent = "Hide Details";
-     showButton.setAttribute("aria-expanded", "true");
+     reveal.hidden = !reveal.hidden;
+     showButton.textContent = reveal.hidden ? "Show Details" : "Hide Details";
+     showButton.setAttribute("aria-expanded", String(!reveal.hidden));
    });
    refreshRoomFlow();
    window.setInterval(refreshRoomFlow, 1000);
