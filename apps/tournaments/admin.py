@@ -79,8 +79,14 @@ class TournamentAdminForm(forms.ModelForm):
         if cleaned.get("is_unlimited_br"):
             if cleaned.get("mode") != Tournament.Mode.BR:
                 self.add_error("mode", "Unlimited series sirf Battle Royale (BR) mode mein ho sakti hai.")
-            if cleaned.get("max_players") != 49:
-                self.add_error("max_players", "Unlimited BR round mein exactly 49 players hone chahiye.")
+            br_format = cleaned.get("br_format") or Tournament.BRFormat.SOLO
+            capacities = {
+                Tournament.BRFormat.SOLO: 49,
+                Tournament.BRFormat.DUO: 48,
+                Tournament.BRFormat.SQUAD: 48,
+            }
+            cleaned["br_format"] = br_format
+            cleaned["max_players"] = capacities.get(br_format, 49)
             cleaned["auto_start_at_capacity"] = True
         elif cleaned.get("auto_reopen"):
             self.add_error("auto_reopen", "Auto reopen sirf Unlimited BR series ke liye hai.")
@@ -1202,6 +1208,10 @@ class UnlimitedTournamentAdmin(TournamentAdmin):
             "fields": ("winner_uid", "winner_team_uids", "winner_payout_destination", "winner_payout_qr", "winner_prize_reference", "winner_prize_paid", "live_notification_sent_at", "live_notification_status"),
         }),
     )
+
+    def has_add_permission(self, request):
+        # Solo, Duo and Squad are provisioned by migration; admins manage those records.
+        return False
 
     def get_queryset(self, request):
         return admin.ModelAdmin.get_queryset(self, request).filter(is_unlimited_br=True, is_free_fan_tournament=False)
