@@ -132,12 +132,41 @@ def reject_shop_payments(modeladmin, request, queryset):
 
 @admin.register(ShopPaymentRequest)
 class ShopPaymentRequestAdmin(admin.ModelAdmin):
-    list_display = ("user", "product", "quantity", "amount", "payment_reference", "status", "created_at", "reviewed_by")
+    list_display = ("id", "player_id_display", "user", "player_phone_display", "player_uid_display", "product", "quantity", "amount", "payment_reference", "status", "created_at", "reviewed_by")
     list_filter = ("status", "product", "created_at")
-    search_fields = ("user__username", "payment_reference")
-    readonly_fields = ("user", "product", "quantity", "amount", "payment_reference", "payment_screenshot_preview", "payment_screenshot", "created_at", "reviewed_at", "reviewed_by")
-    fields = ("user", "product", "quantity", "amount", "payment_reference", "payment_screenshot_preview", "payment_screenshot", "status", "admin_note", "created_at", "reviewed_at", "reviewed_by")
+    search_fields = ("user__username", "user__email", "user__phone_number", "user__free_fire_uid", "payment_reference")
+    readonly_fields = ("user", "player_id_display", "player_phone_display", "player_uid_display", "player_upi_display", "player_profile_qr_preview", "product", "quantity", "amount", "payment_reference", "payment_screenshot_preview", "payment_screenshot", "created_at", "reviewed_at", "reviewed_by")
+    fields = ("user", "player_id_display", "player_phone_display", "player_uid_display", "player_upi_display", "player_profile_qr_preview", "product", "quantity", "amount", "payment_reference", "payment_screenshot_preview", "payment_screenshot", "status", "admin_note", "created_at", "reviewed_at", "reviewed_by")
     actions = (approve_shop_payments, reject_shop_payments)
+
+    @admin.display(description="Player ID")
+    def player_id_display(self, obj):
+        return f"FF-{obj.user_id}" if obj and obj.user_id else "—"
+
+    @admin.display(description="Player phone")
+    def player_phone_display(self, obj):
+        return (getattr(obj.user, "phone_number", "") or "Not provided") if obj and obj.user else "—"
+
+    @admin.display(description="Free Fire UID")
+    def player_uid_display(self, obj):
+        return (getattr(obj.user, "free_fire_uid", "") or "Not provided") if obj and obj.user else "—"
+
+    @admin.display(description="Player UPI ID")
+    def player_upi_display(self, obj):
+        return (getattr(obj.user, "upi_id", "") or "Not provided") if obj and obj.user else "—"
+
+    @admin.display(description="Player profile UPI QR")
+    def player_profile_qr_preview(self, obj):
+        qr = getattr(obj.user, "upi_qr_code", None) if obj and obj.user else None
+        if not qr:
+            return "No profile UPI QR uploaded."
+        try:
+            if not qr.storage.exists(qr.name):
+                return "Profile QR record exists, but media file is missing."
+            url = qr.url
+            return format_html('<a href="{}" target="_blank" rel="noopener"><img src="{}" alt="Player UPI QR" style="width:180px;height:180px;object-fit:contain;background:#fff;padding:8px;border-radius:10px"></a>', url, url)
+        except (ValueError, OSError):
+            return "Profile QR is unavailable."
 
     @admin.display(description="Player's uploaded payment screenshot")
     def payment_screenshot_preview(self, obj):
@@ -208,11 +237,11 @@ class CurrencyWithdrawalAdmin(admin.ModelAdmin):
         if "status__exact" not in request.GET:
             return queryset.filter(status=CurrencyWithdrawalRequest.Status.PENDING)
         return queryset
-    list_display = ("id", "player_id_display", "user", "currency", "quantity", "amount_inr", "upi_id", "upi_qr_preview", "status", "payout_reference", "created_at")
+    list_display = ("id", "player_id_display", "user", "player_email_display", "player_phone_display", "player_uid_display", "currency", "quantity", "amount_inr", "upi_id", "upi_qr_preview", "status", "payout_reference", "created_at", "processed_at")
     list_filter = ("status", "currency", "created_at")
-    search_fields = ("user__username", "user__email", "upi_id", "payout_reference")
-    readonly_fields = ("user", "player_id_display", "player_email_display", "profile_upi_qr_preview", "currency", "quantity", "amount_inr", "upi_id", "upi_qr_code", "upi_qr_preview", "status", "created_at", "processed_at", "processed_by")
-    fields = ("user", "player_id_display", "player_email_display", "currency", "quantity", "amount_inr", "upi_id", "profile_upi_qr_preview", "upi_qr_code", "upi_qr_preview", "status", "payout_reference", "created_at", "processed_at", "processed_by")
+    search_fields = ("user__username", "user__email", "user__phone_number", "user__free_fire_uid", "upi_id", "payout_reference")
+    readonly_fields = ("user", "player_id_display", "player_email_display", "player_phone_display", "player_uid_display", "profile_upi_qr_preview", "currency", "quantity", "amount_inr", "upi_id", "upi_qr_code", "upi_qr_preview", "status", "created_at", "processed_at", "processed_by")
+    fields = ("user", "player_id_display", "player_email_display", "player_phone_display", "player_uid_display", "currency", "quantity", "amount_inr", "upi_id", "profile_upi_qr_preview", "upi_qr_code", "upi_qr_preview", "status", "payout_reference", "created_at", "processed_at", "processed_by")
     actions = (mark_currency_withdrawals_paid, reject_currency_withdrawals)
 
     @admin.display(description="Player ID")
@@ -222,6 +251,14 @@ class CurrencyWithdrawalAdmin(admin.ModelAdmin):
     @admin.display(description="Player email")
     def player_email_display(self, obj):
         return obj.user.email or "No email on account" if obj and obj.user else "—"
+
+    @admin.display(description="Player phone")
+    def player_phone_display(self, obj):
+        return (getattr(obj.user, "phone_number", "") or "Not provided") if obj and obj.user else "—"
+
+    @admin.display(description="Free Fire UID")
+    def player_uid_display(self, obj):
+        return (getattr(obj.user, "free_fire_uid", "") or "Not provided") if obj and obj.user else "—"
 
     @admin.display(description="QR saved on player profile")
     def profile_upi_qr_preview(self, obj):
