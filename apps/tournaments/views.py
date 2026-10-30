@@ -20,10 +20,74 @@ from .ai_review import AIReviewError, analyze_kill_evidence, fingerprint_evidenc
 from .registration_services import RegistrationError, create_pending_registration, assign_teams_for_tournament
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry
-from .kill_services import reward_for_tournament
+from .kill_services import reward_for_tournament, rewards_for_tournament
 from .services import process_expired_ready_registrations, mark_not_playing_and_refund
 
 import qrcode
+
+
+def _credit_kill_submission_reward(submission, approved_kills, reward_override=None, source="Admin"):
+    """Approve one submission and credit non-cash tournament currencies exactly once."""
+    from apps.social.models import PlayerShopWallet
+
+    rewards = rewards_for_tournament(submission.tournament, approved_kills)
+    if approved_kills < settings.MINIMUM_VERIFIED_KILLS:
+        rewards = []
+    if reward_override is not None:
+        if not rewards:
+            raise ValueError("Prize override is not allowed below the minimum verified kills.")
+        currency, _quantity, label = rewards[0]
+        rewards[0] = (currency, reward_override, label)
+
+    primary_quantity = rewards[0][1] if rewards else 0
+    coin_quantity = sum(quantity for currency, quantity, _label in rewards if currency == "coins")
+    submission.approved_kills = approved_kills
+    submission.proposed_reward = Decimal(primary_quantity)
+    submission.approved_reward = Decimal(primary_quantity)
+    submission.proposed_coins_reward = coin_quantity
+    submission.approved_coins_reward = coin_quantity
+    submission.status = KillSubmission.Status.APPROVED
+    submission.reviewed_at = timezone.now()
+    submission.save(update_fields=[
+        "approved_kills", "proposed_reward", "approved_reward",
+        "proposed_coins_reward", "approved_coins_reward",
+        "status", "reviewed_at", "admin_notes",
+    ])
+
+    if not rewards:
+        return []
+
+    wallet, _ = PlayerShopWallet.objects.get_or_create(user=submission.player)
+    wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
+    credited = []
+    for currency, quantity, label in rewards:
+        if quantity <= 0:
+            continue
+        reference = f"KILL-REWARD-{submission.pk}-{currency}"
+        if TournamentLedgerEntry.objects.filter(reference=reference).exists():
+            continue
+        wallet_field = {
+            "diamonds": "diamonds",
+            "coins": "coins",
+            "fan_tokens": "fan_tokens",
+        }[currency]
+        setattr(wallet, wallet_field, getattr(wallet, wallet_field) + int(quantity))
+        TournamentLedgerEntry.objects.create(
+            reference=reference,
+            tournament=submission.tournament,
+            player=submission.player,
+            registration=submission.registration,
+            entry_type=TournamentLedgerEntry.EntryType.REWARD,
+            currency=currency,
+            quantity=int(quantity),
+            amount_inr=Decimal("0.00"),
+            status=TournamentLedgerEntry.Status.COMPLETED,
+            description=f"{source}: {int(quantity)} {label} for {approved_kills} verified kills",
+        )
+        credited.append((int(quantity), label))
+    if credited:
+        wallet.save(update_fields=("diamonds", "coins", "fan_tokens", "updated_at"))
+    return credited
 
 
 def cleanup_expired_kill_evidence():
