@@ -25,6 +25,7 @@ import android.webkit.PermissionRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.WebResourceRequest;
 import android.webkit.ValueCallback;
 import android.webkit.JavascriptInterface;
 import android.widget.Button;
@@ -733,6 +734,11 @@ public class MainActivity extends Activity {
         CookieManager.getInstance().setAcceptThirdPartyCookies(featureWebView, true);
         featureWebView.addJavascriptInterface(new ShareBridge(), "FFArenaShare");
         featureWebView.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                return handleWebViewNavigation(view, request.getUrl().toString());
+            }
+
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
                 return handleWebViewNavigation(view, url);
