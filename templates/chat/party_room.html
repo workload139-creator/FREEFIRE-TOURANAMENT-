@@ -51,9 +51,7 @@
     <section class="room-box"><h2>💬 Live Room Chat</h2><div class="room-messages" id="partyMessages" data-poll-url="{% url 'chat:party_poll' room.pk %}" data-last-id="{{ room_messages|last|default_if_none:'' }}">{% for item in room_messages %}<article class="room-msg" data-message-id="{{ item.pk }}"><small>{{ item.sender.username }} · {{ item.created_at|date:"H:i" }}</small>{{ item.body }}</article>{% empty %}<p class="room-note">Pehla message bhejo!</p>{% endfor %}</div><form method="post" class="room-form">{% csrf_token %}<input type="hidden" name="action" value="message"><input name="body" maxlength="1000" placeholder="Room mein message likho..." required><button class="button button-primary" type="submit">Send</button></form>
     <section class="room-box" id="partyVoice" style="margin-top:16px;border-color:#b6ff3955;background:radial-gradient(ellipse at 100% 0%,#b6ff3912,transparent 45%),linear-gradient(145deg,#111e23,#0c131b)" data-token-url="{% url 'chat:party_voice_token' room.pk %}">
       <h2>🎙️ Group Voice</h2>
-      <p class="room-note">Mic on karne ke baad room ke members aapki awaaz sun sakenge. Browser/Android app mein microphone permission allow karein.</p>
-      <p id="partyVoiceStatus" role="status" aria-live="polite">Voice abhi connect nahi hai. Mic ke liye button dabayein aur browser/app permission allow karein.</p>
-      <p class="room-note">Agar Live voice configure nahi hai, admin ko LIVEKIT_URL, LIVEKIT_API_KEY aur LIVEKIT_API_SECRET Render environment variables mein set karne honge.</p>
+      <p id="partyVoiceStatus" role="status" aria-live="polite" hidden></p>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="button button-primary" type="button" id="partyVoiceJoin">Join voice + Mic on</button>
         <button class="button button-outline" type="button" id="partyVoiceMute" disabled>Mute mic</button>
