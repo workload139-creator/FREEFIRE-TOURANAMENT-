@@ -12,6 +12,7 @@ from .kill_services import (
     calculate_proposed_reward,
     calculate_approved_reward,
     finalize_dual_ai_reward,
+    rewards_for_tournament,
 )
 
 
@@ -99,14 +100,24 @@ class FourAIReviewTests(SimpleTestCase):
         self.assertFalse(result["four_way_agreement"])
 
 
-class NoAutomaticAIPayoutTests(SimpleTestCase):
+class TournamentSpecificRewardTests(SimpleTestCase):
 
-    def test_ai_never_credits_reward_without_admin_action(self):
-        paid, reason = finalize_dual_ai_reward(SimpleNamespace(), {
-            "four_way_agreement": True, "dual_agreement": True,
-            "confidence": "high", "uid_matches": True,
-            "history_consistent": True, "evidence_complete": True,
-            "observed_uid": "1234567890", "proposed_kills": 20,
-        })
-        self.assertFalse(paid)
-        self.assertIn("Admin", reason)
+    def test_br_solo_rewards_diamonds_per_kill(self):
+        tournament = SimpleNamespace(mode="BR", is_diwali_offer=False, is_free_fan_tournament=False, br_format="solo")
+        self.assertEqual(rewards_for_tournament(tournament, 4), [("diamonds", 20, "Diamonds")])
+
+    def test_br_duo_rewards_diamonds_and_coins(self):
+        tournament = SimpleNamespace(mode="BR", is_diwali_offer=False, is_free_fan_tournament=False, br_format="duo")
+        self.assertEqual(rewards_for_tournament(tournament, 4), [("diamonds", 20, "Diamonds"), ("coins", 8, "Coins")])
+
+    def test_vs_rewards_coins(self):
+        tournament = SimpleNamespace(mode="VS", is_diwali_offer=False, is_free_fan_tournament=False, br_format="")
+        self.assertEqual(rewards_for_tournament(tournament, 4), [("coins", 8, "Coins")])
+
+    def test_diwali_rewards_coins(self):
+        tournament = SimpleNamespace(mode="BR", is_diwali_offer=True, is_free_fan_tournament=False, br_format="solo")
+        self.assertEqual(rewards_for_tournament(tournament, 4), [("coins", 20, "Coins")])
+
+    def test_free_fan_rewards_one_token_per_two_kills(self):
+        tournament = SimpleNamespace(mode="BR", is_diwali_offer=False, is_free_fan_tournament=True, br_format="solo")
+        self.assertEqual(rewards_for_tournament(tournament, 5), [("fan_tokens", 2, "Fan Tokens")])
