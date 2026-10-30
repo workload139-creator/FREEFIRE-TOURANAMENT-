@@ -72,7 +72,7 @@ def tournament_list(request):
 
 def battle_royale_list(request):
     process_expired_ready_registrations()
-    tournaments = Tournament.objects.filter(mode=Tournament.Mode.BR, is_unlimited_br=False, is_free_fan_tournament=False, gender_category__in=[Tournament.GenderCategory.OPEN, Tournament.GenderCategory.BOYS, Tournament.GenderCategory.GIRLS], status__in=[Tournament.Status.UPCOMING, Tournament.Status.LIVE, Tournament.Status.COMPLETED]).order_by('start_time')
+    tournaments = Tournament.objects.filter(mode=Tournament.Mode.BR, is_free_fan_tournament=False, gender_category__in=[Tournament.GenderCategory.OPEN, Tournament.GenderCategory.BOYS, Tournament.GenderCategory.GIRLS], status__in=[Tournament.Status.UPCOMING, Tournament.Status.LIVE, Tournament.Status.COMPLETED]).order_by('br_format', '-created_at')
     return render(request, 'tournaments/battle_royale_list.html', {'tournaments': tournaments})
 
 
@@ -82,14 +82,8 @@ def clash_squad_list(request):
     return render(request, 'tournaments/clash_squad_list.html', {'tournaments': tournaments})
 
 def unlimited_tournament_list(request):
-    """Dedicated page for the recurring paid 49-player BR series."""
-    process_expired_ready_registrations()
-    rounds = Tournament.objects.filter(
-        is_unlimited_br=True,
-        is_free_fan_tournament=False,
-        status__in=[Tournament.Status.UPCOMING, Tournament.Status.LIVE],
-    ).order_by("status", "created_at")
-    return render(request, "tournaments/unlimited_list.html", {"tournaments": rounds})
+    """Legacy URL: paid BR formats now live together on the Battle Royale page."""
+    return redirect("tournaments:battle_royale_list")
 
 
 def free_fan_tournament_list(request):
