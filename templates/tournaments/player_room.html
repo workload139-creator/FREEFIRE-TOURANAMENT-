@@ -10,9 +10,189 @@
  <form method="post" action="{% url 'tournaments:decline_playing' registration.id %}" style="display:inline-block;margin-top:10px">{% csrf_token %}<button type="submit" class="button button-outline">NO, I CAN'T PLAY</button></form>
  <p class="help-text">5 minute mein YES na kiya ya NO chuna, to aap NOT PLAYING mark honge aur leaderboard se hataye jayenge. Direct UPI payment ka refund admin ko actual UPI transfer karke process karna hoga.</p></div>
  {% elif registration.status == "ready" and can_view_room %}
- <div class="tournament-card" style="padding:24px;margin-top:20px;border-radius:16px"><h2>🔥 Room Details — Confirmed Player</h2><p><strong>Room ID:</strong> {{ tournament.room_id }}</p><p><strong>Room Password:</strong> {{ tournament.room_password }}</p><p class="message success">Aapki participation confirm ho gayi hai. Ab game room join karein. Match se eliminate hone ke baad kill evidence submit karein.</p>
- <a class="btn-primary" style="display:inline-block;margin-top:14px" href="{% url 'tournaments:kill_submission' registration.id %}">🎯 KILL VERIFY — Submit Video + 2 Screenshots</a>
- <p class="help-text">Apni registered Free Fire UID hi use karein. AI evidence ko check karke proposal admin ko bhejega; final approval aur payout admin karega.</p></div>
+ <div class="tournament-card" style="padding:24px;margin-top:20px;border-radius:16px">
+  <h2>🔥 Your Tournament Room</h2>
+  <p class="message success">Aapki participation confirm ho gayi hai. Neeche diye gaye steps follow karein.</p>
+
+  <section id="roomSaveStep" style="padding:18px;margin:18px 0;border:1px solid var(--border-color, #555);border-radius:14px">
+   <h3>1. Save Room Details</h3>
+   <p>Sabse pehle room details save karein. Save hone ke baad ye button hat jayega.</p>
+   <button type="button" class="btn-primary" id="saveRoomDetails">☆ Save Room Details</button>
+   <p id="roomSaveStatus" class="help-text" aria-live="polite"></p>
+  </section>
+  <button type="button" class="btn-primary" id="joinTournamentButton" hidden style="width:100%;margin:14px 0;padding:16px;font-size:18px">🚀 JOIN TOURNAMENT</button>
+
+  <section id="qrJoinStep" hidden style="padding:18px;margin:18px 0;border:1px solid var(--border-color, #555);border-radius:14px">
+   <h3>2. Join Tournament</h3>
+   <p>QR se join karne ki koshish karein. Agar Free Fire MAX QR ko accept na kare, neeche ID aur Password wala backup use karein.</p>
+   {% if tournament.room_qr_code %}
+    <div style="text-align:center;padding:12px;background:#fff;border-radius:12px">
+     <img src="{{ tournament.room_qr_code.url }}" alt="Official Free Fire custom room QR code" style="width:min(100%,320px);height:auto;object-fit:contain">
+    </div>
+    <p class="help-text">Is QR ko Free Fire MAX ke official Custom Room QR scanner se scan karein, agar aapke game version mein scanner available hai.</p>
+    <a class="btn-primary" style="display:inline-block;margin:8px 0" href="intent://#Intent;package=com.dts.freefiremax;end">🎮 Open Free Fire MAX</a>
+   {% else %}
+    <p class="help-text">Admin ne is tournament ka QR upload nahi kiya. ID aur Password se join karein.</p>
+   {% endif %}
+   <p id="roomActionStatus" class="help-text" aria-live="polite"></p>
+   <button type="button" class="button button-outline" id="qrFallbackButton">QR se join nahi hua? Room ID & Password use karein</button>
+  </section>
+
+  <section id="roomActions" hidden style="padding:18px;margin:18px 0;border:1px solid var(--border-color, #555);border-radius:14px">
+   <h3>2. Room ID copy karein</h3>
+   <p>Room ID copy karke Free Fire MAX ke Custom Room mein pehle Room ID wale box mein paste karein.</p>
+   <button type="button" class="button button-outline" id="copyRoomId">Copy Room ID</button>
+
+   <h3 style="margin-top:22px">3. Free Fire MAX kholein</h3>
+   <a class="btn-primary" style="display:inline-block;margin-top:8px" href="intent://#Intent;package=com.dts.freefiremax;end">🎮 Open Free Fire MAX</a>
+   <p class="help-text">Game ke Custom Room mein Room ID paste karein. FF Arena game ke doosre app ke fields khud fill nahi kar sakta.</p>
+
+   <h3 style="margin-top:22px">4. Password copy karein</h3>
+   <p>Ab Password copy karke Custom Room ke Password wale box mein paste karein.</p>
+   <button type="button" class="button button-outline" id="copyRoomPassword">Copy Password</button>
+
+   <div id="showDetailsGate" style="margin-top:22px">
+    <h3>5. Room Details</h3>
+    <p id="showDetailsMessage" class="help-text" aria-live="polite">Room ID ya Password pehli baar copy karne ke 2 minute baad Show Details option unlock hoga.</p>
+    <button type="button" class="button button-outline" id="showRoomDetails" hidden>Show Details</button>
+    <div id="roomDetailsReveal" hidden style="margin-top:12px;padding:14px;border-radius:12px;background:var(--card-bg, rgba(127,127,127,.12))">
+     <p>Room ID: <strong id="ffRoomId">{{ tournament.room_id|escape }}</strong></p>
+     <p>Room Password: <strong id="ffRoomPassword">{{ tournament.room_password|escape }}</strong></p>
+    </div>
+   </div>
+  </section>
+
+  <section style="padding:22px;margin:22px 0;border:2px solid var(--primary, #f59e0b);border-radius:16px;text-align:center">
+   <div style="font-size:34px;margin-bottom:8px">🏆</div>
+   <h2 style="font-size:clamp(24px,5vw,36px);margin:0 0 10px">WIN PRIZE KE LIYE</h2>
+   <h2 style="font-size:clamp(22px,4vw,30px);margin:0 0 12px">KILL SUBMISSION</h2>
+   <p>Match ke baad 15–30 second video aur 2 game-history screenshots submit karein.</p>
+   <a class="btn-primary" style="display:block;width:100%;box-sizing:border-box;padding:18px 16px;font-size:18px;font-weight:800;text-align:center;margin-top:14px" href="{% url 'tournaments:kill_submission' registration.id %}">🎯 SUBMIT KILL VIDEO + 2 SCREENSHOTS</a>
+   <p class="help-text">Apni registered Free Fire UID hi use karein. AI evidence review aur tournament reward rules apply honge.</p>
+  </section>
+ </div>
+ <script>
+ (function () {
+   const registrationId = "{{ registration.id|escapejs }}";
+   const roomId = document.getElementById("ffRoomId")?.textContent.trim() || "{{ tournament.room_id|escapejs }}";
+   const roomPassword = document.getElementById("ffRoomPassword")?.textContent.trim() || "{{ tournament.room_password|escapejs }}";
+   const savedKey = "ffarena_saved_room_" + registrationId;
+   const copiedAtKey = "ffarena_room_first_copy_at_" + registrationId;
+   const saveStep = document.getElementById("roomSaveStep");
+   const saveButton = document.getElementById("saveRoomDetails");
+   const saveStatus = document.getElementById("roomSaveStatus");
+   const actions = document.getElementById("roomActions");
+   const qrJoinStep = document.getElementById("qrJoinStep");
+   const joinButton = document.getElementById("joinTournamentButton");
+   const qrFallbackButton = document.getElementById("qrFallbackButton");
+   const showButton = document.getElementById("showRoomDetails");
+   const showMessage = document.getElementById("showDetailsMessage");
+   const reveal = document.getElementById("roomDetailsReveal");
+   const roomActionStatus = document.getElementById("roomActionStatus");
+   let qrFlowOpen = false;
+   let passwordFlowOpen = false;
+
+   function isSaved() {
+     try { return localStorage.getItem(savedKey) === "1"; } catch (error) { return false; }
+   }
+   function firstCopiedAt() {
+     try {
+       const value = Number(localStorage.getItem(copiedAtKey));
+       return Number.isFinite(value) && value > 0 ? value : null;
+     } catch (error) { return null; }
+   }
+   function refreshRoomFlow() {
+     const saved = isSaved();
+     saveStep.hidden = saved;
+     joinButton.hidden = !saved;
+     qrJoinStep.hidden = !qrFlowOpen;
+     actions.hidden = !passwordFlowOpen;
+     if (!saved) {
+       qrFlowOpen = false;
+       passwordFlowOpen = false;
+       qrJoinStep.hidden = true;
+       actions.hidden = true;
+       return;
+     }
+
+     const copiedAt = firstCopiedAt();
+     if (!copiedAt) {
+       showButton.hidden = true;
+       showMessage.textContent = "Room ID ya Password pehli baar copy karne ke 2 minute baad Show Details option unlock hoga.";
+       return;
+     }
+     const unlockAt = copiedAt + 120000;
+     if (Date.now() >= unlockAt) {
+       showButton.hidden = false;
+       showMessage.textContent = "Show Details ab available hai. Ye option available rahega.";
+     } else {
+       showButton.hidden = true;
+       showMessage.textContent = "Pehli copy ke 2 minute baad Show Details option unlock hoga.";
+     }
+   }
+
+   joinButton.addEventListener("click", function () {
+     qrFlowOpen = true;
+     refreshRoomFlow();
+     qrJoinStep.scrollIntoView({behavior: "smooth", block: "start"});
+   });
+   qrFallbackButton.addEventListener("click", function () {
+     passwordFlowOpen = true;
+     refreshRoomFlow();
+     actions.scrollIntoView({behavior: "smooth", block: "start"});
+   });
+
+   saveButton.addEventListener("click", function () {
+     try {
+       localStorage.setItem(savedKey, "1");
+       refreshRoomFlow();
+     } catch (error) {
+       saveStatus.textContent = "Device par save nahi ho saka. Browser storage allow karke dobara try karein.";
+     }
+   });
+
+   async function copyValue(value, label) {
+     try {
+       if (navigator.clipboard && window.isSecureContext) {
+         await navigator.clipboard.writeText(value);
+       } else {
+         const field = document.createElement("textarea");
+         field.value = value;
+         field.style.position = "fixed";
+         field.style.opacity = "0";
+         document.body.appendChild(field);
+         field.select();
+         const copied = document.execCommand("copy");
+         field.remove();
+         if (!copied) throw new Error("Clipboard unavailable");
+       }
+       try {
+         if (!localStorage.getItem(copiedAtKey)) localStorage.setItem(copiedAtKey, String(Date.now()));
+       } catch (storageError) {}
+       saveStatus.textContent = label + " clipboard mein copy ho gaya. Free Fire MAX mein sahi field par Paste karein.";
+       roomActionStatus.textContent = saveStatus.textContent;
+       refreshRoomFlow();
+     } catch (error) {
+       saveStatus.textContent = "Copy nahi ho saka. Dobara try karein ya manually copy karein.";
+       roomActionStatus.textContent = saveStatus.textContent;
+     }
+   }
+
+   document.getElementById("copyRoomId").addEventListener("click", function () {
+     copyValue(roomId, "Room ID");
+   });
+   document.getElementById("copyRoomPassword").addEventListener("click", function () {
+     copyValue(roomPassword, "Password");
+   });
+   showButton.addEventListener("click", function () {
+     reveal.hidden = !reveal.hidden;
+     showButton.textContent = reveal.hidden ? "Show Details" : "Hide Details";
+     showButton.setAttribute("aria-expanded", String(!reveal.hidden));
+   });
+   refreshRoomFlow();
+   window.setInterval(refreshRoomFlow, 1000);
+ })();
+ </script>
  {% elif registration.status == "not_playing" %}<p class="message error">Aap NOT PLAYING mark ho chuke hain. Room access band hai. Agar entry fee UPI se di thi, refund ki actual transfer status admin se confirm karein.</p>
  {% elif not registration.payment_verified %}<p class="message warning">Payment verify nahi hui hai. Admin ke payment verify karne ke baad hi participation confirmation aur room access milega.</p>
  {% else %}<p class="message">Room details abhi available nahi hain. Admin ke tournament room details release karne ka wait karein.</p>{% endif %}
