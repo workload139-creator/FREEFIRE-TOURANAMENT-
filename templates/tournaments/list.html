@@ -7,7 +7,7 @@
     <h1>Choose Your <span>Tournament</span></h1>
     <p class="tournament-intro">Apna mode chuno, squad banao aur leaderboard par apni jagah banao.</p>
     <nav class="arena-mode-nav" aria-label="Tournament categories">
-      <a href="{% url 'tournaments:free_fan_list' %}">🎁 Free Tournament</a><a href="{% url 'tournaments:unlimited_list' %}">♾️ Unlimited Tournament</a><a href="{% url 'tournaments:battle_royale_list' %}">🔥 Battle Royale</a><a href="{% url 'tournaments:clash_squad_list' %}">⚔️ Clash Squad</a><a href="#girls-vs-boys">💜 Girls vs Boys</a>
+      <a href="{% url 'tournaments:free_fan_list' %}">🎁 Free Tournament</a><a href="{% url 'tournaments:battle_royale_list' %}">🔥 Battle Royale</a><a href="{% url 'tournaments:clash_squad_list' %}">⚔️ Clash Squad</a><a href="#girls-vs-boys">💜 Girls vs Boys</a>
     </nav>
   </header>
 
@@ -17,15 +17,6 @@
     {% for tournament in free_fan_tournaments %}
       {% include "tournaments/_tournament_card.html" with tournament=tournament %}
     {% empty %}<article class="tournament-empty free-fan-empty"><span>🎁</span><h3>Free Fan Arena</h3><p>Free tournament ka separate page ready hai. Admin panel ke <strong>Free Fan Tournaments</strong> mein round create hote hi yahan dikhai dega.</p><a class="button button-primary" href="{% url 'tournaments:free_fan_list' %}">Enter Free Arena</a></article>{% endfor %}
-    </div>
-  </section>
-
-  <section class="mode-section unlimited-section" id="unlimited-tournaments">
-    <div class="mode-heading"><span class="mode-label">♾️ 49-PLAYER AUTO START</span><h2>Unlimited Tournament</h2><p>₹10 entry · 49 verified players hote hi automatic LIVE · next round automatically opens.</p></div>
-    <div class="tournament-grid">
-    {% for tournament in unlimited_tournaments %}
-      {% include "tournaments/_tournament_card.html" with tournament=tournament %}
-    {% empty %}<article class="tournament-empty unlimited-empty"><span>♾️</span><h3>Unlimited Arena ready hai</h3><p>Admin panel ke <strong>Unlimited Tournaments</strong> section se event create hote hi yahan dikhai dega.</p></article>{% endfor %}
     </div>
   </section>
 
