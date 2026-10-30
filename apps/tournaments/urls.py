@@ -14,6 +14,9 @@ urlpatterns = [
         name="list",
     ),
 
+    path("battle-royale/", views.battle_royale_list, name="battle_royale_list"),
+    path("clash-squad/", views.clash_squad_list, name="clash_squad_list"),
+
     # Dedicated date-free tournament pages
     path("free-tournament/", views.free_fan_tournament_list, name="free_fan_list"),
     path("unlimited/", views.unlimited_tournament_list, name="unlimited_list"),
