@@ -16,7 +16,7 @@ from apps.accounts.models import (
 )
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry, UnlimitedTournament, FreeFanTournament
-from .services import cancel_tournament_and_refund
+from .services import cancel_tournament_and_refund\nfrom .kill_services import reward_for_tournament
 
 
 class TournamentAdminForm(forms.ModelForm):
@@ -483,7 +483,7 @@ class TournamentAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ("1. Tournament Details — kya ban raha hai?", {"description": "Title public tournament name hai. Mode mein BR ya CS/VS chunein. CS/VS mein 1v1/2v2/3v3/4v4 format chunein. Gender Category se Open, Boys Only, Girls Only ya Girls vs Boys event banayein. Har saved tournament ka apna alag control panel hai.", "fields": ("tournament_control_panel", "title", "description", "mode", "vs_format", "gender_category")}),
-        ("2. Fees & Players — entry aur capacity", {"description": "Entry Fee player se li jane wali registration fee hai. Prize Pool tournament ka first-place prize hai; ise admin ke funds aur payout process ke mutabik set karein. Max Players room capacity hai (maximum 49). BR kill reward alag rule hai: har verified kill par ₹5 ke equivalent 5 Diamonds; evidence aur admin approval zaroori hai.", "fields": ("entry_fee", "prize_pool", "max_players")}),
+        ("2. Fees & Players — entry aur capacity", {"description": "Entry Fee player se li jane wali registration fee hai. Prize Pool tournament ka first-place prize hai; ise admin ke funds aur payout process ke mutabik set karein. Max Players room capacity hai (maximum 49). BR kill reward entry fee par depend karta hai: ₹10 entry = 5 Diamonds/kill; ₹1 entry = 5 Coins/kill. First prize display: ₹10 = 50 Diamonds; ₹1 = 20 Diamonds. Evidence verification zaroori hai.", "fields": ("entry_fee", "prize_pool", "max_players")}),
         ("3. Unlimited BR Series — optional", {"description": "Sirf unlimited BR series ke liye ON karein. Har round mein 49 players. Auto start capacity par round shuru karne ke liye hai; Auto reopen agla round khol sakta hai. Normal tournament ho to in options ko OFF rakhein.", "fields": ("is_unlimited_br", "auto_start_at_capacity", "auto_reopen", "series_root")}),
         ("4. Schedule & Status — publish / LIVE", {"description": "Start Time tournament ka scheduled time hai. Draft public list mein nahi dikhta; Upcoming se listing/registration khulti hai. LIVE karne se pehle Room Details section mein Room ID aur Password bharna zaroori hai. LIVE karne par verified paid players ko YES/NO confirmation email bhejne ki koshish hoti hai; email delivery SMTP setup par depend karti hai.", "fields": ("start_time", "status")}),
         ("5. Room Details — private until YES", {"description": "Room ID aur Password game room ke credentials hain. Tournament LIVE karte waqt dono bharein. Player ko room tabhi dikhega jab woh deadline ke andar YES kare. Credentials public description/website post mein na likhein.", "fields": ("room_id", "room_password")}),
@@ -939,7 +939,7 @@ class KillSubmissionAdmin(admin.ModelAdmin):
             "fields": ("ai_source_configuration",),
         }),
         ("5. Manual fallback — only unclear cases", {
-            "description": "Sirf low-confidence/unclear evidence ko inspect karke approved kills, approved reward, status aur admin notes set karein. BR reward Diamonds mein player ke shop wallet mein credit hota hai; UPI payout ke liye alag withdrawal request chahiye.",
+            "description": "Sirf low-confidence/unclear evidence ko inspect karke approved kills, approved reward, status aur admin notes set karein. ₹10 BR: 5 Diamonds/kill; ₹1 BR: 5 Coins/kill. Approved reward player ke shop wallet mein credit hota hai.",
             "fields": ("approved_kills", "approved_reward", "status", "admin_notes"),
         }),
         ("6. Legacy payout fields", {
