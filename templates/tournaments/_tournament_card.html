@@ -6,12 +6,12 @@
   <p>{{ tournament.description|default:"Join the battle!" }}</p>
   {% if tournament.mode == "VS" %}<p>Format: {{ tournament.get_vs_format_display|default:"VS Match" }}</p>{% endif %}
   {% if tournament.gender_category == "girls_vs_boys" %}<p>📸 Registration selfie required · Admin review</p>{% endif %}
-  <div class="tournament-stats">
-    <div><small>Entry Fee</small><strong>₹{{ tournament.entry_fee }}</strong></div>
-    <div><small>{% if tournament.is_free_fan_tournament %}Winner Prize{% elif tournament.mode == "VS" %}Fan Token Pool{% else %}1st Prize{% endif %}</small><strong>{% if tournament.is_free_fan_tournament %}{{ tournament.winner_coins_prize }} Coins{% elif tournament.mode == "VS" %}{% if tournament.vs_format == "1v1" %}10{% elif tournament.vs_format == "2v2" %}20{% elif tournament.vs_format == "3v3" %}30{% elif tournament.vs_format == "4v4" %}40{% else %}10{% endif %} Fan Tokens{% else %}50 Diamonds{% endif %}</strong></div>
+  <div class="tournament-stats tournament-stats-four">
+    <div><small>Entry Fee</small><strong>{% if tournament.is_free_fan_tournament %}FREE{% else %}₹{{ tournament.entry_fee }}{% endif %}</strong></div>
+    <div><small>1st Prize</small><strong>{% if tournament.is_free_fan_tournament %}{{ tournament.winner_coins_prize }} Coins{% elif tournament.mode == "VS" %}{% if tournament.vs_format == "1v1" %}10{% elif tournament.vs_format == "2v2" %}20{% elif tournament.vs_format == "3v3" %}30{% elif tournament.vs_format == "4v4" %}40{% else %}10{% endif %} Fan Tokens{% elif tournament.entry_fee <= 1 %}20 Diamonds{% else %}50 Diamonds{% endif %}</strong></div>
+    <div><small>1 Kill Reward</small><strong>{% if tournament.is_free_fan_tournament %}2 Kills = 1 Fan Token{% elif tournament.mode == "VS" %}—{% elif tournament.entry_fee <= 1 %}5 Coins{% else %}5 Diamonds{% endif %}</strong></div>
     <div><small>Players</small><strong>{% if tournament.is_unlimited_br %}{{ tournament.paid_players_count }}{% else %}{{ tournament.confirmed_players_count }}{% endif %}/{{ tournament.max_players }}</strong></div>
   </div>
-  {% if tournament.mode == "BR" and not tournament.is_free_fan_tournament %}<p class="reward-rule">💎 Kill reward: 5 Diamonds per approved kill · Winner prize: 50 Diamonds</p>{% elif tournament.mode == "VS" %}<p class="reward-rule">🏆 {{ tournament.get_vs_format_display|default:"VS Match" }} winner reward: {% if tournament.vs_format == "1v1" %}10{% elif tournament.vs_format == "2v2" %}20{% elif tournament.vs_format == "3v3" %}30{% elif tournament.vs_format == "4v4" %}40{% else %}10{% endif %} Fan Tokens</p>{% endif %}
   <p>Status: {{ tournament.get_status_display }}</p>{% if not tournament.is_unlimited_br %}<p>Start: {{ tournament.start_time|date:"d M Y, h:i A" }}</p>{% endif %}
   <div><a class="button button-primary" href="{% url 'tournaments:detail' tournament.id %}">View / Register</a><a class="button button-outline" href="{% url 'tournaments:leaderboard' tournament.id %}">Leaderboard</a>{% if tournament.status == "live" %}<a class="button button-primary" style="background:#d90032;border-color:#ff536f;color:#fff" href="https://www.youtube.com/@freefire_tour/live" target="_blank" rel="noopener noreferrer">▶ Watch Live</a>{% endif %}</div>
 </article>
