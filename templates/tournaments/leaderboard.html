@@ -24,7 +24,7 @@
                     <td>{{ row.registration.free_fire_uid }}</td>
                     <td><span style="color:#38d9a9">Verified</span></td>
                     <td>{% if row.submission %}{{ row.submission.approved_kills }}{% else %}Pending review{% endif %}</td>
-                    <td>{% if row.submission %}{{ row.submission.approved_reward }} {% if tournament.br_format == "duo" or tournament.br_format == "squad" %}Diamonds + {{ row.submission.approved_coins_reward }} Coins{% elif tournament.is_free_fan_tournament %}Fan Tokens{% elif tournament.mode == "VS" %}Coins{% else %}Diamonds{% endif %}{% elif row.is_winner %}Winner reward pending review{% else %}—{% endif %}</td>
+                    <td>{% if row.submission %}{{ row.submission.approved_reward }} {% if tournament.is_diwali_offer %}Coins{% elif tournament.br_format == "duo" or tournament.br_format == "squad" %}Diamonds + {{ row.submission.approved_coins_reward }} Coins{% elif tournament.is_free_fan_tournament %}Fan Tokens{% elif tournament.mode == "VS" %}Coins{% else %}Diamonds{% endif %}{% elif row.is_winner %}Winner reward pending review{% else %}—{% endif %}</td>
                 </tr>
             {% empty %}
                 <tr><td colspan="6">Abhi koi payment-verified player nahi hai. Payment verify hone ke baad entries yahan aayengi.</td></tr>
