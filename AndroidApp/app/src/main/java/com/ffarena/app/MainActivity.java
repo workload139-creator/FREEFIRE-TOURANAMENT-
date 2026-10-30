@@ -91,7 +91,7 @@ public class MainActivity extends Activity {
                 if (assets != null) {
                     for (int i = 0; i < assets.length(); i++) {
                         JSONObject asset = assets.optJSONObject(i);
-                        if (asset != null && "app-debug.apk".equals(asset.optString("name"))) {
+                        if (asset != null && "app-release.apk".equals(asset.optString("name"))) {
                             apkUrl = asset.optString("browser_download_url", "");
                             break;
                         }
