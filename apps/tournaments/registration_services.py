@@ -53,8 +53,9 @@ def send_unlimited_live_notifications(tournament_id):
 
     tournament_url = settings.SITE_URL + reverse("tournaments:detail", args=[tournament.pk])
     event_label = (
-        "Free Fan Tournament" if tournament.is_free_fan_tournament
-        else ("Clash Squad Tournament" if tournament.mode == Tournament.Mode.VS else "Battle Royale Tournament")
+        "Diwali Festival Offer" if getattr(tournament, "is_diwali_offer", False)
+        else ("Free Fan Tournament" if tournament.is_free_fan_tournament
+        else ("Clash Squad Tournament" if tournament.mode == Tournament.Mode.VS else "Battle Royale Tournament"))
     )
     subject = f"FF Arena {event_label} is LIVE: {tournament.title}"
     admin_message = (
