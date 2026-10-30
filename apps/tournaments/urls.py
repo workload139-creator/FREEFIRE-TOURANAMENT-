@@ -1,7 +1,6 @@
-
 from django.urls import path
 
-from . import views, api_views, self_refund
+from . import views, api_views, self_refund, arena_views
 
 app_name = "tournaments"
 
@@ -14,8 +13,8 @@ urlpatterns = [
         name="list",
     ),
 
-    path("battle-royale/", views.battle_royale_list, name="battle_royale_list"),
-    path("clash-squad/", views.clash_squad_list, name="clash_squad_list"),
+    path("battle-royale/", arena_views.battle_royale_list, name="battle_royale_list"),
+    path("clash-squad/", arena_views.clash_squad_list, name="clash_squad_list"),
 
     # Dedicated date-free tournament pages
     path("free-tournament/", views.free_fan_tournament_list, name="free_fan_list"),
