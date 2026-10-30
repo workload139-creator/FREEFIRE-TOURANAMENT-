@@ -69,6 +69,18 @@ def tournament_list(request):
     )
 
 
+
+def battle_royale_list(request):
+    process_expired_ready_registrations()
+    tournaments = Tournament.objects.filter(mode=Tournament.Mode.BR, is_unlimited_br=False, is_free_fan_tournament=False, gender_category__in=[Tournament.GenderCategory.OPEN, Tournament.GenderCategory.BOYS, Tournament.GenderCategory.GIRLS], status__in=[Tournament.Status.UPCOMING, Tournament.Status.LIVE, Tournament.Status.COMPLETED]).order_by('start_time')
+    return render(request, 'tournaments/battle_royale_list.html', {'tournaments': tournaments})
+
+
+def clash_squad_list(request):
+    process_expired_ready_registrations()
+    tournaments = Tournament.objects.filter(mode=Tournament.Mode.VS, gender_category__in=[Tournament.GenderCategory.OPEN, Tournament.GenderCategory.BOYS, Tournament.GenderCategory.GIRLS], status__in=[Tournament.Status.UPCOMING, Tournament.Status.LIVE, Tournament.Status.COMPLETED]).order_by('vs_format', 'start_time')
+    return render(request, 'tournaments/clash_squad_list.html', {'tournaments': tournaments})
+
 def unlimited_tournament_list(request):
     """Dedicated page for the recurring paid 49-player BR series."""
     process_expired_ready_registrations()
