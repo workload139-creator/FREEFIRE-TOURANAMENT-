@@ -874,9 +874,9 @@ def mark_selected_prizes_paid(modeladmin, request, queryset):
         modeladmin.message_user(request, f"{skipped} item(s) skipped: no approved BR reward, missing/duplicate real UTR, or already paid.", messages.WARNING)
 
 
-@admin.action(description="Run / retry AI review for selected evidence")
+@admin.action(description="Run / retry AI assessment — keep pending for human approval")
 def run_ai_review_for_selected(modeladmin, request, queryset):
-    from .ai_review import AIReviewError, analyze_kill_evidence
+    from .ai_review import analyze_kill_evidence
 
     reviewed = 0
     failed = 0
@@ -886,63 +886,33 @@ def run_ai_review_for_selected(modeladmin, request, queryset):
             continue
         try:
             result = analyze_kill_evidence(selected)
-            selected.ai_proposed_kills = result["proposed_kills"]
-            selected.ai_confidence = result["confidence"][:10]
-            selected.ai_uid_matches = result["uid_matches"]
-            selected.ai_review_notes = result["reason"]
-            proposed_kills = int(result["proposed_kills"] or 0)
-            auto_approved = (
-                result["proposed_kills"] is not None
-                and result["uid_matches"] is True
+            proposed_kills = result.get("proposed_kills")
+            uid_ok = (
+                result.get("uid_matches") is True
                 and selected.free_fire_uid == selected.registered_uid
                 and selected.registered_uid == selected.registration.free_fire_uid
-                and selected.tournament.mode == Tournament.Mode.BR
-                and result["confidence"] == "high"
-                and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS
             )
-            selected_reward_currency, selected_reward_quantity, selected_reward_label = reward_for_tournament(selected.tournament, proposed_kills)
-            selected.proposed_reward = Decimal(selected_reward_quantity if auto_approved and proposed_kills > 0 else 0)
-            if auto_approved:
-                with transaction.atomic():
-                    locked = KillSubmission.objects.select_for_update().get(pk=selected.pk)
-                    if locked.status != KillSubmission.Status.PENDING:
-                        failed += 1
-                        continue
-                    locked.ai_proposed_kills = result["proposed_kills"]
-                    locked.ai_confidence = result["confidence"][:10]
-                    locked.ai_uid_matches = result["uid_matches"]
-                    locked.ai_review_notes = result["reason"]
-                    locked.proposed_reward = selected.proposed_reward
-                    locked.approved_kills = proposed_kills
-                    locked.approved_reward = locked.proposed_reward
-                    locked.status = KillSubmission.Status.APPROVED
-                    locked.reviewed_at = timezone.now()
-                    if proposed_kills > 0:
-                        from apps.social.models import PlayerShopWallet
-                        shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=locked.player)
-                        shop_wallet = PlayerShopWallet.objects.select_for_update().get(pk=shop_wallet.pk)
-                        reward_currency, reward_quantity, _ = reward_for_tournament(locked.tournament, proposed_kills)
-                        if reward_currency == "coins":
-                            shop_wallet.coins += reward_quantity
-                        elif reward_currency == "fan_tokens":
-                            shop_wallet.fan_tokens += reward_quantity
-                        else:
-                            shop_wallet.diamonds += reward_quantity
-                        shop_wallet.save(update_fields=("diamonds", "coins", "fan_tokens", "updated_at"))
-                    locked.save(update_fields=[
-                        "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
-                        "ai_review_notes", "proposed_reward", "approved_kills",
-                        "approved_reward", "status", "reviewed_at",
-                    ])
+            if proposed_kills is not None and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS and uid_ok:
+                _currency, quantity, _label = reward_for_tournament(selected.tournament, proposed_kills)
+                selected.proposed_reward = Decimal(quantity)
             else:
-                selected.save(update_fields=[
-                    "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
-                    "ai_review_notes", "proposed_reward",
-                ])
+                selected.proposed_reward = Decimal("0.00")
+            selected.ai_proposed_kills = proposed_kills
+            selected.ai_confidence = (result.get("confidence") or "")[:10]
+            selected.ai_uid_matches = result.get("uid_matches")
+            selected.ai_review_notes = (result.get("reason") or "")[:2000]
+            if not uid_ok:
+                selected.ai_review_notes += "\\n\\nADMIN REVIEW REQUIRED: UID mismatch or AI UID verification failed."
+            elif proposed_kills is None or proposed_kills < settings.MINIMUM_VERIFIED_KILLS:
+                selected.ai_review_notes += "\\n\\nADMIN REVIEW REQUIRED: AI could not verify minimum kills."
+            else:
+                selected.ai_review_notes += "\\n\\nAI assessment is advisory only. Human admin approval is required before wallet credit."
+            selected.save(update_fields=[
+                "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
+                "ai_review_notes", "proposed_reward",
+            ])
             reviewed += 1
         except Exception as exc:
-            # Keep the submission pending and store a useful diagnostic for the admin.
-            # Do not expose API keys or request headers in the saved error message.
             error_text = str(exc).strip() or exc.__class__.__name__
             selected.ai_review_notes = f"AI review failed ({exc.__class__.__name__}): {error_text[:850]}"
             selected.save(update_fields=["ai_review_notes"])
@@ -951,13 +921,13 @@ def run_ai_review_for_selected(modeladmin, request, queryset):
     if reviewed:
         modeladmin.message_user(
             request,
-            f"AI review completed for {reviewed} submission(s). High-confidence UID matches were approved and credited in Diamonds automatically; other cases remain pending for manual review.",
+            f"AI assessment completed for {reviewed} submission(s). All remain pending until a human admin approves; no currency was auto-credited.",
             messages.SUCCESS,
         )
     if failed:
         modeladmin.message_user(
             request,
-            f"{failed} submission(s) could not be AI-reviewed or were not pending. Check OPENAI_API_KEY, FFmpeg/imageio-ffmpeg, media storage and AI Review Notes; use manual review if unavailable.",
+            f"{failed} submission(s) could not be assessed or were not pending. Check AI Review Notes; review evidence manually.",
             messages.WARNING,
         )
 
