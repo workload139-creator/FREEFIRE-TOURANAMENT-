@@ -37,6 +37,7 @@ def battle_royale_list(request):
         mode=Tournament.Mode.BR,
         is_free_fan_tournament=False,
         is_diwali_offer=False,
+        is_unlimited_br=False,
         gender_category__in=(
             Tournament.GenderCategory.OPEN,
             Tournament.GenderCategory.BOYS,
@@ -80,3 +81,24 @@ def clash_squad_list(request):
     )
     events = _one_event_per_format(tournaments, "vs_format", ("1v1", "2v2", "3v3", "4v4"))
     return render(request, "tournaments/clash_squad_list.html", {"tournaments": events})
+
+
+def girls_vs_boys_list(request):
+    """Dedicated public page for Girls vs Boys tournaments across BR and VS modes."""
+    process_expired_ready_registrations()
+    tournaments = Tournament.objects.filter(
+        gender_category=Tournament.GenderCategory.GIRLS_VS_BOYS,
+        is_free_fan_tournament=False,
+        is_diwali_offer=False,
+        is_unlimited_br=False,
+        status__in=PUBLIC_STATUSES,
+    ).order_by(
+        Case(
+            When(status=Tournament.Status.LIVE, then=Value(0)),
+            When(status=Tournament.Status.UPCOMING, then=Value(1)),
+            default=Value(2),
+            output_field=IntegerField(),
+        ),
+        "mode", "br_format", "vs_format", "-created_at", "-pk",
+    )
+    return render(request, "tournaments/girls_vs_boys_list.html", {"tournaments": tournaments})
