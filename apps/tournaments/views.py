@@ -119,7 +119,7 @@ def free_fan_tournament_list(request):
             registered_at__gte=timezone.now() - timedelta(hours=24),
         ).exclude(status__in=[Registration.Status.CANCELLED, Registration.Status.REFUNDED]).exists()
     return render(request, "tournaments/free_fan_list.html", {
-        "tournaments": rounds,
+        "tournaments": rounds.exclude(gender_category=Tournament.GenderCategory.GIRLS_VS_BOYS),
         "recent_entry": recent_entry,
     })
 
