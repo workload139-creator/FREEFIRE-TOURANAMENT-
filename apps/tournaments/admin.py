@@ -874,11 +874,14 @@ def mark_selected_prizes_paid(modeladmin, request, queryset):
         modeladmin.message_user(request, f"{skipped} item(s) skipped: no approved BR reward, missing/duplicate real UTR, or already paid.", messages.WARNING)
 
 
-@admin.action(description="Run / retry AI assessment — keep pending for human approval")
+@admin.action(description="Run two-stage AI assessment and credit only strict dual-AI matches")
 def run_ai_review_for_selected(modeladmin, request, queryset):
     from .ai_review import analyze_kill_evidence
+    from .kill_services import finalize_dual_ai_reward
 
     reviewed = 0
+    rewarded = 0
+    manual = 0
     failed = 0
     for selected in queryset.select_related("registration", "tournament", "player"):
         if selected.status != KillSubmission.Status.PENDING:
@@ -886,50 +889,40 @@ def run_ai_review_for_selected(modeladmin, request, queryset):
             continue
         try:
             result = analyze_kill_evidence(selected)
-            proposed_kills = result.get("proposed_kills")
-            uid_ok = (
-                result.get("uid_matches") is True
-                and selected.free_fire_uid == selected.registered_uid
-                and selected.registered_uid == selected.registration.free_fire_uid
-            )
-            if proposed_kills is not None and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS and uid_ok:
-                _currency, quantity, _label = reward_for_tournament(selected.tournament, proposed_kills)
-                selected.proposed_reward = Decimal(quantity)
-            else:
-                selected.proposed_reward = Decimal("0.00")
-            selected.ai_proposed_kills = proposed_kills
+            proposed = result.get("proposed_kills")
+            selected.ai_proposed_kills = proposed
             selected.ai_confidence = (result.get("confidence") or "")[:10]
             selected.ai_uid_matches = result.get("uid_matches")
             selected.ai_review_notes = (result.get("reason") or "")[:2000]
-            if not uid_ok:
-                selected.ai_review_notes += "\\n\\nADMIN REVIEW REQUIRED: UID mismatch or AI UID verification failed."
-            elif proposed_kills is None or proposed_kills < settings.MINIMUM_VERIFIED_KILLS:
-                selected.ai_review_notes += "\\n\\nADMIN REVIEW REQUIRED: AI could not verify minimum kills."
+            if proposed is not None and result.get("uid_matches") is True:
+                _currency, quantity, _label = reward_for_tournament(selected.tournament, proposed)
+                selected.proposed_reward = Decimal(quantity) if proposed >= settings.MINIMUM_VERIFIED_KILLS else Decimal("0.00")
             else:
-                selected.ai_review_notes += "\\n\\nAI assessment is advisory only. Human admin approval is required before wallet credit."
+                selected.proposed_reward = Decimal("0.00")
             selected.save(update_fields=[
                 "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
                 "ai_review_notes", "proposed_reward",
             ])
+            auto_paid, note = finalize_dual_ai_reward(selected, result)
+            if auto_paid:
+                rewarded += 1
+            else:
+                selected.refresh_from_db()
+                selected.ai_review_notes = (selected.ai_review_notes + "\\n\\nADMIN REVIEW: " + note)[:4000]
+                selected.save(update_fields=["ai_review_notes"])
+                manual += 1
             reviewed += 1
         except Exception as exc:
-            error_text = str(exc).strip() or exc.__class__.__name__
-            selected.ai_review_notes = f"AI review failed ({exc.__class__.__name__}): {error_text[:850]}"
+            selected.ai_review_notes = f"AI review failed ({exc.__class__.__name__}): {str(exc).strip()[:850]}"
             selected.save(update_fields=["ai_review_notes"])
             failed += 1
 
-    if reviewed:
-        modeladmin.message_user(
-            request,
-            f"AI assessment completed for {reviewed} submission(s). All remain pending until a human admin approves; no currency was auto-credited.",
-            messages.SUCCESS,
-        )
+    if rewarded:
+        modeladmin.message_user(request, f"{rewarded} submission(s) passed both AI models and all website checks; rewards were credited once.", messages.SUCCESS)
+    if manual:
+        modeladmin.message_user(request, f"{manual} submission(s) need Admin Review because AI agreement or player/evidence checks did not pass.", messages.WARNING)
     if failed:
-        modeladmin.message_user(
-            request,
-            f"{failed} submission(s) could not be assessed or were not pending. Check AI Review Notes; review evidence manually.",
-            messages.WARNING,
-        )
+        modeladmin.message_user(request, f"{failed} submission(s) could not be assessed; check AI Review Notes and review manually.", messages.ERROR)
 
 
 @admin.register(KillSubmission)
