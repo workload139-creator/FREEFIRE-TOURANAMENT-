@@ -598,6 +598,7 @@ public class MainActivity extends Activity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
+        // WebRTC microphone capture in Android WebView needs native audio routing permission.
         settings.setJavaScriptCanOpenWindowsAutomatically(false);
         settings.setAllowFileAccess(false);
         settings.setSupportZoom(false);
@@ -616,13 +617,17 @@ public class MainActivity extends Activity {
                     for (String resource : request.getResources()) {
                         if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource)) asksForAudio = true;
                     }
-                    if (!trustedOrigin || !asksForAudio) {
+                    if (!trustedOrigin || !asksForAudio || isFinishing() || isDestroyed()) {
                         request.deny();
                         return;
                     }
                     if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                         request.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
                     } else {
+                        // Keep the WebView request alive until Android's runtime permission dialog returns.
+                        if (pendingMicRequest != null && pendingMicRequest != request) {
+                            try { pendingMicRequest.deny(); } catch (Exception ignored) {}
+                        }
                         pendingMicRequest = request;
                         requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_MIC_PERMISSION);
                     }
@@ -693,10 +698,13 @@ public class MainActivity extends Activity {
         if (requestCode == REQUEST_MIC_PERMISSION && pendingMicRequest != null) {
             PermissionRequest request = pendingMicRequest;
             pendingMicRequest = null;
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            if (grantResults.length > 0
+                    && grantResults[0] == PackageManager.PERMISSION_GRANTED
+                    && checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                    && !isFinishing() && !isDestroyed()) {
                 request.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
             } else {
-                request.deny();
+                try { request.deny(); } catch (Exception ignored) {}
             }
         }
     }
