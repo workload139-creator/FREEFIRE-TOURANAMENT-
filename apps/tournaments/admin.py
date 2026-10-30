@@ -846,6 +846,7 @@ class UnlimitedTournamentAdmin(TournamentAdmin):
         return super(TournamentAdmin, self).get_queryset(request).filter(
             is_unlimited_br=True,
             is_free_fan_tournament=False,
+            is_diwali_offer=False,
             mode=Tournament.Mode.BR,
         )
 
@@ -854,7 +855,7 @@ class UnlimitedTournamentAdmin(TournamentAdmin):
 class FreeFanTournamentAdmin(admin.ModelAdmin):
     """Dedicated admin list for the existing Free Fan Tournament proxy."""
     list_display = ("id", "title", "status", "max_players", "start_time", "created_at")
-    list_filter = ("status", "mode", "br_format")
+    list_filter = ("status", "mode", "br_format", "is_diwali_offer")
     search_fields = ("title",)
     ordering = ("-created_at",)
 
@@ -964,7 +965,7 @@ class RegistrationAdmin(admin.ModelAdmin):
         "entry_fee_paid", "payment_method", "currency_amount", "payment_verified", "status", "room_details_sent",
         "refund_processed", "registered_at",
     )
-    list_filter = ("payment_method", "status", "payment_verified", "refund_processed", "player__gender", "tournament__gender_category", "tournament__mode", "tournament")
+    list_filter = ("payment_method", "status", "payment_verified", "refund_processed", "player__gender", "tournament__gender_category", "tournament__mode", "tournament__is_diwali_offer", "tournament")
     search_fields = (
         "free_fire_uid", "payment_reference", "player__username",
         "player__email", "player__phone_number", "tournament__title",
