@@ -41,6 +41,9 @@ class RegistrationForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.user = user
         self.tournament = tournament
+        if tournament is not None and getattr(tournament, "is_diwali_offer", False):
+            self.fields["payment_method"].choices = (("diamonds", "💎 1 Diamond"),)
+            self.initial["payment_method"] = "diamonds"
         if tournament is not None and tournament.gender_category == "girls_vs_boys":
             self.fields["verification_photo"].required = True
         else:
