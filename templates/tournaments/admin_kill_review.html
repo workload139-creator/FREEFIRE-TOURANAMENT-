@@ -6,9 +6,10 @@
     <h1 style="margin-top:0">🎯 Admin Kill Review</h1>
     <nav style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0">
       <a class="button button-outline" href="{% url 'tournaments:admin_ai_assessments' %}">AI Assessment Queue</a>
+      <a class="button button-primary" href="{% url 'tournaments:admin_kill_batch_review' %}">Tournament Bulk Reward Review</a>
       <a class="button button-outline" href="{% url 'tournaments:admin_ai_sources' %}">AI Sources / Diagnostics</a>
     </nav>
-    <p>Yahin evidence check, AI retry aur manual revision manage karein. Four independent AI review passes evidence ko cross-check karte hain; AI sirf reward propose karta hai aur final credit se pehle Admin approval mandatory hai; Free Fan mein Fan Tokens, VS mein 2 Coins per kill, aur BR mein configured Coins/Diamonds milte hain.</p>
+    <p>Yahin evidence check, AI retry aur manual revision manage karein. Chaaron AI ek hi kills, exact UID aur clean evidence confirm karein to tournament rules ke mutabik reward automatic credit hota hai. Baaki cases yahan manual review mein aate hain. Sabhi players ka tournament-wise batch view Bulk Reward Review mein hai.</p>
     <p><strong>AI provider:</strong> {{ ai_provider }} · <strong>Model:</strong> {{ ai_model }}</p>
     <p><strong>OpenAI key configured:</strong> {{ ai_openai_configured|yesno:"Yes,No" }} · <strong>Compatible vision endpoint configured:</strong> {{ ai_compatible_configured|yesno:"Yes,No" }}</p>
     <p><strong>Reward rule:</strong> Minimum {{ minimum_verified_kills }} verified kills. Free Fan: har 2 approved kills = 1 Fan Token. VS: har verified kill = 2 Coins (dono teams). BR: configured Coins/Diamonds per kill. Rewards non-cash website currency hain.</p>
