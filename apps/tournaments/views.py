@@ -558,6 +558,7 @@ def kill_submission(request, registration_id):
                         and uid_ok
                         and registration.payment_verified
                         and registration.status == Registration.Status.READY
+                        and not registration.refund_processed
                         and registration.tournament.status != Tournament.Status.CANCELLED
                         and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS
                     ):
@@ -740,6 +741,7 @@ def retry_ai_kill_review(request, submission_id):
             and uid_ok
             and submission.registration.payment_verified
             and submission.registration.status == Registration.Status.READY
+            and not submission.registration.refund_processed
             and submission.tournament.status != Tournament.Status.CANCELLED
             and proposed is not None
             and proposed >= settings.MINIMUM_VERIFIED_KILLS
