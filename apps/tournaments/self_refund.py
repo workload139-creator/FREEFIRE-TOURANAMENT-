@@ -116,12 +116,6 @@ def request_tournament_diamond_refund(request, registration_id):
         messages.error(request, "Tournament live, completed ya cancelled hai; self-refund available nahi hai.")
         return redirect("tournaments:my_registrations")
 
-    # Players may cancel and receive the original entry currency back any time
-    # before the tournament is moved to LIVE by an admin.
-    if tournament.status != tournament.Status.UPCOMING:
-        messages.error(request, "Self-refund sirf LIVE hone se pehle available hai.")
-        return redirect("tournaments:my_registrations")
-
     amount = Decimal(str(registration.entry_fee_paid or tournament.entry_fee))
     if registration.payment_method == "upi" and amount <= 0:
         messages.error(request, "Is free entry ki refundable INR amount nahi hai.")
@@ -148,7 +142,7 @@ def request_tournament_diamond_refund(request, registration_id):
         setattr(shop_wallet, registration.payment_method, getattr(shop_wallet, registration.payment_method) + quantity)
         shop_wallet.save(update_fields=["diamonds", "coins", "fan_tokens", "updated_at"])
         currency = registration.payment_method
-        description = f"Self-refund within the final hour; returned {quantity} {currency}."
+        description = f"Pre-LIVE self-refund; returned {quantity} {currency}."
         success_message = f"Refund complete: {quantity} {currency} aapke wallet mein add ho gaye."
     elif registration.payment_method == "upi":
         wallet, _ = Wallet.objects.get_or_create(user=request.user)
@@ -165,7 +159,7 @@ def request_tournament_diamond_refund(request, registration_id):
         )
         quantity = 0
         currency = TournamentLedgerEntry.Currency.INR
-        description = "Verified UPI entry fee credited to the player's internal INR wallet during the final-hour self-refund window."
+        description = "Verified UPI entry fee credited to the player's internal INR wallet before the tournament went LIVE."
         success_message = f"Refund complete: ₹{amount} aapke INR wallet mein add ho gaye."
     else:
         messages.error(request, "Is payment method ka automatic refund supported nahi hai; admin se contact karein.")
