@@ -363,6 +363,10 @@ class KillSubmission(models.Model):
     ai_confidence = models.CharField(max_length=10, blank=True, default="")
     ai_uid_matches = models.BooleanField(null=True, blank=True)
     ai_review_notes = models.TextField(blank=True)
+    # Durable per-pass audit: statuses, kills, UID, confidence and reasons for all four reviewers.
+    ai_reviewer_reports = models.JSONField(default=dict, blank=True)
+    # SHA-256 fingerprints captured immediately after upload; later changes route to Admin Review.
+    evidence_sha256 = models.JSONField(default=dict, blank=True)
     approved_kills = models.PositiveSmallIntegerField(null=True, blank=True)
     proposed_reward = models.DecimalField(
         max_digits=10, decimal_places=2, default=Decimal("0.00")

@@ -12,7 +12,7 @@
   </header>
   <article class="tournament-card" style="padding:22px;margin:16px 0;border-radius:14px">
     <h2>Provider readiness</h2>
-    <p><strong>Current mode:</strong> {{ provider }} {% if dual_mode %}— dual-provider mode{% else %}— automatic awards remain disabled unless dual mode is configured{% endif %}</p>
+    <p><strong>Review architecture:</strong> Four independent reviewer passes — FF Arena AI Assessment and FF Arena AI Agent Audit, each run once through OpenAI and once through Ollama Cloud. These are four separate review calls using two provider/model families.</p>
     <p><strong>OpenAI model:</strong> {{ openai_model }} · <strong>OPENAI_API_KEY:</strong> {{ openai_key_configured|yesno:"Configured,MISSING" }}</p>
     <p><strong>Open-source vision model:</strong> {{ open_source_model }} · <strong>KILL_REVIEW_BASE_URL:</strong> {{ open_source_endpoint_configured|yesno:"Configured,MISSING" }} · <strong>KILL_REVIEW_API_KEY:</strong> {{ open_source_key_configured|yesno:"Configured,Not set (may be okay for private keyless endpoint)" }}</p>
     <h3>Required Render Environment variables</h3>
@@ -25,7 +25,7 @@
       <li><code>KILL_REVIEW_API_KEY</code> = endpoint key if required; may be blank for a secured keyless endpoint</li>
     </ul>
     <p><strong>Reward rule:</strong> {{ diamonds_per_kill }} Diamonds per verified kill · minimum {{ minimum_kills }} kills.</p>
-    <p><strong>Important:</strong> An open-source model name alone does not run a model. The endpoint must be online and support vision/image inputs. If either AI fails, the submission stays pending for admin review; no automatic Diamonds.</p>
+    <p><strong>Important:</strong> An open-source model name alone does not run a model. The endpoint must be online and support vision/image inputs. Each provider is called twice with different reviewer instructions. If any of the four calls fails, reviewers disagree, UID differs, or evidence is unclear, the submission stays pending for Admin Review. AI never credits rewards; Admin approval is mandatory.</p><p><strong>Evidence protection:</strong> SHA-256 fingerprints are saved for the original video and both screenshots. If any file changes after upload, AI review is blocked and the Admin must inspect it. Fingerprints detect post-upload changes, not whether evidence was already edited before upload.</p>
   </article>
 </section>
 {% endblock %}

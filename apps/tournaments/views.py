@@ -16,11 +16,11 @@ from django.views.decorators.http import require_POST
 
 from apps.accounts.models import Wallet, WalletTransaction, AdminWallet, AdminWalletTransaction
 from .forms import KillSubmissionForm, RegistrationForm
-from .ai_review import AIReviewError, analyze_kill_evidence
+from .ai_review import AIReviewError, analyze_kill_evidence, fingerprint_evidence
 from .registration_services import RegistrationError, create_pending_registration, assign_teams_for_tournament
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry
-from .kill_services import reward_for_tournament, finalize_dual_ai_reward
+from .kill_services import reward_for_tournament
 from .services import process_expired_ready_registrations, mark_not_playing_and_refund
 
 import qrcode
@@ -460,11 +460,14 @@ def kill_submission(request, registration_id):
                 submission.proposed_reward = Decimal("0.00")
                 submission.save()
                 try:
+                    submission.evidence_sha256 = fingerprint_evidence(submission)
+                    submission.save(update_fields=["evidence_sha256"])
                     ai_result = analyze_kill_evidence(submission)
                     submission.ai_proposed_kills = ai_result["proposed_kills"]
                     submission.ai_confidence = ai_result["confidence"][:10]
                     submission.ai_uid_matches = ai_result["uid_matches"]
                     submission.ai_review_notes = ai_result["reason"]
+                    submission.ai_reviewer_reports = ai_result.get("reviewer_reports", {})
                     proposed_kills = ai_result["proposed_kills"]
                     uid_ok = (
                         ai_result.get("uid_matches") is True
@@ -483,16 +486,9 @@ def kill_submission(request, registration_id):
                     submission.ai_review_notes = ai_result["reason"]
                     submission.save(update_fields=[
                         "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
-                        "ai_review_notes", "proposed_reward",
+                        "ai_review_notes", "proposed_reward", "ai_reviewer_reports",
                     ])
-                    auto_paid, decision_note = finalize_dual_ai_reward(submission, ai_result)
-                    if auto_paid:
-                        messages.success(request, "🤖 Dual AI verified: " + decision_note)
-                    else:
-                        submission.refresh_from_db()
-                        submission.ai_review_notes = (submission.ai_review_notes + "\n\nADMIN REVIEW: " + decision_note)[:4000]
-                        submission.save(update_fields=["ai_review_notes"])
-                        messages.info(request, "AI assessment complete. " + decision_note + " Submission Admin Review queue mein hai.")
+                    messages.info(request, "Four AI review passes complete. AI reward is only a proposal; Admin approval is required before any credit.")
                 except Exception as exc:
                     # Keep a durable assessment record even when an AI provider,
                     # network, video decoder, or model response fails. Never pay
@@ -501,6 +497,16 @@ def kill_submission(request, registration_id):
                     submission.ai_confidence = "low"
                     submission.ai_uid_matches = None
                     submission.proposed_reward = Decimal("0.00")
+                    submission.ai_reviewer_reports = ai_result.get("reviewer_reports", {}) if "ai_result" in locals() else {
+                        key: {"name": label, "status": "BLOCKED", "proposed_kills": None, "confidence": "low",
+                              "reason": "Evidence fingerprint could not be established or verified; Admin Review required."}
+                        for key, label in [
+                            ("ff_arena_assessment_openai", "FF Arena AI Assessment · OpenAI"),
+                            ("ff_arena_assessment_ollama", "FF Arena AI Assessment · Ollama Cloud"),
+                            ("ff_arena_agent_openai", "FF Arena AI Agent Audit · OpenAI"),
+                            ("ff_arena_agent_ollama", "FF Arena AI Agent Audit · Ollama Cloud"),
+                        ]
+                    }
                     submission.ai_review_notes = (
                         "AI ASSESSMENT STATUS: PROVIDER_UNAVAILABLE_OR_FAILED. "
                         "The evidence was saved, but no reliable AI result was returned. "
@@ -510,7 +516,7 @@ def kill_submission(request, registration_id):
                     )[:2000]
                     submission.save(update_fields=[
                         "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
-                        "ai_review_notes", "proposed_reward",
+                        "ai_review_notes", "proposed_reward", "ai_reviewer_reports",
                     ])
                     messages.warning(
                         request,
@@ -638,22 +644,25 @@ def retry_ai_kill_review(request, submission_id):
         submission.ai_proposed_kills = proposed
         submission.ai_confidence = (result.get("confidence") or "")[:10]
         submission.ai_uid_matches = result.get("uid_matches")
-        submission.ai_review_notes = (result.get("reason") or "")[:2000]
+        submission.ai_review_notes = (result.get("reason") or "")[:6000]
+        submission.ai_reviewer_reports = result.get("reviewer_reports", {})
         submission.save(update_fields=[
             "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
-            "ai_review_notes", "proposed_reward",
+            "ai_review_notes", "proposed_reward", "ai_reviewer_reports",
         ])
-        auto_paid, decision_note = finalize_dual_ai_reward(submission, result)
-        if auto_paid:
-            messages.success(request, "🤖 Dual AI verified: " + decision_note)
-        else:
-            submission.refresh_from_db()
-            submission.ai_review_notes = (submission.ai_review_notes + "\n\nADMIN REVIEW: " + decision_note)[:4000]
-            submission.save(update_fields=["ai_review_notes"])
-            messages.info(request, "AI assessment updated. " + decision_note + " Admin review is required.")
+        messages.info(request, "Four AI review passes updated. This is only a reward proposal; Admin approval is required before credit.")
     except Exception as exc:
-        submission.ai_review_notes = f"AI review failed ({exc.__class__.__name__}): {str(exc).strip()[:850]}"
-        submission.save(update_fields=["ai_review_notes"])
+        submission.ai_reviewer_reports = {
+            key: {"name": label, "status": "BLOCKED", "proposed_kills": None, "confidence": "low", "reason": "Evidence integrity check failed or original upload fingerprint is missing; manual Admin Review required."}
+            for key, label in [
+                ("ff_arena_assessment_openai", "FF Arena AI Assessment · OpenAI"),
+                ("ff_arena_assessment_ollama", "FF Arena AI Assessment · Ollama Cloud"),
+                ("ff_arena_agent_openai", "FF Arena AI Agent Audit · OpenAI"),
+                ("ff_arena_agent_ollama", "FF Arena AI Agent Audit · Ollama Cloud"),
+            ]
+        }
+        submission.ai_review_notes = f"AI review blocked ({exc.__class__.__name__}): {str(exc).strip()[:850]}"
+        submission.save(update_fields=["ai_review_notes", "ai_reviewer_reports"])
         messages.error(request, f"AI review abhi fail hua: {str(exc).strip()[:250]}")
 
     return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
