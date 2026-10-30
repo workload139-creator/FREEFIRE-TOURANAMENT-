@@ -104,9 +104,12 @@ def send_unlimited_live_notifications(tournament_id):
 
 
 def tournament_team_size(tournament):
-    if tournament.mode != Tournament.Mode.BR:
-        return 1
-    return {"duo": 2, "squad": 4}.get(tournament.br_format, 1)
+    if tournament.mode == Tournament.Mode.BR:
+        return {"duo": 2, "squad": 4}.get(tournament.br_format, 1)
+    if tournament.mode == Tournament.Mode.VS:
+        # 1v1 has one player per side; team sizes grow with CS format.
+        return {"1v1": 1, "2v2": 2, "3v3": 3, "4v4": 4}.get(tournament.vs_format, 1)
+    return 1
 
 
 @transaction.atomic
@@ -137,8 +140,7 @@ def maybe_start_unlimited_tournament(tournament_id):
         return False
 
     active_count = Registration.objects.filter(
-        tournament=tournament,
-        payment_verified=True,
+        tournament=tournament,        payment_verified=True,
         status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
     ).count()
     team_size = tournament_team_size(tournament)
