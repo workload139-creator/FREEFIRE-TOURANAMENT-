@@ -468,10 +468,30 @@ def kill_submission(request, registration_id):
                         submission.ai_review_notes = (submission.ai_review_notes + "\n\nADMIN REVIEW: " + decision_note)[:4000]
                         submission.save(update_fields=["ai_review_notes"])
                         messages.info(request, "AI assessment complete. " + decision_note + " Submission Admin Review queue mein hai.")
-                except AIReviewError as exc:
+                except Exception as exc:
+                    # Keep a durable assessment record even when an AI provider,
+                    # network, video decoder, or model response fails. Never pay
+                    # from a fallback/guessed kill count.
+                    submission.ai_proposed_kills = None
+                    submission.ai_confidence = "low"
+                    submission.ai_uid_matches = None
+                    submission.proposed_reward = Decimal("0.00")
+                    submission.ai_review_notes = (
+                        "AI ASSESSMENT STATUS: PROVIDER_UNAVAILABLE_OR_FAILED. "
+                        "The evidence was saved, but no reliable AI result was returned. "
+                        "The AI Agent has flagged this submission for Admin Review; "
+                        "no automatic reward was issued. Technical detail: "
+                        f"{exc.__class__.__name__}: {str(exc).strip()[:700]}"
+                    )[:2000]
+                    submission.save(update_fields=[
+                        "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
+                        "ai_review_notes", "proposed_reward",
+                    ])
                     messages.warning(
                         request,
-                        f"Evidence save ho gaya, lekin AI review available nahi tha: {exc} Admin manually review karega.",
+                        "Evidence save ho gaya. AI assessment record bana diya gaya hai, "
+                        "lekin AI provider se result nahi mila. Submission Admin Review queue mein hai; "
+                        "koi automatic reward nahi diya gaya.",
                     )
                 return redirect("tournaments:my_registrations")
     else:
