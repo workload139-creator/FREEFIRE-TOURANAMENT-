@@ -96,6 +96,16 @@ class KillSubmissionForm(forms.ModelForm):
     class Meta:
         model = KillSubmission
         fields = ("free_fire_uid", "history_video", "history_image_one", "history_image_two")
+        widgets = {
+            "free_fire_uid": forms.TextInput(attrs={
+                "inputmode": "numeric",
+                "pattern": "[0-9]+",
+                "placeholder": "Registered Free Fire UID",
+            }),
+            "history_video": forms.ClearableFileInput(attrs={"accept": ".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm"}),
+            "history_image_one": forms.ClearableFileInput(attrs={"accept": ".jpg,.jpeg,.png,.webp,image/*"}),
+            "history_image_two": forms.ClearableFileInput(attrs={"accept": ".jpg,.jpeg,.png,.webp,image/*"}),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -111,16 +121,6 @@ class KillSubmissionForm(forms.ModelForm):
             "Second screenshot from the same match/history sequence. If UID, kills, "
             "mode or result details are unclear, Admin review will be required."
         )
-        widgets = {
-            "free_fire_uid": forms.TextInput(attrs={
-                "inputmode": "numeric",
-                "pattern": "[0-9]+",
-                "placeholder": "Registered Free Fire UID",
-            }),
-            "history_video": forms.ClearableFileInput(attrs={"accept": ".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm"}),
-            "history_image_one": forms.ClearableFileInput(attrs={"accept": ".jpg,.jpeg,.png,.webp,image/*"}),
-            "history_image_two": forms.ClearableFileInput(attrs={"accept": ".jpg,.jpeg,.png,.webp,image/*"}),
-        }
 
     def clean_free_fire_uid(self):
         uid = self.cleaned_data["free_fire_uid"].strip()
