@@ -646,14 +646,6 @@ class TournamentAdmin(admin.ModelAdmin):
                 return False
         return super().has_delete_permission(request, obj)
 
-    def get_queryset(self, request):
-        queryset = super().get_queryset(request)
-        # Keep the default screen focused on work still awaiting Admin review.
-        # Approved/rejected records remain available through the Status filter.
-        if "status__exact" not in request.GET and "status" not in request.GET:
-            queryset = queryset.filter(status=KillSubmission.Status.PENDING)
-        return queryset
-
     def get_readonly_fields(self, request, obj=None):
         fields = list(super().get_readonly_fields(request, obj))
         if obj and obj.winner_prize_paid:
@@ -998,6 +990,14 @@ def mark_kill_submission_upi_paid(modeladmin, request, queryset):
 @admin.register(KillSubmission)
 class KillSubmissionAdmin(admin.ModelAdmin):
     """Admin evidence queue; uploaded evidence and AI output remain auditable."""
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        # Keep the default evidence queue focused on pending Admin review.
+        # Approved/rejected records remain available through the Status filter.
+        if "status__exact" not in request.GET and "status" not in request.GET:
+            queryset = queryset.filter(status=KillSubmission.Status.PENDING)
+        return queryset
+
     list_display = (
         "id", "tournament", "player", "registered_uid", "free_fire_uid",
         "ai_proposed_kills", "ai_confidence", "ai_uid_matches", "status",
