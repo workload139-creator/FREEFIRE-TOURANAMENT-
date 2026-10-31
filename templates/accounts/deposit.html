@@ -34,18 +34,7 @@
                 <button type="submit" class="button button-primary">Submit UTR for Verification</button>
             </form>
         {% else %}
-            {% if gateway_only %}
-                <form method="post">
-                    {% csrf_token %}
-                    {{ form.non_field_errors }}
-                    <div class="form-group">
-                        <label for="{{ form.amount.id_for_label }}">Deposit amount (₹)</label>
-                        {{ form.amount }}{{ form.amount.errors }}
-                    </div>
-                    <button type="submit" class="button button-primary">Create secure Cashfree payment</button>
-                </form>
-                <p>Automatic verification tabhi chalegi jab Cashfree production/sandbox keys configured hon. Wallet payment confirmation se pehle credit nahi hoga.</p>
-            {% else %}
+
                 <form method="post">
                     {% csrf_token %}
                     {{ form.non_field_errors }}
@@ -58,7 +47,7 @@
                 <p><a class="button button-outline" href="{% url 'accounts:cashfree_deposit' %}">Use automatic gateway (Cashfree)</a></p>
                 {% if not upi_id %}
                     <p role="alert">UPI deposit setup pending hai. Admin ko Render Environment mein FF_ARENA_UPI_ID set karna hoga.</p>
-                {% endif %}
+    
             {% endif %}
         {% endif %}
         <p><a href="{% url 'accounts:wallet' %}">← Back to wallet</a></p>
