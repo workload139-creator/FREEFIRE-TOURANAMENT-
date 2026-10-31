@@ -43,6 +43,13 @@ class HealthCheckTests(TestCase):
         self.assertNotContains(response, "private database details", status_code=503)
 
 
+@override_settings(CLOUDINARY_STORAGE={
+    "CLOUD_NAME": "test-cloud",
+    "API_KEY": "test-key",
+    "API_SECRET": "test-secret",
+    "SECURE": True,
+    "MEDIA_TAG": "ff-arena-private-test",
+})
 class PrivateMediaStorageTests(SimpleTestCase):
     @override_settings(CLOUDINARY_MEDIA_ENABLED=False)
     def test_local_development_storage_remains_available_without_cloudinary(self):
