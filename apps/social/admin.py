@@ -141,7 +141,7 @@ class ShopPaymentRequestAdmin(admin.ModelAdmin):
 
     @admin.display(description="Player ID")
     def player_id_display(self, obj):
-        return f"FF-{obj.user_id}" if obj and obj.user_id else "—"
+        return f"{obj.user_id:06d}" if obj and obj.user_id else "—"
 
     @admin.display(description="Player email")
     def player_email_display(self, obj):
@@ -250,7 +250,7 @@ class CurrencyWithdrawalAdmin(admin.ModelAdmin):
 
     @admin.display(description="Player ID")
     def player_id_display(self, obj):
-        return f"FF-{obj.user_id}" if obj and obj.user_id else "—"
+        return f"{obj.user_id:06d}" if obj and obj.user_id else "—"
 
     @admin.display(description="Player email")
     def player_email_display(self, obj):
