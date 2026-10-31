@@ -1,5 +1,5 @@
 """Deterministic safeguards for Free Fire match evidence and one-time rewards."""
-from datetime import date, datetime, timedelta
+from datetime import datetime
 from django.utils import timezone
 
 
@@ -38,7 +38,7 @@ def _parse_match_date(value):
 
 
 def validate_match_dates(reviewer_reports, tournament):
-    """Require all four reviewers to agree on a readable date within ±1 day of start."""
+    """Require all four reviewers to agree on a readable date on tournament day or the following day."""
     reports = reviewer_reports if isinstance(reviewer_reports, dict) else {}
     dates = []
     for key in _REVIEWER_KEYS:
