@@ -18,7 +18,7 @@ from apps.accounts.models import (
     WithdrawalRequest,
 )
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
-from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry, UnlimitedTournament, FreeFanTournament, DiwaliOfferTournament
+from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry, TournamentLiveSession, UnlimitedTournament, FreeFanTournament, DiwaliOfferTournament
 
 from .services import cancel_tournament_and_refund
 from .kill_services import reward_for_tournament
@@ -1320,3 +1320,53 @@ class RegistrationAdmin(admin.ModelAdmin):
             return f"₹{obj.player.wallet.balance}"
         except Exception:
             return "Wallet not created"
+
+
+@admin.register(TournamentLiveSession)
+class TournamentLiveSessionAdmin(admin.ModelAdmin):
+    list_display = (
+        "id", "tournament", "player_display", "registered_uid",
+        "registration_status", "payment_verified", "participant_identity",
+        "status", "background_warning_count", "started_at", "ended_at",
+    )
+    list_filter = ("status", "tournament__mode", "tournament", "started_at")
+    search_fields = (
+        "room_name", "participant_identity", "registration__free_fire_uid",
+        "registration__player__username", "registration__player__player_code",
+    )
+    list_select_related = ("tournament", "registration", "registration__player")
+    readonly_fields = tuple(field.name for field in TournamentLiveSession._meta.fields) + (
+        "player_display", "registered_uid", "registration_status", "payment_verified",
+    )
+    fields = (
+        "tournament", "registration", "player_display", "registered_uid",
+        "registration_status", "payment_verified", "session_uuid", "room_name",
+        "participant_identity", "status", "background_warning_count",
+        "started_at", "ended_at", "updated_at",
+    )
+
+    @admin.display(description="Player")
+    def player_display(self, obj):
+        player = obj.registration.player
+        return f"{player.username} · {getattr(player, 'player_code', '')}"
+
+    @admin.display(description="Registered Free Fire UID")
+    def registered_uid(self, obj):
+        return obj.registration.free_fire_uid
+
+    @admin.display(description="Registration status")
+    def registration_status(self, obj):
+        return obj.registration.get_status_display()
+
+    @admin.display(description="Payment verified", boolean=True)
+    def payment_verified(self, obj):
+        return obj.registration.payment_verified
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_staff
+
+    def has_delete_permission(self, request, obj=None):
+        return False

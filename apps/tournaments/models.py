@@ -1,5 +1,6 @@
 
 from decimal import Decimal
+import uuid
 
 from django.conf import settings
 from django.core.validators import (
@@ -398,3 +399,42 @@ class KillSubmission(models.Model):
     def __str__(self):
         return f"{self.player} - {self.tournament} - {self.status}"
 
+
+
+class TournamentLiveSession(models.Model):
+    """Ephemeral LiveKit room for one verified tournament registration.
+
+    This stores session metadata only; it never records or stores the stream.
+    """
+
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Active"
+        ENDED = "ended", "Ended"
+
+    tournament = models.ForeignKey(
+        Tournament, on_delete=models.PROTECT, related_name="live_sessions"
+    )
+    registration = models.ForeignKey(
+        Registration, on_delete=models.PROTECT, related_name="live_sessions"
+    )
+    session_uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    room_name = models.CharField(max_length=120, unique=True)
+    participant_identity = models.CharField(max_length=120, unique=True)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE, db_index=True)
+    background_warning_count = models.PositiveSmallIntegerField(default=0)
+    started_at = models.DateTimeField(auto_now_add=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-started_at",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=("registration",),
+                condition=Q(status="active"),
+                name="unique_active_live_session_registration",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.tournament} · {self.registration.free_fire_uid} · {self.status}"

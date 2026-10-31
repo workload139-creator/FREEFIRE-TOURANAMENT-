@@ -1,5 +1,6 @@
 plugins {
     id "com.android.application"
+    id "org.jetbrains.kotlin.android"
 }
 
 // Use Gradle's Provider API so the version code always has a non-null default.
@@ -56,4 +57,10 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+}
+
+
+dependencies {
+    implementation "io.livekit:livekit-android:2.29.2"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
 }

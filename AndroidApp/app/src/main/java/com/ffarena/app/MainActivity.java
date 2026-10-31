@@ -61,8 +61,12 @@ public class MainActivity extends Activity {
     private String currentTab = "Home";
     private static final int REQUEST_MIC_PERMISSION = 7021;
     private static final int REQUEST_FILE_CHOOSER = 7022;
+    private static final int REQUEST_SCREEN_CAPTURE = 7024;
     private ValueCallback<Uri[]> pendingFileCallback;
     private PermissionRequest pendingMicRequest;
+    private TournamentLiveShareController liveShareController;
+    private String pendingLiveServerUrl = "";
+    private String pendingLiveToken = "";
     private long pendingApkDownloadId = -1L;
     private int pendingApkVersionCode = -1;
     private String pendingApkFileName = "";
@@ -75,6 +79,7 @@ public class MainActivity extends Activity {
         super.onCreate(state);
         getWindow().setStatusBarColor(BG);
         getWindow().setNavigationBarColor(BG);
+        liveShareController = new TournamentLiveShareController(getApplicationContext());
         // Keep the app UI server-driven so website changes appear without reinstalling the APK.
         root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -842,6 +847,7 @@ public class MainActivity extends Activity {
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
         webView.addJavascriptInterface(new ShareBridge(), "FFArenaShare");
+        webView.addJavascriptInterface(new LiveShareBridge(), "FFArenaLive");
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -949,6 +955,61 @@ public class MainActivity extends Activity {
         }
     }
 
+    private final class LiveShareBridge {
+        @JavascriptInterface
+        public void start(String serverUrl, String participantToken) {
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                if (serverUrl == null || !serverUrl.startsWith("wss://")
+                        || participantToken == null || participantToken.isEmpty()
+                        || participantToken.length() > 12000) {
+                    emitLiveStatus(false, "Live session credentials are invalid.");
+                    return;
+                }
+                if (liveShareController == null) {
+                    liveShareController = new TournamentLiveShareController(getApplicationContext());
+                }
+                pendingLiveServerUrl = serverUrl;
+                pendingLiveToken = participantToken;
+                try {
+                    android.media.projection.MediaProjectionManager manager =
+                            (android.media.projection.MediaProjectionManager)
+                                    getSystemService(MEDIA_PROJECTION_SERVICE);
+                    if (manager == null) throw new IllegalStateException("Screen sharing is unavailable on this device.");
+                    startActivityForResult(manager.createScreenCaptureIntent(), REQUEST_SCREEN_CAPTURE);
+                } catch (Exception error) {
+                    pendingLiveServerUrl = "";
+                    pendingLiveToken = "";
+                    emitLiveStatus(false, "Could not request Android screen-sharing permission.");
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void stop() {
+            runOnUiThread(() -> {
+                if (liveShareController != null) {
+                    liveShareController.stop(new TournamentLiveShareController.Callback() {
+                        @Override
+                        public void onResult(boolean success, String message) {
+                            emitLiveStatus(false, message);
+                        }
+                    });
+                }
+            });
+        }
+    }
+
+    private void emitLiveStatus(boolean active, String message) {
+        runOnUiThread(() -> {
+            if (featureWebView == null || isFinishing() || isDestroyed()) return;
+            String safeMessage = JSONObject.quote(message == null ? "" : message);
+            String script = "window.dispatchEvent(new CustomEvent('ffarena-live-status',{detail:{active:"
+                    + active + ",message:" + safeMessage + "}}));";
+            featureWebView.evaluateJavascript(script, null);
+        });
+    }
+
     private Button button(String label) {
         Button b = new Button(this);
         b.setText(label);
@@ -988,6 +1049,25 @@ public class MainActivity extends Activity {
             Uri[] results = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
             pendingFileCallback.onReceiveValue(results);
             pendingFileCallback = null;
+        } else if (requestCode == REQUEST_SCREEN_CAPTURE) {
+            String serverUrl = pendingLiveServerUrl;
+            String token = pendingLiveToken;
+            pendingLiveServerUrl = "";
+            pendingLiveToken = "";
+            if (resultCode == RESULT_OK && data != null && !serverUrl.isEmpty() && !token.isEmpty()) {
+                if (liveShareController == null) {
+                    liveShareController = new TournamentLiveShareController(getApplicationContext());
+                }
+                liveShareController.start(serverUrl, token, data, new TournamentLiveShareController.Callback() {
+                    @Override
+                    public void onResult(boolean success, String message) {
+                        emitLiveStatus(success, message);
+                        Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+                    }
+                });
+            } else {
+                emitLiveStatus(false, "Screen sharing permission was not granted.");
+            }
         } else if (requestCode == 7023) {
             if (resultCode == RESULT_OK) {
                 Toast.makeText(this, "FF Arena update installed. Reopen the app.", Toast.LENGTH_LONG).show();
@@ -1025,6 +1105,10 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (liveShareController != null) {
+            liveShareController.release();
+            liveShareController = null;
+        }
         if (apkDownloadReceiver != null) {
             try { unregisterReceiver(apkDownloadReceiver); } catch (IllegalArgumentException ignored) {}
             apkDownloadReceiver = null;

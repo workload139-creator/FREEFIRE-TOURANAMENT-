@@ -738,14 +738,14 @@ def kill_submission(request, registration_id):
                         key: {"name": label, "status": "BLOCKED", "proposed_kills": None, "confidence": "low",
                               "reason": "Evidence fingerprint could not be established or verified; Admin Review required."}
                         for key, label in [
-                            ("ff_arena_assessment_openai", "FF Arena AI Assessment · OpenAI"),
-                            ("ff_arena_assessment_ollama", "FF Arena AI Assessment · Ollama Cloud"),
-                            ("ff_arena_agent_openai", "FF Arena AI Agent Audit · OpenAI"),
-                            ("ff_arena_agent_ollama", "FF Arena AI Agent Audit · Ollama Cloud"),
+                            ("ff_arena_assessment_local_1", "FF Arena AI Assessment 1 · History Screenshot Reader"),
+                            ("ff_arena_assessment_local_2", "FF Arena AI Assessment 2 · Video Frame Reader"),
+                            ("ff_arena_agent_local_1", "FF Arena AI Agent 1 · Cross-media Consistency"),
+                            ("ff_arena_agent_local_2", "FF Arena AI Agent 2 · Integrity / Duplicate Audit"),
                         ]
                     }
                     submission.ai_review_notes = (
-                        "AI ASSESSMENT STATUS: PROVIDER_UNAVAILABLE_OR_FAILED. "
+                        "AI ASSESSMENT STATUS: LOCAL_REVIEW_FAILED. "
                         "The evidence was saved, but no reliable AI result was returned. "
                         "The AI Agent has flagged this submission for Admin Review; "
                         "no automatic reward was issued. Technical detail: "
@@ -758,7 +758,7 @@ def kill_submission(request, registration_id):
                     messages.warning(
                         request,
                         "Evidence save ho gaya. AI assessment record bana diya gaya hai, "
-                        "lekin AI provider se result nahi mila. Submission Admin Review queue mein hai; "
+                        "lekin local AI review complete nahi ho saka. Submission Admin Review queue mein hai; "
                         "koi automatic reward nahi diya gaya.",
                     )
                 return redirect("tournaments:my_registrations")
@@ -808,8 +808,6 @@ def admin_kill_review(request):
         "selected_tournament_id": tournament_id or "",
         "ai_provider": "LOCAL · FOUR REVIEWERS",
         "ai_model": "Tesseract OCR + Pillow + FFmpeg",
-        "ai_openai_configured": False,
-        "ai_compatible_configured": False,
         "diamonds_per_kill": int(settings.DIAMONDS_PER_APPROVED_KILL),
         "minimum_verified_kills": int(settings.MINIMUM_VERIFIED_KILLS),
     })
@@ -842,12 +840,6 @@ def ai_source_settings(request):
     import shutil
     return render(request, "tournaments/admin_ai_sources.html", {
         "provider": "LOCAL FOUR-REVIEWER ENGINE",
-        "openai_model": "Not used",
-        "open_source_model": "Not used",
-        "openai_key_configured": False,
-        "open_source_endpoint_configured": False,
-        "open_source_key_configured": False,
-        "dual_mode": False,
         "tesseract_available": bool(shutil.which(os.getenv("TESSERACT_PATH", "tesseract"))),
         "ffmpeg_available": bool(os.getenv("FFMPEG_PATH")) or bool(shutil.which("ffmpeg")),
         "diamonds_per_kill": int(settings.DIAMONDS_PER_APPROVED_KILL),
@@ -911,10 +903,10 @@ def retry_ai_kill_review(request, submission_id):
         submission.ai_reviewer_reports = {
             key: {"name": label, "status": "BLOCKED", "proposed_kills": None, "confidence": "low", "reason": "Evidence integrity check failed or original upload fingerprint is missing; manual Admin Review required."}
             for key, label in [
-                ("ff_arena_assessment_openai", "FF Arena AI Assessment · OpenAI"),
-                ("ff_arena_assessment_ollama", "FF Arena AI Assessment · Ollama Cloud"),
-                ("ff_arena_agent_openai", "FF Arena AI Agent Audit · OpenAI"),
-                ("ff_arena_agent_ollama", "FF Arena AI Agent Audit · Ollama Cloud"),
+                ("ff_arena_assessment_local_1", "FF Arena AI Assessment 1 · History Screenshot Reader"),
+                ("ff_arena_assessment_local_2", "FF Arena AI Assessment 2 · Video Frame Reader"),
+                ("ff_arena_agent_local_1", "FF Arena AI Agent 1 · Cross-media Consistency"),
+                ("ff_arena_agent_local_2", "FF Arena AI Agent 2 · Integrity / Duplicate Audit"),
             ]
         }
         submission.ai_review_notes = f"AI review blocked ({exc.__class__.__name__}): {str(exc).strip()[:850]}"
