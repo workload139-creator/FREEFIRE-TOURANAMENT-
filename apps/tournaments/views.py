@@ -619,9 +619,9 @@ def kill_submission(request, registration_id):
                     duplicate_match = has_duplicate_match_id(submission)
                     match_id_ok = bool(get_match_id(ai_result.get("reviewer_reports", {})))
                     submission.ai_review_notes = (
-                        (submission.ai_review_notes or "") + "\\nDATE CHECK: " + match_date_note
-                        + ("\\nDUPLICATE MATCH ID: blocked." if duplicate_match else "")
-                        + ("\\nMATCH ID: missing or reviewers disagreed." if not match_id_ok else "")
+                        (submission.ai_review_notes or "") + "\nDATE CHECK: " + match_date_note
+                        + ("\nDUPLICATE MATCH ID: blocked." if duplicate_match else "")
+                        + ("\nMATCH ID: missing or reviewers disagreed." if not match_id_ok else "")
                     )[:6000]
                     if uid_ok and match_date_ok and match_id_ok and not duplicate_match and ai_result.get("proposed_kills") is not None and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS:
                         _currency, proposed_quantity, _label = reward_for_tournament(registration.tournament, proposed_kills)
@@ -632,8 +632,8 @@ def kill_submission(request, registration_id):
                     submission.ai_confidence = ai_result["confidence"][:10]
                     submission.ai_uid_matches = ai_result["uid_matches"]
                     submission.ai_review_notes = (
-                        (ai_result.get("reason") or "") + "\\nDATE CHECK: " + match_date_note
-                        + ("\\nDUPLICATE MATCH ID: blocked." if duplicate_match else "")
+                        (ai_result.get("reason") or "") + "\nDATE CHECK: " + match_date_note
+                        + ("\nDUPLICATE MATCH ID: blocked." if duplicate_match else "")
                     )[:6000]
                     submission.save(update_fields=[
                         "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
@@ -811,23 +811,26 @@ def retry_ai_kill_review(request, submission_id):
             and submission.registered_uid == submission.registration.free_fire_uid
             and str(getattr(submission.player, "free_fire_uid", "") or "").strip() == submission.registration.free_fire_uid
         )
-        if proposed is not None and proposed >= settings.MINIMUM_VERIFIED_KILLS and uid_ok:
-            _currency, quantity, _label = reward_for_tournament(submission.tournament, proposed)
-            submission.proposed_reward = Decimal(quantity)
-        else:
-            submission.proposed_reward = Decimal("0.00")
         date_ok, date_note = validate_match_dates(
             result.get("reviewer_reports", {}), submission.tournament
         )
         duplicate_match = has_duplicate_match_id(submission)
         match_id_ok = bool(get_match_id(result.get("reviewer_reports", {})))
+        if (
+            proposed is not None and proposed >= settings.MINIMUM_VERIFIED_KILLS
+            and uid_ok and date_ok and match_id_ok and not duplicate_match
+        ):
+            _currency, quantity, _label = reward_for_tournament(submission.tournament, proposed)
+            submission.proposed_reward = Decimal(quantity)
+        else:
+            submission.proposed_reward = Decimal("0.00")
         submission.ai_proposed_kills = proposed
         submission.ai_confidence = (result.get("confidence") or "")[:10]
         submission.ai_uid_matches = result.get("uid_matches")
         submission.ai_review_notes = (
-            (result.get("reason") or "") + "\\nDATE CHECK: " + date_note
-            + ("\\nDUPLICATE MATCH ID: blocked." if duplicate_match else "")
-            + ("\\nMATCH ID: missing or reviewers disagreed." if not match_id_ok else "")
+            (result.get("reason") or "") + "\nDATE CHECK: " + date_note
+            + ("\nDUPLICATE MATCH ID: blocked." if duplicate_match else "")
+            + ("\nMATCH ID: missing or reviewers disagreed." if not match_id_ok else "")
         )[:6000]
         submission.ai_reviewer_reports = result.get("reviewer_reports", {})
         submission.save(update_fields=[
