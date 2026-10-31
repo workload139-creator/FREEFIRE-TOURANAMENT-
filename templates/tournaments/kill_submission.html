@@ -12,14 +12,14 @@
       <li>Isi tournament ka match khelne ke baad apni gameplay/match-history ki playable video banayein. Video 15–30 seconds ki honi chahiye (recommended approx. 20 seconds).</li>
       <li>Game history ke 2 clear screenshots upload karein. UID aur kills padhne layak hon.</li>
       <li>Registered Free Fire UID bilkul wahi enter karein jo registration mein hai.</li>
-      <li>Submit karne ke baad dual AI mode mein pehle OpenAI aur phir open-source model video frames aur dono screenshots analyze karenge. BR mein dono models ke same kill count, high confidence aur exact registered UID match hone par hi minimum 2 kills ke saath Diamonds automatic credit ho sakte hain. Admin review/AI notes My Registrations mein dikhenge.</li>
+      <li>Submit karne ke baad available reviewers video ke sampled frames aur dono screenshots ko compare karenge. UID, mode (BR/VS), match date, match ID, personal kills aur visual consistency check honge. AI result sirf recommendation hai; reward ke liye Admin approval zaroori hai. Admin review/AI notes My Registrations mein dikhenge.</li>
       <li>Apni submission ka status My Registrations mein dekhein. AI unavailable ho ya evidence unclear ho to admin manual review karega.</li>
     </ol>
     <div class="profile-notice" role="note">
-      <strong>Important:</strong> Dual mode mein automatic Diamonds tabhi milenge jab OpenAI aur open-source model dono same kill count, high confidence aur UID match confirm karein. Low-confidence, disagreement, unclear/edited evidence, UID mismatch ya AI error par automatic Diamonds nahi milenge; aise cases admin review queue mein jayenge. Evidence ki uploaded video aur screenshots 12 ghante baad storage se delete kiye jayenge; AI result, UID check aur review notes audit ke liye rahenge. Upload karna reward guarantee nahi karta.
+      <strong>Important:</strong> Reviewers ke beech disagreement, unclear/edited evidence, UID mismatch ya AI error par submission Admin Review mein jayegi. AI kabhi apne aap Diamonds, Coins ya Fan Tokens credit nahi karega. Evidence ki uploaded video aur screenshots 12 ghante baad storage se delete kiye jayenge; AI result, UID check aur review notes audit ke liye rahenge. Upload karna reward guarantee nahi karta.
     </div>
     {% if tournament.mode == "BR" %}
-      <p><strong>BR reward:</strong> Har verified kill par ₹5 ke barabar 5 Diamonds milenge. High-confidence AI verification aur registered UID match par Diamonds automatically wallet mein add honge; unclear cases admin review mein rahenge.</p>
+      <p><strong>BR reward:</strong> Reward tournament ke Admin-set rules ke mutabik hoga. AI kill count ka proposal de sakta hai; Admin evidence verify karke hi reward approve karega.</p>
     {% else %}
       <p><strong>VS mode:</strong> Kill-proof submission se VS reward automatically calculate ya approve nahi hota. VS reward ke liye tournament ke rules follow karein.</p>
     {% endif %}
