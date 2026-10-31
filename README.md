@@ -83,11 +83,14 @@ This command is not a background scheduler. Configure Windows Task Scheduler or 
 
 ## AI match-history review
 
-The kill-review flow runs two independent multimodal vision checks in dual mode: OpenAI assessment (`OPENAI_API_KEY`, `OPENAI_KILL_REVIEW_MODEL`) and an AI Agent through the configured OpenAI-compatible vision endpoint (`KILL_REVIEW_BASE_URL`, `KILL_REVIEW_API_KEY`, `OLLAMA_KILL_REVIEW_MODEL`). Both receive the two uploaded Free Fire history screenshots and five sampled frames from the submitted 15–30 second video. The prompt checks visible player UID, personal (not team) kills, BR/Clash Squad mode, match date/ID/result where shown, and whether the screenshots and video appear to show the same match.
+The existing evidence-review flow uses four local reviewers and does not call OpenAI, Ollama, or any external AI API:
 
-The app does not have an official Garena match-history API connection. AI must not claim it queried Garena or verified a match online; it can only assess the evidence uploaded by the player. A reward is automatically credited only when both models independently return the same kill count, high confidence, exact registered UID, complete evidence and consistent history, and the website's own payment/registration/UID checks also pass. If either model fails, a field is unreadable, the evidence is incomplete, or the models disagree, the submission remains pending for Admin Review and no automatic reward is issued. The AI Agent is still attempted even if the first AI fails.
+- Assessment 1 reads the two uploaded Free Fire history screenshots with local OCR.
+- Assessment 2 samples frames from the submitted match-history video and reads visible text with local OCR.
+- Agent 1 compares readable UID, kill count, date and BR/VS mode fields across the screenshots and video.
+- Agent 2 checks evidence fingerprints, duplicate/integrity signals and missing evidence.
 
-FFmpeg samples the video; install it or use the bundled `imageio-ffmpeg` binary. Players must consent to AI processing. Keep all AI keys in Render Environment, never in GitHub.
+Tesseract OCR and FFmpeg (or the bundled `imageio-ffmpeg` binary) must be available on the host. These local OCR/rule-based checks are advisory: they cannot query Garena or guarantee the source media is genuine. Unreadable fields, missing match identifiers, mismatches or uncertainty stay in Admin Review. This uploaded-evidence flow does not independently authorize automatic rewards. Keep the separate Live AI pipeline gated until real device streaming, frame assessment, event deduplication and exact-once reward tests pass.
 
 ## Durable media and Android app data
 
