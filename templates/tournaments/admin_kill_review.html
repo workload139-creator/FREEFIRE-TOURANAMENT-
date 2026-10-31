@@ -90,12 +90,8 @@
     </section>
 
     <section style="padding:16px;border:1px solid var(--border-color, #777);border-radius:12px;margin:14px 0">
-      <h3>4. Player payout profile (for separate cash withdrawal)</h3>
-      <p><strong>UPI ID:</strong> {{ submission.player.upi_id|default:"Not saved in profile" }}</p>
-      {% if submission.player.upi_qr_code %}
-        <a href="{{ submission.player.upi_qr_code.url }}" target="_blank" rel="noopener"><img src="{{ submission.player.upi_qr_code.url }}" alt="Player UPI QR" style="width:150px;height:150px;object-fit:contain;background:#fff;padding:6px;border-radius:10px"></a>
-      {% else %}<p>UPI QR not uploaded.</p>{% endif %}
-      <p>Kill rewards go to the player's non-cash shop wallet. This button does not send cash to UPI.</p>
+      <h3>4. In-app tournament reward</h3>
+      <p>Approved kill rewards are credited to the player's Diamonds / Coins / Fan Tokens wallet after Admin confirmation. No UPI transfer or UTR is required on this page.</p>
     </section>
 
     <section style="padding:16px;border:1px solid var(--border-color, #777);border-radius:12px;margin:14px 0">
