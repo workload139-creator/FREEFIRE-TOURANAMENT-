@@ -43,12 +43,12 @@ def _credit_kill_submission_reward(submission, approved_kills, reward_override=N
         raise ValueError("A reward has already been approved for this registration.")
     if has_duplicate_match_id(submission):
         raise ValueError("This Free Fire match ID has already been used for this UID in this tournament.")
-    if not get_match_id(submission.ai_reviewer_reports) and not (submission.admin_notes or "").strip().startswith("MATCH_ID_OVERRIDE:"):
+    if not get_match_id(submission.ai_reviewer_reports) and "MATCH_ID_OVERRIDE:" not in (submission.admin_notes or ""):
         raise ValueError("A match ID was not readable/agreed by all reviewers. Admin must manually verify the original evidence and add MATCH_ID_OVERRIDE: with a reason.")
     date_ok, date_note = validate_match_dates(
         submission.ai_reviewer_reports, submission.tournament
     )
-    if not date_ok and not (submission.admin_notes or "").strip().startswith("DATE_OVERRIDE:"):
+    if not date_ok and "DATE_OVERRIDE:" not in (submission.admin_notes or ""):
         raise ValueError(
             "Match date check failed. Admin must review the original evidence and add DATE_OVERRIDE: with a reason before a manual award. "
             + date_note
@@ -923,7 +923,7 @@ def review_kill_submission(request, submission_id):
         date_ok, date_note = validate_match_dates(
             submission.ai_reviewer_reports, submission.tournament
         )
-        if not date_ok and not notes.startswith("DATE_OVERRIDE:"):
+        if not date_ok and "DATE_OVERRIDE:" not in notes:
             messages.error(
                 request,
                 "Match date verify nahi hui. Original screenshots/video manually check karke admin notes ki shuruaat DATE_OVERRIDE: aur reason se karein. " + date_note,
@@ -932,7 +932,7 @@ def review_kill_submission(request, submission_id):
         if has_duplicate_match_id(submission):
             messages.error(request, "Same match ID is already used for this UID in this tournament. Reward blocked.")
             return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
-        if not get_match_id(submission.ai_reviewer_reports) and not notes.startswith("MATCH_ID_OVERRIDE:"):
+        if not get_match_id(submission.ai_reviewer_reports) and "MATCH_ID_OVERRIDE:" not in notes:
             messages.error(request, "Match ID AI se confirm nahi hua. Original evidence manually verify karke admin notes ki shuruaat MATCH_ID_OVERRIDE: aur reason se karein.")
             return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
         submission.admin_notes = notes
@@ -1023,9 +1023,9 @@ def admin_kill_batch_review(request):
                     submission.ai_reviewer_reports, submission.tournament
                 )
                 if (
-                    (not date_ok and not common_notes.startswith("DATE_OVERRIDE:"))
+                    (not date_ok and "DATE_OVERRIDE:" not in common_notes)
                     or has_duplicate_match_id(submission)
-                    or (not get_match_id(submission.ai_reviewer_reports) and not common_notes.startswith("MATCH_ID_OVERRIDE:"))
+                    or (not get_match_id(submission.ai_reviewer_reports) and "MATCH_ID_OVERRIDE:" not in common_notes)
                 ):
                     skipped.append(str(submission_id))
                     continue
