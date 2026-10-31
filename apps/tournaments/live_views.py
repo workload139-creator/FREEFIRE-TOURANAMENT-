@@ -138,25 +138,29 @@ def tournament_live_token(request, registration_id):
         })
     except Exception:
         logger.exception("Tournament LiveKit token generation failed for registration %s", registration_id)
+        TournamentLiveSession.objects.filter(
+            pk=session.pk, status=TournamentLiveSession.Status.ACTIVE
+        ).update(status=TournamentLiveSession.Status.ENDED, ended_at=timezone.now())
         return JsonResponse({"error": "LiveKit token could not be created. Check server logs and LiveKit credentials."}, status=503)
 
 
 @login_required
 @require_POST
 def tournament_live_end(request, registration_id):
-    """End the player's active session; no reward or registration state is changed."""
-    session = get_object_or_404(
-        TournamentLiveSession.objects.select_related("registration"),
-        registration_id=registration_id,
-        status=TournamentLiveSession.Status.ACTIVE,
-    )
-    if session.registration.player_id != request.user.pk and not request.user.is_staff:
-        return JsonResponse({"error": "Not allowed."}, status=403)
-    session.status = TournamentLiveSession.Status.ENDED
-    session.ended_at = timezone.now()
-    session.save(update_fields=("status", "ended_at", "updated_at"))
+    """Idempotently end the player's session; no reward or registration state is changed."""
+    with transaction.atomic():
+        session = get_object_or_404(
+            TournamentLiveSession.objects.select_for_update().select_related("registration"),
+            registration_id=registration_id,
+        )
+        if session.registration.player_id != request.user.pk and not request.user.is_staff:
+            return JsonResponse({"error": "Not allowed."}, status=403)
+        if session.status == TournamentLiveSession.Status.ENDED:
+            return JsonResponse({"success": True, "message": "Live session was already ended."})
+        session.status = TournamentLiveSession.Status.ENDED
+        session.ended_at = timezone.now()
+        session.save(update_fields=("status", "ended_at", "updated_at"))
     return JsonResponse({"success": True, "message": "Live session ended."})
-
 
 @login_required
 @require_POST
