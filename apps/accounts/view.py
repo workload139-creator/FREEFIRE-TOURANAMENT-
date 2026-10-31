@@ -181,7 +181,7 @@ from .models import Wallet, WalletTransaction, WithdrawalRequest
 @login_required
 def wallet_view(request):
     wallet, created = Wallet.objects.get_or_create(user=request.user)
-    from apps.social.models import PlayerShopWallet, DailySpin, FanTokenAward, CurrencyGift
+    from apps.social.models import PlayerShopWallet, PlayerShopWalletTransaction, DailySpin, FanTokenAward, CurrencyGift
     from apps.tournaments.models import Registration, TournamentLedgerEntry
     from django.db.models import Q
     shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=request.user)
@@ -201,6 +201,7 @@ def wallet_view(request):
         "refund_registrations": refund_registrations,
         "deposit_requests": wallet.deposit_requests.all()[:10],
         "shop_wallet": shop_wallet,
+        "shop_wallet_transactions": PlayerShopWalletTransaction.objects.filter(user=request.user).select_related("wallet")[:100],
         "fan_token_awards": FanTokenAward.objects.filter(user=request.user)[:20],
         "fan_token_gifts": CurrencyGift.objects.filter(Q(sender=request.user) | Q(recipient=request.user))[:20],
         "fan_token_tournament_entries": TournamentLedgerEntry.objects.filter(player=request.user, currency="fan_tokens")[:20],
