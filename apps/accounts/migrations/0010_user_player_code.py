@@ -34,7 +34,7 @@ class Migration(migrations.Migration):
             model_name="user",
             name="player_code",
             field=models.CharField(
-                editable=False, max_length=6, unique=True
+                blank=True, editable=False, max_length=6, unique=True
             ),
         ),
     ]
