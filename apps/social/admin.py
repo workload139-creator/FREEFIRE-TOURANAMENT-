@@ -427,9 +427,6 @@ def _admin_get_urls_with_ai_assessment():
 admin.site.get_urls = _admin_get_urls_with_ai_assessment
 
 
-# Explicit admin-only API smoke test. Credentials stay on the server.
-from django.shortcuts import redirect
-
 
 def player_activity_ai_dashboard(request):
     from django.core.paginator import Paginator
@@ -461,11 +458,11 @@ def player_activity_ai_dashboard(request):
         'player_count': recent.exclude(player_id__isnull=True).values('player_id').distinct().count(),
     })
 
-def _admin_get_urls_with_ai_assessment_and_api_test():
+def _admin_get_urls_with_ai_assessment_and_activity():
     return [
         path("ai-assessment/", admin.site.admin_view(ai_assessment_dashboard), name="ai_assessment_dashboard"),
         path("player-activity-ai/", admin.site.admin_view(player_activity_ai_dashboard), name="player_activity_ai_dashboard"),
     ] + _original_admin_get_urls()
 
 
-admin.site.get_urls = _admin_get_urls_with_ai_assessment_and_api_test
+admin.site.get_urls = _admin_get_urls_with_ai_assessment_and_activity
