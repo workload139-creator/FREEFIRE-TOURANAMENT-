@@ -1,63 +1,28 @@
-
 {% extends "base.html" %}
-
+{% block title %}Kill Verification Result | FF Arena{% endblock %}
 {% block content %}
-<div class="container">
-    <div class="tournament-card">
-        <h1>Kill Verification Result</h1>
-
-        <h2>{{ tournament.title }}</h2>
-
-        <p>
-            <strong>Free Fire UID:</strong>
-            {{ submission.free_fire_uid }}
-        </p>
-
-        <p>
-            <strong>Submission Status:</strong>
-            {{ submission.get_status_display }}
-        </p>
-
-        <hr>
-
-        <h2>Verification Details</h2>
-
-        <p>
-            <strong>AI Proposed Kills:</strong>
-            {{ submission.ai_proposed_kills|default:"Pending" }}
-        </p>
-
-        <p>
-            <strong>Admin Approved Kills:</strong>
-            {{ submission.approved_kills|default:"Pending" }}
-        </p>
-
-        <p>
-            <strong>Reward per Kill:</strong>
-            ₹5
-        </p>
-
-        <p>
-            <strong>Final Reward:</strong>
-            {% if submission.admin_approved %}
-                ₹{{ submission.final_reward|default:0 }}
-            {% else %}
-                Pending admin approval
-            {% endif %}
-        </p>
-
-        {% if submission.admin_approved %}
-            <p>Your result has been reviewed by the admin.</p>
-        {% else %}
-            <p>
-                Your submission is awaiting final admin review.
-                No reward has been finalized yet.
-            </p>
-        {% endif %}
-
-        <a href="{% url 'tournaments:list' %}">
-            Back to Tournaments
-        </a>
-    </div>
+<section class="ff-kill-page">
+<div class="ff-kill-card">
+<span class="ff-page-eyebrow">MATCH REVIEW STATUS</span>
+<h1>Kill Verification Result</h1>
+<h2>{{ tournament.title }}</h2>
+<div class="ff-kill-meta">
+<div><small>Free Fire UID</small><strong>{{ submission.free_fire_uid }}</strong></div>
+<div><small>Submission status</small><strong>{{ submission.get_status_display }}</strong></div>
+<div><small>AI proposed kills</small><strong>{{ submission.ai_proposed_kills|default:"Pending" }}</strong></div>
+<div><small>Admin approved kills</small><strong>{{ submission.approved_kills|default:"Pending" }}</strong></div>
 </div>
+<div class="ff-kill-notice">
+{% if submission.admin_approved %}
+<strong>Admin review completed.</strong><br>
+Final reward: {{ submission.final_reward|default:0 }}. Check your wallet history for the verified credit entry.
+{% else %}
+<strong>Awaiting final Admin review.</strong><br>
+AI assessment is only a recommendation. No reward is finalized or credited until Admin approval.
+{% endif %}
+</div>
+<p>For your latest submission status and review notes, open My Registrations.</p>
+<div class="auth-links"><a href="{% url 'tournaments:my_registrations' %}">My Registrations</a><a href="{% url 'tournaments:list' %}">Back to Tournaments</a></div>
+</div>
+</section>
 {% endblock %}
