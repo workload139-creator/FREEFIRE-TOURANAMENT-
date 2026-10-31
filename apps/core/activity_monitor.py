@@ -10,11 +10,18 @@ def _safe_metadata(instance):
         "status", "payment_method", "payment_verified", "refund_processed",
         "currency", "product", "quantity", "amount", "amount_inr",
         "currency_amount", "transaction_type", "direction", "source",
-        "balance_after", "entry_type",
+        "balance_after", "entry_type", "diamonds", "coins", "fan_tokens",
+        "balance", "gender", "profile_visibility", "uid_verified", "phone_verified",
     ):
         value = getattr(instance, name, None)
         if value is not None:
             values[name] = str(value) if isinstance(value, Decimal) else value
+    if hasattr(instance, "free_fire_uid"):
+        values["has_free_fire_uid"] = bool(getattr(instance, "free_fire_uid", ""))
+    if hasattr(instance, "phone_number"):
+        values["has_phone_number"] = bool(getattr(instance, "phone_number", ""))
+    if hasattr(instance, "email"):
+        values["has_email"] = bool(getattr(instance, "email", ""))
     if hasattr(instance, "payment_reference"):
         values["has_payment_reference"] = bool(getattr(instance, "payment_reference", ""))
     if hasattr(instance, "payout_reference"):
