@@ -408,7 +408,7 @@ def ai_assessment_dashboard(request):
     }
     return render(request, 'admin/ai_assessment_dashboard.html', {
         **admin.site.each_context(request), 'title': 'AI Assessment Dashboard', 'counts': counts,
-        'total_pending': total_pending, 'risk_alerts': risk_alerts, 'links': links,
+        'total_pending': total_pending, 'risk_alerts': risk_alerts, 'links': links, 'ai_api_configured': {'openai': bool(__import__('os').getenv('OPENAI_API_KEY')), 'ollama': bool(__import__('os').getenv('OLLAMA_API_KEY'))},
         'pending_shop': pending_shop, 'pending_currency_withdrawals': pending_currency_withdrawals,
         'pending_deposits': pending_deposits, 'pending_cash_withdrawals': pending_cash_withdrawals,
         'pending_kills': pending_kills, 'pending_registrations': pending_registrations,
@@ -423,3 +423,33 @@ def _admin_get_urls_with_ai_assessment():
     return [path('ai-assessment/', admin.site.admin_view(ai_assessment_dashboard), name='ai_assessment_dashboard')] + _original_admin_get_urls()
 
 admin.site.get_urls = _admin_get_urls_with_ai_assessment
+
+
+# Explicit admin-only API smoke test. Credentials stay on the server.
+from django.shortcuts import redirect
+
+
+def ai_assessment_test_apis(request):
+    if request.method != "POST":
+        return redirect("admin:ai_assessment_dashboard")
+    from .ai_providers import test_all_providers
+
+    results = test_all_providers()
+    for provider, result in results.items():
+        label = "OpenAI" if provider == "openai" else "Ollama"
+        detail = f"{label} ({result['model']}): {result['message']}"
+        if result["ok"]:
+            messages.success(request, f"{label} API connected and inference test passed. {detail}")
+        else:
+            messages.error(request, f"{label} API test failed. {detail}")
+    return redirect("admin:ai_assessment_dashboard")
+
+
+def _admin_get_urls_with_ai_assessment_and_api_test():
+    return [
+        path("ai-assessment/test-apis/", admin.site.admin_view(ai_assessment_test_apis), name="ai_assessment_test_apis"),
+        path("ai-assessment/", admin.site.admin_view(ai_assessment_dashboard), name="ai_assessment_dashboard"),
+    ] + _original_admin_get_urls()
+
+
+admin.site.get_urls = _admin_get_urls_with_ai_assessment_and_api_test
