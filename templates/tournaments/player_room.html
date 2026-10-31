@@ -14,6 +14,16 @@
   <h2>🔥 Your Tournament Room</h2>
   <p class="message success">Aapki participation confirm ho gayi hai. Neeche diye gaye steps follow karein.</p>
 
+  <section class="ff-game-launcher" style="padding:20px;margin:18px 0;border:1px solid rgba(245,158,11,.45);border-radius:16px;background:linear-gradient(135deg,rgba(245,158,11,.10),rgba(15,23,42,.55))">
+   <h2 style="margin-top:0">🎮 Apna Free Fire Game Kholein</h2>
+   <p>Apne phone mein jo version installed hai, usi ka button dabayein. App installed hoga to game khulega; nahi hoga to official Google Play page khulega.</p>
+   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:16px">
+    <a class="btn-primary ff-game-launch-link" data-package="com.dts.freefiremax" data-fallback="https://play.google.com/store/apps/details?id=com.dts.freefiremax" href="https://play.google.com/store/apps/details?id=com.dts.freefiremax" style="display:block;text-align:center;padding:16px 12px">🔥 Open Free Fire MAX</a>
+    <a class="btn-primary ff-game-launch-link" data-package="com.garena.game.ffi" data-fallback="https://play.google.com/store/apps/details?id=com.garena.game.ffi" href="https://play.google.com/store/apps/details?id=com.garena.game.ffi" style="display:block;text-align:center;padding:16px 12px">🇮🇳 Open Free Fire India</a>
+   </div>
+   <p class="help-text" style="margin-bottom:0">Note: Game khulne ke baad Custom Room mein Room ID aur Password manually enter/paste karein. FF Arena kisi game ke andar automatically room join nahi kar sakta. India-region account ke liye Free Fire India aur non-India account ke liye Free Fire MAX ka sahi version chunein.</p>
+  </section>
+
   <section id="roomSaveStep" style="padding:18px;margin:18px 0;border:1px solid var(--border-color, #555);border-radius:14px">
    <h3>1. Save Room Details</h3>
    <p>Sabse pehle room details save karein. Save hone ke baad ye button hat jayega.</p>
@@ -30,7 +40,7 @@
      <img src="{% url "tournaments:room_qr_file" tournament.id %}" alt="Official Free Fire custom room QR code" style="width:min(100%,320px);height:auto;object-fit:contain">
     </div>
     <p class="help-text">Is QR ko Free Fire MAX ke official Custom Room QR scanner se scan karein, agar aapke game version mein scanner available hai.</p>
-    <a class="btn-primary" style="display:inline-block;margin:8px 0" href="intent://#Intent;package=com.dts.freefiremax;end">🎮 Open Free Fire MAX</a>
+
    {% else %}
     <p class="help-text">Admin ne is tournament ka QR upload nahi kiya. ID aur Password se join karein.</p>
    {% endif %}
@@ -43,9 +53,8 @@
    <p>Room ID copy karke Free Fire MAX ke Custom Room mein pehle Room ID wale box mein paste karein.</p>
    <button type="button" class="button button-outline" id="copyRoomId">Copy Room ID</button>
 
-   <h3 style="margin-top:22px">3. Free Fire MAX kholein</h3>
-   <a class="btn-primary" style="display:inline-block;margin-top:8px" href="intent://#Intent;package=com.dts.freefiremax;end">🎮 Open Free Fire MAX</a>
-   <p class="help-text">Game ke Custom Room mein Room ID paste karein. FF Arena game ke doosre app ke fields khud fill nahi kar sakta.</p>
+   <h3 style="margin-top:22px">3. Apne installed game mein Room ID paste karein</h3>
+   <p class="help-text">Upar diye gaye Free Fire MAX ya Free Fire India button se sahi game kholein. Game ke Custom Room mein Room ID paste karein.</p>
 
    <h3 style="margin-top:22px">4. Password copy karein</h3>
    <p>Ab Password copy karke Custom Room ke Password wale box mein paste karein.</p>
@@ -73,6 +82,14 @@
  </div>
  <script>
  (function () {
+   // Android: try opening the selected installed Garena app; if absent, open its official Play Store listing.
+   document.querySelectorAll(".ff-game-launch-link").forEach(function (link) {
+     const packageName = link.dataset.package;
+     const fallback = link.dataset.fallback;
+     if (/Android/i.test(navigator.userAgent || "")) {
+       link.href = "intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=" + packageName + ";S.browser_fallback_url=" + encodeURIComponent(fallback) + ";end";
+     }
+   });
    const registrationId = "{{ registration.id|escapejs }}";
    const roomId = document.getElementById("ffRoomId")?.textContent.trim() || "{{ tournament.room_id|escapejs }}";
    const roomPassword = document.getElementById("ffRoomPassword")?.textContent.trim() || "{{ tournament.room_password|escapejs }}";
