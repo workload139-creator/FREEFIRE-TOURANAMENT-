@@ -127,6 +127,11 @@ class ProfileUpdateForm(forms.ModelForm):
         widgets = {
             "username": forms.TextInput(attrs={"autocomplete": "username"}),
             "email": forms.EmailInput(attrs={"autocomplete": "email"}),
+            # Use FileInput instead of ClearableFileInput: the Clear checkbox
+            # conflicts with a newly selected upload and blocks profile saves.
+            "profile_photo": forms.FileInput(attrs={
+                "accept": "image/jpeg,image/png,image/webp",
+            }),
         }
 
     def __init__(self, *args, **kwargs):
