@@ -1,11 +1,11 @@
 from django.urls import path
 
-from . import views, api_views, self_refund, arena_views, live_views
+from . import views, api_views, self_refund, arena_views, live_views, live_ai_views
 
 app_name = "tournaments"
 
 urlpatterns = [
-    path("live/registration/<int:registration_id>/token/", live_views.tournament_live_token, name="live_token"),
+    path("live/ai/kill-candidate/", live_ai_views.ingest_live_kill_candidate, name="live_ai_kill_ingest"),\n    path("live/registration/<int:registration_id>/token/", live_views.tournament_live_token, name="live_token"),
     path("live/registration/<int:registration_id>/end/", live_views.tournament_live_end, name="live_end"),
     path("live/registration/<int:registration_id>/background-warning/", live_views.tournament_live_warning, name="live_background_warning"),
     path("api/", api_views.public_tournament_list_api, name="api_list"),
