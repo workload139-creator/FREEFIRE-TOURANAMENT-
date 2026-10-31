@@ -4,20 +4,17 @@
 <section class="wallet-shell">
   <div class="wallet-hero"><span>FF ARENA · PLAYER VAULT</span><h1>My Wallet</h1><p>Your balance and wallet controls.</p></div>
   <div class="wallet-balance-grid">
-    <article><small>INR WALLET</small><strong>₹{{ wallet.balance }}</strong><p>Wallet ID: {{ wallet.wallet_id }}</p></article>
     <article><small>DIAMONDS</small><strong>💎 {{ shop_wallet.diamonds }}</strong><p>Shop currency balance</p></article>
     <article><small>COINS</small><strong>🪙 {{ shop_wallet.coins }}</strong><p>Shop currency balance</p></article>
     <article><small>FAN TOKENS</small><strong>✨ {{ shop_wallet.fan_tokens }}</strong><p>Community rewards</p></article>
   </div>
   <div class="wallet-actions">
-    <a href="{% url 'accounts:deposit' %}">＋ Add Money</a>
-    <a href="{% url 'accounts:withdraw' %}">Withdraw INR</a>
     <a href="{% url 'social:shop' %}">💎 Open Shop</a>
     <a href="{% url 'social:currency_withdrawal' %}">Withdraw Diamonds / Coins</a>
     <a href="{% url 'tournaments:my_registrations' %}">My Tournaments</a>
     <a class="history-link" href="{% url 'accounts:wallet_history' %}">📜 Open Full History →</a>
   </div>
-  <p class="wallet-note">All deposits, withdrawals, shop purchases, tournament registrations and refunds are available on the separate History page.</p>
+  <p class="wallet-note">This wallet currently shows Diamonds, Coins and Fan Tokens only. Real-money INR deposits and withdrawals are temporarily unavailable until the payment gateway is enabled. Your previous transaction records remain available on the separate History page.</p>
 </section>
 <style>
 .wallet-shell{max-width:1000px;margin:38px auto;padding:18px;color:#f4f7ff}.wallet-hero{padding:30px;border-radius:22px;background:radial-gradient(circle at 90% 0,#304d79,#111827 65%);border:1px solid #67d7ff44}.wallet-hero span{font-size:11px;letter-spacing:2px;color:#77e7df;font-weight:900}.wallet-hero h1{font-size:clamp(30px,5vw,44px);margin:8px 0}.wallet-hero p,.wallet-note{color:#bdc9dc}.wallet-balance-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}.wallet-balance-grid article{padding:22px;border-radius:17px;background:linear-gradient(120deg,#172c4b,#151b2d);border:1px solid #ffffff20}.wallet-balance-grid small{display:block;color:#aebdd2;letter-spacing:1.5px;font-weight:900}.wallet-balance-grid strong{display:block;font-size:28px;margin:8px 0;color:#7bf0d0}.wallet-balance-grid p{margin:0;color:#aebdd2;font-size:13px}.wallet-actions{display:flex;flex-wrap:wrap;gap:10px;margin:20px 0}.wallet-actions a{padding:13px 16px;border-radius:11px;text-decoration:none;background:#1c2739;color:#e9f2ff;border:1px solid #ffffff22;font-weight:850}.wallet-actions a.history-link{background:linear-gradient(100deg,#71e8d0,#9b8cff);color:#101525;border:0}.wallet-note{padding:16px;border:1px solid #ffffff20;border-radius:12px;background:#111925}@media(max-width:600px){.wallet-shell{margin:14px auto;padding:12px}.wallet-balance-grid{grid-template-columns:1fr}.wallet-hero{padding:20px}}
