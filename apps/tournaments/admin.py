@@ -1065,7 +1065,41 @@ class KillSubmissionAdmin(admin.ModelAdmin):
                 return
 
             if previous_status == KillSubmission.Status.APPROVED:
-                raise ValidationError("Approved submission locked hai; reward dobara issue ya edit nahi ho sakta.")
+                # Keep the verified kill count and decision immutable, but allow
+                # admin notes/override reasons and a safe one-time reward recovery.
+                forbidden_changes = set(form.changed_data) - {"admin_notes"}
+                if forbidden_changes:
+                    raise ValidationError(
+                        "Approved kills aur status locked hain. Sirf Admin Notes/verification reason update kar sakte hain."
+                    )
+                super().save_model(request, obj, form, change)
+                reward_prefix = f"KILL-REWARD-{obj.pk}-"
+                existing_entries = TournamentLedgerEntry.objects.filter(
+                    reference__startswith=reward_prefix
+                )
+                if existing_entries.exists():
+                    request._kill_reward_already_credited = True
+                    request._kill_reward_credit_summary = []
+                    return
+                if (
+                    obj.registration.status != Registration.Status.READY
+                    or obj.registration.refund_processed
+                    or not obj.registration.payment_verified
+                    or obj.tournament.status == Tournament.Status.CANCELLED
+                    or obj.free_fire_uid != obj.registered_uid
+                    or obj.registered_uid != obj.registration.free_fire_uid
+                    or str(getattr(obj.player, "free_fire_uid", "") or "").strip() != obj.registration.free_fire_uid
+                ):
+                    raise ValidationError("UID, payment, registration ya tournament status valid nahi hai. Reward credit nahi hua.")
+                from .views import _credit_kill_submission_reward
+                try:
+                    credited = _credit_kill_submission_reward(
+                        obj, int(obj.approved_kills or 0), source="Admin-approved kill reward recovery"
+                    )
+                except ValueError as exc:
+                    raise ValidationError(str(exc))
+                request._kill_reward_credit_summary = credited
+                return
             super().save_model(request, obj, form, change)
 
     def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
@@ -1083,14 +1117,26 @@ class KillSubmissionAdmin(admin.ModelAdmin):
     def response_change(self, request, obj):
         response = super().response_change(request, obj)
         credited = getattr(request, "_kill_reward_credit_summary", None)
-        if credited is not None:
+        if getattr(request, "_kill_reward_already_credited", False):
+            self.message_user(
+                request,
+                "Is submission ka reward ledger pehle se maujood hai. Dobara credit nahi kiya gaya.",
+                messages.INFO,
+            )
+        elif credited is not None:
             summary = ", ".join(f"{qty} {label}" for qty, label in credited) or "minimum kills se kam; koi reward nahi"
             self.message_user(
                 request,
-                f"{obj.approved_kills} verified kills approved. Reward: {summary}. Ledger mein ek baar record hua.",
+                f"{obj.approved_kills} verified kills. Reward: {summary}. Wallet ledger mein one-time entry complete.",
                 messages.SUCCESS,
             )
         return response
+
+    def get_readonly_fields(self, request, obj=None):
+        fields = list(super().get_readonly_fields(request, obj))
+        if obj and obj.status == KillSubmission.Status.APPROVED:
+            fields.extend(("approved_kills", "status", "reviewed_at"))
+        return tuple(dict.fromkeys(fields))
 
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
