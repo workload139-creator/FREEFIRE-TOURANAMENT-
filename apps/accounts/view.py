@@ -190,6 +190,7 @@ def wallet_view(request):
     spin_available = not last_spin or __import__("django.utils.timezone", fromlist=["now"]).now() >= next_spin_at
     transactions = wallet.transactions.all()[:50]
     withdrawal_requests = WithdrawalRequest.objects.filter(wallet=wallet)[:10]
+    registration_history = Registration.objects.filter(player=request.user).select_related("tournament").order_by("-created_at")[:100]
     refund_registrations = Registration.objects.filter(
         player=request.user,
         status__in=[Registration.Status.NOT_PLAYING, Registration.Status.CANCELLED, Registration.Status.REFUNDED],
@@ -199,6 +200,7 @@ def wallet_view(request):
         "transactions": transactions,
         "withdrawal_requests": withdrawal_requests,
         "refund_registrations": refund_registrations,
+        "registration_history": registration_history,
         "deposit_requests": wallet.deposit_requests.all()[:10],
         "shop_wallet": shop_wallet,
         "shop_wallet_transactions": PlayerShopWalletTransaction.objects.filter(user=request.user).select_related("wallet")[:100],
