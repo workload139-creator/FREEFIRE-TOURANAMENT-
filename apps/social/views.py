@@ -11,7 +11,7 @@ import os
 from urllib.parse import urlencode
 from django.views.decorators.http import require_POST
 
-from .models import Follow, FriendRequest, UserBlock, UserReport, PhotoPost, FFTickSubscription, PlayerShopWallet, ShopPaymentRequest, CurrencyWithdrawalRequest, DailySpin, FanTokenAward
+from .models import Follow, FriendRequest, UserBlock, UserReport, PhotoPost, FFTickSubscription, PlayerShopWallet, PlayerShopWalletTransaction, ShopPaymentRequest, CurrencyWithdrawalRequest, DailySpin, FanTokenAward
 from apps.accounts.forms import CurrencyWithdrawalRequestForm
 
 User = get_user_model()
@@ -396,7 +396,7 @@ def ff_tick_view(request):
                 else:
                     wallet.diamonds -= cost
                     wallet.save(update_fields=("diamonds", "updated_at"))
-                    FFTickSubscription.objects.create(
+                    subscription = FFTickSubscription.objects.create(
                         user=request.user,
                         amount=0,
                         duration_months=3,
@@ -405,6 +405,16 @@ def ff_tick_view(request):
                         status=FFTickSubscription.Status.ACTIVE,
                         verified_at=now,
                         expires_at=now + timedelta(days=90),
+                    )
+                    wallet.refresh_from_db()
+                    PlayerShopWalletTransaction.objects.create(
+                        user=request.user, wallet=wallet,
+                        currency=PlayerShopWalletTransaction.Currency.DIAMONDS,
+                        direction=PlayerShopWalletTransaction.Direction.DEBIT,
+                        quantity=cost, balance_after=wallet.diamonds,
+                        source="ff_tick", reference=str(subscription.pk),
+                        idempotency_key=f"ff-tick:{subscription.pk}",
+                        description="FF Arena FF Tick activation for 3 months",
                     )
                     messages.success(request, "✓ FF Tick 3 months ke liye activate ho gaya. 100 Diamonds use hue.")
                     return redirect("social:ff_tick")
@@ -501,7 +511,18 @@ def daily_spin(request):
             quantity = random.randint(1, 20)
             wallet.coins += quantity
         wallet.save(update_fields=("diamonds", "coins", "fan_tokens", "updated_at"))
-        DailySpin.objects.create(user=request.user, currency=currency, quantity=quantity)
+        spin_record = DailySpin.objects.create(user=request.user, currency=currency, quantity=quantity)
+        if currency in (DailySpin.Currency.DIAMONDS, DailySpin.Currency.COINS):
+            wallet.refresh_from_db()
+            balance_after = wallet.diamonds if currency == DailySpin.Currency.DIAMONDS else wallet.coins
+            PlayerShopWalletTransaction.objects.create(
+                user=request.user, wallet=wallet, currency=currency,
+                direction=PlayerShopWalletTransaction.Direction.CREDIT,
+                quantity=quantity, balance_after=balance_after,
+                source="daily_spin", reference=str(spin_record.pk),
+                idempotency_key=f"daily-spin:{spin_record.pk}",
+                description="Daily Spin reward",
+            )
 
     messages.success(request, f"🎉 Daily Spin reward: +{quantity} {dict(DailySpin.Currency.choices)[currency]}! Come back after 24 hours for another spin.")
     return redirect("accounts:wallet")
@@ -537,7 +558,7 @@ def currency_withdrawal_view(request):
                     elif currency == "coins" and wallet.coins < quantity:
                         form.add_error("quantity", "Aapke paas itne coins nahi hain.")
                     else:
-                        CurrencyWithdrawalRequest.objects.create(
+                        withdrawal = CurrencyWithdrawalRequest.objects.create(
                             user=request.user,
                             currency=currency,
                             quantity=quantity,
@@ -548,9 +569,21 @@ def currency_withdrawal_view(request):
                         if currency == "diamonds":
                             wallet.diamonds -= quantity
                             wallet.save(update_fields=("diamonds", "updated_at"))
+                            ledger_currency = PlayerShopWalletTransaction.Currency.DIAMONDS
                         else:
                             wallet.coins -= quantity
                             wallet.save(update_fields=("coins", "updated_at"))
+                            ledger_currency = PlayerShopWalletTransaction.Currency.COINS
+                        wallet.refresh_from_db()
+                        balance_after = wallet.diamonds if ledger_currency == PlayerShopWalletTransaction.Currency.DIAMONDS else wallet.coins
+                        PlayerShopWalletTransaction.objects.create(
+                            user=request.user, wallet=wallet, currency=ledger_currency,
+                            direction=PlayerShopWalletTransaction.Direction.DEBIT,
+                            quantity=quantity, balance_after=balance_after,
+                            source="withdrawal", reference=str(withdrawal.pk),
+                            idempotency_key=f"currency-withdrawal:{withdrawal.pk}:debit",
+                            description=f"Currency withdrawal request #{withdrawal.pk} · ₹{amount:.2f}",
+                        )
                         messages.success(
                             request,
                             f"₹{amount:.2f} ki withdrawal request admin review ke liye bhej di. Actual UPI transfer aur verification ke baad hi payout complete hoga."
