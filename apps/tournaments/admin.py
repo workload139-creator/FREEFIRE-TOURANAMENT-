@@ -786,6 +786,9 @@ def mark_manual_upi_refunds_paid(modeladmin, request, queryset):
         with transaction.atomic():
             registration = Registration.objects.select_for_update().select_related("tournament", "player").get(pk=selected.pk)
             utr = (registration.refund_reference or "").strip()
+            # Use the same global serialization lock as entry and kill-prize UTR checks.
+            admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
+            admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
             if (
                 not registration.payment_reference
                 or not registration.payment_verified
@@ -802,8 +805,6 @@ def mark_manual_upi_refunds_paid(modeladmin, request, queryset):
             if AdminWalletTransaction.objects.filter(reference=ledger_reference).exists():
                 skipped += 1
                 continue
-            admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
-            admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
             amount = registration.entry_fee_paid
             if admin_wallet.balance < amount:
                 skipped += 1
