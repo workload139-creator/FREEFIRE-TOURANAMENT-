@@ -48,9 +48,9 @@ def friends_home(request):
         users = User.objects.exclude(pk=user.pk).exclude(pk__in=blocked_ids)
         if search_query.upper().startswith("FF-"):
             numeric_id = search_query[3:]
-            users = users.filter(pk=int(numeric_id)) if numeric_id.isdigit() else users.none()
+            users = users.filter(player_code=numeric_id) if numeric_id.isdigit() else users.none()
         elif search_query.isdigit():
-            users = users.filter(pk=int(search_query))
+            users = users.filter(player_code=search_query)
         else:
             # Allow partial username searches, not just exact matches.
             users = users.filter(username__icontains=search_query)
