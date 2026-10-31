@@ -718,6 +718,10 @@ def verify_entry_payments(modeladmin, request, queryset):
             fee = registration.entry_fee_paid
             utr = (registration.payment_reference or "").strip()
             if fee > 0:
+                # Serialize all manual UPI verification/payout actions before checking
+                # UTR uniqueness, so two admins cannot approve the same UTR concurrently.
+                admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
+                admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
                 # Admin must check the actual receiving UPI/bank statement first.
                 if len(utr) < 6:
                     skipped_count += 1
@@ -734,8 +738,6 @@ def verify_entry_payments(modeladmin, request, queryset):
                     skipped_count += 1
                     continue
 
-                admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
-                admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
                 admin_wallet.balance += fee
                 admin_wallet.save(update_fields=["balance", "updated_at"])
                 AdminWalletTransaction.objects.create(
@@ -932,6 +934,9 @@ def mark_kill_submission_upi_paid(modeladmin, request, queryset):
             ):
                 skipped += 1
                 continue
+            # Shared lock serializes UTR checks across different submissions/actions.
+            admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
+            AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
             duplicate = (
                 KillSubmission.objects.filter(payout_reference__iexact=utr)
                 .exclude(pk=submission.pk).exists()
