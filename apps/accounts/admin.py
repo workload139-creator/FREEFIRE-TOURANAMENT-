@@ -20,6 +20,7 @@ from .services import credit_verified_deposit
 class CustomUserAdmin(UserAdmin):
     list_display = ("username", "player_code", "gender", "profile_visibility", "phone_number", "free_fire_uid", "upi_id", "upi_verified", "phone_verified", "uid_verified", "is_active")
     search_fields = ("username", "player_code", "phone_number", "free_fire_uid")
+    readonly_fields = ("player_code",)
     list_filter = ("gender", "phone_verified", "uid_verified", "is_active", "is_staff")
     fieldsets = UserAdmin.fieldsets + (
         ("Player Details", {"fields": (
