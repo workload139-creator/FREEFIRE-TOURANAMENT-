@@ -13,6 +13,7 @@ from apps.accounts.models import (
     AdminWallet,
     AdminWalletTransaction,
     WalletTransaction,
+    WithdrawalRequest,
 )
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry, UnlimitedTournament, FreeFanTournament, DiwaliOfferTournament
@@ -215,7 +216,17 @@ def mark_winner_prizes_paid(modeladmin, request, queryset):
             if len(utr) < 6 or utr.startswith("WIN-PRIZE-"):
                 skipped += 1
                 continue
-            if Tournament.objects.filter(winner_prize_reference__iexact=utr).exclude(pk=tournament.pk).exists():
+            admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
+            admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
+            duplicate_utr = (
+                Tournament.objects.filter(winner_prize_reference__iexact=utr).exclude(pk=tournament.pk).exists()
+                or KillSubmission.objects.filter(payout_reference__iexact=utr).exists()
+                or Registration.objects.filter(payment_reference__iexact=utr).exists()
+                or Registration.objects.filter(refund_reference__iexact=utr).exists()
+                or Registration.objects.filter(payment_reference__iexact=utr).exists()
+                or WithdrawalRequest.objects.filter(payout_reference__iexact=utr).exists()
+            )
+            if duplicate_utr:
                 skipped += 1
                 continue
             eligible = Registration.objects.select_for_update().filter(
@@ -231,8 +242,6 @@ def mark_winner_prizes_paid(modeladmin, request, queryset):
             if not (winner.player.upi_id or "").strip() and not winner.player.upi_qr_code:
                 skipped += 1
                 continue
-            admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
-            admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
             prize = tournament.prize_pool
             if admin_wallet.balance < prize:
                 skipped += 1
@@ -717,13 +726,21 @@ def verify_entry_payments(modeladmin, request, queryset):
             fee = registration.entry_fee_paid
             utr = (registration.payment_reference or "").strip()
             if fee > 0:
+                # Serialize all manual UPI verification/payout actions before checking
+                # UTR uniqueness, so two admins cannot approve the same UTR concurrently.
+                admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
+                admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
                 # Admin must check the actual receiving UPI/bank statement first.
                 if len(utr) < 6:
                     skipped_count += 1
                     continue
-                duplicate_utr = Registration.objects.filter(
-                    payment_reference__iexact=utr
-                ).exclude(pk=registration.pk).exists()
+                duplicate_utr = (
+                    Registration.objects.filter(payment_reference__iexact=utr).exclude(pk=registration.pk).exists()
+                    or Registration.objects.filter(refund_reference__iexact=utr).exists()
+                    or KillSubmission.objects.filter(payout_reference__iexact=utr).exists()
+                    or Tournament.objects.filter(winner_prize_reference__iexact=utr).exists()
+                    or WithdrawalRequest.objects.filter(payout_reference__iexact=utr).exists()
+                )
                 if duplicate_utr:
                     skipped_count += 1
                     continue
@@ -733,8 +750,6 @@ def verify_entry_payments(modeladmin, request, queryset):
                     skipped_count += 1
                     continue
 
-                admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
-                admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
                 admin_wallet.balance += fee
                 admin_wallet.save(update_fields=["balance", "updated_at"])
                 AdminWalletTransaction.objects.create(
@@ -783,6 +798,9 @@ def mark_manual_upi_refunds_paid(modeladmin, request, queryset):
         with transaction.atomic():
             registration = Registration.objects.select_for_update().select_related("tournament", "player").get(pk=selected.pk)
             utr = (registration.refund_reference or "").strip()
+            # Use the same global serialization lock as entry and kill-prize UTR checks.
+            admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
+            admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
             if (
                 not registration.payment_reference
                 or not registration.payment_verified
@@ -792,15 +810,20 @@ def mark_manual_upi_refunds_paid(modeladmin, request, queryset):
             ):
                 skipped += 1
                 continue
-            if Registration.objects.filter(refund_reference__iexact=utr).exclude(pk=registration.pk).exists():
+            duplicate_utr = (
+                Registration.objects.filter(refund_reference__iexact=utr).exclude(pk=registration.pk).exists()
+                or Registration.objects.filter(payment_reference__iexact=utr).exists()
+                or KillSubmission.objects.filter(payout_reference__iexact=utr).exists()
+                or Tournament.objects.filter(winner_prize_reference__iexact=utr).exists()
+                or WithdrawalRequest.objects.filter(payout_reference__iexact=utr).exists()
+            )
+            if duplicate_utr:
                 skipped += 1
                 continue
             ledger_reference = f"ADMIN-UPI-REFUND-{registration.pk}"
             if AdminWalletTransaction.objects.filter(reference=ledger_reference).exists():
                 skipped += 1
                 continue
-            admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
-            admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
             amount = registration.entry_fee_paid
             if admin_wallet.balance < amount:
                 skipped += 1
@@ -915,6 +938,53 @@ class DiwaliOfferTournamentAdmin(TournamentAdmin):
         super().save_model(request, obj, form, change)
 
 
+@admin.action(description="Mark approved kill prize PAID after manual UPI transfer and unique real UTR entry")
+def mark_kill_submission_upi_paid(modeladmin, request, queryset):
+    """Record a real manual UPI payout once; this action never transfers money."""
+    paid = 0
+    skipped = 0
+    for selected in queryset:
+        with transaction.atomic():
+            submission = KillSubmission.objects.select_for_update().get(pk=selected.pk)
+            utr = (submission.payout_reference or "").strip()
+            if (
+                submission.status != KillSubmission.Status.APPROVED
+                or submission.payout_status == KillSubmission.PayoutStatus.PAID
+                or len(utr) < 6
+            ):
+                skipped += 1
+                continue
+            # Shared lock serializes UTR checks across different submissions/actions.
+            admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
+            AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
+            duplicate = (
+                KillSubmission.objects.filter(payout_reference__iexact=utr)
+                .exclude(pk=submission.pk).exists()
+                or Tournament.objects.filter(winner_prize_reference__iexact=utr).exists()
+                or Registration.objects.filter(refund_reference__iexact=utr).exists()
+                or WithdrawalRequest.objects.filter(payout_reference__iexact=utr).exists()
+            )
+            if duplicate:
+                skipped += 1
+                continue
+            submission.payout_status = KillSubmission.PayoutStatus.PAID
+            submission.payout_paid_at = timezone.now()
+            submission.save(update_fields=("payout_status", "payout_paid_at"))
+            paid += 1
+    if paid:
+        modeladmin.message_user(
+            request,
+            f"{paid} approved kill prize(s) marked PAID after manual UPI transfer. UTR recorded; no automatic bank transfer was made.",
+            messages.SUCCESS,
+        )
+    if skipped:
+        modeladmin.message_user(
+            request,
+            f"{skipped} payout(s) skipped: approve the evidence first, enter a unique real UTR, and check that it was not already used.",
+            messages.WARNING,
+        )
+
+
 @admin.register(KillSubmission)
 class KillSubmissionAdmin(admin.ModelAdmin):
     """Admin evidence queue; uploaded evidence and AI output remain auditable."""
@@ -926,6 +996,7 @@ class KillSubmissionAdmin(admin.ModelAdmin):
     list_filter = ("status", "payout_status", "ai_confidence", "ai_uid_matches", "tournament__mode", "tournament__is_diwali_offer")
     search_fields = ("player__username", "registered_uid", "free_fire_uid", "tournament__title")
     list_select_related = ("player", "tournament", "registration")
+    actions = (mark_kill_submission_upi_paid,)
     readonly_fields = (
         "registration", "player", "tournament", "registered_uid", "free_fire_uid",
         "history_video", "history_image_one", "history_image_two",
@@ -940,6 +1011,17 @@ class KillSubmissionAdmin(admin.ModelAdmin):
         "proposed_coins_reward", "approved_coins_reward", "status", "admin_notes",
         "payout_reference", "payout_status", "payout_paid_at", "submitted_at", "reviewed_at",
     )
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if "admin_notes" in form.base_fields:
+            form.base_fields["admin_notes"].help_text = (
+                "Normal approval ke liye date aur match ID sabhi AI reviewers se match hone chahiye. "
+                "Agar date unreadable/mismatch ho to original files manually verify karke notes mein "
+                "DATE_OVERRIDE: reason likhein. Match ID unreadable ho to MATCH_ID_OVERRIDE: reason likhein. "
+                "Dono override zaroori hon to dono markers aur alag reasons likhein. Duplicate match ID kabhi override nahi hota."
+            )
+        return form
 
 
 @admin.register(TournamentLedgerEntry)
