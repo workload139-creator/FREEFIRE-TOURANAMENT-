@@ -374,6 +374,8 @@ def ai_assessment_dashboard(request):
     pending_deposits = DepositRequest.objects.filter(status=DepositRequest.Status.PENDING).select_related('wallet', 'wallet__user').order_by('created_at')[:10]
     pending_cash_withdrawals = WithdrawalRequest.objects.filter(status=WithdrawalRequest.Status.PENDING).select_related('wallet', 'wallet__user').order_by('created_at')[:10]
     pending_kills = KillSubmission.objects.filter(status=KillSubmission.Status.PENDING).select_related('player', 'tournament').order_by('submitted_at')[:10]
+    kill_monitor_submissions = KillSubmission.objects.select_related("player", "tournament", "registration").order_by("-submitted_at")[:20]
+    kill_monitor_counts = {status: KillSubmission.objects.filter(status=status).count() for status, _label in KillSubmission.Status.choices}
     pending_registrations = Registration.objects.filter(status=Registration.Status.PENDING_PAYMENT).select_related('player', 'tournament').order_by('registered_at')[:10]
     pending_tick = FFTickSubscription.objects.filter(status=FFTickSubscription.Status.PENDING).select_related('user').order_by('submitted_at')[:10]
     open_reports = UserReport.objects.filter(status__in=(UserReport.Status.OPEN, UserReport.Status.REVIEWING)).select_related('reporter', 'reported_user').order_by('created_at')[:10]
@@ -411,7 +413,7 @@ def ai_assessment_dashboard(request):
         'total_pending': total_pending, 'risk_alerts': risk_alerts, 'links': links, 'ai_api_configured': {'openai': bool(__import__('os').getenv('OPENAI_API_KEY')), 'ollama': bool(__import__('os').getenv('OLLAMA_API_KEY'))},
         'pending_shop': pending_shop, 'pending_currency_withdrawals': pending_currency_withdrawals,
         'pending_deposits': pending_deposits, 'pending_cash_withdrawals': pending_cash_withdrawals,
-        'pending_kills': pending_kills, 'pending_registrations': pending_registrations,
+        'pending_kills': pending_kills, 'kill_monitor_submissions': kill_monitor_submissions, 'kill_monitor_counts': kill_monitor_counts, 'pending_registrations': pending_registrations,
         'pending_tick': pending_tick, 'open_reports': open_reports,
         'duplicate_shop_requests': duplicate_shop_requests, 'suspicious_approved_shop': suspicious_approved_shop,
     })
