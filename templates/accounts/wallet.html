@@ -71,8 +71,8 @@
         </div>
         <p>Mode: {{ registration.tournament.get_mode_display|default:registration.tournament.mode }}{% if registration.tournament.entry_fee %} · Tournament entry fee: ₹{{ registration.tournament.entry_fee }}{% endif %}</p>
         <p>Player UID: {{ registration.free_fire_uid }} · Entry paid: ₹{{ registration.entry_fee_paid }} · Payment: {{ registration.get_payment_method_display }}</p>
-        <small>Registered: {{ registration.created_at|date:"d M Y, h:i A" }}{% if registration.updated_at %} · Last updated: {{ registration.updated_at|date:"d M Y, h:i A" }}{% endif %}</small>
-        {% if registration.payment_verified %}<p>Payment verification: Verified</p>{% else %}<p>Payment verification: {{ registration.get_payment_status_display|default:"Not verified / pending" }}</p>{% endif %}
+        <small>Registered: {{ registration.registered_at|date:"d M Y, h:i A" }}{% if registration.updated_at %} · Last updated: {{ registration.updated_at|date:"d M Y, h:i A" }}{% endif %}</small>
+        {% if registration.payment_verified %}<p>Payment verification: Verified</p>{% else %}<p>Payment verification: Pending admin verification</p>{% endif %}
         {% if registration.refund_processed or registration.status == "refunded" %}
           <p><strong>Refund: Processed</strong>{% if registration.refund_reference %} · Reference: {{ registration.refund_reference }}{% endif %}</p>
         {% elif registration.status == "not_playing" and registration.payment_verified %}
