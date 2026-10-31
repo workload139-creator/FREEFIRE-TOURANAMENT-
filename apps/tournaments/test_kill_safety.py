@@ -28,7 +28,7 @@ def reports_for(date_value="31/10/2026", match_id="match-123"):
 class KillEvidenceSafetyTests(SimpleTestCase):
     def setUp(self):
         self.tournament = SimpleNamespace(
-            start_time=datetime(2026, 10, 31, 18, 0, tzinfo=datetime_timezone.utc)
+            start_time=datetime(2026, 10, 31, 10, 0, tzinfo=datetime_timezone.utc)
         )
 
     def test_all_reviewers_same_tournament_date_pass(self):
