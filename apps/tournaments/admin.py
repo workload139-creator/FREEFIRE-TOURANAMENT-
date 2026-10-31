@@ -18,7 +18,7 @@ from apps.accounts.models import (
     WithdrawalRequest,
 )
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
-from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry, UnlimitedTournament, FreeFanTournament, DiwaliOfferTournament
+from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry, TournamentLiveSession, UnlimitedTournament, FreeFanTournament, DiwaliOfferTournament
 
 from .services import cancel_tournament_and_refund
 from .kill_services import reward_for_tournament
@@ -1320,3 +1320,21 @@ class RegistrationAdmin(admin.ModelAdmin):
             return f"₹{obj.player.wallet.balance}"
         except Exception:
             return "Wallet not created"
+
+
+@admin.register(TournamentLiveSession)
+class TournamentLiveSessionAdmin(admin.ModelAdmin):
+    list_display = ("id", "tournament", "registration", "participant_identity", "status", "background_warning_count", "started_at", "ended_at")
+    list_filter = ("status", "tournament__mode", "tournament")
+    search_fields = ("room_name", "participant_identity", "registration__free_fire_uid", "registration__player__username")
+    list_select_related = ("tournament", "registration", "registration__player")
+    readonly_fields = tuple(field.name for field in TournamentLiveSession._meta.fields)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
