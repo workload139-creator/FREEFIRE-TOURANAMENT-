@@ -92,12 +92,12 @@ def _mode(t):
     if any(k in x for k in ("battle royale","ranked br","br mode")): return "BR"
     if any(k in x for k in ("clash squad","cs ranked","cs mode")): return "VS"
     return ""
-def _report(name,default_reason,**kw):
+def _report(name,fallback_reason,**kw):
     # Keep the positional fallback separate so callers may supply the final diagnostic as reason=.
     d={"name":name,"status":"NEEDS_ADMIN_REVIEW","checked_at":datetime.now(timezone.utc).isoformat(),
        "proposed_kills":None,"confidence":"low","uid_matches":None,"observed_uid":"",
        "history_consistent":False,"evidence_complete":False,"tampering_suspected":None,
-       "tampering_notes":"Automated checks cannot prove pre-upload authenticity.","reason":default_reason}
+       "tampering_notes":"Automated checks cannot prove pre-upload authenticity.","reason":fallback_reason}
     d.update(kw); return d
 
 def analyze_kill_evidence(submission):
