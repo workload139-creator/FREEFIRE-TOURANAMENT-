@@ -30,14 +30,10 @@ import qrcode
 
 
 def _credit_kill_submission_reward(submission, approved_kills, reward_override=None, source="Admin"):
-    """Approve one submission and credit non-cash tournament currencies exactly once."""
+    """Approve and credit the player's internal wallet once; verify persisted wallet + ledger before success."""
     from apps.social.models import PlayerShopWallet
 
-    # The registration row serializes every award for this player/tournament.
     registration = Registration.objects.select_for_update().get(pk=submission.registration_id)
-    # Approved submissions can be safely reconciled by Admin if an older
-    # approval was saved without its wallet ledger. The caller checks ledger refs
-    # first; this helper still enforces unique references before each credit.
     if KillSubmission.objects.filter(
         registration=registration, status=KillSubmission.Status.APPROVED
     ).exclude(pk=submission.pk).exists():
@@ -45,26 +41,52 @@ def _credit_kill_submission_reward(submission, approved_kills, reward_override=N
     if has_duplicate_match_id(submission):
         raise ValueError("This Free Fire match ID has already been used for this UID in this tournament.")
     if not get_match_id(submission.ai_reviewer_reports) and "MATCH_ID_OVERRIDE:" not in (submission.admin_notes or ""):
-        raise ValueError("A match ID was not readable/agreed by all reviewers. Admin must manually verify the original evidence and add MATCH_ID_OVERRIDE: with a reason.")
-    date_ok, date_note = validate_match_dates(
-        submission.ai_reviewer_reports, submission.tournament
-    )
+        raise ValueError("Match ID verify nahi hua. Original evidence check karke Admin Notes mein MATCH_ID_OVERRIDE: reason add karein.")
+    date_ok, date_note = validate_match_dates(submission.ai_reviewer_reports, submission.tournament)
     if not date_ok and "DATE_OVERRIDE:" not in (submission.admin_notes or ""):
-        raise ValueError(
-            "Match date check failed. Admin must review the original evidence and add DATE_OVERRIDE: with a reason before a manual award. "
-            + date_note
-        )
+        raise ValueError("Match date verify nahi hui. Original evidence check karke Admin Notes mein DATE_OVERRIDE: reason add karein. " + date_note)
+
     rewards = rewards_for_tournament(submission.tournament, approved_kills)
     if approved_kills < settings.MINIMUM_VERIFIED_KILLS:
         rewards = []
+    if not rewards:
+        raise ValueError(
+            f"Reward approve nahi hua: kam se kam {settings.MINIMUM_VERIFIED_KILLS} verified kills zaroori hain. Submission pending rahegi."
+        )
     if reward_override is not None:
-        if not rewards:
-            raise ValueError("Prize override is not allowed below the minimum verified kills.")
         currency, _quantity, label = rewards[0]
         rewards[0] = (currency, reward_override, label)
 
-    primary_quantity = rewards[0][1] if rewards else 0
-    coin_quantity = sum(quantity for currency, quantity, _label in rewards if currency == "coins")
+    # Never guess whether an old/partial ledger represents a successful payout.
+    # Keep the review pending so an Admin can inspect and reconcile it safely.
+    prefix = f"KILL-REWARD-{submission.pk}-"
+    if TournamentLedgerEntry.objects.filter(reference__startswith=prefix).exists():
+        raise ValueError("Is submission ka reward ledger pehle se maujood hai. Double credit rokne ke liye approval roka gaya; wallet aur ledger manually reconcile karein.")
+
+    wallet, _ = PlayerShopWallet.objects.get_or_create(user=submission.player)
+    wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
+    before = {
+        "diamonds": int(wallet.diamonds),
+        "coins": int(wallet.coins),
+        "fan_tokens": int(wallet.fan_tokens),
+    }
+    expected = dict(before)
+    ledger_expected = {}
+    for currency, quantity, label in rewards:
+        quantity = int(quantity)
+        if quantity <= 0:
+            continue
+        wallet_field = {"diamonds": "diamonds", "coins": "coins", "fan_tokens": "fan_tokens"}.get(currency)
+        if not wallet_field:
+            raise ValueError(f"Unsupported reward currency: {currency}")
+        expected[wallet_field] += quantity
+        ledger_expected[currency] = (quantity, label)
+
+    if not ledger_expected:
+        raise ValueError("Calculated reward zero hai; wallet credit nahi kiya gaya aur submission pending rahegi.")
+
+    primary_quantity = rewards[0][1]
+    coin_quantity = sum(int(quantity) for currency, quantity, _label in rewards if currency == "coins")
     submission.approved_kills = approved_kills
     submission.proposed_reward = Decimal(primary_quantity)
     submission.approved_reward = Decimal(primary_quantity)
@@ -78,40 +100,43 @@ def _credit_kill_submission_reward(submission, approved_kills, reward_override=N
         "status", "reviewed_at", "admin_notes",
     ])
 
-    if not rewards:
-        return []
-
-    wallet, _ = PlayerShopWallet.objects.get_or_create(user=submission.player)
-    wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
-    credited = []
-    for currency, quantity, label in rewards:
-        if quantity <= 0:
-            continue
-        reference = f"KILL-REWARD-{submission.pk}-{currency}"
-        if TournamentLedgerEntry.objects.filter(reference=reference).exists():
-            continue
-        wallet_field = {
-            "diamonds": "diamonds",
-            "coins": "coins",
-            "fan_tokens": "fan_tokens",
-        }[currency]
-        setattr(wallet, wallet_field, getattr(wallet, wallet_field) + int(quantity))
+    for currency, (quantity, label) in ledger_expected.items():
+        wallet_field = {"diamonds": "diamonds", "coins": "coins", "fan_tokens": "fan_tokens"}[currency]
+        setattr(wallet, wallet_field, expected[wallet_field])
         TournamentLedgerEntry.objects.create(
-            reference=reference,
+            reference=f"{prefix}{currency}",
             tournament=submission.tournament,
             player=submission.player,
             registration=submission.registration,
             entry_type=TournamentLedgerEntry.EntryType.REWARD,
             currency=currency,
-            quantity=int(quantity),
+            quantity=quantity,
             amount_inr=Decimal("0.00"),
             status=TournamentLedgerEntry.Status.COMPLETED,
-            description=f"{source}: {int(quantity)} {label} for {approved_kills} verified kills",
+            description=f"{source}: {quantity} {label} for {approved_kills} verified kills",
         )
-        credited.append((int(quantity), label))
-    if credited:
-        wallet.save(update_fields=("diamonds", "coins", "fan_tokens", "updated_at"))
-    return credited
+
+    wallet.save(update_fields=("diamonds", "coins", "fan_tokens", "updated_at"))
+    wallet.refresh_from_db()
+    for field_name, expected_value in expected.items():
+        if int(getattr(wallet, field_name)) != expected_value:
+            raise ValueError("Wallet balance verify nahi hua. Transaction rollback ho gayi; submission pending rahegi.")
+
+    for currency, (quantity, _label) in ledger_expected.items():
+        entry = TournamentLedgerEntry.objects.filter(
+            reference=f"{prefix}{currency}",
+            player=submission.player,
+            tournament=submission.tournament,
+            registration=submission.registration,
+            entry_type=TournamentLedgerEntry.EntryType.REWARD,
+            currency=currency,
+            quantity=quantity,
+            status=TournamentLedgerEntry.Status.COMPLETED,
+        ).first()
+        if not entry:
+            raise ValueError("Reward ledger verify nahi hua. Transaction rollback ho gayi; submission pending rahegi.")
+
+    return [(quantity, label) for quantity, label in ledger_expected.values()]
 
 
 def cleanup_expired_kill_evidence():
