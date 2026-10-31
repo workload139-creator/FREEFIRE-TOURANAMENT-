@@ -135,7 +135,7 @@ class ShopPaymentRequestAdmin(admin.ModelAdmin):
     list_display = ("id", "player_id_display", "user", "player_email_display", "player_phone_display", "player_uid_display", "product", "quantity", "amount", "payment_reference", "status", "created_at", "reviewed_by")
     list_filter = ("status", "product", "created_at")
     search_fields = ("user__username", "user__email", "user__phone_number", "user__free_fire_uid", "payment_reference")
-    readonly_fields = ("user", "player_id_display", "player_email_display", "player_phone_display", "player_uid_display", "player_upi_display", "player_profile_qr_preview", "product", "quantity", "amount", "payment_reference", "payment_screenshot_preview", "payment_screenshot", "created_at", "reviewed_at", "reviewed_by")
+    readonly_fields = ("user", "player_id_display", "player_email_display", "player_phone_display", "player_uid_display", "player_upi_display", "player_profile_qr_preview", "product", "quantity", "amount", "payment_reference", "payment_screenshot_preview", "payment_screenshot", "status", "created_at", "reviewed_at", "reviewed_by")
     fields = ("user", "player_id_display", "player_email_display", "player_phone_display", "player_uid_display", "player_upi_display", "player_profile_qr_preview", "product", "quantity", "amount", "payment_reference", "payment_screenshot_preview", "payment_screenshot", "status", "admin_note", "created_at", "reviewed_at", "reviewed_by")
     actions = (approve_shop_payments, reject_shop_payments)
 
