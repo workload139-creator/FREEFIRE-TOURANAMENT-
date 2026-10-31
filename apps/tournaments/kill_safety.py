@@ -53,7 +53,9 @@ def validate_match_dates(reviewer_reports, tournament):
         return False, "AI reviewers did not agree on the match-history date."
     tournament_date = timezone.localtime(tournament.start_time).date()
     observed = dates[0]
-    if abs((observed - tournament_date).days) > 1:
+    # Match history may roll over after midnight, so allow tournament day and
+    # the following calendar day, but never a pre-tournament screenshot.
+    if (observed - tournament_date).days not in (0, 1):
         return False, (
             f"Match-history date {observed.isoformat()} is outside the allowed "
             f"tournament window around {tournament_date.isoformat()}."
