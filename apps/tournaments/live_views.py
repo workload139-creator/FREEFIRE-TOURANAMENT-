@@ -9,6 +9,7 @@ from datetime import timedelta
 
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
+from django.db.models import F
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -71,15 +72,16 @@ def tournament_live_token(request, registration_id):
         if session is None:
             session_id = uuid.uuid4()
             room_name = f"ffarena-tournament-{tournament.pk}-reg-{registration.pk}-{session_id.hex[:12]}"
-            identity = f"ffarena-player-{registration.player_id}-reg-{registration.pk}"
+            identity = f"ffarena-player-{registration.player_id}-reg-{registration.pk}-{session_id.hex[:8]}"
             try:
-                session = TournamentLiveSession.objects.create(
-                    tournament=tournament,
-                    registration=registration,
-                    session_uuid=session_id,
-                    room_name=room_name,
-                    participant_identity=identity,
-                )
+                with transaction.atomic():
+                    session = TournamentLiveSession.objects.create(
+                        tournament=tournament,
+                        registration=registration,
+                        session_uuid=session_id,
+                        room_name=room_name,
+                        participant_identity=identity,
+                    )
             except IntegrityError:
                 session = TournamentLiveSession.objects.filter(
                     registration=registration, status=TournamentLiveSession.Status.ACTIVE
@@ -143,11 +145,12 @@ def tournament_live_warning(request, registration_id):
     if session.registration.player_id != request.user.pk:
         return JsonResponse({"error": "Not allowed."}, status=403)
     TournamentLiveSession.objects.filter(pk=session.pk).update(
-        background_warning_count=session.background_warning_count + 1,
+        background_warning_count=F("background_warning_count") + 1,
         updated_at=timezone.now(),
     )
+    session.refresh_from_db(fields=("background_warning_count",))
     return JsonResponse({
         "success": True,
-        "warning_count": session.background_warning_count + 1,
+        "warning_count": session.background_warning_count,
         "message": "App background warning recorded. You are not banned or removed.",
     })
