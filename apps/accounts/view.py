@@ -235,6 +235,10 @@ from .models import DepositRequest, Wallet, WalletTransaction
 
 @login_required
 def deposit_view(request):
+    """Temporarily disable INR deposits until the payment gateway is enabled."""
+    messages.info(request, "INR deposits are temporarily disabled. Payment gateway abhi enable nahi hua hai.")
+    return redirect("accounts:wallet")
+
     """Create a manual UPI deposit request; credit only after admin verifies bank receipt."""
     import base64
     import io
@@ -314,6 +318,10 @@ def deposit_view(request):
 
 @login_required
 def cashfree_deposit_view(request):
+    """Temporarily disable INR deposits until the payment gateway is enabled."""
+    messages.info(request, "INR deposits are temporarily disabled. Payment gateway abhi enable nahi hua hai.")
+    return redirect("accounts:wallet")
+
     """Start a server-created Cashfree order; never credit on browser redirect alone."""
     import os
     import uuid
@@ -518,6 +526,8 @@ def cashfree_webhook_view(request):
 
 @login_required
 def withdrawal_view(request):
+    messages.info(request, "INR withdrawals are temporarily disabled.")
+    return redirect("accounts:wallet")
     wallet, _ = Wallet.objects.get_or_create(user=request.user)
     if request.method == "POST":
         form = WithdrawalRequestForm(request.POST)
