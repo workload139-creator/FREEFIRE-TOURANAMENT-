@@ -18,8 +18,8 @@
    <h2 style="margin-top:0">🎮 Apna Free Fire Game Kholein</h2>
    <p>Apne phone mein jo version installed hai, usi ka button dabayein. App installed hoga to game khulega; nahi hoga to official Google Play page khulega.</p>
    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:16px">
-    <a class="btn-primary ff-game-launch-link" data-package="com.dts.freefiremax" data-fallback="https://play.google.com/store/apps/details?id=com.dts.freefiremax" href="https://play.google.com/store/apps/details?id=com.dts.freefiremax" style="display:block;text-align:center;padding:16px 12px">🔥 Open Free Fire MAX</a>
-    <a class="btn-primary ff-game-launch-link" data-package="com.garena.game.ffi" data-fallback="https://play.google.com/store/apps/details?id=com.garena.game.ffi" href="https://play.google.com/store/apps/details?id=com.garena.game.ffi" style="display:block;text-align:center;padding:16px 12px">🇮🇳 Open Free Fire India</a>
+    <a class="btn-primary ff-game-launch-link" data-package="com.dts.freefiremax" data-fallback="https://play.google.com/store/apps/details?id=com.dts.freefiremax" data-ios-url="https://apps.apple.com/app/id1480516829" href="https://play.google.com/store/apps/details?id=com.dts.freefiremax" style="display:block;text-align:center;padding:16px 12px">🔥 Open Free Fire MAX</a>
+    <a class="btn-primary ff-game-launch-link" data-package="com.garena.game.ffi" data-fallback="https://play.google.com/store/apps/details?id=com.garena.game.ffi" data-ios-url="https://apps.apple.com/app/id6449933265" href="https://play.google.com/store/apps/details?id=com.garena.game.ffi" style="display:block;text-align:center;padding:16px 12px">🇮🇳 Open Free Fire India</a>
    </div>
    <p class="help-text" style="margin-bottom:0">Note: Game khulne ke baad Custom Room mein Room ID aur Password manually enter/paste karein. FF Arena kisi game ke andar automatically room join nahi kar sakta. India-region account ke liye Free Fire India aur non-India account ke liye Free Fire MAX ka sahi version chunein.</p>
   </section>
@@ -86,8 +86,11 @@
    document.querySelectorAll(".ff-game-launch-link").forEach(function (link) {
      const packageName = link.dataset.package;
      const fallback = link.dataset.fallback;
-     if (/Android/i.test(navigator.userAgent || "")) {
+     const agent = navigator.userAgent || "";
+     if (/Android/i.test(agent)) {
        link.href = "intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=" + packageName + ";S.browser_fallback_url=" + encodeURIComponent(fallback) + ";end";
+     } else if (/iPhone|iPad|iPod/i.test(agent)) {
+       link.href = link.dataset.iosUrl || fallback;
      }
    });
    const registrationId = "{{ registration.id|escapejs }}";
