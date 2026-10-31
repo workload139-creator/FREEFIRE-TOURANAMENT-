@@ -85,7 +85,8 @@ class FourAIReviewTests(SimpleTestCase):
         ]
         result = analyze_kill_evidence(self._submission())
         self.assertFalse(result["dual_agreement"])
-        self.assertIsNone(result["proposed_kills"])
+        self.assertEqual(result["proposed_kills"], 4)
+        self.assertFalse(result["uid_matches"])
 
     @patch("apps.tournaments.ai_review.verify_evidence_integrity", return_value={})
     @patch("apps.tournaments.ai_review._bytes", side_effect=[b"image-one", b"image-two"])
