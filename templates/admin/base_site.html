@@ -2,7 +2,7 @@
 {% load static %}
 {% block title %}{{ title }} | FF Tournament Admin{% endblock %}
 {% block branding %}
-<h1 id="site-name"><a href="{% url 'admin:index' %}">🔥 FF Tournament — Admin Control Room</a></h1>
+<h1 id="site-name"><a href="{% url 'admin:index' %}">🔥 FF Tournament — Admin Control Room</a></h1><p style="margin:0 0 8px 18px"><a href="{% url 'admin:ai_assessment_dashboard' %}" style="background:#e97816;color:#fff;padding:7px 12px;border-radius:7px">🤖 AI Assessment Dashboard</a></p>
 {% endblock %}
 {% block extrastyle %}
 {{ block.super }}
