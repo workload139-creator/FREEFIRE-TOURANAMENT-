@@ -13,7 +13,7 @@
       <a class="chat-list-row" href="{% url 'chat:conversation' row.conversation.pk %}">
         <div class="player-avatar">{% if row.other.profile_photo %}<img src="{{ row.other.profile_photo.url }}" alt="{{ row.other.username }} profile photo" style="width:100%;height:100%;object-fit:cover;border-radius:50%">{% else %}{{ row.other.username|first|upper }}{% endif %}</div>
         <div class="player-info"><strong>{{ row.other.username }} {% if row.other.is_online %}<span class="online-dot" aria-label="Online"></span>{% endif %}</strong><small>{% if row.last_message %}{{ row.last_message.body|truncatechars:70 }}{% else %}Start chatting{% endif %}</small></div>
-        <div class="chat-meta">{% if row.unread_count %}<span class="count-pill">{{ row.unread_count }}</span>{% endif %}<small>{{ row.other.pk|stringformat:"06d" }}</small></div>
+        <div class="chat-meta">{% if row.unread_count %}<span class="count-pill">{{ row.unread_count }}</span>{% endif %}<small>{{ row.other.player_code }}</small></div>
       </a>
     {% empty %}
       <div class="empty-state"><h2>No chats yet</h2><p>Players page par kisi ko follow karo. Chat shuru karne ke liye follow karna kaafi hai; friend request ki zaroorat nahi.</p><a class="button button-primary" href="{% url 'social:home' %}">Find Players</a></div>
