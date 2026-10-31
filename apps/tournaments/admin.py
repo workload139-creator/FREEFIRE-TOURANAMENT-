@@ -1135,7 +1135,7 @@ class KillSubmissionAdmin(admin.ModelAdmin):
             summary = ", ".join(f"{qty} {label}" for qty, label in credited) or "minimum kills se kam; koi reward nahi"
             self.message_user(
                 request,
-                f"{obj.approved_kills} verified kills. Reward: {summary}. Wallet ledger mein one-time entry complete.",
+                f"{obj.approved_kills} verified kills. Reward: {summary}. Player wallet balance aur completed ledger entry verify ho gayi; reward ek hi baar credit hua.",
                 messages.SUCCESS,
             )
         return response
