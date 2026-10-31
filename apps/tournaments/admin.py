@@ -991,12 +991,12 @@ class KillSubmissionAdmin(admin.ModelAdmin):
     list_display = (
         "id", "tournament", "player", "registered_uid", "free_fire_uid",
         "ai_proposed_kills", "ai_confidence", "ai_uid_matches", "status",
-        "payout_status", "submitted_at",
+        "submitted_at",
     )
-    list_filter = ("status", "payout_status", "ai_confidence", "ai_uid_matches", "tournament__mode", "tournament__is_diwali_offer")
+    list_filter = ("status", "ai_confidence", "ai_uid_matches", "tournament__mode", "tournament__is_diwali_offer")
     search_fields = ("player__username", "registered_uid", "free_fire_uid", "tournament__title")
     list_select_related = ("player", "tournament", "registration")
-    actions = (mark_kill_submission_upi_paid,)
+    actions = ()
     readonly_fields = (
         "registration", "player", "tournament", "registered_uid", "free_fire_uid",
         "history_video", "history_image_one", "history_image_two",
@@ -1009,7 +1009,7 @@ class KillSubmissionAdmin(admin.ModelAdmin):
         "ai_proposed_kills", "ai_confidence", "ai_uid_matches", "ai_review_notes",
         "approved_kills", "proposed_reward", "approved_reward",
         "proposed_coins_reward", "approved_coins_reward", "status", "admin_notes",
-        "payout_reference", "payout_status", "payout_paid_at", "submitted_at", "reviewed_at",
+        "submitted_at", "reviewed_at",
     )
 
     def get_form(self, request, obj=None, **kwargs):
