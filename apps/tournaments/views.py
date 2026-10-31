@@ -640,30 +640,10 @@ def kill_submission(request, registration_id):
                         "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
                         "ai_review_notes", "proposed_reward", "ai_reviewer_reports",
                     ])
-                    if (
-                        ai_result.get("four_way_agreement") is True
-                        and uid_ok
-                        and registration.payment_verified
-                        and registration.status == Registration.Status.READY
-                        and not registration.refund_processed
-                        and registration.tournament.status != Tournament.Status.CANCELLED
-                        and match_date_ok
-                        and match_id_ok
-                        and not duplicate_match
-                        and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS
-                    ):
-                        with transaction.atomic():
-                            locked = KillSubmission.objects.select_for_update().get(pk=submission.pk)
-                            if locked.status == KillSubmission.Status.PENDING:
-                                locked.admin_notes = "Automatically approved: all four AI reviewers independently agreed on kills, UID and clean/consistent evidence. Reward follows tournament rules."
-                                credited = _credit_kill_submission_reward(
-                                    locked, proposed_kills, source="Four-AI automatic award"
-                                )
-                                submission.refresh_from_db()
-                                reward_text = ", ".join(f"{qty} {label}" for qty, label in credited) or "0 reward"
-                                messages.success(request, f"Four AI reviewers agreed. {proposed_kills} kills verified; {reward_text} automatically credited to the player's in-app wallet.")
+                    if ai_result.get("four_way_agreement") is True and uid_ok and match_date_ok and match_id_ok and not duplicate_match:
+                        messages.success(request, f"Four AI reviewers agreed: {proposed_kills} kills reported. Reward/payment is not handled by Kill Verification; submission is waiting for Admin Review.")
                     else:
-                        messages.info(request, "AI review saved. Date, match ID, four-way agreement, UID/payment checks or minimum kills did not pass; this player remains in Admin Review.")
+                        messages.info(request, "AI kill report saved. Any reviewer failure, disagreement, UID/date/match issue or unclear evidence remains in Admin Review.")
                 except Exception as exc:
                     # Keep a durable assessment record even when an AI provider,
                     # network, video decoder, or model response fails. Never pay
@@ -839,27 +819,8 @@ def retry_ai_kill_review(request, submission_id):
             "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
             "ai_review_notes", "proposed_reward", "ai_reviewer_reports",
         ])
-        if (
-            result.get("four_way_agreement") is True
-            and uid_ok
-            and submission.registration.payment_verified
-            and submission.registration.status == Registration.Status.READY
-            and not submission.registration.refund_processed
-            and submission.tournament.status != Tournament.Status.CANCELLED
-            and date_ok
-            and match_id_ok
-            and not duplicate_match
-            and proposed is not None
-            and proposed >= settings.MINIMUM_VERIFIED_KILLS
-        ):
-            with transaction.atomic():
-                locked = KillSubmission.objects.select_for_update().get(pk=submission.pk)
-                if locked.status == KillSubmission.Status.PENDING:
-                    locked.admin_notes = "Automatically approved after four independent AI reviewers agreed on kills, UID and evidence."
-                    credited = _credit_kill_submission_reward(locked, proposed, source="Four-AI automatic award")
-                    submission.refresh_from_db()
-                    reward_text = ", ".join(f"{qty} {label}" for qty, label in credited) or "0 reward"
-                    messages.success(request, f"Four AI reviewers agreed: {proposed} kills; {reward_text} automatically credited.")
+        if result.get("four_way_agreement") is True and uid_ok and date_ok and match_id_ok and not duplicate_match:
+            messages.success(request, f"Four AI reviewers agreed: {proposed} kills reported. Kill Verification does not issue rewards; submission remains for Admin Review.")
         else:
             messages.info(request, "AI review updated. Any failed check or disagreement remains in Admin Review.")
     except Exception as exc:
