@@ -35,9 +35,13 @@ class KillEvidenceSafetyTests(SimpleTestCase):
         valid, _ = validate_match_dates(reports_for(), self.tournament)
         self.assertTrue(valid)
 
-    def test_day_before_tournament_is_within_grace_window(self):
-        valid, _ = validate_match_dates(reports_for("30/10/2026"), self.tournament)
+    def test_next_calendar_day_is_allowed_for_midnight_rollover(self):
+        valid, _ = validate_match_dates(reports_for("01/11/2026"), self.tournament)
         self.assertTrue(valid)
+
+    def test_pre_tournament_history_date_is_rejected(self):
+        valid, _ = validate_match_dates(reports_for("30/10/2026"), self.tournament)
+        self.assertFalse(valid)
 
     def test_old_history_date_is_rejected(self):
         valid, reason = validate_match_dates(reports_for("20/10/2026"), self.tournament)
