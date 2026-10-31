@@ -357,3 +357,69 @@ class FanTokenAwardAdmin(admin.ModelAdmin):
     list_filter = ("follower_milestone", "created_at")
     search_fields = ("user__username", "user__email")
     readonly_fields = ("user", "follower_milestone", "quantity", "created_at")
+
+
+# FF Arena unified AI assessment dashboard (explainable rule-based checks).
+from django.db.models import Count
+from django.shortcuts import render
+from django.urls import path
+
+
+def ai_assessment_dashboard(request):
+    from apps.accounts.models import DepositRequest, WithdrawalRequest
+    from apps.tournaments.models import KillSubmission, Registration
+
+    pending_shop = ShopPaymentRequest.objects.filter(status=ShopPaymentRequest.Status.PENDING).select_related('user').order_by('created_at')[:12]
+    pending_currency_withdrawals = CurrencyWithdrawalRequest.objects.filter(status=CurrencyWithdrawalRequest.Status.PENDING).select_related('user').order_by('created_at')[:12]
+    pending_deposits = DepositRequest.objects.filter(status=DepositRequest.Status.PENDING).select_related('wallet', 'wallet__user').order_by('created_at')[:10]
+    pending_cash_withdrawals = WithdrawalRequest.objects.filter(status=WithdrawalRequest.Status.PENDING).select_related('wallet', 'wallet__user').order_by('created_at')[:10]
+    pending_kills = KillSubmission.objects.filter(status=KillSubmission.Status.PENDING).select_related('player', 'tournament').order_by('submitted_at')[:10]
+    pending_registrations = Registration.objects.filter(status=Registration.Status.PENDING_PAYMENT).select_related('player', 'tournament').order_by('registered_at')[:10]
+    pending_tick = FFTickSubscription.objects.filter(status=FFTickSubscription.Status.PENDING).select_related('user').order_by('submitted_at')[:10]
+    open_reports = UserReport.objects.filter(status__in=(UserReport.Status.OPEN, UserReport.Status.REVIEWING)).select_related('reporter', 'reported_user').order_by('created_at')[:10]
+
+    duplicate_refs = list(ShopPaymentRequest.objects.exclude(payment_reference='').values('payment_reference').annotate(total=Count('id')).filter(total__gt=1).values_list('payment_reference', flat=True)[:50])
+    duplicate_shop_requests = ShopPaymentRequest.objects.filter(payment_reference__in=duplicate_refs).select_related('user').order_by('-created_at')[:10]
+    approved_ids = list(ShopPaymentRequest.objects.filter(status=ShopPaymentRequest.Status.APPROVED).values_list('id', flat=True))
+    ledger_keys = set(PlayerShopWalletTransaction.objects.filter(idempotency_key__in=[f'shop-payment:{pk}' for pk in approved_ids]).values_list('idempotency_key', flat=True))
+    missing_ledger_ids = [pk for pk in approved_ids if f'shop-payment:{pk}' not in ledger_keys][:20]
+    suspicious_approved_shop = ShopPaymentRequest.objects.filter(pk__in=missing_ledger_ids).select_related('user').order_by('-created_at')
+
+    counts = {
+        'shop': ShopPaymentRequest.objects.filter(status=ShopPaymentRequest.Status.PENDING).count(),
+        'currency_withdrawals': CurrencyWithdrawalRequest.objects.filter(status=CurrencyWithdrawalRequest.Status.PENDING).count(),
+        'deposits': DepositRequest.objects.filter(status=DepositRequest.Status.PENDING).count(),
+        'cash_withdrawals': WithdrawalRequest.objects.filter(status=WithdrawalRequest.Status.PENDING).count(),
+        'kills': KillSubmission.objects.filter(status=KillSubmission.Status.PENDING).count(),
+        'registrations': Registration.objects.filter(status=Registration.Status.PENDING_PAYMENT).count(),
+        'tick': FFTickSubscription.objects.filter(status=FFTickSubscription.Status.PENDING).count(),
+        'reports': UserReport.objects.filter(status__in=(UserReport.Status.OPEN, UserReport.Status.REVIEWING)).count(),
+        'ledger_alerts': len(missing_ledger_ids),
+        'duplicate_shop_refs': len(duplicate_refs),
+    }
+    total_pending = sum(counts[k] for k in ('shop','currency_withdrawals','deposits','cash_withdrawals','kills','registrations','tick','reports'))
+    risk_alerts = counts['ledger_alerts'] + counts['duplicate_shop_refs']
+    links = {
+        'shop': '/admin/social/shoppaymentrequest/', 'currency_withdrawals': '/admin/social/currencywithdrawalrequest/',
+        'deposits': '/admin/accounts/depositrequest/', 'cash_withdrawals': '/admin/accounts/withdrawalrequest/',
+        'kills': '/admin/tournaments/killsubmission/', 'registrations': '/admin/tournaments/registration/',
+        'tick': '/admin/social/ffticksubscription/', 'reports': '/admin/social/userreport/',
+        'ledger': '/admin/social/playershopwallettransaction/',
+    }
+    return render(request, 'admin/ai_assessment_dashboard.html', {
+        **admin.site.each_context(request), 'title': 'AI Assessment Dashboard', 'counts': counts,
+        'total_pending': total_pending, 'risk_alerts': risk_alerts, 'links': links,
+        'pending_shop': pending_shop, 'pending_currency_withdrawals': pending_currency_withdrawals,
+        'pending_deposits': pending_deposits, 'pending_cash_withdrawals': pending_cash_withdrawals,
+        'pending_kills': pending_kills, 'pending_registrations': pending_registrations,
+        'pending_tick': pending_tick, 'open_reports': open_reports,
+        'duplicate_shop_requests': duplicate_shop_requests, 'suspicious_approved_shop': suspicious_approved_shop,
+    })
+
+
+_original_admin_get_urls = admin.site.get_urls
+
+def _admin_get_urls_with_ai_assessment():
+    return [path('ai-assessment/', admin.site.admin_view(ai_assessment_dashboard), name='ai_assessment_dashboard')] + _original_admin_get_urls()
+
+admin.site.get_urls = _admin_get_urls_with_ai_assessment
