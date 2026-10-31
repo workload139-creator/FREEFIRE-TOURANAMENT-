@@ -180,38 +180,46 @@ from .models import Wallet, WalletTransaction, WithdrawalRequest
 
 @login_required
 def wallet_view(request):
-    wallet, created = Wallet.objects.get_or_create(user=request.user)
-    from apps.social.models import PlayerShopWallet, PlayerShopWalletTransaction, ShopPaymentRequest, DailySpin, FanTokenAward, CurrencyGift
-    from apps.tournaments.models import Registration, TournamentLedgerEntry
-    from django.db.models import Q
+    wallet, _created = Wallet.objects.get_or_create(user=request.user)
+    from apps.social.models import PlayerShopWallet
+
     shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=request.user)
-    last_spin = DailySpin.objects.filter(user=request.user).order_by("-spun_at").first()
-    next_spin_at = last_spin.spun_at + __import__("datetime").timedelta(hours=24) if last_spin else None
-    spin_available = not last_spin or __import__("django.utils.timezone", fromlist=["now"]).now() >= next_spin_at
-    transactions = wallet.transactions.all()[:50]
-    withdrawal_requests = WithdrawalRequest.objects.filter(wallet=wallet)[:10]
-    registration_history = Registration.objects.filter(player=request.user).select_related("tournament").order_by("-created_at")[:100]
-    refund_registrations = Registration.objects.filter(
-        player=request.user,
-        status__in=[Registration.Status.NOT_PLAYING, Registration.Status.CANCELLED, Registration.Status.REFUNDED],
-    ).select_related("tournament").order_by("-updated_at")[:10]
     return render(request, "accounts/wallet.html", {
         "wallet": wallet,
-        "transactions": transactions,
-        "withdrawal_requests": withdrawal_requests,
-        "refund_registrations": refund_registrations,
-        "registration_history": registration_history,
-        "deposit_requests": wallet.deposit_requests.all()[:10],
         "shop_wallet": shop_wallet,
-        "shop_wallet_transactions": PlayerShopWalletTransaction.objects.filter(user=request.user).select_related("wallet")[:100],
-        "shop_payment_requests": ShopPaymentRequest.objects.filter(user=request.user).order_by("-created_at")[:20],
-        "fan_token_awards": FanTokenAward.objects.filter(user=request.user)[:20],
-        "fan_token_gifts": CurrencyGift.objects.filter(Q(sender=request.user) | Q(recipient=request.user))[:20],
-        "fan_token_tournament_entries": TournamentLedgerEntry.objects.filter(player=request.user, currency="fan_tokens")[:20],
-        "tournament_ledger_entries": TournamentLedgerEntry.objects.filter(player=request.user).select_related("tournament").order_by("-created_at")[:100],
-        "last_spin": last_spin,
-        "next_spin_at": next_spin_at,
-        "spin_available": spin_available,
+    })
+
+
+@login_required
+def wallet_history_view(request):
+    wallet, _created = Wallet.objects.get_or_create(user=request.user)
+    from apps.social.models import (
+        PlayerShopWalletTransaction, ShopPaymentRequest, FanTokenAward, CurrencyGift
+    )
+    from apps.tournaments.models import Registration, TournamentLedgerEntry
+    from django.db.models import Q
+
+    return render(request, "accounts/wallet_history.html", {
+        "wallet": wallet,
+        "transactions": wallet.transactions.all().order_by("-created_at")[:100],
+        "withdrawal_requests": WithdrawalRequest.objects.filter(wallet=wallet).order_by("-created_at")[:50],
+        "deposit_requests": wallet.deposit_requests.all().order_by("-created_at")[:50],
+        "registration_history": Registration.objects.filter(
+            player=request.user
+        ).select_related("tournament").order_by("-registered_at")[:100],
+        "shop_wallet_transactions": PlayerShopWalletTransaction.objects.filter(
+            user=request.user
+        ).select_related("wallet").order_by("-created_at")[:100],
+        "shop_payment_requests": ShopPaymentRequest.objects.filter(
+            user=request.user
+        ).order_by("-created_at")[:50],
+        "fan_token_awards": FanTokenAward.objects.filter(user=request.user).order_by("-created_at")[:50],
+        "fan_token_gifts": CurrencyGift.objects.filter(
+            Q(sender=request.user) | Q(recipient=request.user)
+        ).select_related("sender", "recipient").order_by("-created_at")[:100],
+        "tournament_ledger_entries": TournamentLedgerEntry.objects.filter(
+            player=request.user
+        ).select_related("tournament", "registration").order_by("-created_at")[:100],
     })
 
 
