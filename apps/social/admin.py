@@ -410,7 +410,7 @@ def ai_assessment_dashboard(request):
     }
     return render(request, 'admin/ai_assessment_dashboard.html', {
         **admin.site.each_context(request), 'title': 'AI Assessment Dashboard', 'counts': counts,
-        'total_pending': total_pending, 'risk_alerts': risk_alerts, 'links': links, 'ai_api_configured': {'openai': bool(__import__('os').getenv('OPENAI_API_KEY')), 'ollama': bool(__import__('os').getenv('OLLAMA_API_KEY'))},
+        'total_pending': total_pending, 'risk_alerts': risk_alerts, 'links': links, 'ai_api_configured': {'openai': bool(__import__('os').getenv('OPENAI_API_KEY')), 'ollama': bool(__import__('os').getenv('KILL_REVIEW_API_KEY') or __import__('os').getenv('OLLAMA_API_KEY'))},
         'pending_shop': pending_shop, 'pending_currency_withdrawals': pending_currency_withdrawals,
         'pending_deposits': pending_deposits, 'pending_cash_withdrawals': pending_cash_withdrawals,
         'pending_kills': pending_kills, 'kill_monitor_submissions': kill_monitor_submissions, 'kill_monitor_counts': kill_monitor_counts, 'pending_registrations': pending_registrations,
