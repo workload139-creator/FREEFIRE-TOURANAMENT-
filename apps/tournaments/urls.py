@@ -1,10 +1,11 @@
 from django.urls import path
 
-from . import views, api_views, self_refund, arena_views, live_views
+from . import views, api_views, self_refund, arena_views, live_views, live_ai_views
 
 app_name = "tournaments"
 
 urlpatterns = [
+    path("live/ai/kill-candidate/", live_ai_views.ingest_live_kill_candidate, name="live_ai_kill_ingest"),
     path("live/registration/<int:registration_id>/token/", live_views.tournament_live_token, name="live_token"),
     path("live/registration/<int:registration_id>/end/", live_views.tournament_live_end, name="live_end"),
     path("live/registration/<int:registration_id>/background-warning/", live_views.tournament_live_warning, name="live_background_warning"),
@@ -84,12 +85,5 @@ urlpatterns = [
         name="admin_tournament_dashboard",
     ),
     path("my-registrations/", views.my_registrations, name="my_registrations"),
-    path("registration/<int:registration_id>/kill-evidence/", views.kill_submission, name="kill_submission"),
     path("leaderboard/<int:tournament_id>/", views.leaderboard, name="leaderboard"),
-    path("admin/ai-assessments/", views.ai_assessment_dashboard, name="admin_ai_assessments"),
-    path("admin/ai-sources/", views.ai_source_settings, name="admin_ai_sources"),
-    path("admin/kill-review/", views.admin_kill_review, name="admin_kill_review"),
-    path("admin/kill-review/batch/", views.admin_kill_batch_review, name="admin_kill_batch_review"),
-    path("admin/kill-review/<int:submission_id>/retry-ai/", views.retry_ai_kill_review, name="retry_ai_kill_review"),
-    path("admin/kill-review/<int:submission_id>/", views.review_kill_submission, name="review_kill_submission"),
 ]

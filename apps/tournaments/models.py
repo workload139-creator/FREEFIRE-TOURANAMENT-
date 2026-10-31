@@ -438,3 +438,7 @@ class TournamentLiveSession(models.Model):
 
     def __str__(self):
         return f"{self.tournament} · {self.registration.free_fire_uid} · {self.status}"
+
+
+# Register separate Live AI models after core tournament models are defined.
+from .live_ai_models import LiveAIAgentSlot, LiveKillEvent

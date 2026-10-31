@@ -21,7 +21,7 @@ from .forms import KillSubmissionForm, RegistrationForm
 from .ai_review import AIReviewError, analyze_kill_evidence, fingerprint_evidence
 from .registration_services import RegistrationError, create_pending_registration, assign_teams_for_tournament
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
-from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry
+from .models import LiveAIAgentSlot, LiveKillEvent, KillSubmission, Registration, Tournament, TournamentLedgerEntry
 from .kill_services import reward_for_tournament, rewards_for_tournament
 from .services import process_expired_ready_registrations, mark_not_playing_and_refund
 from .kill_safety import validate_match_dates, has_duplicate_match_id, get_match_id
@@ -198,7 +198,6 @@ def cleanup_expired_kill_evidence():
 
 
 def tournament_list(request):
-    cleanup_expired_kill_evidence()
     process_expired_ready_registrations()
     tournaments = Tournament.objects.filter(
         status__in=[Tournament.Status.UPCOMING, Tournament.Status.LIVE, Tournament.Status.COMPLETED]
@@ -552,9 +551,6 @@ def admin_tournament_dashboard(request, tournament_id):
     process_expired_ready_registrations()
     tournament = get_object_or_404(Tournament, pk=tournament_id)
     registrations = Registration.objects.filter(tournament=tournament).select_related("player").order_by("-registered_at")
-    kill_submissions = KillSubmission.objects.filter(
-        tournament=tournament
-    ).select_related("player", "registration").order_by("-submitted_at")
     from apps.social.models import PlayerShopWallet
     from apps.accounts.models import Wallet
     player_ids = list(registrations.values_list("player_id", flat=True).distinct())
@@ -569,6 +565,8 @@ def admin_tournament_dashboard(request, tournament_id):
     for registration in registrations:
         registration.shop_wallet = shop_wallets.get(registration.player_id)
         registration.inr_wallet = inr_wallets.get(registration.player_id)
+    live_ai_slots = LiveAIAgentSlot.objects.filter(tournament=tournament).select_related("registration", "registration__player", "session").order_by("kind", "slot_number")
+    live_kill_events = LiveKillEvent.objects.filter(tournament=tournament).select_related("registration", "registration__player", "session").order_by("-detected_at")[:200]
     tournament_history = TournamentLedgerEntry.objects.filter(
         tournament=tournament
     ).select_related("player", "registration").order_by("-created_at")
@@ -579,7 +577,8 @@ def admin_tournament_dashboard(request, tournament_id):
     context = {
         "tournament": tournament,
         "registrations": registrations,
-        "kill_submissions": kill_submissions,
+        "live_ai_slots": live_ai_slots,
+        "live_kill_events": live_kill_events,
         "tournament_history": tournament_history,
         "pending_payments": registrations.filter(payment_verified=False, entry_fee_paid__gt=0),
         "refund_queue": registrations.filter(

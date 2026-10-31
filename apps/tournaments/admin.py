@@ -987,8 +987,7 @@ def mark_kill_submission_upi_paid(modeladmin, request, queryset):
         )
 
 
-@admin.register(KillSubmission)
-class KillSubmissionAdmin(admin.ModelAdmin):
+class LegacyKillSubmissionAdmin(admin.ModelAdmin):
     """Admin evidence queue; uploaded evidence and AI output remain auditable."""
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
@@ -1370,3 +1369,7 @@ class TournamentLiveSessionAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+# Keep Live AI monitoring in its own Admin section.
+from . import live_ai_admin  # noqa: F401

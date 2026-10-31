@@ -17,7 +17,7 @@ from django.views.decorators.http import require_POST
 
 from livekit import api
 
-from .models import Registration, Tournament, TournamentLiveSession
+from .models import LiveAIAgentSlot, Registration, Tournament, TournamentLiveSession
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +102,57 @@ def tournament_live_token(request, registration_id):
                 ).first()
                 if session is None:
                     raise
+
+        # Allocate one isolated logical Live slot and one Payment slot for this player.
+        # A shared worker pool performs the compute; these are not 100 heavyweight processes.
+        existing_slots = {
+            slot.kind: slot
+            for slot in LiveAIAgentSlot.objects.filter(session=session)
+        }
+        if existing_slots:
+            slot_number = next(iter(existing_slots.values())).slot_number
+        else:
+            occupied = set(
+                LiveAIAgentSlot.objects.filter(
+                    tournament=tournament,
+                    session__status=TournamentLiveSession.Status.ACTIVE,
+                ).values_list("slot_number", flat=True)
+            )
+            slot_number = next(
+                (number for number in range(1, MAX_LIVE_PLAYER_AGENTS_PER_TOURNAMENT + 1)
+                 if number not in occupied),
+                None,
+            )
+        if slot_number is None or not 1 <= slot_number <= MAX_LIVE_PLAYER_AGENTS_PER_TOURNAMENT:
+            return JsonResponse({"error": "All 50 paired Live/Payment AI slots are occupied."}, status=409)
+
+        # Reuse a slot row from an ended session instead of exhausting slot numbers
+        # after every reconnect. The tournament row lock serializes this allocation.
+        for kind in (LiveAIAgentSlot.Kind.LIVE, LiveAIAgentSlot.Kind.PAYMENT):
+            slot = existing_slots.get(kind) or LiveAIAgentSlot.objects.filter(
+                tournament=tournament, kind=kind, slot_number=slot_number
+            ).first()
+            if slot:
+                slot.registration = registration
+                slot.session = session
+                slot.state = LiveAIAgentSlot.State.WAITING
+                slot.last_heartbeat_at = None
+                slot.frames_seen = 0
+                slot.detections_seen = 0
+                slot.last_error = ""
+                slot.save(update_fields=[
+                    "registration", "session", "state", "last_heartbeat_at",
+                    "frames_seen", "detections_seen", "last_error", "updated_at",
+                ])
+            else:
+                LiveAIAgentSlot.objects.create(
+                    tournament=tournament,
+                    registration=registration,
+                    session=session,
+                    kind=kind,
+                    slot_number=slot_number,
+                    state=LiveAIAgentSlot.State.WAITING,
+                )
 
     try:
         token = (
