@@ -993,6 +993,17 @@ class KillSubmissionAdmin(admin.ModelAdmin):
         "payout_reference", "payout_status", "payout_paid_at", "submitted_at", "reviewed_at",
     )
 
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if "admin_notes" in form.base_fields:
+            form.base_fields["admin_notes"].help_text = (
+                "Normal approval ke liye date aur match ID sabhi AI reviewers se match hone chahiye. "
+                "Agar date unreadable/mismatch ho to original files manually verify karke notes mein "
+                "DATE_OVERRIDE: reason likhein. Match ID unreadable ho to MATCH_ID_OVERRIDE: reason likhein. "
+                "Dono override zaroori hon to dono markers aur alag reasons likhein. Duplicate match ID kabhi override nahi hota."
+            )
+        return form
+
 
 @admin.register(TournamentLedgerEntry)
 class TournamentLedgerEntryAdmin(admin.ModelAdmin):
