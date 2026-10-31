@@ -154,9 +154,10 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# Render Free local disk is ephemeral. When CLOUDINARY_URL is configured,
-# all new player media uses durable Cloudinary storage. Local storage remains
-# available for development and until the account credentials are added.
+# Render Free local disk is ephemeral. Public profile photos and community
+# posts use Cloudinary when CLOUDINARY_URL is configured. Sensitive payment,
+# identity and match-evidence fields explicitly use PrivateMediaStorage instead;
+# that private local storage is not durable across Render restarts/redeploys.
 CLOUDINARY_URL = os.getenv("CLOUDINARY_URL", "").strip()
 CLOUDINARY_MEDIA_ENABLED = bool(CLOUDINARY_URL)
 CLOUDINARY_STORAGE = {
