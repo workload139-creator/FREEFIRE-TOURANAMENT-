@@ -38,7 +38,7 @@
     </div>
   </section>
   <section class="community-panel blocked-panel"><h2>Blocked players</h2>
-    {% for item in blocked_users %}<div class="player-row compact"><div class="player-info"><strong>{{ item.blocked.username }}</strong><small>FF-{{ item.blocked.player_code }}</small></div><form method="post" action="{% url 'social:unblock_user' item.blocked.pk %}">{% csrf_token %}<button class="button button-outline" type="submit">Unblock</button></form></div>
+    {% for item in blocked_users %}<div class="player-row compact"><div class="player-info"><strong>{{ item.blocked.username }}</strong><small>{{ item.blocked.player_code }}</small></div><form method="post" action="{% url 'social:unblock_user' item.blocked.pk %}">{% csrf_token %}<button class="button button-outline" type="submit">Unblock</button></form></div>
     {% empty %}<p class="muted">Koi blocked player nahi hai.</p>{% endfor %}
   </section>
   <p class="community-note">Privacy: private profile dekhne ke liye player ko follow karein. Block karne par chat band ho jayegi. Normal chat free hai; gifts balance se deduct hote hain.</p>
