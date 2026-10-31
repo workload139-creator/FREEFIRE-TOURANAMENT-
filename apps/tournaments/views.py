@@ -686,11 +686,24 @@ def kill_submission(request, registration_id):
                         + ("\nDUPLICATE MATCH ID: blocked." if duplicate_match else "")
                         + ("\nMATCH ID: missing or reviewers disagreed." if not match_id_ok else "")
                     )[:6000]
+                    reward_preview = []
                     if uid_ok and match_date_ok and match_id_ok and not duplicate_match and ai_result.get("proposed_kills") is not None and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS:
-                        _currency, proposed_quantity, _label = reward_for_tournament(registration.tournament, proposed_kills)
-                        submission.proposed_reward = Decimal(proposed_quantity)
-                    else:
-                        submission.proposed_reward = Decimal("0.00")
+                        reward_preview = rewards_for_tournament(registration.tournament, proposed_kills)
+                    submission.proposed_reward = Decimal(reward_preview[0][1] if reward_preview else 0)
+                    submission.proposed_coins_reward = sum(
+                        int(qty) for currency, qty, _label in reward_preview if currency == "coins"
+                    )
+                    reviewer_reports = dict(ai_result.get("reviewer_reports", {}) or {})
+                    reviewer_reports["reward_preview"] = {
+                        "status": "advisory_only" if reward_preview else "not_calculated",
+                        "approved_kills_candidate": proposed_kills if reward_preview else None,
+                        "rewards": [
+                            {"currency": currency, "quantity": int(qty), "label": label}
+                            for currency, qty, label in reward_preview
+                        ],
+                        "note": "Calculated from tournament reward rules. Admin must verify evidence and approve; AI never credits wallet."
+                    }
+                    submission.ai_reviewer_reports = reviewer_reports
                     submission.ai_proposed_kills = ai_result["proposed_kills"]
                     submission.ai_confidence = ai_result["confidence"][:10]
                     submission.ai_uid_matches = ai_result["uid_matches"]
@@ -701,7 +714,7 @@ def kill_submission(request, registration_id):
                     )[:6000]
                     submission.save(update_fields=[
                         "ai_proposed_kills", "ai_confidence", "ai_uid_matches",
-                        "ai_review_notes", "proposed_reward", "ai_reviewer_reports",
+                        "ai_review_notes", "proposed_reward", "proposed_coins_reward", "ai_reviewer_reports",
                     ])
                     if ai_result.get("four_way_agreement") is True and uid_ok and match_date_ok and match_id_ok and not duplicate_match:
                         messages.success(request, f"Four AI reviewers agreed: {proposed_kills} kills reported. Reward/payment is not handled by Kill Verification; submission is waiting for Admin Review.")
