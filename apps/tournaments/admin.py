@@ -1011,6 +1011,7 @@ class KillSubmissionAdmin(admin.ModelAdmin):
         "registration", "player", "tournament", "registered_uid", "free_fire_uid",
         "history_video", "history_image_one", "history_image_two",
         "ai_proposed_kills", "ai_confidence", "ai_uid_matches", "ai_review_notes",
+        "wallet_reward_confirmation",
         "proposed_reward", "approved_reward",
         "proposed_coins_reward", "approved_coins_reward", "submitted_at",
     )
@@ -1018,10 +1019,35 @@ class KillSubmissionAdmin(admin.ModelAdmin):
         "registration", "player", "tournament", "registered_uid", "free_fire_uid",
         "history_video", "history_image_one", "history_image_two",
         "ai_proposed_kills", "ai_confidence", "ai_uid_matches", "ai_review_notes",
+        "wallet_reward_confirmation",
         "approved_kills", "proposed_reward", "approved_reward",
         "proposed_coins_reward", "approved_coins_reward", "status", "admin_notes",
         "submitted_at", "reviewed_at",
     )
+
+    @admin.display(description="Player Wallet Reward Confirmation")
+    def wallet_reward_confirmation(self, obj):
+        data = (obj.ai_reviewer_reports or {}).get("wallet_reward_confirmation") or {}
+        if data.get("status") != "verified":
+            return "Not credited / not yet verified. Check Player Shop Wallet and Tournament Ledger."
+        before = data.get("currency_balances_before") or {}
+        after = data.get("currency_balances_after") or {}
+        rewards = data.get("rewards_credited") or {}
+        parts = []
+        for currency, label in (("diamonds", "Diamonds"), ("coins", "Coins"), ("fan_tokens", "Fan Tokens")):
+            old, new = before.get(currency, 0), after.get(currency, 0)
+            if old != new:
+                parts.append(f"{label}: {old} -> {new} (+{new - old})")
+        refs = ", ".join(
+            item.get("ledger_reference", "")
+            for item in rewards.values() if item.get("ledger_reference")
+        ) or "No ledger reference"
+        return format_html(
+            "<strong>VERIFIED</strong><br>{}<br>Ledger: {}<br>At: {}",
+            " · ".join(parts) or "No balance change recorded",
+            refs,
+            data.get("verified_at", ""),
+        )
 
     def save_model(self, request, obj, form, change):
         """Admin enters the verified kill count; the server calculates and credits the configured tournament reward once."""
