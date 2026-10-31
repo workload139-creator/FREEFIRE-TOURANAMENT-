@@ -19,6 +19,25 @@
         <div class="currency-balance fan-token-balance"><span>✨</span><div><small>FAN TOKENS</small><strong>{{ shop_wallet.fan_tokens }}</strong></div></div>
     </div>
 
+    <div class="wallet-history-heading">
+        <span class="wallet-kicker">DIAMOND & COIN AUDIT</span>
+        <h2>💎 Shop Wallet Transaction History</h2>
+        <p>Har nayi Diamond/Coin purchase, spend, reward, withdrawal aur refund yahan record hoga. Balance after transaction bhi dikhaya jayega.</p>
+    </div>
+    {% for entry in shop_wallet_transactions %}
+      <div class="wallet-record">
+        <div class="wallet-record-top">
+          <strong>{% if entry.currency == "diamonds" %}💎{% elif entry.currency == "coins" %}🪙{% else %}✨{% endif %} {{ entry.get_direction_display }} · {{ entry.quantity }} {{ entry.get_currency_display }}</strong>
+          <span class="wallet-record-status">Balance: {{ entry.balance_after }}</span>
+        </div>
+        <small>{{ entry.created_at|date:"d M Y, h:i A" }} · {{ entry.get_source_display|default:entry.source }}</small>
+        {% if entry.reference %}<p>Reference: {{ entry.reference }}</p>{% endif %}
+        {% if entry.description %}<p>{{ entry.description }}</p>{% endif %}
+      </div>
+    {% empty %}
+      <p class="wallet-empty">Abhi nayi shop currency transaction history nahi hai. Deploy ke baad hone wali transactions yahan automatically record hongi.</p>
+    {% endfor %}
+
     <section class="daily-spin-card spin-game-card">
         <div class="spin-game-heading"><span class="wallet-kicker">FREE DAILY REWARD</span><h2>🎡 Lucky Spin Wheel</h2><p>Wheel ghumao aur reward jeeto! Har 24 ghante mein ek free spin.</p></div>
         <div class="spin-wheel-stage">
