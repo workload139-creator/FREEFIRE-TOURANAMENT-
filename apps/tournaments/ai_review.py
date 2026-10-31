@@ -63,7 +63,7 @@ def _frames(f):
         video=tmp.name
     try:
         p=subprocess.run([ff,"-hide_banner","-i",video,"-f","null","-"],capture_output=True,text=True,timeout=25)
-        m=re.search(r"Duration:\\s*(\\d{2}):(\\d{2}):(\\d{2}(?:\\.\\d+)?)",(p.stderr or "")+(p.stdout or ""))
+        m=re.search(r"Duration:\s*(\d{2}):(\d{2}):(\d{2}(?:\.\d+)?)",(p.stderr or "")+(p.stdout or ""))
         if not m: return [],"Video duration could not be verified."
         h,mi,se=m.groups(); duration=int(h)*3600+int(mi)*60+float(se)
         if not 15<=duration<=30: return [],f"Video length {duration:.1f}s is outside 15–30 seconds."
@@ -80,12 +80,12 @@ def _frames(f):
         try: os.unlink(video)
         except OSError: pass
 
-def _uid(t): return set(re.findall(r"(?<!\\d)\\d{7,12}(?!\\d)",t or ""))
+def _uid(t): return set(re.findall(r"(?<!\d)\d{7,12}(?!\d)",t or ""))
 def _kills(t):
-    p=[r"(?:kills?|eliminations?)\\s*[:#-]?\\s*(\\d{1,2})",r"(\\d{1,2})\\s*(?:kills?|eliminations?)"]
+    p=[r"(?:kills?|eliminations?)\s*[:#-]?\s*(\d{1,2})",r"(\d{1,2})\s*(?:kills?|eliminations?)"]
     return {int(x) for q in p for x in re.findall(q,t or "",re.I) if int(x)<=99}
 def _dates(t):
-    p=[r"\\b\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4}\\b",r"\\b\\d{1,2}\\s+[A-Za-z]{3,9}\\s+\\d{2,4}\\b"]
+    p=[r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b",r"\b\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4}\b"]
     return {x for q in p for x in re.findall(q,t or "")}
 def _mode(t):
     x=(t or "").lower()
@@ -109,7 +109,7 @@ def analyze_kill_evidence(submission):
     for sec,data in frames:
         tx,_=_ocr(data)
         if tx: frame_text.append((sec,tx))
-    screenshots=ta+"\\n"+tb; video="\\n".join(x[1] for x in frame_text)
+    screenshots=ta+"\n"+tb; video="\n".join(x[1] for x in frame_text)
     su,vu=_uid(screenshots),_uid(video); sk,vk=_kills(screenshots),_kills(video)
     sd,vd=_dates(screenshots),_dates(video)
     sm,vm={_mode(ta),_mode(tb)}-{""},{_mode(video)}-{""}
@@ -157,5 +157,5 @@ def analyze_kill_evidence(submission):
       "history_consistent":all(x["history_consistent"] for x in reports.values()),
       "evidence_complete":all(x["evidence_complete"] for x in reports.values()),
       "four_way_agreement":False,"dual_agreement":False,"reviewer_reports":reports,
-      "reason":"\\n".join(x["name"]+": "+x["reason"] for x in reports.values())+
-      "\\nLocal reviewers are advisory only. Admin must inspect originals and approve verified kills."}
+      "reason":"\n".join(x["name"]+": "+x["reason"] for x in reports.values())+
+      "\nLocal reviewers are advisory only. Admin must inspect originals and approve verified kills."}
