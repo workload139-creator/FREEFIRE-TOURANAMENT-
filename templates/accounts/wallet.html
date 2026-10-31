@@ -12,6 +12,7 @@
     </div>
 
     <div class="wallet-quick-shop"><span>💎</span><div><strong>Diamond & Coin Vault</strong><p>Shop balances are separate from the INR wallet.</p></div><a href="{% url 'social:shop' %}">Open Shop →</a></div>
+    <a class="wallet-history-shortcut" href="#history">📜 History</a>
 
     <div class="currency-balance-grid">
         <div class="currency-balance diamond-balance"><span>💎</span><div><small>DIAMONDS</small><strong>{{ shop_wallet.diamonds }}</strong></div></div>
@@ -38,21 +39,23 @@
       <p class="wallet-empty">Abhi nayi shop currency transaction history nahi hai. Deploy ke baad hone wali transactions yahan automatically record hongi.</p>
     {% endfor %}
 
-    <div class="wallet-history-heading">
-      <h2>Shop Payment Requests</h2>
-      <p>Payment request ka approval status aur wallet ledger credit alag-alag verify karein.</p>
+    <div class="wallet-history-heading" id="history">
+      <span class="wallet-kicker">YOUR PURCHASE RECORDS</span>
+      <h2>📜 History</h2>
+      <p>Shop ki har purchase request, payment reference, approval status aur admin review yahan milega.</p>
     </div>
     {% for payment in shop_payment_requests %}
       <div class="wallet-record">
         <div class="wallet-record-top">
-          <strong>Shop payment #{{ payment.pk }} · ₹{{ payment.amount }} · {{ payment.quantity }} {{ payment.get_product_display }}</strong>
+          <strong>Request #{{ payment.pk }} · {{ payment.quantity }} {{ payment.get_product_display }} · ₹{{ payment.amount }}</strong>
           <span class="wallet-record-status">{{ payment.get_status_display }}</span>
         </div>
-        <small>{{ payment.created_at|date:"d M Y, h:i A" }}{% if payment.reviewed_at %} · Reviewed {{ payment.reviewed_at|date:"d M Y, h:i A" }}{% endif %}</small>
-        <p>UPI reference: {{ payment.payment_reference }}</p>
+        <small>UPI UTR: {{ payment.payment_reference }} · Submitted: {{ payment.created_at|date:"d M Y, h:i A" }}</small>
+        {% if payment.reviewed_at %}<p>Reviewed: {{ payment.reviewed_at|date:"d M Y, h:i A" }}{% if payment.reviewed_by %} by {{ payment.reviewed_by.username }}{% endif %}</p>{% endif %}
+        {% if payment.admin_note %}<p>Admin note: {{ payment.admin_note }}</p>{% endif %}
       </div>
     {% empty %}
-      <p class="wallet-empty">Abhi koi shop payment request nahi hai.</p>
+      <p class="wallet-empty">Abhi koi shop purchase history nahi hai.</p>
     {% endfor %}
 
     <div class="wallet-history-heading">
