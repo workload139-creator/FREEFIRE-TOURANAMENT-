@@ -544,8 +544,8 @@ def my_registrations(request):
     cleanup_expired_kill_evidence()
     process_expired_ready_registrations()
     registrations = Registration.objects.filter(player=request.user).exclude(
-        Q(status=Registration.Status.REFUNDED) | Q(refund_processed=True)
-    ).select_related("tournament")
+        status=Registration.Status.REFUNDED
+    ).exclude(refund_processed=True).select_related("tournament")
     from apps.accounts.models import WalletTransaction
     from apps.social.models import PlayerShopWallet
     from django.db.models import Q
