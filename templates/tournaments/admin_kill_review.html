@@ -101,7 +101,8 @@
         {% csrf_token %}
         <input type="hidden" name="decision" value="approve">
         <label for="approved-kills-{{ submission.id }}"><strong>Verified kills (count only what the real evidence proves)</strong></label>
-        <input id="approved-kills-{{ submission.id }}" type="number" name="approved_kills" min="0" max="99" value="{% if submission.ai_proposed_kills != None %}{{ submission.ai_proposed_kills }}{% elif submission.approved_kills != None %}{{ submission.approved_kills }}{% endif %}" style="display:block;max-width:240px;width:100%;margin:8px 0 14px">
+        <input id="approved-kills-{{ submission.id }}" type="number" name="approved_kills" min="0" max="99" value="{% if submission.ai_proposed_kills != None %}{{ submission.ai_proposed_kills }}{% elif submission.approved_kills != None %}{{ submission.approved_kills }}{% endif %}" data-mode="{% if submission.tournament.is_free_fan_tournament %}fan{% elif submission.tournament.is_diwali_offer %}diwali{% elif submission.tournament.mode == 'VS' %}vs{% else %}br{% endif %}" data-br-format="{{ submission.tournament.br_format }}" data-before-diamonds="{% if submission.player.shop_wallet %}{{ submission.player.shop_wallet.diamonds }}{% else %}0{% endif %}" data-before-coins="{% if submission.player.shop_wallet %}{{ submission.player.shop_wallet.coins }}{% else %}0{% endif %}" data-before-fan="{% if submission.player.shop_wallet %}{{ submission.player.shop_wallet.fan_tokens }}{% else %}0{% endif %}" data-min-kills="{{ minimum_verified_kills }}" style="display:block;max-width:240px;width:100%;margin:8px 0 14px">
+        <div id="reward-preview-{{ submission.id }}" style="padding:12px;border:1px solid var(--border-color,#777);border-radius:9px;margin:8px 0 14px">Enter verified kills to preview the reward and new wallet balance.</div>
         <label for="notes-{{ submission.id }}"><strong>Admin notes</strong></label>
         <textarea id="notes-{{ submission.id }}" name="admin_notes" rows="3" style="display:block;width:100%;margin:8px 0 14px" placeholder="Evidence reviewed, UID check, reason for decision..."></textarea>
         <p>{% if submission.tournament.is_free_fan_tournament %}Confirmation awards 1 Fan Token per 2 approved kills{% elif submission.tournament.is_diwali_offer %}Confirmation awards 5 Coins per approved kill{% elif submission.tournament.mode == "VS" %}Confirmation awards 2 Coins per approved kill to either team{% else %}Confirmation awards {{ diamonds_per_kill }} Diamonds per kill{% endif %} if at least {{ minimum_verified_kills }} kills are verified. UID must match registration. Confirm only after checking the actual video and screenshots.</p>
@@ -116,6 +117,47 @@
       </form>
     </section>
   </article>
+  <script>
+(function () {
+  const input = document.getElementById("approved-kills-{{ submission.id }}");
+  const output = document.getElementById("reward-preview-{{ submission.id }}");
+  if (!input || !output) return;
+  function updatePreview() {
+    const kills = Number.parseInt(input.value, 10);
+    const min = Number(input.dataset.minKills || 2);
+    const mode = input.dataset.mode;
+    const beforeD = Number(input.dataset.beforeDiamonds || 0);
+    const beforeC = Number(input.dataset.beforeCoins || 0);
+    const beforeF = Number(input.dataset.beforeFan || 0);
+    if (!Number.isInteger(kills) || kills < min || kills > 99) {
+      output.textContent = "Minimum " + min + " verified kills required. No reward will be credited.";
+      return;
+    }
+    let rewards = [];
+    if (mode === "fan") rewards.push(["Fan Tokens", Math.floor(kills / 2), beforeF]);
+    else if (mode === "diwali" || mode === "vs") rewards.push(["Coins", kills * (mode === "diwali" ? 5 : 2), beforeC]);
+    else {
+      rewards.push(["Diamonds", kills * 5, beforeD]);
+      if (["duo", "squad"].includes(input.dataset.brFormat)) rewards.push(["Coins", kills * 2, beforeC]);
+    }
+    output.innerHTML = "";
+    const heading = document.createElement("strong");
+    heading.textContent = "Calculated reward preview (not paid yet)";
+    output.appendChild(heading);
+    rewards.forEach(([label, qty, before]) => {
+      const line = document.createElement("p");
+      line.textContent = label + ": " + before + " + " + qty + " = " + (before + qty);
+      output.appendChild(line);
+    });
+    const note = document.createElement("small");
+    note.textContent = "Final wallet credit happens only after Admin confirms; AI cannot pay or approve.";
+    output.appendChild(note);
+  }
+  input.addEventListener("input", updatePreview);
+  updatePreview();
+})();
+</script>
+
   {% empty %}
     <div class="tournament-card" style="padding:24px;border-radius:14px"><p>No pending kill submissions right now.</p></div>
   {% endfor %}
