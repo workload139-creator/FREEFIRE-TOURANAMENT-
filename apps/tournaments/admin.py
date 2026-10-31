@@ -13,6 +13,7 @@ from apps.accounts.models import (
     AdminWallet,
     AdminWalletTransaction,
     WalletTransaction,
+    WithdrawalRequest,
 )
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry, UnlimitedTournament, FreeFanTournament, DiwaliOfferTournament
@@ -915,6 +916,50 @@ class DiwaliOfferTournamentAdmin(TournamentAdmin):
         super().save_model(request, obj, form, change)
 
 
+@admin.action(description="Mark approved kill prize PAID after manual UPI transfer and unique real UTR entry")
+def mark_kill_submission_upi_paid(modeladmin, request, queryset):
+    """Record a real manual UPI payout once; this action never transfers money."""
+    paid = 0
+    skipped = 0
+    for selected in queryset:
+        with transaction.atomic():
+            submission = KillSubmission.objects.select_for_update().get(pk=selected.pk)
+            utr = (submission.payout_reference or "").strip()
+            if (
+                submission.status != KillSubmission.Status.APPROVED
+                or submission.payout_status == KillSubmission.PayoutStatus.PAID
+                or len(utr) < 6
+            ):
+                skipped += 1
+                continue
+            duplicate = (
+                KillSubmission.objects.filter(payout_reference__iexact=utr)
+                .exclude(pk=submission.pk).exists()
+                or Tournament.objects.filter(winner_prize_reference__iexact=utr).exists()
+                or Registration.objects.filter(refund_reference__iexact=utr).exists()
+                or WithdrawalRequest.objects.filter(payout_reference__iexact=utr).exists()
+            )
+            if duplicate:
+                skipped += 1
+                continue
+            submission.payout_status = KillSubmission.PayoutStatus.PAID
+            submission.payout_paid_at = timezone.now()
+            submission.save(update_fields=("payout_status", "payout_paid_at"))
+            paid += 1
+    if paid:
+        modeladmin.message_user(
+            request,
+            f"{paid} approved kill prize(s) marked PAID after manual UPI transfer. UTR recorded; no automatic bank transfer was made.",
+            messages.SUCCESS,
+        )
+    if skipped:
+        modeladmin.message_user(
+            request,
+            f"{skipped} payout(s) skipped: approve the evidence first, enter a unique real UTR, and check that it was not already used.",
+            messages.WARNING,
+        )
+
+
 @admin.register(KillSubmission)
 class KillSubmissionAdmin(admin.ModelAdmin):
     """Admin evidence queue; uploaded evidence and AI output remain auditable."""
@@ -926,6 +971,7 @@ class KillSubmissionAdmin(admin.ModelAdmin):
     list_filter = ("status", "payout_status", "ai_confidence", "ai_uid_matches", "tournament__mode", "tournament__is_diwali_offer")
     search_fields = ("player__username", "registered_uid", "free_fire_uid", "tournament__title")
     list_select_related = ("player", "tournament", "registration")
+    actions = (mark_kill_submission_upi_paid,)
     readonly_fields = (
         "registration", "player", "tournament", "registered_uid", "free_fire_uid",
         "history_video", "history_image_one", "history_image_two",
