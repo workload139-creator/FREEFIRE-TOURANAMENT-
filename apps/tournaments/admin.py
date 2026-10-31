@@ -216,7 +216,17 @@ def mark_winner_prizes_paid(modeladmin, request, queryset):
             if len(utr) < 6 or utr.startswith("WIN-PRIZE-"):
                 skipped += 1
                 continue
-            if Tournament.objects.filter(winner_prize_reference__iexact=utr).exclude(pk=tournament.pk).exists():
+            admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
+            admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
+            duplicate_utr = (
+                Tournament.objects.filter(winner_prize_reference__iexact=utr).exclude(pk=tournament.pk).exists()
+                or KillSubmission.objects.filter(payout_reference__iexact=utr).exists()
+                or Registration.objects.filter(payment_reference__iexact=utr).exists()
+                or Registration.objects.filter(refund_reference__iexact=utr).exists()
+                or Registration.objects.filter(payment_reference__iexact=utr).exists()
+                or WithdrawalRequest.objects.filter(payout_reference__iexact=utr).exists()
+            )
+            if duplicate_utr:
                 skipped += 1
                 continue
             eligible = Registration.objects.select_for_update().filter(
@@ -232,8 +242,6 @@ def mark_winner_prizes_paid(modeladmin, request, queryset):
             if not (winner.player.upi_id or "").strip() and not winner.player.upi_qr_code:
                 skipped += 1
                 continue
-            admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
-            admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
             prize = tournament.prize_pool
             if admin_wallet.balance < prize:
                 skipped += 1
@@ -726,9 +734,13 @@ def verify_entry_payments(modeladmin, request, queryset):
                 if len(utr) < 6:
                     skipped_count += 1
                     continue
-                duplicate_utr = Registration.objects.filter(
-                    payment_reference__iexact=utr
-                ).exclude(pk=registration.pk).exists()
+                duplicate_utr = (
+                    Registration.objects.filter(payment_reference__iexact=utr).exclude(pk=registration.pk).exists()
+                    or Registration.objects.filter(refund_reference__iexact=utr).exists()
+                    or KillSubmission.objects.filter(payout_reference__iexact=utr).exists()
+                    or Tournament.objects.filter(winner_prize_reference__iexact=utr).exists()
+                    or WithdrawalRequest.objects.filter(payout_reference__iexact=utr).exists()
+                )
                 if duplicate_utr:
                     skipped_count += 1
                     continue
@@ -798,7 +810,14 @@ def mark_manual_upi_refunds_paid(modeladmin, request, queryset):
             ):
                 skipped += 1
                 continue
-            if Registration.objects.filter(refund_reference__iexact=utr).exclude(pk=registration.pk).exists():
+            duplicate_utr = (
+                Registration.objects.filter(refund_reference__iexact=utr).exclude(pk=registration.pk).exists()
+                or Registration.objects.filter(payment_reference__iexact=utr).exists()
+                or KillSubmission.objects.filter(payout_reference__iexact=utr).exists()
+                or Tournament.objects.filter(winner_prize_reference__iexact=utr).exists()
+                or WithdrawalRequest.objects.filter(payout_reference__iexact=utr).exists()
+            )
+            if duplicate_utr:
                 skipped += 1
                 continue
             ledger_reference = f"ADMIN-UPI-REFUND-{registration.pk}"
