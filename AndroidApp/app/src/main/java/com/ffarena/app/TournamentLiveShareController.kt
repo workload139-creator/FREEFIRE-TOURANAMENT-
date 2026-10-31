@@ -86,7 +86,17 @@ class TournamentLiveShareController(context: Context) {
     }
 
     fun release() {
-        stop()
-        scope.cancel()
+        scope.launch {
+            val activeRoom = room
+            room = null
+            try {
+                activeRoom?.localParticipant?.setScreenShareEnabled(false)
+                activeRoom?.disconnect()
+                activeRoom?.release()
+            } catch (_: Exception) {
+            } finally {
+                scope.cancel()
+            }
+        }
     }
 }
