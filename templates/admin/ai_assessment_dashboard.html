@@ -24,6 +24,29 @@ table{width:100%;border-collapse:collapse;min-width:650px}th,td{padding:9px;bord
 <p style="font-size:12px;color:#667085;margin-top:10px">The test sends a tiny generic prompt to each provider. No player names, UPI IDs, payment references, screenshots, phone numbers or wallet records are sent.</p>
 </div>
 
+<div class="ai-section">
+<h2>🎯 Kill Verification AI Monitor</h2>
+<p>Latest submissions aur har reviewer ka actual result yahan dikhega. FAILED, missing reports, UID mismatch ya evidence fingerprint issue ko Admin Review mein check karein. Yeh monitor status dikhata hai; yeh AI ko khud se dobara nahi chalata aur is section se koi reward credit nahi hota.</p>
+<p><strong>Pending Admin Review:</strong> {{ kill_monitor_counts.pending|default:0 }} · <strong>Approved:</strong> {{ kill_monitor_counts.approved|default:0 }} · <strong>Rejected:</strong> {{ kill_monitor_counts.rejected|default:0 }}</p>
+<p><a href="/tournaments/admin/ai-assessments/" class="button">Open full AI assessment reports →</a> &nbsp; <a href="{{ links.kills }}">All kill submissions →</a></p>
+<table><tr><th>Submission / Player</th><th>UID / Kills</th><th>Four AI passes</th><th>Evidence integrity</th><th>Reward / Status</th><th>Submitted / Action</th></tr>
+{% for x in kill_monitor_submissions %}
+<tr>
+<td>#{{ x.pk }} · {{ x.player.username }}<br>Player ID {{ x.player.player_code }}<br>{{ x.tournament.title }}</td>
+<td>Profile {{ x.player.free_fire_uid|default:"—" }}<br>Registration {{ x.registration.free_fire_uid|default:"—" }}<br>Submitted {{ x.free_fire_uid|default:"—" }}<br>AI UID {{ x.ai_uid_matches|yesno:"Match,Mismatch,Unknown" }}<br>AI kills {{ x.ai_proposed_kills|default:"—" }} · Approved {{ x.approved_kills|default:"—" }}</td>
+<td>
+{% for key, report in x.ai_reviewer_reports.items %}
+<div style="padding:5px 0;border-bottom:1px solid #eee"><b>{{ report.name|default:key }}</b>: {{ report.status|default:"NOT RUN" }} · kills {{ report.proposed_kills|default:"—" }} · UID {{ report.observed_uid|default:"Unreadable" }} · {{ report.confidence|default:"—" }}<br><small>{{ report.checked_at|default:"Timestamp not recorded on this older report" }}<br>{{ report.reason|default:"No reason recorded" }}</small></div>
+{% empty %}<b>NOT RUN / NO REPORTS</b>{% endfor %}
+{% if x.ai_review_notes %}<small><b>Overall:</b> {{ x.ai_review_notes|truncatechars:350 }}</small>{% endif %}
+</td>
+<td>{% if x.evidence_sha256.history_video and x.evidence_sha256.history_image_one and x.evidence_sha256.history_image_two %}<b style="color:#16803c">3 fingerprints stored</b>{% else %}<b style="color:#b42318">Fingerprint missing</b>{% endif %}<br><small>Stored SHA-256 values are checked by review code; hash presence alone does not prove source authenticity.</small></td>
+<td>{{ x.get_status_display }}<br>Suggested {{ x.proposed_reward|default:"0" }} · Approved {{ x.approved_reward|default:"0" }}<br><small>{{ x.admin_notes|default:"No admin notes" }}</small></td>
+<td>{{ x.submitted_at|date:"d M Y H:i" }}<br>{% if x.status == "pending" %}<a href="/tournaments/admin/kill-review/?submission={{ x.pk }}">Open Admin Review</a>{% else %}<a href="{{ links.kills }}{{ x.pk }}/change/">Open record</a>{% endif %}</td>
+</tr>
+{% empty %}<tr><td colspan="6">No kill submissions yet.</td></tr>{% endfor %}
+</table>
+</div>
 <div class="ai-grid">
 <div class="ai-card"><b>{{ total_pending }}</b><span>Total pending reviews</span></div>
 <div class="ai-card"><b>{{ counts.shop }}</b><span>Shop payments</span></div>
