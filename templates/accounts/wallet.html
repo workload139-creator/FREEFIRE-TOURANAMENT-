@@ -38,6 +38,39 @@
       <p class="wallet-empty">Abhi nayi shop currency transaction history nahi hai. Deploy ke baad hone wali transactions yahan automatically record hongi.</p>
     {% endfor %}
 
+    <div class="wallet-history-heading">
+      <h2>Shop Payment Requests</h2>
+      <p>Payment request ka approval status aur wallet ledger credit alag-alag verify karein.</p>
+    </div>
+    {% for payment in shop_payment_requests %}
+      <div class="wallet-record">
+        <div class="wallet-record-top">
+          <strong>Shop payment #{{ payment.pk }} · ₹{{ payment.amount }} · {{ payment.quantity }} {{ payment.get_product_display }}</strong>
+          <span class="wallet-record-status">{{ payment.get_status_display }}</span>
+        </div>
+        <small>{{ payment.created_at|date:"d M Y, h:i A" }}{% if payment.reviewed_at %} · Reviewed {{ payment.reviewed_at|date:"d M Y, h:i A" }}{% endif %}</small>
+        <p>UPI reference: {{ payment.payment_reference }}</p>
+      </div>
+    {% empty %}
+      <p class="wallet-empty">Abhi koi shop payment request nahi hai.</p>
+    {% endfor %}
+
+    <div class="wallet-history-heading">
+      <h2>Player Gifts History</h2>
+      <p>Sent and received Diamond, Coin and Fan Token gifts.</p>
+    </div>
+    {% for gift in fan_token_gifts %}
+      <div class="wallet-record">
+        <div class="wallet-record-top">
+          <strong>{% if gift.currency == "diamonds" %}💎{% elif gift.currency == "coins" %}🪙{% else %}✨{% endif %} {{ gift.quantity }} {{ gift.get_currency_display }} {% if gift.sender_id == user.pk %}sent to {{ gift.recipient.username }}{% else %}received from {{ gift.sender.username }}{% endif %}</strong>
+          <span class="wallet-record-status">Gift</span>
+        </div>
+        <small>{{ gift.created_at|date:"d M Y, h:i A" }}</small>
+      </div>
+    {% empty %}
+      <p class="wallet-empty">Abhi koi gift transaction nahi hai.</p>
+    {% endfor %}
+
     <section class="daily-spin-card spin-game-card">
         <div class="spin-game-heading"><span class="wallet-kicker">FREE DAILY REWARD</span><h2>🎡 Lucky Spin Wheel</h2><p>Wheel ghumao aur reward jeeto! Har 24 ghante mein ek free spin.</p></div>
         <div class="spin-wheel-stage">
