@@ -7,7 +7,7 @@
     {% for person in people %}
     <article class="player-row">
       <div class="player-avatar">{{ person.username|first|upper }}</div>
-      <div class="player-info"><strong><a href="{% url 'social:player_profile' person.pk %}">{{ person.username }}</a></strong><small>Player ID: {{ person.pk|stringformat:"06d" }}</small></div>
+      <div class="player-info"><strong><a href="{% url 'social:player_profile' person.pk %}">{{ person.username }}</a></strong><small>Player ID: {{ person.player_code }}</small></div>
       <div class="player-actions"><form method="post" action="{% url 'social:toggle_follow' person.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{% if list_type == 'followers' %}{% url 'social:followers' %}{% else %}{% url 'social:following' %}{% endif %}"><button class="button button-outline" type="submit">{% if list_type == "following" %}Unfollow{% else %}Follow back{% endif %}</button></form></div>
     </article>
     {% empty %}<p class="muted">Abhi yahan koi player nahi hai.</p>{% endfor %}
