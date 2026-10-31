@@ -233,8 +233,20 @@ def reject_currency_withdrawals(modeladmin, request, queryset):
             wallet, _ = PlayerShopWallet.objects.get_or_create(user=item.user)
             if item.currency == CurrencyWithdrawalRequest.Currency.DIAMONDS:
                 PlayerShopWallet.objects.filter(pk=wallet.pk).update(diamonds=F("diamonds") + item.quantity)
+                ledger_currency = PlayerShopWalletTransaction.Currency.DIAMONDS
             else:
                 PlayerShopWallet.objects.filter(pk=wallet.pk).update(coins=F("coins") + item.quantity)
+                ledger_currency = PlayerShopWalletTransaction.Currency.COINS
+            wallet.refresh_from_db()
+            balance_after = wallet.diamonds if ledger_currency == PlayerShopWalletTransaction.Currency.DIAMONDS else wallet.coins
+            PlayerShopWalletTransaction.objects.create(
+                user=item.user, wallet=wallet, currency=ledger_currency,
+                direction=PlayerShopWalletTransaction.Direction.CREDIT,
+                quantity=item.quantity, balance_after=balance_after,
+                source="withdrawal_refund", reference=str(item.pk),
+                idempotency_key=f"currency-withdrawal:{item.pk}:refund",
+                description=f"Rejected withdrawal #{item.pk} — currency refunded",
+            )
             item.status = CurrencyWithdrawalRequest.Status.REJECTED
             item.processed_at = timezone.now()
             item.processed_by = request.user
