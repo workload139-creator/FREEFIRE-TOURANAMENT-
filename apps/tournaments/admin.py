@@ -987,8 +987,7 @@ def mark_kill_submission_upi_paid(modeladmin, request, queryset):
         )
 
 
-@admin.register(KillSubmission)
-class KillSubmissionAdmin(admin.ModelAdmin):
+class LegacyKillSubmissionAdmin(admin.ModelAdmin):
     """Admin evidence queue; uploaded evidence and AI output remain auditable."""
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
