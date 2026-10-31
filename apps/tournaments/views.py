@@ -122,7 +122,8 @@ def _credit_kill_submission_reward(submission, approved_kills, reward_override=N
         if int(getattr(wallet, field_name)) != expected_value:
             raise ValueError("Wallet balance verify nahi hua. Transaction rollback ho gayi; submission pending rahegi.")
 
-    for currency, (quantity, _label) in ledger_expected.items():
+    verified_entries = {}
+    for currency, (quantity, label) in ledger_expected.items():
         entry = TournamentLedgerEntry.objects.filter(
             reference=f"{prefix}{currency}",
             player=submission.player,
@@ -135,6 +136,40 @@ def _credit_kill_submission_reward(submission, approved_kills, reward_override=N
         ).first()
         if not entry:
             raise ValueError("Reward ledger verify nahi hua. Transaction rollback ho gayi; submission pending rahegi.")
+        verified_entries[currency] = {
+            "quantity": quantity,
+            "label": label,
+            "ledger_reference": entry.reference,
+            "ledger_status": entry.status,
+        }
+
+    # Factual wallet receipt for Admin/AI visibility; not an AI approval signal.
+    wallet_confirmation = {
+        "status": "verified",
+        "player_id": submission.player_id,
+        "player_username": submission.player.get_username(),
+        "currency_balances_before": before,
+        "rewards_credited": verified_entries,
+        "currency_balances_after": {
+            "diamonds": int(wallet.diamonds),
+            "coins": int(wallet.coins),
+            "fan_tokens": int(wallet.fan_tokens),
+        },
+        "verified_at": timezone.now().isoformat(),
+        "verification": "Wallet balance refreshed from database and matching completed ledger entries verified.",
+    }
+    reports = dict(submission.ai_reviewer_reports or {})
+    reports["wallet_reward_confirmation"] = wallet_confirmation
+    submission.ai_reviewer_reports = reports
+    receipt_line = (
+        "WALLET REWARD CONFIRMED: "
+        f"Diamonds {before['diamonds']} -> {int(wallet.diamonds)}, "
+        f"Coins {before['coins']} -> {int(wallet.coins)}, "
+        f"Fan Tokens {before['fan_tokens']} -> {int(wallet.fan_tokens)}. "
+        "Wallet balance and completed reward ledger verified."
+    )
+    submission.ai_review_notes = (submission.ai_review_notes or "").rstrip() + "\\n" + receipt_line
+    submission.save(update_fields=["ai_reviewer_reports", "ai_review_notes"])
 
     return [(quantity, label) for quantity, label in ledger_expected.values()]
 
