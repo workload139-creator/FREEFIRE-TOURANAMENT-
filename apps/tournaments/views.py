@@ -24,7 +24,7 @@ from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry
 from .kill_services import reward_for_tournament, rewards_for_tournament
 from .services import process_expired_ready_registrations, mark_not_playing_and_refund
-from .kill_safety import validate_match_dates, has_duplicate_match_id
+from .kill_safety import validate_match_dates, has_duplicate_match_id, get_match_id
 
 import qrcode
 
@@ -43,6 +43,8 @@ def _credit_kill_submission_reward(submission, approved_kills, reward_override=N
         raise ValueError("A reward has already been approved for this registration.")
     if has_duplicate_match_id(submission):
         raise ValueError("This Free Fire match ID has already been used for this UID in this tournament.")
+    if not get_match_id(submission.ai_reviewer_reports) and not (submission.admin_notes or "").strip().startswith("MATCH_ID_OVERRIDE:"):
+        raise ValueError("A match ID was not readable/agreed by all reviewers. Admin must manually verify the original evidence and add MATCH_ID_OVERRIDE: with a reason.")
     date_ok, date_note = validate_match_dates(
         submission.ai_reviewer_reports, submission.tournament
     )
@@ -615,11 +617,13 @@ def kill_submission(request, registration_id):
                         ai_result.get("reviewer_reports", {}), registration.tournament
                     )
                     duplicate_match = has_duplicate_match_id(submission)
+                    match_id_ok = bool(get_match_id(ai_result.get("reviewer_reports", {})))
                     submission.ai_review_notes = (
                         (submission.ai_review_notes or "") + "\\nDATE CHECK: " + match_date_note
                         + ("\\nDUPLICATE MATCH ID: blocked." if duplicate_match else "")
+                        + ("\\nMATCH ID: missing or reviewers disagreed." if not match_id_ok else "")
                     )[:6000]
-                    if uid_ok and match_date_ok and not duplicate_match and ai_result.get("proposed_kills") is not None and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS:
+                    if uid_ok and match_date_ok and match_id_ok and not duplicate_match and ai_result.get("proposed_kills") is not None and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS:
                         _currency, proposed_quantity, _label = reward_for_tournament(registration.tournament, proposed_kills)
                         submission.proposed_reward = Decimal(proposed_quantity)
                     else:
@@ -643,6 +647,7 @@ def kill_submission(request, registration_id):
                         and not registration.refund_processed
                         and registration.tournament.status != Tournament.Status.CANCELLED
                         and match_date_ok
+                        and match_id_ok
                         and not duplicate_match
                         and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS
                     ):
@@ -815,12 +820,14 @@ def retry_ai_kill_review(request, submission_id):
             result.get("reviewer_reports", {}), submission.tournament
         )
         duplicate_match = has_duplicate_match_id(submission)
+        match_id_ok = bool(get_match_id(result.get("reviewer_reports", {})))
         submission.ai_proposed_kills = proposed
         submission.ai_confidence = (result.get("confidence") or "")[:10]
         submission.ai_uid_matches = result.get("uid_matches")
         submission.ai_review_notes = (
             (result.get("reason") or "") + "\\nDATE CHECK: " + date_note
             + ("\\nDUPLICATE MATCH ID: blocked." if duplicate_match else "")
+            + ("\\nMATCH ID: missing or reviewers disagreed." if not match_id_ok else "")
         )[:6000]
         submission.ai_reviewer_reports = result.get("reviewer_reports", {})
         submission.save(update_fields=[
@@ -835,6 +842,7 @@ def retry_ai_kill_review(request, submission_id):
             and not submission.registration.refund_processed
             and submission.tournament.status != Tournament.Status.CANCELLED
             and date_ok
+            and match_id_ok
             and not duplicate_match
             and proposed is not None
             and proposed >= settings.MINIMUM_VERIFIED_KILLS
@@ -924,6 +932,9 @@ def review_kill_submission(request, submission_id):
         if has_duplicate_match_id(submission):
             messages.error(request, "Same match ID is already used for this UID in this tournament. Reward blocked.")
             return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
+        if not get_match_id(submission.ai_reviewer_reports) and not notes.startswith("MATCH_ID_OVERRIDE:"):
+            messages.error(request, "Match ID AI se confirm nahi hua. Original evidence manually verify karke admin notes ki shuruaat MATCH_ID_OVERRIDE: aur reason se karein.")
+            return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
         submission.admin_notes = notes
         try:
             credited = _credit_kill_submission_reward(
@@ -1011,7 +1022,11 @@ def admin_kill_batch_review(request):
                 date_ok, _date_note = validate_match_dates(
                     submission.ai_reviewer_reports, submission.tournament
                 )
-                if (not date_ok and not common_notes.startswith("DATE_OVERRIDE:")) or has_duplicate_match_id(submission):
+                if (
+                    (not date_ok and not common_notes.startswith("DATE_OVERRIDE:"))
+                    or has_duplicate_match_id(submission)
+                    or (not get_match_id(submission.ai_reviewer_reports) and not common_notes.startswith("MATCH_ID_OVERRIDE:"))
+                ):
                     skipped.append(str(submission_id))
                     continue
                 submission.admin_notes = common_notes or "Reviewed in tournament bulk reward panel."
