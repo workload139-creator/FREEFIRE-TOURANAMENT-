@@ -687,7 +687,7 @@ def kill_submission(request, registration_id):
                         + ("\nMATCH ID: missing or reviewers disagreed." if not match_id_ok else "")
                     )[:6000]
                     reward_preview = []
-                    if uid_ok and match_date_ok and match_id_ok and not duplicate_match and ai_result.get("proposed_kills") is not None and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS:
+                    if ai_result.get("proposed_kills") is not None and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS:
                         reward_preview = rewards_for_tournament(registration.tournament, proposed_kills)
                     submission.proposed_reward = Decimal(reward_preview[0][1] if reward_preview else 0)
                     submission.proposed_coins_reward = sum(
@@ -701,7 +701,13 @@ def kill_submission(request, registration_id):
                             {"currency": currency, "quantity": int(qty), "label": label}
                             for currency, qty, label in reward_preview
                         ],
-                        "note": "Calculated from tournament reward rules. Admin must verify evidence and approve; AI never credits wallet."
+                        "eligibility_checks": {
+                            "uid_matches": bool(uid_ok),
+                            "match_date_verified": bool(match_date_ok),
+                            "match_id_found": bool(match_id_ok),
+                            "duplicate_match_id": bool(duplicate_match),
+                        },
+                        "note": "Estimated from the tournament's reward rules only. Failed/missing UID, date or match-ID checks still require Admin Review. AI never approves or credits the wallet."
                     }
                     submission.ai_reviewer_reports = reviewer_reports
                     submission.ai_proposed_kills = ai_result["proposed_kills"]
