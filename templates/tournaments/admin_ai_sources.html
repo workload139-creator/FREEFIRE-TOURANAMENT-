@@ -1,31 +1,32 @@
 {% extends "base.html" %}
-{% block title %}AI Sources & Diagnostics | FF Tournament{% endblock %}
+{% block title %}Local AI Reviewers | FF Arena{% endblock %}
 {% block content %}
-<section class="container" style="max-width:1000px;margin:28px auto;padding:18px">
-  <header class="tournament-card" style="padding:22px;border-radius:16px">
-    <h1>⚙️ AI Sources & Diagnostics</h1>
-    <p>Yeh page Render Environment ki configuration status dikhata hai. Secret API keys kabhi page par show nahi hoti. Values change karne ke liye Render → service → Environment mein variables set karein.</p>
-    <nav style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0">
-      <a class="button button-outline" href="{% url 'tournaments:admin_ai_assessments' %}">AI Assessment Queue</a>
-      <a class="button button-outline" href="{% url 'tournaments:admin_kill_review' %}">Manual Admin Review</a>
+<section class="container" style="max-width:1100px;margin:28px auto;padding:18px">
+  <header class="tournament-card" style="padding:24px;border-radius:18px">
+    <p class="section-label">FF ARENA · LOCAL EVIDENCE ENGINE</p>
+    <h1>Four Local AI Reviewers</h1>
+    <p>OpenAI aur Ollama hata diye gaye hain. Ab review website ke apne server par chalta hai; player evidence kisi external AI provider ko nahi bheja jata.</p>
+    <h2>2 AI Assessments</h2>
+    <ul>
+      <li><strong>Assessment 1 — History Screenshot Reader:</strong> dono screenshots se OCR text, UID candidates, kills, date aur BR/VS hints nikalne ki koshish.</li>
+      <li><strong>Assessment 2 — Video Frame Reader:</strong> video ke alag-alag waqt par frames lekar unmein visible text aur match details padhna.</li>
+    </ul>
+    <h2>2 AI Agents</h2>
+    <ul>
+      <li><strong>Agent 1 — Cross-media Consistency:</strong> screenshots aur video ke UID, date, kills aur BR/VS mode ke readable fields compare karta hai.</li>
+      <li><strong>Agent 2 — Integrity / Duplicate Audit:</strong> evidence fingerprints, image structure aur missing/unclear evidence ke risk flags check karta hai.</li>
+    </ul>
+    <h2>Server readiness</h2>
+    <p><strong>Tesseract OCR:</strong> {{ tesseract_available|yesno:"Available,Not detected" }}</p>
+    <p><strong>FFmpeg:</strong> {{ ffmpeg_available|yesno:"Available,Not detected" }}</p>
+    <p><strong>External API keys:</strong> Not required · OpenAI: Removed · Ollama: Removed</p>
+    <p><strong>Reward safety:</strong> Ye local reviewers sirf evidence report dete hain. OCR ya visual heuristic se asli Free Fire server result confirm nahi hota. Kills unreadable hon, reports disagree karein, ya OCR tools missing hon to Admin ko original video/screenshots manually check karne honge. AI kabhi wallet reward khud credit nahi karega.</p>
+    <p><strong>Important:</strong> Tesseract aur FFmpeg server par install/configured hone chahiye. Is page par “Not detected” aane par OCR/video analysis incomplete rahega; false success nahi dikhaya jayega.</p>
+    <p><strong>Reward rule:</strong> {{ diamonds_per_kill }} Diamonds per approved kill · minimum {{ minimum_kills }} kills. Admin approval required.</p>
+    <nav style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px">
+      <a class="button button-outline" href="{% url 'tournaments:admin_ai_assessments' %}">AI Assessment Information</a>
+      <a class="button button-primary" href="{% url 'tournaments:admin_kill_review' %}">Open Kill Review</a>
     </nav>
   </header>
-  <article class="tournament-card" style="padding:22px;margin:16px 0;border-radius:14px">
-    <h2>Provider readiness</h2>
-    <p><strong>Review architecture:</strong> Four independent reviewer passes — FF Arena AI Assessment and FF Arena AI Agent Audit, each run once through OpenAI and once through Ollama Cloud. These are four separate review calls using two provider/model families.</p>
-    <p><strong>OpenAI model:</strong> {{ openai_model }} · <strong>OPENAI_API_KEY:</strong> {{ openai_key_configured|yesno:"Configured,MISSING" }}</p>
-    <p><strong>Open-source vision model:</strong> {{ open_source_model }} · <strong>KILL_REVIEW_BASE_URL:</strong> {{ open_source_endpoint_configured|yesno:"Configured,MISSING" }} · <strong>KILL_REVIEW_API_KEY:</strong> {{ open_source_key_configured|yesno:"Configured,Not set (may be okay for private keyless endpoint)" }}</p>
-    <h3>Required Render Environment variables</h3>
-    <ul>
-      <li><code>KILL_REVIEW_PROVIDER=dual</code></li>
-      <li><code>OPENAI_API_KEY</code> = your OpenAI API key</li>
-      <li><code>OPENAI_KILL_REVIEW_MODEL=gpt-4.1-mini</code></li>
-      <li><code>KILL_REVIEW_BASE_URL</code> = reachable OpenAI-compatible vision API endpoint for your open-source model</li>
-      <li><code>OLLAMA_KILL_REVIEW_MODEL=gemma4</code> (or the exact model available at that endpoint)</li>
-      <li><code>KILL_REVIEW_API_KEY</code> = endpoint key if required; may be blank for a secured keyless endpoint</li>
-    </ul>
-    <p><strong>Reward rule:</strong> {{ diamonds_per_kill }} Diamonds per verified kill · minimum {{ minimum_kills }} kills.</p>
-    <p><strong>Important:</strong> An open-source model name alone does not run a model. The endpoint must be online and support vision/image inputs. Each provider is called twice with different reviewer instructions. If any of the four calls fails, reviewers disagree, UID differs, or evidence is unclear, the submission stays pending for Admin Review. AI never credits rewards; Admin approval is mandatory.</p><p><strong>Evidence protection:</strong> SHA-256 fingerprints are saved for the original video and both screenshots. If any file changes after upload, AI review is blocked and the Admin must inspect it. Fingerprints detect post-upload changes, not whether evidence was already edited before upload.</p>
-  </article>
 </section>
 {% endblock %}
