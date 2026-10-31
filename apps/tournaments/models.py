@@ -1,5 +1,6 @@
 
 from decimal import Decimal
+import uuid
 
 from django.conf import settings
 from django.core.validators import (
@@ -416,7 +417,7 @@ class TournamentLiveSession(models.Model):
     registration = models.ForeignKey(
         Registration, on_delete=models.PROTECT, related_name="live_sessions"
     )
-    session_uuid = models.UUIDField(default=__import__("uuid").uuid4, unique=True, editable=False)
+    session_uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     room_name = models.CharField(max_length=120, unique=True)
     participant_identity = models.CharField(max_length=120, unique=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE, db_index=True)
