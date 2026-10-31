@@ -141,7 +141,7 @@ class ShopPaymentRequestAdmin(admin.ModelAdmin):
 
     @admin.display(description="Player ID")
     def player_id_display(self, obj):
-        return f"{obj.user_id:06d}" if obj and obj.user_id else "—"
+        return obj.user.player_code if obj and obj.user_id else "—"
 
     @admin.display(description="Player email")
     def player_email_display(self, obj):
