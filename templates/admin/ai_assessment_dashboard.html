@@ -1,0 +1,57 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<style>
+.ai-hero{background:#171d29;color:white;padding:22px;border-radius:14px;border-left:5px solid #ff8a24}
+.ai-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin:16px 0}
+.ai-card,.ai-section{background:white;border:1px solid #e5e7eb;border-radius:12px;padding:15px}
+.ai-card b{display:block;font-size:27px}.ai-card span{font-size:12px;color:#667085}
+.ai-section{margin:14px 0;overflow-x:auto}.ai-section h2{background:none;color:#182230;padding:0;margin:0 0 12px}
+table{width:100%;border-collapse:collapse;min-width:650px}th,td{padding:9px;border-bottom:1px solid #edf0f3;text-align:left;font-size:13px;vertical-align:top}th{background:#f7f8fa}
+.alert{background:#fff8ed;border-left:4px solid #d97706;padding:12px;margin:9px 0;border-radius:7px}
+</style>
+<div class="ai-hero"><h1 style="color:white;margin:0 0 8px">🤖 FF Arena — AI Assessment</h1>
+<p>Shop, withdrawals, wallet, tournament, kill evidence aur player reports — sab ek jagah.</p>
+<p style="color:#fdbb74;font-size:12px">Rule-based AI review: risk aur priority batata hai. Payment approval/payout sirf admin karega; AI paise transfer nahi karega.</p></div>
+<div class="ai-grid">
+<div class="ai-card"><b>{{ total_pending }}</b><span>Total pending reviews</span></div>
+<div class="ai-card"><b>{{ counts.shop }}</b><span>Shop payments</span></div>
+<div class="ai-card"><b>{{ counts.currency_withdrawals }}</b><span>Diamond/Coin withdrawals</span></div>
+<div class="ai-card"><b>{{ counts.deposits }}</b><span>Cash deposits</span></div>
+<div class="ai-card"><b>{{ counts.cash_withdrawals }}</b><span>Cash withdrawals</span></div>
+<div class="ai-card"><b>{{ counts.kills }}</b><span>Kill evidence</span></div>
+<div class="ai-card"><b>{{ counts.registrations }}</b><span>Tournament entries</span></div>
+<div class="ai-card"><b>{{ counts.tick }}</b><span>FF Tick requests</span></div>
+<div class="ai-card"><b>{{ counts.reports }}</b><span>Player reports</span></div>
+<div class="ai-card"><b>{{ risk_alerts }}</b><span>Risk alerts</span></div>
+</div>
+<div class="ai-section"><h2>⚠️ Priority risk alerts</h2>
+{% if counts.ledger_alerts %}<div class="alert"><b>{{ counts.ledger_alerts }} approved shop request(s) have no matching credit ledger entry.</b><br>Check current wallet and older records before manual repair. Do not credit twice.</div>{% endif %}
+{% if counts.duplicate_shop_refs %}<div class="alert"><b>{{ counts.duplicate_shop_refs }} repeated shop payment reference(s).</b><br>Verify actual bank/UPI receipt and compare linked requests.</div>{% endif %}
+{% if not risk_alerts %}<p>No current shop-ledger mismatch or repeated shop reference detected.</p>{% endif %}
+<a href="{{ links.ledger }}">Wallet transaction ledger →</a> &nbsp; <a href="{{ links.shop }}">Shop requests →</a></div>
+<div class="ai-section"><h2>💎 Shop purchases waiting for verification</h2>
+<table><tr><th>Player</th><th>Pack</th><th>Amount</th><th>UPI reference</th><th>Submitted</th><th>Review</th></tr>
+{% for x in pending_shop %}<tr><td>{{ x.user.username }}<br>Player ID {{ x.user.player_code }}</td><td>{{ x.quantity }} {{ x.get_product_display }}</td><td>₹{{ x.amount }}</td><td>{{ x.payment_reference }}</td><td>{{ x.created_at|date:"d M Y H:i" }}</td><td><a href="{{ links.shop }}{{ x.pk }}/change/">Review</a></td></tr>{% empty %}<tr><td colspan="6">No pending shop requests.</td></tr>{% endfor %}</table></div>
+<div class="ai-section"><h2>💸 Diamond / Coin withdrawal requests</h2>
+<table><tr><th>Player</th><th>Quantity</th><th>INR</th><th>UPI ID</th><th>Date</th><th>Review</th></tr>
+{% for x in pending_currency_withdrawals %}<tr><td>{{ x.user.username }} · {{ x.user.player_code }}</td><td>{{ x.quantity }} {{ x.get_currency_display }}</td><td>₹{{ x.amount_inr }}</td><td>{{ x.upi_id }}</td><td>{{ x.created_at|date:"d M Y H:i" }}</td><td><a href="{{ links.currency_withdrawals }}{{ x.pk }}/change/">Open QR & request</a></td></tr>{% empty %}<tr><td colspan="6">No pending currency withdrawals.</td></tr>{% endfor %}</table></div>
+<div class="ai-section"><h2>🏦 Cash deposits & withdrawals</h2>
+<table><tr><th>Type</th><th>Player</th><th>Amount</th><th>Reference / UPI</th><th>Date</th><th>Review</th></tr>
+{% for x in pending_deposits %}<tr><td>Deposit</td><td>{{ x.wallet.user.username }}</td><td>₹{{ x.amount }}</td><td>{{ x.payment_reference|default:"Missing" }}</td><td>{{ x.created_at|date:"d M Y H:i" }}</td><td><a href="{{ links.deposits }}{{ x.pk }}/change/">Open</a></td></tr>{% endfor %}
+{% for x in pending_cash_withdrawals %}<tr><td>Withdrawal</td><td>{{ x.wallet.user.username }}</td><td>₹{{ x.amount }}</td><td>{{ x.upi_id }}</td><td>{{ x.created_at|date:"d M Y H:i" }}</td><td><a href="{{ links.cash_withdrawals }}{{ x.pk }}/change/">Open</a></td></tr>{% endfor %}
+{% if not pending_deposits and not pending_cash_withdrawals %}<tr><td colspan="6">No pending cash requests.</td></tr>{% endif %}</table></div>
+<div class="ai-section"><h2>🎮 Tournament & kill evidence review</h2>
+<table><tr><th>Type</th><th>Player</th><th>Tournament</th><th>Details</th><th>Date</th><th>Review</th></tr>
+{% for x in pending_registrations %}<tr><td>Entry payment</td><td>{{ x.player.username }} · {{ x.player.player_code }}</td><td>{{ x.tournament.title }}</td><td>₹{{ x.entry_fee_paid }} · {{ x.payment_method }} · {{ x.payment_reference|default:"No reference" }}</td><td>{{ x.registered_at|date:"d M Y H:i" }}</td><td><a href="{{ links.registrations }}{{ x.pk }}/change/">Open</a></td></tr>{% endfor %}
+{% for x in pending_kills %}<tr><td>Kill evidence</td><td>{{ x.player.username }} · {{ x.player.player_code }}</td><td>{{ x.tournament.title }}</td><td>AI kills {{ x.ai_proposed_kills|default:"—" }} · UID {{ x.ai_uid_matches|yesno:"match,mismatch,unknown" }} · {{ x.ai_confidence|default:"—" }}</td><td>{{ x.submitted_at|date:"d M Y H:i" }}</td><td><a href="{{ links.kills }}{{ x.pk }}/change/">Review evidence</a></td></tr>{% endfor %}
+{% if not pending_registrations and not pending_kills %}<tr><td colspan="6">No pending tournament/kill reviews.</td></tr>{% endif %}</table></div>
+<div class="ai-section"><h2>🛡️ FF Tick & player reports</h2>
+<table><tr><th>Queue</th><th>Player</th><th>Details</th><th>Date</th><th>Review</th></tr>
+{% for x in pending_tick %}<tr><td>FF Tick</td><td>{{ x.user.username }}</td><td>₹{{ x.amount }} · {{ x.payment_reference|default:"No reference" }}</td><td>{{ x.submitted_at|date:"d M Y H:i" }}</td><td><a href="{{ links.tick }}{{ x.pk }}/change/">Open</a></td></tr>{% endfor %}
+{% for x in open_reports %}<tr><td>Player report</td><td>{{ x.reporter.username }} → {{ x.reported_user.username }}</td><td>{{ x.get_reason_display }} · {{ x.details|truncatechars:90 }}</td><td>{{ x.created_at|date:"d M Y H:i" }}</td><td><a href="{{ links.reports }}{{ x.pk }}/change/">Open</a></td></tr>{% endfor %}
+{% if not pending_tick and not open_reports %}<tr><td colspan="5">No other pending requests.</td></tr>{% endif %}</table></div>
+{% if suspicious_approved_shop %}<div class="ai-section"><h2>🔎 Approved shop requests missing ledger match</h2><p>Historical warning only. Verify balance and old records before doing any manual credit.</p>
+<table><tr><th>Player</th><th>Pack</th><th>Amount</th><th>Reference</th><th>Review</th></tr>
+{% for x in suspicious_approved_shop %}<tr><td>{{ x.user.username }} · {{ x.user.player_code }}</td><td>{{ x.quantity }} {{ x.get_product_display }}</td><td>₹{{ x.amount }}</td><td>{{ x.payment_reference }}</td><td><a href="{{ links.shop }}{{ x.pk }}/change/">Inspect</a></td></tr>{% endfor %}</table></div>{% endif %}
+<p style="font-size:12px;color:#667085">Reload this page to refresh. These checks cannot verify bank transactions or prove that an uploaded screenshot is genuine.</p>
+{% endblock %}
