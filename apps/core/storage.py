@@ -9,6 +9,7 @@ import os
 
 import cloudinary
 import cloudinary.uploader
+import cloudinary.utils
 from cloudinary_storage.storage import MediaCloudinaryStorage
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage, Storage
