@@ -29,3 +29,48 @@ body[class*="page-"] :focus-visible{outline:2px solid var(--page-accent);outline
 .page-admin_kill_review img{background:#080d18;border:1px solid #39445e}
 .page-admin_kill_review form button,.page-admin_ai_assessments form button{min-height:42px}
 @media(max-width:700px){body[class*="page-"] .tournament-card{border-radius:14px!important}body[class*="page-"] main{padding-bottom:82px}}
+
+/* Password and kill-evidence pages: consistent FF Arena esports surfaces. */
+.page-password_reset,.page-password_reset_done,.page-password_reset_confirm,.page-password_reset_complete,.page-password_change_form{--page-accent:#63e0c0;--page-glow:rgba(99,224,192,.17)}
+.page-kill_submission,.page-kill_result{--page-accent:#ffad45;--page-glow:rgba(255,173,69,.18)}
+.ff-auth-page,.ff-kill-page{position:relative;isolation:isolate;max-width:1120px;margin:clamp(24px,5vw,58px) auto;padding:clamp(14px,3vw,28px)}
+.ff-auth-page:before,.ff-kill-page:before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;border-radius:28px;background:radial-gradient(ellipse at 15% 0%,var(--page-glow),transparent 48%)}
+.ff-auth-card,.ff-kill-card{position:relative;overflow:hidden;padding:clamp(22px,4vw,38px);border:1px solid color-mix(in srgb,var(--page-accent) 34%,#263348);border-radius:22px;background:linear-gradient(145deg,rgba(17,27,45,.98),rgba(7,13,24,.99));box-shadow:0 22px 65px #0008}
+.ff-auth-card{width:min(100%,560px);margin:0 auto}
+.ff-auth-card:before,.ff-kill-card:before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,transparent,var(--page-accent),transparent)}
+.ff-page-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border:1px solid color-mix(in srgb,var(--page-accent) 35%,transparent);border-radius:999px;background:color-mix(in srgb,var(--page-accent) 9%,transparent);color:var(--page-accent);font-size:11px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase}
+.ff-auth-card h1,.ff-kill-card h1{margin:14px 0 8px;color:#f7fbff;font-size:clamp(25px,4vw,36px);font-weight:950;line-height:1.12}
+.ff-auth-card p,.ff-kill-card p,.ff-kill-card li{color:#b9c7d9}
+.ff-auth-card .auth-subtitle{margin-bottom:24px}
+.ff-auth-card form{display:grid;gap:14px;margin-top:22px}
+.ff-auth-card form p{display:grid;gap:7px;margin:0;color:#eaf1fb;font-weight:700}
+.ff-auth-card form label{color:#eaf1fb;font-size:13px;font-weight:800}
+.ff-auth-card form input{width:100%;min-height:48px;padding:12px 14px;border:1px solid #35465e;border-radius:12px;background:#080f1c;color:#f5f8ff}
+.ff-auth-card form ul{padding-left:20px;color:#9fb0c5;font-size:12px;font-weight:400}
+.ff-auth-card form .helptext{color:#9fb0c5;font-size:12px;font-weight:400}
+.ff-auth-card form button,.ff-kill-card .button-primary{width:100%;min-height:48px;margin-top:6px;border:1px solid var(--page-accent);border-radius:12px;background:linear-gradient(135deg,var(--page-accent),color-mix(in srgb,var(--page-accent) 55%,#172c54));color:#07131c;font-weight:950;letter-spacing:.3px;cursor:pointer}
+.ff-auth-card .auth-links{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:22px;padding-top:18px;border-top:1px solid #ffffff16}
+.ff-auth-card a,.ff-kill-card a{color:var(--page-accent);font-weight:800}
+.ff-auth-card .errorlist{margin:0;padding:10px 12px;border:1px solid #ff687055;border-radius:10px;background:#ff394515;color:#ffb6bd;list-style:none}
+.ff-kill-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap;margin-bottom:22px}
+.ff-kill-heading h2{margin:8px 0;color:#fff;font-size:clamp(19px,3vw,26px)}
+.ff-kill-uid{padding:13px 15px;border:1px solid #ffad4545;border-radius:13px;background:#ffad450d;color:#f7d6a8}
+.ff-kill-steps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:20px 0}
+.ff-kill-step{padding:15px;border:1px solid #ffffff16;border-radius:14px;background:#0b1422}
+.ff-kill-step strong{display:block;margin-bottom:5px;color:#f4f7fc}
+.ff-kill-step span{color:#aab9cc;font-size:13px}
+.ff-kill-notice{margin:20px 0;padding:15px;border:1px solid #ffbd5a45;border-radius:14px;background:#ffbd5a0d;color:#d5c5a8;font-size:13px}
+.ff-kill-form{display:grid;gap:16px;margin-top:22px;padding:clamp(16px,3vw,24px);border:1px solid #ffffff18;border-radius:16px;background:#080f1b}
+.ff-kill-form .form-group{display:grid;gap:8px}
+.ff-kill-form label{color:#edf3fb;font-size:13px;font-weight:800}
+.ff-kill-form input:not([type=checkbox]),.ff-kill-form select,.ff-kill-form textarea{width:100%;min-height:46px;padding:11px 13px;border:1px solid #35465e;border-radius:11px;background:#0c1727;color:#f5f8ff}
+.ff-kill-form input[type=file]{min-height:auto;padding:12px;border-style:dashed}
+.ff-kill-form input[type=checkbox]{width:18px;height:18px;accent-color:#ffad45}
+.ff-kill-form .form-group:has(input[type=checkbox]){display:flex;align-items:flex-start;gap:10px}
+.ff-kill-form .form-group:has(input[type=checkbox]) label{font-weight:600}
+.ff-kill-form .button-primary{width:100%;min-height:50px;border-radius:12px}
+.ff-kill-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:20px 0}
+.ff-kill-meta>div{padding:14px;border:1px solid #ffffff16;border-radius:13px;background:#0b1422}
+.ff-kill-meta small{display:block;color:#95a7bd;font-size:11px;text-transform:uppercase;letter-spacing:1px}
+.ff-kill-meta strong{display:block;margin-top:5px;color:#f4f7fc;overflow-wrap:anywhere}
+@media(max-width:640px){.ff-auth-page,.ff-kill-page{margin:16px auto;padding:12px}.ff-auth-card,.ff-kill-card{border-radius:16px}.ff-kill-steps,.ff-kill-meta{grid-template-columns:1fr}.ff-auth-card .auth-links{flex-direction:column}}
