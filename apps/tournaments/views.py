@@ -808,8 +808,6 @@ def admin_kill_review(request):
         "selected_tournament_id": tournament_id or "",
         "ai_provider": "LOCAL · FOUR REVIEWERS",
         "ai_model": "Tesseract OCR + Pillow + FFmpeg",
-        "ai_openai_configured": False,
-        "ai_compatible_configured": False,
         "diamonds_per_kill": int(settings.DIAMONDS_PER_APPROVED_KILL),
         "minimum_verified_kills": int(settings.MINIMUM_VERIFIED_KILLS),
     })
@@ -842,12 +840,6 @@ def ai_source_settings(request):
     import shutil
     return render(request, "tournaments/admin_ai_sources.html", {
         "provider": "LOCAL FOUR-REVIEWER ENGINE",
-        "openai_model": "Not used",
-        "open_source_model": "Not used",
-        "openai_key_configured": False,
-        "open_source_endpoint_configured": False,
-        "open_source_key_configured": False,
-        "dual_mode": False,
         "tesseract_available": bool(shutil.which(os.getenv("TESSERACT_PATH", "tesseract"))),
         "ffmpeg_available": bool(os.getenv("FFMPEG_PATH")) or bool(shutil.which("ffmpeg")),
         "diamonds_per_kill": int(settings.DIAMONDS_PER_APPROVED_KILL),
