@@ -105,24 +105,54 @@ def tournament_live_token(request, registration_id):
 
         # Allocate one isolated logical Live slot and one Payment slot for this player.
         # A shared worker pool performs the compute; these are not 100 heavyweight processes.
-        slot_number = TournamentLiveSession.objects.filter(
-            tournament=tournament,
-            status=TournamentLiveSession.Status.ACTIVE,
-            started_at__lte=session.started_at,
-        ).count()
-        if not 1 <= slot_number <= MAX_LIVE_PLAYER_AGENTS_PER_TOURNAMENT:
-            return JsonResponse({"error": "AI slot allocation is outside the supported 1-50 range."}, status=409)
-        for kind in (LiveAIAgentSlot.Kind.LIVE, LiveAIAgentSlot.Kind.PAYMENT):
-            LiveAIAgentSlot.objects.get_or_create(
-                session=session,
-                kind=kind,
-                defaults={
-                    "tournament": tournament,
-                    "registration": registration,
-                    "slot_number": slot_number,
-                    "state": LiveAIAgentSlot.State.WAITING,
-                },
+        existing_slots = {
+            slot.kind: slot
+            for slot in LiveAIAgentSlot.objects.filter(session=session)
+        }
+        if len(existing_slots) == 2:
+            slot_number = existing_slots[LiveAIAgentSlot.Kind.LIVE].slot_number
+        else:
+            occupied = set(
+                LiveAIAgentSlot.objects.filter(
+                    tournament=tournament,
+                    session__status=TournamentLiveSession.Status.ACTIVE,
+                ).exclude(session=session).values_list("slot_number", flat=True)
             )
+            slot_number = next(
+                (number for number in range(1, MAX_LIVE_PLAYER_AGENTS_PER_TOURNAMENT + 1)
+                 if number not in occupied),
+                None,
+            )
+            if slot_number is None:
+                return JsonResponse({"error": "All 50 paired Live/Payment AI slots are occupied."}, status=409)
+
+            # Reuse a slot row from an ended session instead of exhausting slot numbers
+            # after every reconnect. The tournament row lock serializes this allocation.
+            for kind in (LiveAIAgentSlot.Kind.LIVE, LiveAIAgentSlot.Kind.PAYMENT):
+                slot = LiveAIAgentSlot.objects.filter(
+                    tournament=tournament, kind=kind, slot_number=slot_number
+                ).first()
+                if slot:
+                    slot.registration = registration
+                    slot.session = session
+                    slot.state = LiveAIAgentSlot.State.WAITING
+                    slot.last_heartbeat_at = None
+                    slot.frames_seen = 0
+                    slot.detections_seen = 0
+                    slot.last_error = ""
+                    slot.save(update_fields=[
+                        "registration", "session", "state", "last_heartbeat_at",
+                        "frames_seen", "detections_seen", "last_error", "updated_at",
+                    ])
+                else:
+                    LiveAIAgentSlot.objects.create(
+                        tournament=tournament,
+                        registration=registration,
+                        session=session,
+                        kind=kind,
+                        slot_number=slot_number,
+                        state=LiveAIAgentSlot.State.WAITING,
+                    )
 
     try:
         token = (
