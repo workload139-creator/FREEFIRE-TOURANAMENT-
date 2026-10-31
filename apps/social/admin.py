@@ -1,7 +1,7 @@
 from django.contrib import admin, messages
 from django.utils.html import format_html
 
-from .models import FriendRequest, UserBlock, UserReport, PhotoPost, FFTickSubscription, PlayerShopWallet, ShopPaymentRequest, CurrencyWithdrawalRequest, DailySpin, FanTokenAward
+from .models import FriendRequest, UserBlock, UserReport, PhotoPost, FFTickSubscription, PlayerShopWallet, PlayerShopWalletTransaction, ShopPaymentRequest, CurrencyWithdrawalRequest, DailySpin, FanTokenAward
 
 
 @admin.register(FriendRequest)
@@ -83,8 +83,8 @@ from django.utils import timezone
 @admin.register(PlayerShopWallet)
 class PlayerShopWalletAdmin(admin.ModelAdmin):
     list_display = ("user", "diamonds", "coins", "updated_at")
-    search_fields = ("user__username",)
-    readonly_fields = ("updated_at",)
+    search_fields = ("user__username", "user__player_code", "user__email")
+    readonly_fields = ("user", "diamonds", "coins", "fan_tokens", "updated_at")
 
 
 @admin.action(description="Verify real UPI payment and credit selected shop pack")
@@ -109,9 +109,21 @@ def approve_shop_payments(modeladmin, request, queryset):
             if item.product == ShopPaymentRequest.Product.DIAMONDS:
                 wallet.diamonds = F("diamonds") + item.quantity
                 wallet.save(update_fields=("diamonds", "updated_at"))
+                currency = PlayerShopWalletTransaction.Currency.DIAMONDS
             else:
                 wallet.coins = F("coins") + item.quantity
                 wallet.save(update_fields=("coins", "updated_at"))
+                currency = PlayerShopWalletTransaction.Currency.COINS
+            wallet.refresh_from_db()
+            balance_after = wallet.diamonds if currency == PlayerShopWalletTransaction.Currency.DIAMONDS else wallet.coins
+            PlayerShopWalletTransaction.objects.create(
+                user=item.user, wallet=wallet, currency=currency,
+                direction=PlayerShopWalletTransaction.Direction.CREDIT,
+                quantity=item.quantity, balance_after=balance_after,
+                source="shop_purchase", reference=item.payment_reference,
+                idempotency_key=f"shop-payment:{item.pk}",
+                description=f"Verified UPI shop purchase #{item.pk} · ₹{item.amount}",
+            )
             item.status = ShopPaymentRequest.Status.APPROVED
             item.reviewed_at = timezone.now()
             item.reviewed_by = request.user
@@ -295,6 +307,25 @@ class CurrencyWithdrawalAdmin(admin.ModelAdmin):
         except (ValueError, OSError):
             return "Withdrawal QR uploaded but file is unavailable."
 
+
+
+
+@admin.register(PlayerShopWalletTransaction)
+class PlayerShopWalletTransactionAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "user", "currency", "direction", "quantity", "balance_after", "source", "reference")
+    list_filter = ("currency", "direction", "source", "created_at")
+    search_fields = ("user__username", "user__player_code", "user__email", "reference", "idempotency_key")
+    readonly_fields = ("user", "wallet", "currency", "direction", "quantity", "balance_after", "source", "reference", "idempotency_key", "description", "created_at")
+    ordering = ("-created_at", "-pk")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 @admin.register(DailySpin)
 class DailySpinAdmin(admin.ModelAdmin):
