@@ -284,3 +284,33 @@ class DailySpin(models.Model):
 
     def __str__(self):
         return f"{self.user} · {self.quantity} {self.currency} · {self.spun_at}"
+
+class PlayerShopWalletTransaction(models.Model):
+    """Immutable audit record for every Diamond/Coin/Fan Token balance change."""
+    class Currency(models.TextChoices):
+        DIAMONDS = "diamonds", "Diamonds"
+        COINS = "coins", "Coins"
+        FAN_TOKENS = "fan_tokens", "Fan Tokens"
+
+    class Direction(models.TextChoices):
+        CREDIT = "credit", "Credit"
+        DEBIT = "debit", "Debit"
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="shop_wallet_transactions")
+    wallet = models.ForeignKey(PlayerShopWallet, on_delete=models.PROTECT, related_name="transactions")
+    currency = models.CharField(max_length=12, choices=Currency.choices)
+    direction = models.CharField(max_length=8, choices=Direction.choices)
+    quantity = models.PositiveIntegerField()
+    balance_after = models.PositiveIntegerField()
+    source = models.CharField(max_length=32)
+    reference = models.CharField(max_length=100, blank=True)
+    idempotency_key = models.CharField(max_length=160, unique=True)
+    description = models.CharField(max_length=250, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ("-created_at", "-pk")
+
+    def __str__(self):
+        return f"{self.user} · {self.direction} {self.quantity} {self.currency} · {self.source}"
+
