@@ -724,10 +724,10 @@ def admin_kill_review(request):
     return render(request, "tournaments/admin_kill_review.html", {
         "submissions": submissions,
         "selected_tournament_id": tournament_id or "",
-        "ai_provider": os.getenv("KILL_REVIEW_PROVIDER", "openai").strip().lower(),
-        "ai_model": os.getenv("OPENAI_KILL_REVIEW_MODEL", "gpt-4.1-mini").strip(),
-        "ai_openai_configured": bool(os.getenv("OPENAI_API_KEY", "").strip()),
-        "ai_compatible_configured": bool(os.getenv("KILL_REVIEW_BASE_URL", "").strip()),
+        "ai_provider": "LOCAL · FOUR REVIEWERS",
+        "ai_model": "Tesseract OCR + Pillow + FFmpeg",
+        "ai_openai_configured": False,
+        "ai_compatible_configured": False,
         "diamonds_per_kill": int(settings.DIAMONDS_PER_APPROVED_KILL),
         "minimum_verified_kills": int(settings.MINIMUM_VERIFIED_KILLS),
     })
@@ -756,16 +756,18 @@ def ai_assessment_dashboard(request):
 @login_required
 @user_passes_test(lambda user: user.is_staff)
 def ai_source_settings(request):
-    """Separate diagnostics page; never reveal secret key values."""
-    provider = os.getenv("KILL_REVIEW_PROVIDER", "openai").strip().lower()
+    """Show local reviewer readiness; no external AI provider or API key is used."""
+    import shutil
     return render(request, "tournaments/admin_ai_sources.html", {
-        "provider": provider,
-        "openai_model": os.getenv("OPENAI_KILL_REVIEW_MODEL", "gpt-4.1-mini").strip(),
-        "open_source_model": os.getenv("OLLAMA_KILL_REVIEW_MODEL", "gemma4").strip(),
-        "openai_key_configured": bool(os.getenv("OPENAI_API_KEY", "").strip()),
-        "open_source_endpoint_configured": bool(os.getenv("KILL_REVIEW_BASE_URL", "").strip()),
-        "open_source_key_configured": bool(os.getenv("KILL_REVIEW_API_KEY", "").strip()),
-        "dual_mode": provider == "dual",
+        "provider": "LOCAL FOUR-REVIEWER ENGINE",
+        "openai_model": "Not used",
+        "open_source_model": "Not used",
+        "openai_key_configured": False,
+        "open_source_endpoint_configured": False,
+        "open_source_key_configured": False,
+        "dual_mode": False,
+        "tesseract_available": bool(shutil.which(os.getenv("TESSERACT_PATH", "tesseract"))),
+        "ffmpeg_available": bool(os.getenv("FFMPEG_PATH")) or bool(shutil.which("ffmpeg")),
         "diamonds_per_kill": int(settings.DIAMONDS_PER_APPROVED_KILL),
         "minimum_kills": int(settings.MINIMUM_VERIFIED_KILLS),
     })
