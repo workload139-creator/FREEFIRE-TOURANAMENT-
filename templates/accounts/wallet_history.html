@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Wallet History | FF Arena{% endblock %}
+{% block content %}
+<section class="history-shell">
+  <div class="history-hero"><span>FF ARENA · ACCOUNT AUDIT</span><h1>📜 Wallet History</h1><p>Registration, refund, deposit, withdrawal, shop and wallet transaction records in one place.</p><a href="{% url 'accounts:wallet' %}">← Back to Wallet</a></div>
+
+  <section class="history-section"><h2>🎮 Registration & Refund History</h2><p>Refunded entries yahan saved rahengi, chahe My Tournaments se hide ho chuki hon.</p>
+    {% for registration in registration_history %}
+      <article class="history-card">
+        <header><strong>{{ registration.tournament.title }} · Registration #{{ registration.pk }}</strong><span>{{ registration.get_status_display }}</span></header>
+        <p>Mode: {{ registration.tournament.get_mode_display|default:registration.tournament.mode }} · Player UID: {{ registration.free_fire_uid }}</p>
+        <p>Entry paid: ₹{{ registration.entry_fee_paid }} · Payment method: {{ registration.get_payment_method_display }}</p>
+        <p>Payment verification: {% if registration.payment_verified %}Verified{% else %}Pending / not verified{% endif %} · UTR: {{ registration.payment_reference|default:"Not submitted" }}</p>
+        <small>Registered: {{ registration.registered_at|date:"d M Y, h:i A" }} · Last updated: {{ registration.updated_at|date:"d M Y, h:i A" }}</small>
+        {% if registration.refund_processed or registration.status == "refunded" %}
+          <p class="history-result">Refund: Processed{% if registration.refund_processed_at %} · {{ registration.refund_processed_at|date:"d M Y, h:i A" }}{% endif %}{% if registration.refund_reference %} · Ref: {{ registration.refund_reference }}{% endif %}</p>
+        {% elif registration.status == "not_playing" and registration.payment_verified %}
+          <p class="history-pending">Refund: Pending claim / review. My Tournaments ke refund option ko check karein.</p>
+        {% elif registration.status == "cancelled" %}
+          <p class="history-pending">Refund: Check wallet ledger; contact admin if the eligible amount was not credited.</p>
+        {% else %}
+          <p>Refund: Not processed / not applicable</p>
+        {% endif %}
+      </article>
+    {% empty %}<p class="empty">No tournament registration records yet.</p>{% endfor %}
+  </section>
+
+  <section class="history-section"><h2>🛒 Shop Purchase Requests</h2>
+    {% for payment in shop_payment_requests %}
+      <article class="history-card"><header><strong>Request #{{ payment.pk }} · {{ payment.quantity }} {{ payment.get_product_display }} · ₹{{ payment.amount }}</strong><span>{{ payment.get_status_display }}</span></header>
+      <p>UPI UTR: {{ payment.payment_reference|default:"Not submitted" }}</p><small>Submitted: {{ payment.created_at|date:"d M Y, h:i A" }}</small>
+      {% if payment.reviewed_at %}<p>Reviewed: {{ payment.reviewed_at|date:"d M Y, h:i A" }}{% if payment.reviewed_by %} by {{ payment.reviewed_by.username }}{% endif %}</p>{% endif %}
+      {% if payment.admin_note %}<p>Admin note: {{ payment.admin_note }}</p>{% endif %}</article>
+    {% empty %}<p class="empty">No shop purchase requests.</p>{% endfor %}
+  </section>
+
+  <section class="history-section"><h2>💳 Deposit Requests</h2>
+    {% for deposit in deposit_requests %}<article class="history-card"><header><strong>Deposit #{{ deposit.pk }} · ₹{{ deposit.amount }}</strong><span>{{ deposit.get_status_display }}</span></header><p>Payment reference: {{ deposit.payment_reference|default:"Not submitted" }}</p><small>{{ deposit.created_at|date:"d M Y, h:i A" }}</small></article>
+    {% empty %}<p class="empty">No deposit requests.</p>{% endfor %}
+  </section>
+
+  <section class="history-section"><h2>💸 Withdrawal Requests</h2>
+    {% for withdrawal in withdrawal_requests %}<article class="history-card"><header><strong>Withdrawal #{{ withdrawal.pk }} · ₹{{ withdrawal.amount }}</strong><span>{{ withdrawal.get_status_display }}</span></header><p>UPI ID: {{ withdrawal.upi_id }}</p>{% if withdrawal.payout_reference %}<p>Payout reference: {{ withdrawal.payout_reference }}</p>{% endif %}<small>{{ withdrawal.created_at|date:"d M Y, h:i A" }}</small></article>
+    {% empty %}<p class="empty">No withdrawal requests.</p>{% endfor %}
+  </section>
+
+  <section class="history-section"><h2>🏆 Tournament Wallet Ledger</h2>
+    {% for entry in tournament_ledger_entries %}<article class="history-card"><header><strong>{{ entry.tournament.title }} · {{ entry.get_entry_type_display }}</strong><span>{{ entry.get_status_display }}</span></header><p>{{ entry.get_currency_display }} · {% if entry.currency == "inr" %}₹{{ entry.amount_inr }}{% else %}{{ entry.quantity }}{% endif %}</p><small>{{ entry.created_at|date:"d M Y, h:i A" }}{% if entry.reference %} · Ref: {{ entry.reference }}{% endif %}</small>{% if entry.description %}<p>{{ entry.description }}</p>{% endif %}</article>
+    {% empty %}<p class="empty">No tournament ledger entries.</p>{% endfor %}
+  </section>
+
+  <section class="history-section"><h2>💎 Diamond / Coin / Fan Token Ledger</h2>
+    {% for entry in shop_wallet_transactions %}<article class="history-card"><header><strong>{{ entry.get_direction_display }} · {{ entry.quantity }} {{ entry.get_currency_display }}</strong><span>Balance after: {{ entry.balance_after }}</span></header><small>{{ entry.created_at|date:"d M Y, h:i A" }} · {{ entry.get_source_display|default:entry.source }}</small>{% if entry.reference %}<p>Ref: {{ entry.reference }}</p>{% endif %}{% if entry.description %}<p>{{ entry.description }}</p>{% endif %}</article>
+    {% empty %}<p class="empty">No shop wallet transactions.</p>{% endfor %}
+  </section>
+
+  <section class="history-section"><h2>🧾 INR Wallet Transactions</h2>
+    {% for transaction in transactions %}<article class="history-card"><header><strong>{{ transaction.get_transaction_type_display }} · ₹{{ transaction.amount }}</strong><span>{{ transaction.get_status_display }}</span></header><small>{{ transaction.created_at|date:"d M Y, h:i A" }}</small>{% if transaction.description %}<p>{{ transaction.description }}</p>{% endif %}</article>
+    {% empty %}<p class="empty">No INR wallet transactions.</p>{% endfor %}
+  </section>
+
+  <section class="history-section"><h2>🎁 Player Gifts & Fan Token Rewards</h2>
+    {% for gift in fan_token_gifts %}<article class="history-card"><header><strong>{{ gift.quantity }} {{ gift.get_currency_display }} {% if gift.sender_id == user.pk %}sent to {{ gift.recipient.username }}{% else %}received from {{ gift.sender.username }}{% endif %}</strong><span>Gift</span></header><small>{{ gift.created_at|date:"d M Y, h:i A" }}</small></article>{% empty %}<p class="empty">No player gifts yet.</p>{% endfor %}
+    {% for award in fan_token_awards %}<article class="history-card"><header><strong>+{{ award.quantity }} Fan Token(s) earned</strong><span>Milestone {{ award.follower_milestone }}</span></header><small>{{ award.created_at|date:"d M Y, h:i A" }}</small></article>{% endfor %}
+  </section>
+</section>
+<style>
+.history-shell{max-width:1000px;margin:36px auto;padding:18px;color:#f4f7ff}.history-hero{padding:28px;border-radius:22px;background:radial-gradient(circle at 90% 0,#304d79,#111827 65%);border:1px solid #67d7ff44}.history-hero>span{font-size:11px;letter-spacing:2px;color:#77e7df;font-weight:900}.history-hero h1{font-size:clamp(30px,5vw,42px);margin:8px 0}.history-hero p,.history-section>p,.empty{color:#aebdd2}.history-hero a{display:inline-block;margin-top:8px;color:#7bf0d0;text-decoration:none;font-weight:900}.history-section{margin:22px 0}.history-section h2{font-size:21px;margin:0 0 8px}.history-card{margin:10px 0;padding:16px;border-radius:13px;background:#111925;border:1px solid #ffffff18}.history-card header{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.history-card header span{color:#7cebd4;font-weight:800}.history-card p{margin:8px 0;color:#c4d0e0;overflow-wrap:anywhere}.history-card small{color:#aab8cb}.history-result{color:#79efc9!important;font-weight:850}.history-pending{color:#ffd27a!important;font-weight:800}@media(max-width:600px){.history-shell{margin:14px auto;padding:12px}.history-hero{padding:20px}}
+</style>
+{% endblock %}
