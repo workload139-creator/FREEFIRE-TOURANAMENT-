@@ -146,7 +146,7 @@ def reject_shop_payments(modeladmin, request, queryset):
 class ShopPaymentRequestAdmin(admin.ModelAdmin):
     list_display = ("id", "player_id_display", "user", "player_email_display", "player_phone_display", "player_uid_display", "product", "quantity", "amount", "payment_reference", "status", "created_at", "reviewed_by")
     list_filter = ("status", "product", "created_at")
-    search_fields = ("user__username", "user__email", "user__phone_number", "user__free_fire_uid", "payment_reference")
+    search_fields = ("user__username", "user__player_code", "user__email", "user__phone_number", "user__free_fire_uid", "payment_reference")
     readonly_fields = ("user", "player_id_display", "player_email_display", "player_phone_display", "player_uid_display", "player_upi_display", "player_profile_qr_preview", "product", "quantity", "amount", "payment_reference", "payment_screenshot_preview", "payment_screenshot", "status", "created_at", "reviewed_at", "reviewed_by")
     fields = ("user", "player_id_display", "player_email_display", "player_phone_display", "player_uid_display", "player_upi_display", "player_profile_qr_preview", "product", "quantity", "amount", "payment_reference", "payment_screenshot_preview", "payment_screenshot", "status", "admin_note", "created_at", "reviewed_at", "reviewed_by")
     actions = (approve_shop_payments, reject_shop_payments)
@@ -267,7 +267,7 @@ class CurrencyWithdrawalAdmin(admin.ModelAdmin):
         return queryset
     list_display = ("id", "player_id_display", "user", "player_email_display", "player_phone_display", "player_uid_display", "currency", "quantity", "amount_inr", "upi_id", "upi_qr_preview", "status", "payout_reference", "created_at", "processed_at")
     list_filter = ("status", "currency", "created_at")
-    search_fields = ("user__username", "user__email", "user__phone_number", "user__free_fire_uid", "upi_id", "payout_reference")
+    search_fields = ("user__username", "user__player_code", "user__email", "user__phone_number", "user__free_fire_uid", "upi_id", "payout_reference")
     readonly_fields = ("user", "player_id_display", "player_email_display", "player_phone_display", "player_uid_display", "profile_upi_qr_preview", "currency", "quantity", "amount_inr", "upi_id", "upi_qr_code", "upi_qr_preview", "status", "created_at", "processed_at", "processed_by")
     fields = ("user", "player_id_display", "player_email_display", "player_phone_display", "player_uid_display", "currency", "quantity", "amount_inr", "upi_id", "profile_upi_qr_preview", "upi_qr_code", "upi_qr_preview", "status", "payout_reference", "created_at", "processed_at", "processed_by")
     actions = (mark_currency_withdrawals_paid, reject_currency_withdrawals)
