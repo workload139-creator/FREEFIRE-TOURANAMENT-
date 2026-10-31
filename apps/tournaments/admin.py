@@ -1002,7 +1002,8 @@ class KillSubmissionAdmin(admin.ModelAdmin):
         "registration", "player", "tournament", "registered_uid", "free_fire_uid",
         "history_video", "history_image_one", "history_image_two",
         "ai_proposed_kills", "ai_confidence", "ai_uid_matches", "ai_review_notes",
-        "proposed_reward", "proposed_coins_reward", "submitted_at",
+        "proposed_reward", "approved_reward",
+        "proposed_coins_reward", "approved_coins_reward", "submitted_at",
     )
     fields = (
         "registration", "player", "tournament", "registered_uid", "free_fire_uid",
