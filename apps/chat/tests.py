@@ -122,3 +122,17 @@ class PartyRoomCreateJoinTests(TestCase):
         response = self.client.post(reverse("chat:party_room", args=[room.pk]), {"action": "join"})
         self.assertEqual(response.status_code, 302)
         self.assertFalse(self.PartyRoomMembership.objects.filter(room=room, user=self.player).exists())
+
+    def test_party_room_has_separate_speaker_sound_control(self):
+        room = self.PartyRoom.objects.create(host=self.host, title="Sound Control Party")
+        self.PartyRoomMembership.objects.create(room=room, user=self.host)
+        response = self.client.get(reverse("chat:party_room", args=[room.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="partyVoiceSound"')
+        self.assertContains(response, "Speaker sound off. Aapki microphone setting alag hai.")
+
+    def test_party_home_explains_fixed_twelve_player_start(self):
+        response = self.client.get(reverse("chat:party"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "poore 12 players room mein hone par hi game start hoga.")
+        self.assertNotContains(response, "kam se kam 2 players hon")

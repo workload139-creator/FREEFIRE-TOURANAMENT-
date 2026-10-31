@@ -58,6 +58,7 @@
         <button type="button" id="partyVoiceJoin" aria-label="Join voice" title="Join voice" style="width:58px;height:58px;border:0;border-radius:50%;background:linear-gradient(135deg,#c5ff56,#8be52e);color:#10180a;font-size:24px;box-shadow:0 5px 22px #b6ff3940">☎</button>
         <button type="button" id="partyVoiceMute" aria-label="Mute microphone" title="Microphone" disabled style="width:58px;height:58px;border:1px solid #ffffff25;border-radius:50%;background:#26332f;color:#fff;font-size:23px;opacity:.5">🎙️</button>
         <button type="button" id="partyVoiceLeave" aria-label="Leave voice" title="Leave voice" disabled style="width:58px;height:58px;border:1px solid #ff777755;border-radius:50%;background:#3a2024;color:#ffb5b5;font-size:22px;opacity:.5">✕</button>
+        <button type="button" id="partyVoiceSound" aria-label="Turn speaker sound off" title="Speaker sound on/off" style="width:58px;height:58px;border:1px solid #ffffff25;border-radius:50%;background:#26332f;color:#fff;font-size:22px">🔊</button>
       </div>
       <p class="room-note" id="partyVoiceStatus" role="status" aria-live="polite" style="text-align:center;min-height:18px;margin:8px 0 0"></p>
       <div id="partyVoiceAudio" hidden></div>
@@ -242,8 +243,9 @@ import { Room, RoomEvent, Track } from "https://cdn.jsdelivr.net/npm/livekit-cli
   const dot = document.getElementById("partyVoiceDot");
   const count = document.getElementById("partyVoiceCount");
   const audioBox = document.getElementById("partyVoiceAudio");
+  const soundButton = document.getElementById("partyVoiceSound");
   const csrf = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || "";
-  let room = null, muted = false;
+  let room = null, muted = false, soundOff = false;
   function say(message) { status.textContent = message || ""; }
   function renderState(connected) {
     joinButton.disabled = connected;
@@ -259,11 +261,16 @@ import { Room, RoomEvent, Track } from "https://cdn.jsdelivr.net/npm/livekit-cli
     muteButton.title = muted ? "Unmute microphone" : "Mute microphone";
     muteButton.style.background = muted ? "#653238" : "#26332f";
     muteButton.style.borderColor = muted ? "#ff7777" : "#ffffff25";
+    soundButton.textContent = soundOff ? "🔇" : "🔊";
+    soundButton.setAttribute("aria-label", soundOff ? "Turn speaker sound on" : "Turn speaker sound off");
+    soundButton.title = soundOff ? "Turn speaker sound on" : "Turn speaker sound off";
+    soundButton.style.background = soundOff ? "#653238" : "#26332f";
   }
   function attachAudio(track) {
     if (track.kind !== Track.Kind.Audio) return;
     const element = track.attach();
     element.autoplay = true; element.playsInline = true;
+    element.muted = soundOff;
     audioBox.appendChild(element); audioBox.hidden = false;
     element.play().catch(() => say("Audio sunne ke liye screen par ek baar tap karein."));
   }
@@ -300,6 +307,12 @@ import { Room, RoomEvent, Track } from "https://cdn.jsdelivr.net/npm/livekit-cli
   leaveButton.addEventListener("click", async function () {
     if(room){await room.disconnect();room=null;}
     audioBox.replaceChildren();audioBox.hidden=true;muted=false;renderState(false);say("Voice call ended.");
+  });
+  soundButton.addEventListener("click", function () {
+    soundOff = !soundOff;
+    audioBox.querySelectorAll("audio").forEach((audio) => { audio.muted = soundOff; });
+    renderState(Boolean(room));
+    say(soundOff ? "Speaker sound off. Aapki microphone setting alag hai." : "Speaker sound on.");
   });
   renderState(false);
 })();
