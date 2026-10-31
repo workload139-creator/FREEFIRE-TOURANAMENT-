@@ -52,6 +52,7 @@
     const endUrl = "{% url 'tournaments:live_end' registration.id %}";
     const warningUrl = "{% url 'tournaments:live_background_warning' registration.id %}";
     let active = false;
+    let awaitingNativeStart = false;
     let backgroundWarningSent = false;
 
     async function post(url, payload) {
@@ -84,6 +85,7 @@
       status.textContent = "Secure Live session connect ho raha hai…";
       try {
         const session = await post(tokenUrl, {});
+        awaitingNativeStart = true;
         window.FFArenaLive.start(session.url, session.token);
         status.textContent = "Android permission approve karein. Uske baad Live stream start hogi.";
       } catch (error) {
@@ -110,6 +112,12 @@
     window.addEventListener("ffarena-live-status", function (event) {
       const detail = event.detail || {};
       active = Boolean(detail.active);
+      if (active) {
+        awaitingNativeStart = false;
+      } else if (awaitingNativeStart) {
+        awaitingNativeStart = false;
+        post(endUrl, {}).catch(function () {});
+      }
       status.textContent = detail.message || (active ? "Live active hai." : "Live inactive hai.");
       startButton.disabled = active;
       stopButton.hidden = !active;
