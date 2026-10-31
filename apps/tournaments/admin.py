@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from django import forms
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.contrib import admin, messages
 from django.db import transaction
 from django.utils import timezone
@@ -1011,6 +1012,71 @@ class KillSubmissionAdmin(admin.ModelAdmin):
         "proposed_coins_reward", "approved_coins_reward", "status", "admin_notes",
         "submitted_at", "reviewed_at",
     )
+
+    def save_model(self, request, obj, form, change):
+        """Admin enters the verified kill count; the server calculates and credits the configured tournament reward once."""
+        with transaction.atomic():
+            previous_status = None
+            if change and obj.pk:
+                previous_status = (
+                    KillSubmission.objects.select_for_update()
+                    .filter(pk=obj.pk)
+                    .values_list("status", flat=True)
+                    .first()
+                )
+
+            approving_now = (
+                obj.status == KillSubmission.Status.APPROVED
+                and previous_status != KillSubmission.Status.APPROVED
+            )
+            if approving_now:
+                if (
+                    obj.registration.status != Registration.Status.READY
+                    or obj.registration.refund_processed
+                    or not obj.registration.payment_verified
+                    or obj.tournament.status == Tournament.Status.CANCELLED
+                    or obj.free_fire_uid != obj.registered_uid
+                    or obj.registered_uid != obj.registration.free_fire_uid
+                    or str(getattr(obj.player, "free_fire_uid", "") or "").strip() != obj.registration.free_fire_uid
+                ):
+                    raise ValidationError("UID, payment, registration ya tournament status valid nahi hai. Reward credit nahi hua.")
+
+                try:
+                    approved_kills = int(obj.approved_kills)
+                except (TypeError, ValueError):
+                    raise ValidationError("Admin ko approved kills ka valid number enter karna hoga.")
+                if approved_kills < 0 or approved_kills > 99:
+                    raise ValidationError("Approved kills 0 se 99 ke beech hone chahiye.")
+
+                # Keep the row pending until the one-time ledger credit helper validates
+                # date, match ID, duplicate evidence and the minimum-kill rule.
+                obj.status = KillSubmission.Status.PENDING
+                super().save_model(request, obj, form, change)
+                from .views import _credit_kill_submission_reward
+                try:
+                    credited = _credit_kill_submission_reward(
+                        obj, approved_kills, source="Admin-approved kill reward"
+                    )
+                except ValueError as exc:
+                    raise ValidationError(str(exc))
+                request._kill_reward_credit_summary = credited
+                return
+
+            if previous_status == KillSubmission.Status.APPROVED:
+                raise ValidationError("Approved submission locked hai; reward dobara issue ya edit nahi ho sakta.")
+            super().save_model(request, obj, form, change)
+
+    def response_change(self, request, obj):
+        response = super().response_change(request, obj)
+        credited = getattr(request, "_kill_reward_credit_summary", None)
+        if credited is not None:
+            summary = ", ".join(f"{qty} {label}" for qty, label in credited) or "minimum kills se kam; koi reward nahi"
+            self.message_user(
+                request,
+                f"{obj.approved_kills} verified kills approved. Reward: {summary}. Ledger mein ek baar record hua.",
+                messages.SUCCESS,
+            )
+        return response
 
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
