@@ -437,13 +437,14 @@ def ai_assessment_test_apis(request):
     from .ai_providers import test_all_providers
 
     results = test_all_providers()
-    for provider, result in results.items():
-        label = "OpenAI" if provider == "openai" else "Ollama"
-        detail = f"{label} ({result['model']}): {result['message']}"
-        if result["ok"]:
-            messages.success(request, f"{label} API connected and inference test passed. {detail}")
-        else:
-            messages.error(request, f"{label} API test failed. {detail}")
+    local = results.get("local", {})
+    messages.info(
+        request,
+        "External OpenAI/Ollama tests are disabled. Local reviewers: "
+        f"Tesseract OCR={'available' if local.get('tesseract') else 'not detected'}; "
+        f"FFmpeg={'available' if local.get('ffmpeg') else 'not detected'}. "
+        "Evidence decisions still require Admin approval."
+    )
     return redirect("admin:ai_assessment_dashboard")
 
 
