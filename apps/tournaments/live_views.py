@@ -21,6 +21,9 @@ from .models import Registration, Tournament, TournamentLiveSession
 
 logger = logging.getLogger(__name__)
 
+# One isolated logical Live agent slot per eligible player; media processing is shared.
+MAX_LIVE_PLAYER_AGENTS_PER_TOURNAMENT = 50
+
 
 def _livekit_config():
     url = os.getenv("LIVEKIT_URL", "").strip()
@@ -54,7 +57,8 @@ def tournament_live_token(request, registration_id):
         )
         if registration.player_id != request.user.pk:
             return JsonResponse({"error": "This registration does not belong to you."}, status=403)
-        tournament = registration.tournament
+        # Serialize allocation per tournament so concurrent joins cannot exceed capacity.
+        tournament = Tournament.objects.select_for_update().get(pk=registration.tournament_id)
         if (
             tournament.status != Tournament.Status.LIVE
             or registration.status != Registration.Status.READY
@@ -70,6 +74,16 @@ def tournament_live_token(request, registration_id):
             registration=registration, status=TournamentLiveSession.Status.ACTIVE
         ).first()
         if session is None:
+            active_agents = TournamentLiveSession.objects.filter(
+                tournament=tournament,
+                status=TournamentLiveSession.Status.ACTIVE,
+            ).count()
+            if active_agents >= MAX_LIVE_PLAYER_AGENTS_PER_TOURNAMENT:
+                return JsonResponse({
+                    "error": "This tournament has reached its 50-player Live AI session limit.",
+                    "agent_capacity": MAX_LIVE_PLAYER_AGENTS_PER_TOURNAMENT,
+                    "active_agent_sessions": active_agents,
+                }, status=409)
             session_id = uuid.uuid4()
             room_name = f"ffarena-tournament-{tournament.pk}-reg-{registration.pk}-{session_id.hex[:12]}"
             identity = f"ffarena-player-{registration.player_id}-reg-{registration.pk}-{session_id.hex[:8]}"
@@ -110,6 +124,17 @@ def tournament_live_token(request, registration_id):
             "session_id": str(session.session_uuid),
             "expires_in": 1800,
             "recording": False,
+            "player_agent": {
+                "session_id": str(session.session_uuid),
+                "registration_id": registration.pk,
+                "state": "awaiting_android_stream",
+                "scope": "one_isolated_agent_slot_per_player",
+                "active_sessions": TournamentLiveSession.objects.filter(
+                    tournament=tournament,
+                    status=TournamentLiveSession.Status.ACTIVE,
+                ).count(),
+                "capacity": MAX_LIVE_PLAYER_AGENTS_PER_TOURNAMENT,
+            },
         })
     except Exception:
         logger.exception("Tournament LiveKit token generation failed for registration %s", registration_id)
