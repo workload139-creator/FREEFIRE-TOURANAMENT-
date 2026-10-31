@@ -39,6 +39,13 @@ def tournament_live_token(request, registration_id):
     if not request.user.is_authenticated:
         return JsonResponse({"error": "Login required."}, status=401)
 
+    url, key, secret = _livekit_config()
+    if not url:
+        return JsonResponse(
+            {"error": "LiveKit config missing or invalid. Check LIVEKIT_URL, LIVEKIT_API_KEY and LIVEKIT_API_SECRET in Render."},
+            status=503,
+        )
+
     with transaction.atomic():
         registration = get_object_or_404(
             Registration.objects.select_for_update().select_related("tournament", "player"),
@@ -80,12 +87,6 @@ def tournament_live_token(request, registration_id):
                 if session is None:
                     raise
 
-    url, key, secret = _livekit_config()
-    if not url:
-        return JsonResponse(
-            {"error": "LiveKit config missing or invalid. Check LIVEKIT_URL, LIVEKIT_API_KEY and LIVEKIT_API_SECRET in Render."},
-            status=503,
-        )
     try:
         token = (
             api.AccessToken(key, secret)
