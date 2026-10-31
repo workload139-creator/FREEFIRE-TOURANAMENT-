@@ -229,12 +229,15 @@ def _analyze_with_provider(submission, provider, model_override=None, reviewer_r
     else:
         api_key = (
             os.getenv("KILL_REVIEW_API_KEY", "").strip()
-            or os.getenv("OPENAI_API_KEY", "").strip()
+            or os.getenv("OLLAMA_API_KEY", "").strip()
         )
-        base_url = os.getenv("KILL_REVIEW_BASE_URL", "").strip().rstrip("/")
+        base_url = (
+            os.getenv("KILL_REVIEW_BASE_URL", "").strip()
+            or os.getenv("OLLAMA_BASE_URL", "https://ollama.com/v1").strip()
+        ).rstrip("/")
         if not base_url:
             raise AIReviewError(
-                "KILL_REVIEW_BASE_URL is missing. Set it to a reachable OpenAI-compatible vision API endpoint."
+                "KILL_REVIEW_BASE_URL/OLLAMA_BASE_URL is missing. Set it to a reachable OpenAI-compatible vision API endpoint."
             )
 
     # Self-hosted open-source endpoints such as Ollama may not require an API key.
