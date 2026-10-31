@@ -8,6 +8,7 @@ import re
 import subprocess
 import tempfile
 import shutil
+from datetime import datetime, timezone as datetime_timezone
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -384,10 +385,11 @@ def analyze_kill_evidence(submission):
     for key, label, provider, model, role in reviewers:
         try:
             result = _analyze_with_provider(submission, provider, model, role)
-            reports[key] = {"name": label, "status": "COMPLETED", **result}
+            reports[key] = {"name": label, "status": "COMPLETED", "checked_at": datetime.now(datetime_timezone.utc).isoformat(), **result}
         except Exception as exc:
             reports[key] = {
                 "name": label, "status": "FAILED",
+                "checked_at": datetime.now(datetime_timezone.utc).isoformat(),
                 "proposed_kills": None, "confidence": "low",
                 "uid_matches": None, "observed_uid": "",
                 "history_consistent": False, "evidence_complete": False,
