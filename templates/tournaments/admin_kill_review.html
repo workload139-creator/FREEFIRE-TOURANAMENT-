@@ -45,13 +45,13 @@
       <p><strong>AI proposed kills:</strong> {% if submission.ai_proposed_kills != None %}{{ submission.ai_proposed_kills }}{% else %}Not available — run AI review or enter the verified count below{% endif %} · <strong>Admin-approved kills:</strong> {% if submission.approved_kills != None %}{{ submission.approved_kills }}{% else %}Not approved yet{% endif %} · <strong>Confidence:</strong> {{ submission.ai_confidence|default:"Unknown" }} · <strong>AI UID match:</strong> {{ submission.ai_uid_matches|yesno:"Yes,No,Unknown" }}</p>
       <p><strong>AI review notes/error:</strong><br>{{ submission.ai_review_notes|default:"AI has not returned a result yet." }}</p>
       <h4>Four independent reviewer reports</h4>
-      {% for reviewer_key, report in submission.ai_reviewer_reports.items %}
+      {% for reviewer_key, report in submission.ai_reviewer_reports.items %}{% if reviewer_key != 'reward_preview' and reviewer_key != 'wallet_reward_confirmation' %}
         <div style="padding:10px;margin:8px 0;border:1px solid var(--border-color, #777);border-radius:8px">
           <strong>{{ report.name|default:reviewer_key }}</strong> — {{ report.status|default:"NOT RUN" }}<br>
           Kills: {{ report.proposed_kills|default:"Not available" }} · UID: {{ report.observed_uid|default:"Unreadable" }} · Confidence: {{ report.confidence|default:"Unknown" }}<br>
           UID match: {{ report.uid_matches|yesno:"Yes,No,Unknown" }} · Evidence complete: {{ report.evidence_complete|yesno:"Yes,No,Unknown" }} · Tampering suspected: {{ report.tampering_suspected|yesno:"Yes,No,Unknown" }}<br>Manipulation notes: {{ report.tampering_notes|default:"No notes" }}<br>
           Reason: {{ report.reason|default:"No result" }}
-        </div>
+        </div>{% endif %}
       {% empty %}<p>Four-reviewer audit not available yet. Run AI review or inspect manually.</p>{% endfor %}
       <p><strong>Evidence fingerprint:</strong> {% if submission.evidence_sha256 %}Captured for uploaded originals{% else %}Missing — manual verification required{% endif %}. This detects post-upload file changes; it cannot prove an image/video was genuine before upload.</p>
       {% with preview=submission.ai_reviewer_reports.reward_preview receipt=submission.ai_reviewer_reports.wallet_reward_confirmation %}<p><strong>AI calculated reward preview (not paid):</strong> {% if preview.rewards %}{% for reward in preview.rewards %}{{ reward.quantity }} {{ reward.label }}{% if not forloop.last %} + {% endif %}{% endfor %}{% else %}Not calculated — enter verified kills and confirm evidence first.{% endif %}</p>{% if receipt.status == "verified" %}<p><strong>Wallet credit verified:</strong> Before {{ receipt.currency_balances_before }} → After {{ receipt.currency_balances_after }}. Matching completed ledger entries confirmed.</p>{% else %}<p><strong>Wallet credit:</strong> Pending Admin approval. AI does not transfer or credit rewards.</p>{% endif %}{% endwith %}
