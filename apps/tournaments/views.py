@@ -35,8 +35,9 @@ def _credit_kill_submission_reward(submission, approved_kills, reward_override=N
 
     # The registration row serializes every award for this player/tournament.
     registration = Registration.objects.select_for_update().get(pk=submission.registration_id)
-    if submission.status == KillSubmission.Status.APPROVED:
-        return []
+    # Approved submissions can be safely reconciled by Admin if an older
+    # approval was saved without its wallet ledger. The caller checks ledger refs
+    # first; this helper still enforces unique references before each credit.
     if KillSubmission.objects.filter(
         registration=registration, status=KillSubmission.Status.APPROVED
     ).exclude(pk=submission.pk).exists():
