@@ -1019,11 +1019,32 @@ class KillSubmissionAdmin(admin.ModelAdmin):
         "registration", "player", "tournament", "registered_uid", "free_fire_uid",
         "history_video", "history_image_one", "history_image_two",
         "ai_proposed_kills", "ai_confidence", "ai_uid_matches", "ai_review_notes",
-        "wallet_reward_confirmation",
+        "wallet_reward_confirmation", "reward_preview",
         "approved_kills", "proposed_reward", "approved_reward",
         "proposed_coins_reward", "approved_coins_reward", "status", "admin_notes",
         "submitted_at", "reviewed_at",
     )
+
+    @admin.display(description="Calculated Prize Preview (not yet credited)")
+    def reward_preview(self, obj):
+        from .kill_services import rewards_for_tournament
+        from apps.social.models import PlayerShopWallet
+        kills = obj.approved_kills
+        if kills is None:
+            kills = obj.ai_proposed_kills
+        if kills is None:
+            return "Kills not verified yet — enter Admin-approved kills to calculate."
+        if int(kills) < settings.MINIMUM_VERIFIED_KILLS:
+            return f"{kills} kills: minimum {settings.MINIMUM_VERIFIED_KILLS} verified kills required."
+        rewards = rewards_for_tournament(obj.tournament, int(kills))
+        wallet, _ = PlayerShopWallet.objects.get_or_create(user=obj.player)
+        before = {"diamonds": int(wallet.diamonds), "coins": int(wallet.coins), "fan_tokens": int(wallet.fan_tokens)}
+        labels = {"diamonds": "Diamonds", "coins": "Coins", "fan_tokens": "Fan Tokens"}
+        parts = []
+        for currency, qty, label in rewards:
+            parts.append(f"{label}: +{int(qty)}")
+            parts.append(f"balance {before[currency]} → {before[currency] + int(qty)}")
+        return " · ".join(parts) + " · Preview only; wallet changes only after Admin approval."
 
     @admin.display(description="Player Wallet Reward Confirmation")
     def wallet_reward_confirmation(self, obj):
