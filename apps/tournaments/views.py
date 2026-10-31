@@ -168,7 +168,7 @@ def _credit_kill_submission_reward(submission, approved_kills, reward_override=N
         f"Fan Tokens {before['fan_tokens']} -> {int(wallet.fan_tokens)}. "
         "Wallet balance and completed reward ledger verified."
     )
-    submission.ai_review_notes = (submission.ai_review_notes or "").rstrip() + "\\n" + receipt_line
+    submission.ai_review_notes = (submission.ai_review_notes or "").rstrip() + "\n" + receipt_line
     submission.save(update_fields=["ai_reviewer_reports", "ai_review_notes"])
 
     return [(quantity, label) for quantity, label in ledger_expected.values()]
