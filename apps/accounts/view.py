@@ -1,7 +1,10 @@
 from django.contrib import messages
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
+import logging
 from decimal import Decimal
+
+logger = logging.getLogger(__name__)
 from urllib.parse import quote
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
@@ -107,7 +110,26 @@ def profile_edit_view(request):
     if request.method == "POST":
         form = ProfileUpdateForm(request.POST, request.FILES, instance=request.user)
         if form.is_valid():
-            form.save()
+            try:
+                form.save()
+            except Exception:
+                logger.exception(
+                    "Profile update failed for user_id=%s; photo_uploaded=%s",
+                    request.user.pk,
+                    bool(request.FILES.get("profile_photo")),
+                )
+                messages.error(
+                    request,
+                    "Profile save nahi ho payi. Photo upload/storage mein dikkat aa sakti hai. "
+                    "Photo ko JPG/PNG/WebP aur 2 MB se kam rakhein; agar phir bhi error aaye "
+                    "to admin ko batayein.",
+                )
+                return render(
+                    request,
+                    "accounts/profile_edit.html",
+                    {"form": form, "player": request.user, "next": next_url},
+                    status=200,
+                )
             messages.success(request, "Player profile update ho gayi.")
             if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
                 return redirect(next_url)
