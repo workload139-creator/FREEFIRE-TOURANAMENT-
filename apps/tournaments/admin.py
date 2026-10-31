@@ -4,6 +4,7 @@ from decimal import Decimal
 from django import forms
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.http import HttpResponseRedirect
 from django.contrib import admin, messages
 from django.db import transaction
 from django.utils import timezone
@@ -1066,6 +1067,18 @@ class KillSubmissionAdmin(admin.ModelAdmin):
             if previous_status == KillSubmission.Status.APPROVED:
                 raise ValidationError("Approved submission locked hai; reward dobara issue ya edit nahi ho sakta.")
             super().save_model(request, obj, form, change)
+
+    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+        """Show safe approval validation errors in the admin instead of returning HTTP 500."""
+        try:
+            return super().changeform_view(request, object_id, form_url, extra_context)
+        except ValidationError as exc:
+            # save_model may raise after saving the temporary PENDING state; Django's
+            # atomic admin transaction rolls that write back before this handler runs.
+            messages.error(request, "Reward approve nahi hua: " + " ".join(exc.messages))
+            if object_id:
+                return HttpResponseRedirect(request.path)
+            return HttpResponseRedirect(reverse("admin:tournaments_killsubmission_changelist"))
 
     def response_change(self, request, obj):
         response = super().response_change(request, obj)
