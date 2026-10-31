@@ -153,10 +153,16 @@ def analyze_kill_evidence(submission):
       evidence_complete=bool(frames and ta and tb),tampering_suspected=None,
       tampering_notes=f"Screenshot pixel difference={diff}; SHA-256 only detects post-upload changes.",
       reason=f"Frame count={len(frames)}; screenshot difference score={diff}; no automated payout decision.")
+    # A kill-count suggestion is allowed only when the screenshot reader and
+    # video-frame reader independently return the same single count. This is
+    # still advisory: the Admin must verify UID/date/match ID and approve.
+    agreed_kills = next(iter(sk)) if len(sk) == 1 and len(vk) == 1 and sk == vk else None
+    uid_agrees = bool(expected and expected == submitted and expected in su and expected in vu)
+    dual_agreement = agreed_kills is not None and uid_agrees
     verify_evidence_integrity(submission)
-    return {"proposed_kills":None,"confidence":"low","uid_matches":None,
+    return {"proposed_kills":agreed_kills,"confidence":"medium" if dual_agreement else "low","uid_matches":(True if uid_agrees else (False if su or vu else None)),
       "history_consistent":all(x["history_consistent"] for x in reports.values()),
-      "evidence_complete":all(x["evidence_complete"] for x in reports.values()),
-      "four_way_agreement":False,"dual_agreement":False,"reviewer_reports":reports,
+      "evidence_complete":bool(ta and tb and frame_text),
+      "four_way_agreement":False,"dual_agreement":dual_agreement,"reviewer_reports":reports,
       "reason":"\n".join(x["name"]+": "+x["reason"] for x in reports.values())+
-      "\nLocal reviewers are advisory only. Admin must inspect originals and approve verified kills."}
+      "\nScreenshot/video kill-count agreement is advisory only. Admin must inspect originals, date, UID and match ID before approving any reward."}
