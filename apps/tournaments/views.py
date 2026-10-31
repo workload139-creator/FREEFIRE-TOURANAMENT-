@@ -912,10 +912,26 @@ def review_kill_submission(request, submission_id):
             messages.error(request, "UID mismatch hai; payout eligibility roki gayi.")
             return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
 
-        submission.admin_notes = notes
-        credited = _credit_kill_submission_reward(
-            submission, approved_kills, source="Admin-approved kill reward"
+        date_ok, date_note = validate_match_dates(
+            submission.ai_reviewer_reports, submission.tournament
         )
+        if not date_ok and not notes.startswith("DATE_OVERRIDE:"):
+            messages.error(
+                request,
+                "Match date verify nahi hui. Original screenshots/video manually check karke admin notes ki shuruaat DATE_OVERRIDE: aur reason se karein. " + date_note,
+            )
+            return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
+        if has_duplicate_match_id(submission):
+            messages.error(request, "Same match ID is already used for this UID in this tournament. Reward blocked.")
+            return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
+        submission.admin_notes = notes
+        try:
+            credited = _credit_kill_submission_reward(
+                submission, approved_kills, source="Admin-approved kill reward"
+            )
+        except ValueError as exc:
+            messages.error(request, str(exc))
+            return redirect(f"{reverse('tournaments:admin_kill_review')}?submission={submission.pk}")
         reward_text = ", ".join(f"{qty} {label}" for qty, label in credited) or "0 reward"
 
 
@@ -992,11 +1008,21 @@ def admin_kill_batch_review(request):
                     if override < 0 or override > 1000000 or kills < settings.MINIMUM_VERIFIED_KILLS:
                         skipped.append(str(submission_id))
                         continue
-                submission.admin_notes = common_notes or "Reviewed in tournament bulk reward panel."
-                _credit_kill_submission_reward(
-                    submission, kills, reward_override=override,
-                    source="Admin bulk-approved tournament reward",
+                date_ok, _date_note = validate_match_dates(
+                    submission.ai_reviewer_reports, submission.tournament
                 )
+                if (not date_ok and not common_notes.startswith("DATE_OVERRIDE:")) or has_duplicate_match_id(submission):
+                    skipped.append(str(submission_id))
+                    continue
+                submission.admin_notes = common_notes or "Reviewed in tournament bulk reward panel."
+                try:
+                    _credit_kill_submission_reward(
+                        submission, kills, reward_override=override,
+                        source="Admin bulk-approved tournament reward",
+                    )
+                except ValueError:
+                    skipped.append(str(submission_id))
+                    continue
                 approved_count += 1
         if skipped:
             messages.warning(request, f"{approved_count} players approved and credited. {len(skipped)} rows skipped because of status, UID/payment mismatch, or invalid values.")
