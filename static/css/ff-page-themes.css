@@ -1,0 +1,31 @@
+/* FF Arena page-specific esports themes. Shared layout, distinct page identity. */
+:root{--page-accent:#42d9ff;--page-glow:rgba(66,217,255,.18);--page-panel:#0c1727}
+body{background:radial-gradient(ellipse at 12% 0%,var(--page-glow),transparent 34%),linear-gradient(180deg,#070b14 0%,#090f1b 55%,#070b13 100%);color:#eef4ff}
+body[class*="page-"] .site-header{background:rgba(5,10,20,.94);border-bottom:1px solid color-mix(in srgb,var(--page-accent) 32%,transparent);box-shadow:0 8px 28px #0005}
+body[class*="page-"] .brand strong,body[class*="page-"] .main-nav a:hover{color:var(--page-accent)}
+body[class*="page-"] .button-primary,body[class*="page-"] .btn-primary{background:linear-gradient(135deg,var(--page-accent),color-mix(in srgb,var(--page-accent) 55%,#172c54));border-color:var(--page-accent);color:#06101c;box-shadow:0 8px 24px var(--page-glow)}
+body[class*="page-"] .tournament-card,body[class*="page-"] .auth-card,body[class*="page-"] .feature-card{background:linear-gradient(145deg,rgba(17,27,45,.96),rgba(8,14,25,.98));border:1px solid color-mix(in srgb,var(--page-accent) 25%,#263348);box-shadow:0 16px 40px #0005}
+body[class*="page-"] input,body[class*="page-"] select,body[class*="page-"] textarea{background:#080f1c;color:#f5f8ff;border:1px solid #33445d;border-radius:10px}
+body[class*="page-"] :focus-visible{outline:2px solid var(--page-accent);outline-offset:3px}
+/* Each route gets its own accent identity. */
+.page-home{--page-accent:#ffbd45;--page-glow:rgba(255,189,69,.17)}
+.page-list,.page-tournament_list,.page-battle_royale_list,.page-unlimited_list{--page-accent:#ff9a35;--page-glow:rgba(255,154,53,.17)}
+.page-clash_squad_list,.page-girls_vs_boys_list{--page-accent:#b58cff;--page-glow:rgba(181,140,255,.18)}
+.page-results,.page-leaderboard{--page-accent:#49e5b1;--page-glow:rgba(73,229,177,.16)}
+.page-profile,.page-player_profile,.page-profile_edit,.page-settings{--page-accent:#48c8ff;--page-glow:rgba(72,200,255,.17)}
+.page-wallet,.page-deposit,.page-withdrawal,.page-currency_withdrawal,.page-shop{--page-accent:#ffd45c;--page-glow:rgba(255,212,92,.17)}
+.page-feed,.page-follows,.page-friends{--page-accent:#ff78b7;--page-glow:rgba(255,120,183,.16)}
+.page-conversation,.page-party,.page-party_room{--page-accent:#9c91ff;--page-glow:rgba(156,145,255,.17)}
+.page-login,.page-register,.page-password_reset,.page-password_reset_confirm{--page-accent:#63e0c0;--page-glow:rgba(99,224,192,.16)}
+.page-assistant{--page-accent:#8e9dff;--page-glow:rgba(142,157,255,.18)}
+.page-admin_kill_review,.page-admin_ai_assessments,.page-admin_ai_sources,.page-admin_kill_batch_review{--page-accent:#9c7cff;--page-glow:rgba(156,124,255,.2)}
+/* AI admin console: four clear reviewer lanes and readable evidence panels. */
+.page-admin_kill_review main,.page-admin_ai_assessments main,.page-admin_ai_sources main{max-width:100%;padding:0 12px}
+.page-admin_kill_review .container,.page-admin_ai_assessments .container,.page-admin_ai_sources .container{max-width:1380px!important}
+.page-admin_kill_review h1,.page-admin_ai_assessments h1,.page-admin_ai_sources h1{letter-spacing:.02em;color:#f7f4ff}
+.page-admin_kill_review h2,.page-admin_kill_review h3,.page-admin_ai_assessments h2,.page-admin_ai_sources h2{color:#d9ccff}
+.page-admin_kill_review article,.page-admin_ai_assessments article{border-radius:18px!important}
+.page-admin_kill_review video{border:1px solid #7256bd;box-shadow:0 12px 34px #0008}
+.page-admin_kill_review img{background:#080d18;border:1px solid #39445e}
+.page-admin_kill_review form button,.page-admin_ai_assessments form button{min-height:42px}
+@media(max-width:700px){body[class*="page-"] .tournament-card{border-radius:14px!important}body[class*="page-"] main{padding-bottom:82px}}
