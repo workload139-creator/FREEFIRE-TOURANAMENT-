@@ -1,6 +1,7 @@
 
 from decimal import Decimal
 from datetime import timedelta
+import secrets
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
@@ -12,6 +13,20 @@ from apps.core.storage import PrivateMediaStorage
 
 
 class User(AbstractUser):
+    player_code = models.CharField(max_length=6, unique=True, editable=False, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.player_code:
+            while True:
+                candidate = str(secrets.randbelow(900000) + 100000)
+                if not type(self).objects.filter(player_code=candidate).exists():
+                    self.player_code = candidate
+                    break
+            update_fields = kwargs.get("update_fields")
+            if update_fields is not None:
+                kwargs["update_fields"] = set(update_fields) | {"player_code"}
+        super().save(*args, **kwargs)
+
     phone_number = models.CharField(
         max_length=15, unique=True, null=True, blank=True
     )
