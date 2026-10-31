@@ -24,6 +24,7 @@ from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import KillSubmission, Registration, Tournament, TournamentLedgerEntry
 from .kill_services import reward_for_tournament, rewards_for_tournament
 from .services import process_expired_ready_registrations, mark_not_playing_and_refund
+from .kill_safety import validate_match_dates, has_duplicate_match_id
 
 import qrcode
 
@@ -32,6 +33,16 @@ def _credit_kill_submission_reward(submission, approved_kills, reward_override=N
     """Approve one submission and credit non-cash tournament currencies exactly once."""
     from apps.social.models import PlayerShopWallet
 
+    # The registration row serializes every award for this player/tournament.
+    registration = Registration.objects.select_for_update().get(pk=submission.registration_id)
+    if submission.status == KillSubmission.Status.APPROVED:
+        return []
+    if KillSubmission.objects.filter(
+        registration=registration, status=KillSubmission.Status.APPROVED
+    ).exclude(pk=submission.pk).exists():
+        raise ValueError("A reward has already been approved for this registration.")
+    if has_duplicate_match_id(submission):
+        raise ValueError("This Free Fire match ID has already been used for this UID in this tournament.")
     rewards = rewards_for_tournament(submission.tournament, approved_kills)
     if approved_kills < settings.MINIMUM_VERIFIED_KILLS:
         rewards = []
@@ -559,13 +570,22 @@ def kill_submission(request, registration_id):
             if submitted_uid != registration.free_fire_uid:
                 form.add_error("free_fire_uid", "UID registration wali UID se match nahi karti.")
             else:
-                submission = form.save(commit=False)
-                submission.registration = registration
-                submission.player = request.user
-                submission.tournament = registration.tournament
-                submission.registered_uid = registration.free_fire_uid
-                submission.proposed_reward = Decimal("0.00")
-                submission.save()
+                # Lock the registration while creating evidence so two simultaneous
+                # POSTs cannot create two submissions for the same paid entry.
+                with transaction.atomic():
+                    locked_registration = Registration.objects.select_for_update().get(
+                        pk=registration.pk, player=request.user
+                    )
+                    if KillSubmission.objects.filter(registration=locked_registration).exists():
+                        messages.info(request, "Is registration ki evidence submission pehle hi maujood hai.")
+                        return redirect("tournaments:my_registrations")
+                    submission = form.save(commit=False)
+                    submission.registration = locked_registration
+                    submission.player = request.user
+                    submission.tournament = locked_registration.tournament
+                    submission.registered_uid = locked_registration.free_fire_uid
+                    submission.proposed_reward = Decimal("0.00")
+                    submission.save()
                 try:
                     submission.evidence_sha256 = fingerprint_evidence(submission)
                     submission.save(update_fields=["evidence_sha256"])
@@ -583,7 +603,15 @@ def kill_submission(request, registration_id):
                         and str(getattr(registration.player, "free_fire_uid", "") or "").strip() == registration.free_fire_uid
                     )
                     proposed_kills = int(proposed_kills or 0)
-                    if uid_ok and ai_result.get("proposed_kills") is not None and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS:
+                    match_date_ok, match_date_note = validate_match_dates(
+                        ai_result.get("reviewer_reports", {}), registration.tournament
+                    )
+                    duplicate_match = has_duplicate_match_id(submission)
+                    submission.ai_review_notes = (
+                        (submission.ai_review_notes or "") + "\\nDATE CHECK: " + match_date_note
+                        + ("\\nDUPLICATE MATCH ID: blocked." if duplicate_match else "")
+                    )[:6000]
+                    if uid_ok and match_date_ok and not duplicate_match and ai_result.get("proposed_kills") is not None and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS:
                         _currency, proposed_quantity, _label = reward_for_tournament(registration.tournament, proposed_kills)
                         submission.proposed_reward = Decimal(proposed_quantity)
                     else:
@@ -603,6 +631,8 @@ def kill_submission(request, registration_id):
                         and registration.status == Registration.Status.READY
                         and not registration.refund_processed
                         and registration.tournament.status != Tournament.Status.CANCELLED
+                        and match_date_ok
+                        and not duplicate_match
                         and proposed_kills >= settings.MINIMUM_VERIFIED_KILLS
                     ):
                         with transaction.atomic():
@@ -616,7 +646,7 @@ def kill_submission(request, registration_id):
                                 reward_text = ", ".join(f"{qty} {label}" for qty, label in credited) or "0 reward"
                                 messages.success(request, f"Four AI reviewers agreed. {proposed_kills} kills verified; {reward_text} automatically credited to the player's in-app wallet.")
                     else:
-                        messages.info(request, "AI review saved. Four-way agreement, UID/payment checks or minimum kills were not all satisfied; this player remains in Admin Review.")
+                        messages.info(request, "AI review saved. Date, match ID, four-way agreement, UID/payment checks or minimum kills did not pass; this player remains in Admin Review.")
                 except Exception as exc:
                     # Keep a durable assessment record even when an AI provider,
                     # network, video decoder, or model response fails. Never pay
