@@ -448,10 +448,41 @@ def ai_assessment_test_apis(request):
     return redirect("admin:ai_assessment_dashboard")
 
 
+def player_activity_ai_dashboard(request):
+    from django.core.paginator import Paginator
+    from django.db.models import Q
+    from apps.core.models import PlayerActivityEvent
+
+    queryset = PlayerActivityEvent.objects.select_related('player').order_by('-created_at', '-pk')
+    query = request.GET.get('q', '').strip()[:80]
+    risk_filter = request.GET.get('risk', '').strip()
+    flagged_only = request.GET.get('flagged') == '1'
+    if query:
+        queryset = queryset.filter(Q(player__username__icontains=query) | Q(player__player_code__icontains=query) | Q(summary__icontains=query) | Q(object_id__icontains=query))
+    if risk_filter in dict(PlayerActivityEvent.Risk.choices):
+        queryset = queryset.filter(risk_level=risk_filter)
+    if flagged_only:
+        queryset = queryset.filter(requires_admin_review=True, resolved_at__isnull=True)
+    page_obj = Paginator(queryset, 50).get_page(request.GET.get('page'))
+    recent_since = timezone.now() - timedelta(days=30)
+    recent = PlayerActivityEvent.objects.filter(created_at__gte=recent_since)
+    return render(request, 'admin/player_activity_ai_dashboard.html', {
+        **admin.site.each_context(request),
+        'title': 'Player Activity AI Monitor',
+        'events': page_obj.object_list, 'page_obj': page_obj,
+        'query': query, 'risk_filter': risk_filter, 'flagged_only': flagged_only,
+        'risk_choices': PlayerActivityEvent.Risk.choices,
+        'total_events': PlayerActivityEvent.objects.count(),
+        'flagged_count': PlayerActivityEvent.objects.filter(requires_admin_review=True, resolved_at__isnull=True).count(),
+        'critical_count': PlayerActivityEvent.objects.filter(risk_level=PlayerActivityEvent.Risk.CRITICAL, resolved_at__isnull=True).count(),
+        'player_count': recent.exclude(player_id__isnull=True).values('player_id').distinct().count(),
+    })
+
 def _admin_get_urls_with_ai_assessment_and_api_test():
     return [
         path("ai-assessment/test-apis/", admin.site.admin_view(ai_assessment_test_apis), name="ai_assessment_test_apis"),
         path("ai-assessment/", admin.site.admin_view(ai_assessment_dashboard), name="ai_assessment_dashboard"),
+        path("player-activity-ai/", admin.site.admin_view(player_activity_ai_dashboard), name="player_activity_ai_dashboard"),
     ] + _original_admin_get_urls()
 
 

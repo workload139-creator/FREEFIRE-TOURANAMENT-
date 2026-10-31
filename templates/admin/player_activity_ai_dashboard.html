@@ -1,0 +1,47 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<style>
+.pa-hero{background:#171d29;color:#fff;padding:22px;border-radius:14px;border-left:5px solid #e97816}
+.pa-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin:16px 0}
+.pa-card,.pa-section{background:var(--body-bg,#fff);border:1px solid var(--hairline-color,#ddd);border-radius:12px;padding:15px}
+.pa-card b{display:block;font-size:27px}.pa-card span{font-size:12px;color:var(--body-quiet-color,#667085)}
+.pa-section{margin:14px 0;overflow-x:auto}.pa-section h2{margin:0 0 12px}
+.pa-table{width:100%;border-collapse:collapse;min-width:900px}.pa-table th,.pa-table td{padding:9px;border-bottom:1px solid var(--hairline-color,#eee);text-align:left;font-size:13px;vertical-align:top}.pa-table th{background:var(--darkened-bg,#f7f8fa)}
+.pa-risk{font-weight:800;text-transform:uppercase}.pa-critical,.pa-high{color:#b42318}.pa-medium{color:#b54708}.pa-low{color:#027a48}
+</style>
+<div class="pa-hero"><h1 style="color:white;margin:0 0 8px">🧠 Player Activity AI Assessment + AI Agent</h1>
+<p>Player profile, wallet, shop purchase, Diamond/Coin withdrawal, tournament registration, refunds, social actions and server errors ka separate monitoring center.</p>
+<p style="font-size:12px;color:#fdbb74">Assessment aur Agent abhi local explainable integrity rules par kaam karte hain. Ye payment transfer, wallet balance ya tournament decision ko khud change nahi karte.</p></div>
+<div class="pa-grid">
+<div class="pa-card"><b>{{ total_events }}</b><span>Total tracked events</span></div>
+<div class="pa-card"><b>{{ flagged_count }}</b><span>Needs Admin Review</span></div>
+<div class="pa-card"><b>{{ critical_count }}</b><span>Critical alerts</span></div>
+<div class="pa-card"><b>{{ player_count }}</b><span>Players seen in events</span></div>
+</div>
+<div class="pa-section">
+<h2>Search and filters</h2>
+<form method="get">
+<input type="search" name="q" value="{{ query }}" placeholder="Username or Player ID" style="min-width:230px;padding:8px">
+<select name="risk"><option value="">All risk levels</option>{% for value,label in risk_choices %}<option value="{{ value }}" {% if risk_filter == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+<label><input type="checkbox" name="flagged" value="1" {% if flagged_only %}checked{% endif %}> Only Admin Review</label>
+<button class="button" type="submit">Filter</button>
+<a href="{% url 'admin:player_activity_ai_dashboard' %}">Reset</a>
+</form>
+</div>
+<div class="pa-section">
+<h2>Latest player activity and AI results</h2>
+<table class="pa-table"><tr><th>Time / Player</th><th>Activity</th><th>Assessment</th><th>AI Agent cross-check</th><th>Risk / Action</th></tr>
+{% for event in events %}
+<tr>
+<td>{{ event.created_at|date:"d M Y H:i:s" }}<br>{% if event.player %}<b>{{ event.player.username }}</b><br>ID {{ event.player.player_code }}{% else %}System / Anonymous{% endif %}</td>
+<td>{{ event.category|title }}<br>{{ event.event_type }}<br><small>{{ event.object_type }} #{{ event.object_id }} · {{ event.object_status|default:"—" }}</small></td>
+<td>{{ event.assessment_state|title }}<br>{{ event.assessment_summary|default:"Waiting for assessment" }}</td>
+<td>{{ event.agent_state|title }}<br>{{ event.agent_summary|default:"Waiting for agent" }}</td>
+<td><span class="pa-risk pa-{{ event.risk_level }}">{{ event.risk_level }} · {{ event.risk_score }}/100</span><br>{% if event.requires_admin_review %}<b>Admin Review Required</b>{% elif event.resolved_at %}Resolved{% else %}No rule alert{% endif %}<br>{% if event.player %}<a href="/admin/accounts/user/{{ event.player_id }}/change/">Open Player</a>{% endif %}</td>
+</tr>
+{% empty %}<tr><td colspan="5">No activity events recorded yet. New monitored activity will appear here.</td></tr>{% endfor %}
+</table>
+<div style="margin-top:12px">{% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&q={{ query|urlencode }}&risk={{ risk_filter }}">Previous</a>{% endif %} Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&q={{ query|urlencode }}&risk={{ risk_filter }}">Next</a>{% endif %}</div>
+</div>
+<p style="font-size:12px;color:var(--body-quiet-color,#667085)">This dashboard records activity after this feature is deployed. It cannot prove bank settlement or external UPI transfer. A clean AI result is not a guarantee that a transaction succeeded.</p>
+{% endblock %}
