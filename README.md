@@ -25,7 +25,6 @@ Set secrets in Render Dashboard → your web service → Environment; never comm
 - Permanent player photos, UPI QR images and match evidence: set `CLOUDINARY_URL` from your Cloudinary Console. Without it, Render local media is temporary; new uploads will not be durable.
 - Email OTP/password reset: `BREVO_API_KEY` and `DEFAULT_FROM_EMAIL` (the sender must be verified in Brevo). SMTP fallback uses `EMAIL_HOST_USER` and `EMAIL_HOST_PASSWORD`.
 - Tournament entry UPI: `FF_ARENA_UPI_ID` and optional `FF_ARENA_UPI_NAME`. The registration page shows an amount-specific QR and an “Open UPI app” link, then asks for the player's Profile UID, Free Fire UID and UTR. Registration remains pending until admin checks the actual incoming UPI/bank statement and verifies it.
-- Dual AI evidence review: set `OPENAI_API_KEY`, `OPENAI_KILL_REVIEW_MODEL`, `KILL_REVIEW_PROVIDER=dual`, `KILL_REVIEW_BASE_URL`, `KILL_REVIEW_API_KEY`, and `OLLAMA_KILL_REVIEW_MODEL`. The secondary endpoint must support image inputs and be reachable from Render. If either reviewer fails, the evidence goes to Admin Review. Keep all keys in Render Environment, never in GitHub.
 
 ## Local setup (Windows / PowerShell)
 
@@ -83,7 +82,7 @@ This command is not a background scheduler. Configure Windows Task Scheduler or 
 
 ## AI match-history review
 
-The existing evidence-review flow uses four local reviewers and does not call OpenAI, Ollama, or any external AI API:
+The existing evidence-review flow uses four local reviewers and does not call any external AI service:
 
 - Assessment 1 reads the two uploaded Free Fire history screenshots with local OCR.
 - Assessment 2 samples frames from the submitted match-history video and reads visible text with local OCR.
