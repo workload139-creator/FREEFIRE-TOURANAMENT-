@@ -17,7 +17,7 @@ from django.views.decorators.http import require_POST
 
 from livekit import api
 
-from .models import Registration, Tournament, TournamentLiveSession
+from .models import LiveAIAgentSlot, Registration, Tournament, TournamentLiveSession
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +102,27 @@ def tournament_live_token(request, registration_id):
                 ).first()
                 if session is None:
                     raise
+
+        # Allocate one isolated logical Live slot and one Payment slot for this player.
+        # A shared worker pool performs the compute; these are not 100 heavyweight processes.
+        slot_number = TournamentLiveSession.objects.filter(
+            tournament=tournament,
+            status=TournamentLiveSession.Status.ACTIVE,
+            started_at__lte=session.started_at,
+        ).count()
+        if not 1 <= slot_number <= MAX_LIVE_PLAYER_AGENTS_PER_TOURNAMENT:
+            return JsonResponse({"error": "AI slot allocation is outside the supported 1-50 range."}, status=409)
+        for kind in (LiveAIAgentSlot.Kind.LIVE, LiveAIAgentSlot.Kind.PAYMENT):
+            LiveAIAgentSlot.objects.get_or_create(
+                session=session,
+                kind=kind,
+                defaults={
+                    "tournament": tournament,
+                    "registration": registration,
+                    "slot_number": slot_number,
+                    "state": LiveAIAgentSlot.State.WAITING,
+                },
+            )
 
     try:
         token = (
