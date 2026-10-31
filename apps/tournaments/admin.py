@@ -1370,3 +1370,7 @@ class TournamentLiveSessionAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+# Keep Live AI monitoring in its own Admin section.
+from . import live_ai_admin  # noqa: F401
