@@ -19,6 +19,7 @@ urlpatterns = [
     path("profile/edit/", views.profile_edit_view, name="profile_edit"),
     path("password/change/", views.password_change_view, name="password_change"),
     path("wallet/", views.wallet_view, name="wallet"),
+    path("wallet/history/", views.wallet_history_view, name="wallet_history"),
     path("wallet/deposit/", views.deposit_view, name="deposit"),
     path("wallet/deposit/automatic/", views.cashfree_deposit_view, name="cashfree_deposit"),
     path("wallet/deposit/cashfree/return/", views.cashfree_return_view, name="cashfree_return"),
