@@ -59,6 +59,36 @@
     {% endfor %}
 
     <div class="wallet-history-heading">
+      <span class="wallet-kicker">TOURNAMENT ACCOUNT TRAIL</span>
+      <h2>🎮 Registration & Refund History</h2>
+      <p>Har tournament registration, paid entry, cancellation aur refund ka status yahan dikhega. Refunded registration My Tournaments se hide rahegi, lekin yahan record safe rahega.</p>
+    </div>
+    {% for registration in registration_history %}
+      <div class="wallet-record">
+        <div class="wallet-record-top">
+          <strong>{{ registration.tournament.title }} · Registration #{{ registration.pk }}</strong>
+          <span class="wallet-record-status">{{ registration.get_status_display }}</span>
+        </div>
+        <p>Mode: {{ registration.tournament.get_mode_display|default:registration.tournament.mode }}{% if registration.tournament.entry_fee %} · Tournament entry fee: ₹{{ registration.tournament.entry_fee }}{% endif %}</p>
+        <p>Player UID: {{ registration.free_fire_uid }} · Entry paid: ₹{{ registration.entry_fee_paid }} · Payment: {{ registration.get_payment_method_display }}</p>
+        <small>Registered: {{ registration.created_at|date:"d M Y, h:i A" }}{% if registration.updated_at %} · Last updated: {{ registration.updated_at|date:"d M Y, h:i A" }}{% endif %}</small>
+        {% if registration.payment_verified %}<p>Payment verification: Verified</p>{% else %}<p>Payment verification: {{ registration.get_payment_status_display|default:"Not verified / pending" }}</p>{% endif %}
+        {% if registration.refund_processed or registration.status == "refunded" %}
+          <p><strong>Refund: Processed</strong>{% if registration.refund_reference %} · Reference: {{ registration.refund_reference }}{% endif %}</p>
+        {% elif registration.status == "not_playing" and registration.payment_verified %}
+          <p><strong>Refund: Pending claim</strong> · My Tournaments mein registration/refund option check karein.</p>
+        {% elif registration.status == "cancelled" %}
+          <p><strong>Refund: Check required</strong> · Agar amount wallet mein credit nahi hua hai to admin se registration ID ke saath contact karein.</p>
+        {% else %}
+          <p>Refund: Not applicable / not processed</p>
+        {% endif %}
+        {% if registration.refund_processed %}<p>Refund processed flag: Yes · Duplicate refund protection active.</p>{% endif %}
+      </div>
+    {% empty %}
+      <p class="wallet-empty">Abhi koi tournament registration history nahi hai.</p>
+    {% endfor %}
+
+    <div class="wallet-history-heading">
       <h2>Player Gifts History</h2>
       <p>Sent and received Diamond, Coin and Fan Token gifts.</p>
     </div>
