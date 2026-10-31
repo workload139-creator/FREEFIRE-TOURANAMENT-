@@ -1106,7 +1106,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         if (liveShareController != null) {
-            liveShareController.stop();
+            liveShareController.release();
             liveShareController = null;
         }
         if (apkDownloadReceiver != null) {
