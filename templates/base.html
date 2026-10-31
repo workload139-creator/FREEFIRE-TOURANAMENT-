@@ -21,9 +21,10 @@
     <link rel="stylesheet" href="{% static 'css/mobile-app.css' %}">
     <link rel="stylesheet" href="{% static 'css/ux-polish.css' %}">
     <link rel="stylesheet" href="{% static 'css/image-expansion.css' %}">
+    <link rel="stylesheet" href="{% static 'css/ff-page-themes.css' %}">
     {% block extra_css %}{% endblock %}
 </head>
-<body>
+<body class="page-{{ request.resolver_match.url_name|default:'home' }}">
 <button type="button" class="ff-sound-toggle" id="ffSoundToggle" aria-pressed="false" aria-label="Enable optional lightweight sound effects"><span class="ff-sound-icon" aria-hidden="true">♫</span><span class="ff-sound-label">SOUND OFF</span></button>
 <header class="site-header">
     <div class="nav-container">
