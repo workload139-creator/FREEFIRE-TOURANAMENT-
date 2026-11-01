@@ -57,20 +57,9 @@ def _fixed_br_slots():
 
 
 def battle_royale_list(request):
-    """Show regular BR events only; Unlimited BR has its own public page and admin section."""
+    """Show the always-available Solo, Duo and Squad BR arena slots on the main BR page."""
     process_expired_ready_registrations()
-    events = Tournament.objects.filter(
-        mode=Tournament.Mode.BR,
-        is_unlimited_br=False,
-        is_free_fan_tournament=False,
-        is_diwali_offer=False,
-        gender_category__in=(
-            Tournament.GenderCategory.OPEN,
-            Tournament.GenderCategory.BOYS,
-            Tournament.GenderCategory.GIRLS,
-        ),
-        status__in=PUBLIC_STATUSES,
-    ).order_by("br_format", "-created_at", "-pk")
+    events = _fixed_br_slots()
     return render(request, "tournaments/battle_royale_list.html", {"tournaments": events})
 
 
