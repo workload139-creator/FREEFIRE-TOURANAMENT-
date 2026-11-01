@@ -19,7 +19,7 @@ def send_unlimited_live_notifications(tournament_id):
     """Email the admin and verified entrants when a date-free BR/CS event starts."""
     tournament = Tournament.objects.filter(
         pk=tournament_id, status=Tournament.Status.LIVE
-    ).filter(auto_start_at_capacity=True).first()
+    ).first()
     if not tournament:
         return
 
@@ -300,6 +300,5 @@ def create_pending_registration(*, tournament_id, player, free_fire_uid, payment
         description="Tournament entry payment",
     )
     # Wallet entries start immediately at capacity; UPI entries start after admin verifies payment.
-    if tournament.auto_start_at_capacity:
-        maybe_start_unlimited_tournament(tournament.pk)
+    maybe_start_unlimited_tournament(tournament.pk)
     return registration
