@@ -260,7 +260,7 @@ class LiveAIWorker:
                 await worker.room.disconnect()
             except Exception:
                 logger.exception("Room disconnect failed for session %s", session_uuid)
-        await update_slots(
+        await update_monitor(
             session_uuid,
             "degraded" if error else "stopped",
             error=error,
