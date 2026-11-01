@@ -246,7 +246,7 @@ class LiveAIWorker:
 
         await room.connect(self.url, self._token(session))
         self.workers[session_uuid] = worker
-        await update_slots(session_uuid, "connected")
+        await update_monitor(session_uuid, "connected")
         logger.info("Live AI subscriber connected: session=%s room=%s", session_uuid, worker.room_name)
 
     async def _disconnect(self, session_uuid, error=""):
@@ -284,7 +284,7 @@ class LiveAIWorker:
                         logger.exception("Could not subscribe to LiveKit session %s", session_uuid)
                         await update_slots(
                             session_uuid,
-                            LiveAIAgentSlot.State.DEGRADED,
+                            "degraded",
                             error=f"LiveKit subscriber error: {exc}",
                         )
 
@@ -293,7 +293,7 @@ class LiveAIWorker:
                     worker.frames_pending = 0
                     await update_slots(
                         session_uuid,
-                        LiveAIAgentSlot.State.PROCESSING if worker.identity_verified else LiveAIAgentSlot.State.CONNECTED,
+                        "processing" if worker.identity_verified else "connected",
                         frames_delta=delta,
                     )
 
