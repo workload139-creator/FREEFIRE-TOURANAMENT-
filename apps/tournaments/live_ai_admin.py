@@ -1,5 +1,6 @@
 """Admin visibility for the separate 50+50 Live AI agent pools."""
 from django.contrib import admin, messages
+from django.utils import timezone
 from .live_ai_rewards import approve_live_kill_event
 
 from .live_ai_models import LiveAIAgentSlot, LiveAIPaymentAssessment, LiveKillEvent
@@ -44,7 +45,7 @@ class LiveKillEventAdmin(admin.ModelAdmin):
     def reject_selected_live_kills(self, request, queryset):
         updated = queryset.filter(status=LiveKillEvent.Status.REVIEW).update(
             status=LiveKillEvent.Status.REJECTED,
-            reviewed_at=__import__("django.utils.timezone", fromlist=["now"]).now(),
+            reviewed_at=timezone.now(),
             reviewed_by=request.user,
             review_reason="Rejected by Admin.",
         )
