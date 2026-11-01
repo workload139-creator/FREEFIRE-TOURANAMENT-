@@ -90,7 +90,7 @@ class RegistrationForm(forms.Form):
 class KillSubmissionForm(forms.ModelForm):
     consent_ai_review = forms.BooleanField(
         required=True,
-        label="I agree that my submitted evidence may be processed by the configured AI review provider.",
+        label="I agree that my submitted evidence may be checked by FF Arena's four local evidence reviewers (2 AI Assessments + 2 AI Agents). Unclear cases go to Admin Review.",
     )
 
     class Meta:
