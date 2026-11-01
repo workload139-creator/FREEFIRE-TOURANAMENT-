@@ -62,7 +62,7 @@ class TournamentAdminForm(forms.ModelForm):
             self.fields["room_invite_link"].required = False
             self.fields["room_invite_link"].help_text = "Official https://ffshare.garena.com/ invite link. Set before LIVE or update after LIVE in the tournament Room Invite page."
         self.fields["status"].help_text = (
-            "Registration open rakhein, room details set karke LIVE karein, match ke baad COMPLETED karein, "
+            "Registration open rakhein, Room Invite Link set karke LIVE karein, match ke baad COMPLETED karein, "
             "ya cancellation/refund ke liye CANCELLED select karein."
         )
         if "auto_reopen" in self.fields:
