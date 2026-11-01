@@ -1,0 +1,69 @@
+# Render Blueprint for FF Arena's separate AI worker processes.
+# The existing website service remains independently managed.
+# Worker plans are paid Render resources; review costs before syncing this Blueprint.
+services:
+  - type: worker
+    name: ff-arena-live-ai-worker
+    runtime: docker
+    region: singapore
+    plan: starter
+    dockerfilePath: ./Dockerfile.live-ai-worker
+    dockerContext: .
+    autoDeployTrigger: commit
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.production
+      - key: DJANGO_SECRET_KEY
+        fromService:
+          name: FREEFIRE-TOURANAMENT-
+          type: web
+          envVarKey: DJANGO_SECRET_KEY
+      - key: DATABASE_URL
+        fromService:
+          name: FREEFIRE-TOURANAMENT-
+          type: web
+          envVarKey: DATABASE_URL
+      - key: LIVEKIT_URL
+        fromService:
+          name: FREEFIRE-TOURANAMENT-
+          type: web
+          envVarKey: LIVEKIT_URL
+      - key: LIVEKIT_API_KEY
+        fromService:
+          name: FREEFIRE-TOURANAMENT-
+          type: web
+          envVarKey: LIVEKIT_API_KEY
+      - key: LIVEKIT_API_SECRET
+        fromService:
+          name: FREEFIRE-TOURANAMENT-
+          type: web
+          envVarKey: LIVEKIT_API_SECRET
+      - key: LIVE_AI_INGEST_TOKEN
+        fromService:
+          name: FREEFIRE-TOURANAMENT-
+          type: web
+          envVarKey: LIVE_AI_INGEST_TOKEN
+      - key: LIVE_AI_INGEST_URL
+        value: https://freefire-touranament-74nr.onrender.com
+
+  - type: worker
+    name: ff-arena-payment-ai-worker
+    runtime: docker
+    region: singapore
+    plan: starter
+    dockerfilePath: ./Dockerfile.live-ai-payment-worker
+    dockerContext: .
+    autoDeployTrigger: commit
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.production
+      - key: DJANGO_SECRET_KEY
+        fromService:
+          name: FREEFIRE-TOURANAMENT-
+          type: web
+          envVarKey: DJANGO_SECRET_KEY
+      - key: DATABASE_URL
+        fromService:
+          name: FREEFIRE-TOURANAMENT-
+          type: web
+          envVarKey: DATABASE_URL
