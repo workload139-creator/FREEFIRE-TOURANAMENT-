@@ -174,7 +174,18 @@
                 <td>{{ event.confidence }}</td>
                 <td>{% if event.payment_assessment %}<strong>{% if event.payment_assessment.eligible %}<span class="ff-ai-pass">Assessment passed</span>{% else %}<span class="ff-ai-hold">Needs Admin review</span>{% endif %}</strong><br><small>{{ event.payment_assessment.decision_reason }}</small><details class="mt-2"><summary>View all assessment checks</summary><div class="mt-2">{% for check_name, check_value in event.payment_assessment.checks.items %}<div>{{ check_name }}: {% if check_value %}<span class="text-success">PASS</span>{% else %}<span class="text-warning">CHECK / HOLD</span>{% endif %}</div>{% endfor %}</div></details>{% else %}<span class="ff-ai-hold">Waiting for assessment</span>{% endif %}</td>
                 <td>{% if event.payment_assessment %}{{ event.payment_assessment.proposed_kills }} kills · {{ event.payment_assessment.proposed_rewards }}{% else %}Pending{% endif %}{% if event.reward_payload.wallet_balances %}<br><small>Wallet: {{ event.reward_payload.wallet_balances }}</small>{% endif %}</td>
-                <td>{{ event.get_status_display }}<br><small>{{ event.review_reason|default:"—" }}</small><br><a href="/admin/tournaments/livekillevent/" target="_blank" rel="noopener">Open Admin Review</a></td>
+                <td>{{ event.get_status_display }}<br><small>{{ event.review_reason|default:"—" }}</small>
+                    {% if event.status == "review" %}
+                    <form class="ff-kill-approve-form mt-2" data-url="/tournaments/live/admin/kill/{{ event.id }}/approve/">
+                        <input class="form-control form-control-sm mb-1" name="match_id" maxlength="100" placeholder="Actual match ID" required>
+                        <input class="form-control form-control-sm mb-1" type="datetime-local" name="kill_at" required>
+                        <input class="form-control form-control-sm mb-1" name="attributed_player_name" maxlength="80" placeholder="In-game killer nickname" required>
+                        <button class="btn btn-sm btn-success" type="submit">✓ Confirm this kill &amp; calculate reward</button>
+                        <small class="d-block ff-kill-approve-status mt-1" role="status"></small>
+                    </form>
+                    {% else %}<span class="text-success">Admin reviewed</span>{% endif %}
+                    <a class="d-block mt-1" href="/admin/tournaments/livekillevent/" target="_blank" rel="noopener">Full Admin Review</a>
+                </td>
             </tr>
             {% empty %}<tr><td colspan="8">Abhi koi Live Kill event detect nahi hua.</td></tr>{% endfor %}
             </tbody>
@@ -242,6 +253,35 @@
     const rooms = [];
     let talkingRoom = null;
     const csrfToken = document.querySelector("#ff-live-csrf-form [name=csrfmiddlewaretoken]")?.value || "";
+    document.querySelectorAll(".ff-kill-approve-form").forEach(form => {
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const button = form.querySelector("button[type=submit]");
+            const status = form.querySelector(".ff-kill-approve-status");
+            const fields = new FormData(form);
+            button.disabled = true;
+            status.textContent = "Checking evidence and reward rules…";
+            try {
+                const response = await fetch(form.dataset.url, {
+                    method: "POST", credentials: "same-origin",
+                    headers: {"Content-Type":"application/json","X-CSRFToken":csrfToken,"X-Requested-With":"XMLHttpRequest"},
+                    body: JSON.stringify({
+                        match_id: fields.get("match_id"),
+                        kill_at: fields.get("kill_at"),
+                        attributed_player_name: fields.get("attributed_player_name")
+                    })
+                });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(result.error || "Kill confirmation failed.");
+                status.textContent = result.message || "Kill confirmed.";
+                button.textContent = "✓ Confirmed";
+                form.querySelectorAll("input").forEach(input => input.disabled = true);
+            } catch (error) {
+                status.textContent = error.message;
+                button.disabled = false;
+            }
+        });
+    });
     const esc = (value) => String(value || "").replace(/[&<>"']/g, ch => ({
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     }[ch]));
