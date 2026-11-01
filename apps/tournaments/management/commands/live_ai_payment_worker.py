@@ -36,7 +36,11 @@ def build_payment_assessment(event, prior_count=0):
         "registration_ready": registration.status == "ready",
         "payment_verified": bool(registration.payment_verified),
         "not_refunded": not registration.refund_processed and registration.status != "refunded",
-        "live_identity_verified": bool(event.session.identity_verified_at),
+        "live_identity_verified": bool(
+            event.session.identity_verified_at
+            and event.session.lobby_nickname_verified_at
+            and str(getattr(event.session, "verified_nickname", "") or "").strip()
+        ),
         "registered_uid_matches_account": str(registration.free_fire_uid or "").strip()
             == str(getattr(player, "free_fire_uid", "") or "").strip(),
         "account_uid_verified": bool(getattr(player, "uid_verified", False)),

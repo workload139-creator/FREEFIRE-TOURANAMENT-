@@ -430,6 +430,8 @@ class TournamentLiveSession(models.Model):
     monitor_detections_seen = models.PositiveIntegerField(default=0)
     identity_verified_at = models.DateTimeField(null=True, blank=True)
     identity_ocr_confidence = models.DecimalField(max_digits=5, decimal_places=4, default=0)
+    verified_nickname = models.CharField(max_length=80, blank=True, default="")
+    lobby_nickname_verified_at = models.DateTimeField(null=True, blank=True)
     monitor_last_heartbeat_at = models.DateTimeField(null=True, blank=True)
     monitor_last_error = models.CharField(max_length=250, blank=True)
     started_at = models.DateTimeField(auto_now_add=True)

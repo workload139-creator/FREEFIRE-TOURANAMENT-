@@ -194,8 +194,10 @@ def admin_tournament_live_tokens(request, tournament_id):
             "token": token,
             "url": url,
             "state": session.monitor_state,
-            "identity_verified": bool(session.identity_verified_at),
+            "identity_verified": bool(session.lobby_nickname_verified_at and session.verified_nickname),
             "identity_confidence": str(session.identity_ocr_confidence),
+            "verified_nickname": session.verified_nickname,
+            "lobby_nickname_verified_at": session.lobby_nickname_verified_at.isoformat() if session.lobby_nickname_verified_at else None,
             "approved_kills": verified_counts.get(session.registration_id, 0),
             "pending_kills": pending_counts.get(session.registration_id, 0),
             "reward_preview": rewards_for_tournament(

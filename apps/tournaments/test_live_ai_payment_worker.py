@@ -23,7 +23,13 @@ class SingleAIAssessmentRulesTests(TestCase):
             payment_verified=True,
             refund_processed=refunded,
         )
-        session = SimpleNamespace(registration_id=7, status="active", identity_verified_at=object())
+        session = SimpleNamespace(
+            registration_id=7,
+            status="active",
+            identity_verified_at=object(),
+            lobby_nickname_verified_at=object(),
+            verified_nickname="RegisteredNick",
+        )
         return SimpleNamespace(
             tournament=tournament,
             registration=registration,
@@ -75,6 +81,14 @@ class SingleAIAssessmentRulesTests(TestCase):
     def test_uid_verification_is_required(self):
         event = self.make_event()
         event.session.identity_verified_at = None
+        result = build_payment_assessment(event)
+        self.assertFalse(result["eligible"])
+        self.assertFalse(result["checks"]["live_identity_verified"])
+
+    def test_uid_only_without_lobby_nickname_match_is_not_verified(self):
+        event = self.make_event()
+        event.session.lobby_nickname_verified_at = None
+        event.session.verified_nickname = ""
         result = build_payment_assessment(event)
         self.assertFalse(result["eligible"])
         self.assertFalse(result["checks"]["live_identity_verified"])

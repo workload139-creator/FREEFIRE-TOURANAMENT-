@@ -23,14 +23,17 @@ from livekit import api, rtc
 from PIL import Image
 import pytesseract
 
-from apps.tournaments.live_ai_ocr import verify_profile_uid
-from apps.tournaments.live_ai_killfeed import live_kill_detection_enabled, scan_full_frame_for_kill_text
+from apps.tournaments.live_ai_ocr import extract_profile_identity, verify_br_lobby_nickname
+from apps.tournaments.live_ai_killfeed import (
+    is_kill_signal_text,
+    live_kill_detection_enabled,
+    scan_full_frame_for_kill_text,
+ )
 from apps.tournaments.models import TournamentLiveSession
 
 logger = logging.getLogger(__name__)
 OCR_SAMPLE_INTERVAL = 2.0
 KILL_SCAN_INTERVAL = 1.5
-KILL_TERMS = {"eliminated", "knocked", "headshot", "kill", "killed", "assist"}
 
 
 @dataclass
@@ -45,6 +48,8 @@ class SessionWorker:
     frame_tasks: set = field(default_factory=set)
     frames_pending: int = 0
     identity_verified: bool = False
+    profile_nickname_candidate: str = ""
+    profile_ocr_confidence: float = 0.0
     last_ocr_at: float = 0.0
     last_kill_scan_at: float = 0.0
     last_kill_fingerprint: str = ""
@@ -63,6 +68,8 @@ def active_sessions():
         ).values(
             "session_uuid", "room_name", "participant_identity",
             "registration_id", "registration__free_fire_uid", "tournament__mode",
+            "identity_verified_at", "identity_ocr_confidence",
+            "verified_nickname", "lobby_nickname_verified_at",
         )
     )
 
@@ -81,11 +88,13 @@ def update_monitor(session_uuid, state, frames_delta=0, detections_delta=0, erro
 
 
 @sync_to_async
-def mark_identity_verified(session_uuid, confidence):
+def mark_identity_verified(session_uuid, nickname, confidence):
     now = timezone.now()
     TournamentLiveSession.objects.filter(session_uuid=session_uuid).update(
         identity_verified_at=now,
         identity_ocr_confidence=Decimal(str(round(float(confidence), 4))),
+        verified_nickname=str(nickname)[:80],
+        lobby_nickname_verified_at=now,
         monitor_state="processing",
         monitor_last_heartbeat_at=now,
         monitor_last_error="",
@@ -93,12 +102,22 @@ def mark_identity_verified(session_uuid, confidence):
     )
 
 
-def _ocr_frame_for_uid(frame, registered_uid):
-    """Convert a LiveKit frame to RGB and look for an exact UID label/value."""
+def _ocr_frame_for_profile(frame, registered_uid):
+    """Read exact registered UID plus a single repeated nickname from profile."""
     rgb = frame.convert(rtc.VideoBufferType.RGB24)
     image = Image.frombytes("RGB", (rgb.width, rgb.height), bytes(rgb.data))
     try:
-        return verify_profile_uid(image, registered_uid)
+        return extract_profile_identity(image, registered_uid)
+    finally:
+        image.close()
+
+
+def _ocr_frame_for_br_lobby(frame, expected_nickname):
+    """Confirm the same nickname on the observed BR-RANKED lobby screen."""
+    rgb = frame.convert(rtc.VideoBufferType.RGB24)
+    image = Image.frombytes("RGB", (rgb.width, rgb.height), bytes(rgb.data))
+    try:
+        return verify_br_lobby_nickname(image, expected_nickname)
     finally:
         image.close()
 
@@ -108,7 +127,7 @@ def _scan_kill_candidate(frame):
     image = Image.frombytes("RGB", (rgb.width, rgb.height), bytes(rgb.data))
     try:
         words = scan_full_frame_for_kill_text(image)
-        relevant = [item for item in words if item["text"].lower() in KILL_TERMS]
+        relevant = [item for item in words if is_kill_signal_text(item["text"])]
         if not relevant:
             return None
         text = " ".join(item["text"] for item in words)[:5000]
@@ -184,13 +203,33 @@ class LiveAIWorker:
                 try:
                     if not worker.identity_verified and now - worker.last_ocr_at >= OCR_SAMPLE_INTERVAL:
                         worker.last_ocr_at = now
-                        verified, confidence = await asyncio.to_thread(
-                            _ocr_frame_for_uid, frame, worker.free_fire_uid
-                        )
-                        if verified:
-                            worker.identity_verified = True
-                            await mark_identity_verified(worker.session_uuid, confidence)
-                            logger.info("Registered UID verified for session=%s registration=%s", worker.session_uuid, worker.registration_id)
+                        if not worker.profile_nickname_candidate:
+                            uid_ok, uid_confidence, nickname, nickname_confidence = await asyncio.to_thread(
+                                _ocr_frame_for_profile, frame, worker.free_fire_uid
+                            )
+                            if uid_ok and nickname:
+                                worker.profile_nickname_candidate = nickname
+                                worker.profile_ocr_confidence = min(uid_confidence, nickname_confidence)
+                                logger.info(
+                                    "Profile UID and nickname candidate read for session=%s registration=%s",
+                                    worker.session_uuid,
+                                    worker.registration_id,
+                                )
+                        elif worker.tournament_mode == "BR":
+                            lobby_ok, lobby_confidence = await asyncio.to_thread(
+                                _ocr_frame_for_br_lobby, frame, worker.profile_nickname_candidate
+                            )
+                            if lobby_ok:
+                                worker.identity_verified = True
+                                confidence = min(worker.profile_ocr_confidence, lobby_confidence)
+                                await mark_identity_verified(
+                                    worker.session_uuid, worker.profile_nickname_candidate, confidence
+                                )
+                                logger.info(
+                                    "Profile-to-BR-lobby identity verified for session=%s registration=%s",
+                                    worker.session_uuid,
+                                    worker.registration_id,
+                                )
                     if live_kill_detection_enabled(worker.tournament_mode) and worker.identity_verified and now - worker.last_kill_scan_at >= KILL_SCAN_INTERVAL:
                         worker.last_kill_scan_at = now
                         candidate = await asyncio.to_thread(_scan_kill_candidate, frame)
@@ -232,6 +271,9 @@ class LiveAIWorker:
             free_fire_uid=str(session["registration__free_fire_uid"] or ""),
             tournament_mode=str(session["tournament__mode"] or ""),
             room=room,
+            identity_verified=bool(session.get("lobby_nickname_verified_at") and session.get("verified_nickname")),
+            profile_nickname_candidate=str(session.get("verified_nickname") or ""),
+            profile_ocr_confidence=float(session.get("identity_ocr_confidence") or 0),
         )
 
         @room.on("track_subscribed")

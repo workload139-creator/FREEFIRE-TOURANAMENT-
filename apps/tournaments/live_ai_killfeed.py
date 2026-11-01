@@ -11,6 +11,13 @@ from pytesseract import Output
 
 
 SUPPORTED_TOURNAMENT_MODES = {"BR", "VS"}  # VS is FF Arena's Clash Squad format.
+KILL_SIGNAL_WORDS = {"eliminated", "knocked", "headshot", "kill", "killed", "assist"}
+
+
+def is_kill_signal_text(value):
+    """Recognize only explicit candidate words; a streak banner is not a kill row."""
+    token = re.sub(r"[^A-Za-z0-9_'-]", "", str(value or "")).casefold()
+    return token in KILL_SIGNAL_WORDS
 
 
 def live_kill_detection_enabled(tournament_mode):
