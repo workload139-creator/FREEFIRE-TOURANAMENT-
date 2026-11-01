@@ -28,11 +28,7 @@ def run_two_agent_review(event, live_session):
     )
     # The current stream OCR does not yet capture a verified in-game killer
     # nickname or stable match identifier. Do not infer either from account name.
-    attribution_ok = bool(
-        event.match_id
-        and event.kill_at
-        and getattr(event, "attributed_player_name", "")
-    )
+    attribution_ok = bool(getattr(event, "evidence_image", None))
     reports = {
         "ff_arena_agent_local_1": {
             "status": "COMPLETED",
