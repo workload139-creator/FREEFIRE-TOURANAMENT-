@@ -1,7 +1,7 @@
 """Admin visibility for the separate 50+50 Live AI agent pools."""
 from django.contrib import admin
 
-from .live_ai_models import LiveAIAgentSlot, LiveKillEvent
+from .live_ai_models import LiveAIAgentSlot, LiveAIPaymentAssessment, LiveKillEvent
 
 
 @admin.register(LiveAIAgentSlot)
@@ -21,11 +21,25 @@ class LiveAIAgentSlotAdmin(admin.ModelAdmin):
 
 @admin.register(LiveKillEvent)
 class LiveKillEventAdmin(admin.ModelAdmin):
-    list_display = ("detected_at", "tournament", "registration", "match_id", "confidence", "status", "reward_reference")
+    list_display = ("detected_at", "tournament", "registration", "match_id", "confidence", "status", "payment_ai_result", "reward_reference")
     list_filter = ("status", "tournament__mode", "tournament__br_format", "tournament__vs_format")
     search_fields = ("registration__free_fire_uid", "registration__player__username", "match_id", "event_fingerprint")
-    readonly_fields = ("event_uuid", "event_fingerprint", "tournament", "registration", "session", "match_id", "kill_at", "detected_text", "confidence", "evidence_image", "detected_at", "reward_reference", "reward_payload")
+    readonly_fields = ("event_uuid", "event_fingerprint", "tournament", "registration", "session", "match_id", "kill_at", "detected_text", "confidence", "evidence_image", "detected_at", "reward_reference", "reward_payload", "payment_ai_details")
     actions = None
+
+    @admin.display(description="Payment AI assessment")
+    def payment_ai_result(self, obj):
+        assessment = getattr(obj, "payment_assessment", None)
+        if not assessment:
+            return "Waiting for Payment AI"
+        return assessment.decision_reason
+
+    @admin.display(description="Payment AI details")
+    def payment_ai_details(self, obj):
+        assessment = getattr(obj, "payment_assessment", None)
+        if not assessment:
+            return "Not assessed yet"
+        return f"Eligible: {assessment.eligible}; proposed kills: {assessment.proposed_kills}; rewards: {assessment.proposed_rewards}; checks: {assessment.checks}"
 
     def has_add_permission(self, request):
         return False
