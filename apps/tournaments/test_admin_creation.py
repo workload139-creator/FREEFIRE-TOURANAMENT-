@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import Tournament
+from .models import Registration, Tournament
 
 
 class TournamentAdminCreationTests(TestCase):
@@ -83,9 +83,14 @@ class TournamentAdminCreationTests(TestCase):
         Tournament.objects.filter(status=Tournament.Status.LIVE).update(status=Tournament.Status.UPCOMING)
         live = self.make_tournament("Current Live Event", status=Tournament.Status.LIVE)
         waiting = self.make_tournament("Next Full Waiting Event")
+        player = get_user_model().objects.create_user(
+            username="next-round-player",
+            email="player@example.test",
+            password="test-only-password-12345",
+        )
         Registration.objects.create(
             tournament=waiting,
-            player=self.player,
+            player=player,
             free_fire_uid="1234567890",
             status=Registration.Status.CONFIRMED,
             payment_verified=True,
