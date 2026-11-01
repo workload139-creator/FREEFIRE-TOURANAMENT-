@@ -47,14 +47,13 @@ def approve_live_kill_event(event_id, admin_user):
         registration=registration,
         status=LiveKillEvent.Status.VERIFIED,
     ).count()
-    if already_verified < 1:
-        return False, "At least two distinct kills must be reviewed; approve the first only after reviewing a second candidate."
-
-    reward_rows = rewards_for_tournament(event.tournament, 1)
-    if not reward_rows:
+    total_verified_kills = already_verified + 1
+    reward_rows = rewards_for_tournament(event.tournament, total_verified_kills) if total_verified_kills >= 2 else []
+    if total_verified_kills >= 2 and not reward_rows:
         return False, "No reward is configured for this tournament."
-    wallet, _ = PlayerShopWallet.objects.select_for_update().get_or_create(user=player)
-    reference = f"livekill:{event.event_uuid}"
+    reference = f"livekill:{event.event_uuid}" if reward_rows else ""
+    if reward_rows:
+        wallet, _ = PlayerShopWallet.objects.select_for_update().get_or_create(user=player)
     for currency, quantity, label in reward_rows:
         if int(quantity) <= 0:
             continue
@@ -87,7 +86,8 @@ def approve_live_kill_event(event_id, admin_user):
             reference=reference,
             description=f"Admin-approved live kill · {label}",
         )
-    wallet.save(update_fields=("diamonds", "coins", "fan_tokens", "updated_at"))
+    if reward_rows:
+        wallet.save(update_fields=("diamonds", "coins", "fan_tokens", "updated_at"))
     event.status = LiveKillEvent.Status.VERIFIED
     event.reviewed_at = timezone.now()
     event.reviewed_by = admin_user
@@ -99,9 +99,9 @@ def approve_live_kill_event(event_id, admin_user):
         ],
         "approved_by": str(admin_user.pk),
     }
-    event.review_reason = "Manually approved by Admin; idempotent wallet and ledger records created."
+    event.review_reason = ("Manually approved by Admin; rewards credited once after minimum two verified kills." if reward_rows else "First kill verified by Admin; reward held until the second distinct verified kill.")
     event.save(update_fields=(
         "status", "reviewed_at", "reviewed_by", "reward_reference",
         "reward_payload", "review_reason",
     ))
-    return True, "Approved and credited once."
+    return True, ("Approved and credited once." if reward_rows else "First kill verified; no reward credited yet. The second verified kill triggers the minimum reward.")
