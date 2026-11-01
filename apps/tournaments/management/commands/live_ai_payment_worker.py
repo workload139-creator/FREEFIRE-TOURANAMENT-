@@ -24,6 +24,40 @@ POLL_SECONDS = 5
 MIN_KILLS_FOR_REWARD = 2
 
 
+def build_payment_assessment(event, live_slot, prior_count=0):
+    """Pure validation/rules function, intentionally incapable of wallet writes."""
+    checks = {
+        "tournament_live": event.tournament.status == "live",
+        "supported_mode": event.tournament.mode in ("BR", "VS"),
+        "registration_ready": event.registration.status == "ready",
+        "payment_verified": bool(event.registration.payment_verified),
+        "not_refunded": not bool(event.registration.refund_processed),
+        "live_ai_uid_verified": bool(live_slot and live_slot.identity_verified_at),
+        "ocr_confidence_pass": Decimal(str(event.confidence)) >= Decimal("0.60"),
+        "candidate_text_present": bool((event.detected_text or "").strip()),
+        "event_session_matches": event.session.registration_id == event.registration_id,
+    }
+    eligible = all(checks.values())
+    proposed_kills = int(prior_count) + (1 if eligible else 0)
+    rewards = []
+    reason = "Held: " + ", ".join(key for key, passed in checks.items() if not passed)
+    if eligible and proposed_kills >= MIN_KILLS_FOR_REWARD:
+        rewards = [
+            {"currency": currency, "quantity": quantity, "label": label}
+            for currency, quantity, label in rewards_for_tournament(event.tournament, proposed_kills)
+        ]
+        reason = "Payment AI checks passed; proposed reward awaits Admin verification."
+    elif eligible:
+        reason = f"Candidate passed checks; {MIN_KILLS_FOR_REWARD - proposed_kills} more verified kill(s) needed before reward proposal."
+    return {
+        "eligible": eligible,
+        "proposed_kills": proposed_kills if eligible else 0,
+        "proposed_rewards": rewards,
+        "checks": checks,
+        "decision_reason": reason[:250],
+    }
+
+
 @sync_to_async
 def assess_pending_events(batch_size=100):
     """Assess unreviewed candidate events exactly once; no wallet writes occur."""
@@ -40,44 +74,17 @@ def assess_pending_events(batch_size=100):
                 session=event.session,
                 kind=LiveAIAgentSlot.Kind.LIVE,
             ).first()
-            checks = {
-                "tournament_live": event.tournament.status == "live",
-                "supported_mode": event.tournament.mode in ("BR", "VS"),
-                "registration_ready": event.registration.status == "ready",
-                "payment_verified": bool(event.registration.payment_verified),
-                "not_refunded": not bool(event.registration.refund_processed),
-                "live_ai_uid_verified": bool(live_slot and live_slot.identity_verified_at),
-                "ocr_confidence_pass": Decimal(str(event.confidence)) >= Decimal("0.60"),
-                "candidate_text_present": bool((event.detected_text or "").strip()),
-                "event_session_matches": event.session.registration_id == event.registration_id,
-            }
-            eligible = all(checks.values())
-            prior_count = LiveAIPaymentAssessment.objects.filter(
-                event__registration=event.registration,
-                eligible=True,
-            ).count()
-            proposed_kills = prior_count + (1 if eligible else 0)
-            rewards = []
-            reason = "Held: " + ", ".join(key for key, passed in checks.items() if not passed)
-            if eligible and proposed_kills >= MIN_KILLS_FOR_REWARD:
-                rewards = [
-                    {"currency": currency, "quantity": quantity, "label": label}
-                    for currency, quantity, label in rewards_for_tournament(event.tournament, proposed_kills)
-                ]
-                reason = "Payment AI checks passed; proposed reward awaits Admin verification."
-            elif eligible:
-                reason = f"Candidate passed checks; {MIN_KILLS_FOR_REWARD - proposed_kills} more verified kill(s) needed before reward proposal."
-            LiveAIPaymentAssessment.objects.create(
-                event=event,
-                eligible=eligible,
-                proposed_kills=proposed_kills if eligible else 0,
-                proposed_rewards=rewards,
-                checks=checks,
-                decision_reason=reason[:250],
+            result = build_payment_assessment(
+                event,
+                live_slot,
+                prior_count=LiveAIPaymentAssessment.objects.filter(
+                    event__registration=event.registration,
+                    eligible=True,
+                ).count(),
             )
+            LiveAIPaymentAssessment.objects.create(event=event, **result)
             assessed += 1
     return assessed
-
 
 @sync_to_async
 def heartbeat_payment_slots():
