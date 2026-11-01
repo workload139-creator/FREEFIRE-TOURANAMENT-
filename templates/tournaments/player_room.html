@@ -29,10 +29,10 @@
 
   <section id="liveAiShare" style="padding:20px;margin:18px 0;border:1px solid rgba(34,197,94,.55);border-radius:16px">
    <h2>📡 FF Arena Live AI</h2>
-   <p>YES confirm karne ke baad yahin <strong>Start Live AI</strong> dabayein aur Android screen-share permission allow karein. Live active hone par isi page par Mic ON/OFF aur JOIN ROOM milega. Free Fire kholkar apni <strong>Profile screen</strong> dikhayein. Nickname aur UID saaf nazar aane chahiye. Uske baad lobby mein jaakar match shuru karein aur poore match mein screen share chalu rakhein.</p>
+   <p>YES confirm karne ke baad yahin <strong>Start Live AI</strong> dabayein. FF Arena APK Android ka screen-share prompt kholegi; supported desktop browsers mein website browser ka screen-share prompt kholegi. Live active hone par isi page par Mic ON/OFF aur JOIN ROOM milega. Free Fire kholkar apni <strong>Profile screen</strong> dikhayein. Nickname aur UID saaf nazar aane chahiye. Uske baad lobby mein jaakar match shuru karein aur poore match mein screen share chalu rakhein.</p>
    <div role="note" style="padding:14px;margin:12px 0;border:1px solid #f59e0b;border-radius:12px;background:rgba(245,158,11,.08)"><strong>⚠️ AI PROFILE VERIFICATION RULE</strong><p style="margin:8px 0 0">AI ko pehle aapki lobby/profile se nickname aur UID padhkar registered UID se match karna hoga. Profile nahi dikhayi, UID/nickname clear nahi hua ya identity match nahi hui, to kills verify nahi honge aur reward release nahi hoga. Match ke dauran AI sirf isi registered player ke killfeed events count karega.</p></div>
    <p>Screen stream LiveKit ke secure room par share hoti hai. Full gameplay recording website par save nahi hoti; analysis ke liye frames temporary process honge.</p>
-   <p><strong>Privacy:</strong> Start karne par Android screen-sharing permission maangi jayegi. Free Fire aur notifications mein dikhne wali personal information bhi screen par aa sakti hai; share karne se pehle sensitive notifications band kar dein.</p>
+   <p><strong>Privacy:</strong> Start karne par app ya supported browser screen-sharing permission maangega. Free Fire aur notifications mein dikhne wali personal information bhi screen par aa sakti hai; share karne se pehle sensitive notifications band kar dein.</p>
    <form id="liveAiConsentForm">
     {% csrf_token %}
     <label style="display:flex;gap:10px;align-items:flex-start;margin:14px 0">
@@ -56,16 +56,21 @@
     const tokenUrl = "{% url 'tournaments:live_token' registration.id %}";
     const endUrl = "{% url 'tournaments:live_end' registration.id %}";
     const warningUrl = "{% url 'tournaments:live_background_warning' registration.id %}";
+    const nativeLive = window.FFArenaLive && typeof window.FFArenaLive.start === "function";
     let active = false;
-    let awaitingNativeStart = false;
+    let awaitingStart = false;
     let backgroundWarningSent = false;
     let micEnabled = false;
+    let browserRoom = null;
+    let browserMicTrack = null;
+    let browserScreenTracks = [];
     let lastMessageId = 0;
     const micButton = document.getElementById("togglePlayerMic");
     const micStatus = document.getElementById("playerMicStatus");
     const messageList = document.getElementById("adminLiveMessageList");
     const messageEmpty = document.getElementById("adminLiveMessageEmpty");
     const messagesUrl = "{% url 'tournaments:player_live_messages' registration.id %}";
+
     function escapeMessage(value) {
       return String(value || "").replace(/[&<>"']/g, function (ch) {
         return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch];
@@ -88,17 +93,95 @@
         });
       } catch (error) {}
     }
-    micButton.addEventListener("click", function () {
+    function emitLive(activeNow, message) {
+      window.dispatchEvent(new CustomEvent("ffarena-live-status", {
+        detail: {active: activeNow, message: message}
+      }));
+    }
+    function emitMic(enabled, message) {
+      window.dispatchEvent(new CustomEvent("ffarena-mic-status", {
+        detail: {enabled: enabled, message: message}
+      }));
+    }
+    async function post(url, payload) {
+      const response = await fetch(url, {
+        method: "POST", credentials: "same-origin",
+        headers: {"Content-Type":"application/json","X-CSRFToken":csrf,"X-Requested-With":"XMLHttpRequest"},
+        body: JSON.stringify(payload || {})
+      });
+      const data = await response.json().catch(function () { return {}; });
+      if (!response.ok) throw new Error(data.error || "Live request failed.");
+      return data;
+    }
+    async function startBrowserLive(session) {
+      if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== "function") {
+        throw new Error("Is browser mein screen sharing supported nahi hai. Android phone par FF Arena APK use karein; desktop Chrome/Edge mein website se Live start kar sakte hain.");
+      }
+      status.textContent = "Browser screen-share permission kholega. Share tab/screen select karein…";
+      const sdk = await import("https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.esm.mjs");
+      const tracks = await sdk.createLocalScreenTracks({audio: false});
+      if (!tracks || !tracks.length) throw new Error("Browser ne screen-share track nahi diya.");
+      browserScreenTracks = tracks;
+      const videoTrack = tracks.find(track => track.kind === "video");
+      if (!videoTrack) throw new Error("Screen video track nahi mila.");
+      const room = new sdk.Room();
+      browserRoom = room;
+      await room.connect(session.url, session.token);
+      await room.localParticipant.publishTrack(videoTrack);
+      videoTrack.mediaStreamTrack.addEventListener("ended", async function () {
+        if (browserRoom === room) {
+          await stopBrowserLive();
+          try { await post(endUrl, {}); } catch (error) {}
+          emitLive(false, "Screen sharing band ho gayi. Live session stop kar diya.");
+        }
+      }, {once: true});
+      emitLive(true, "Website Live active hai. Screen share ho rahi hai.");
+    }
+    async function stopBrowserLive() {
+      const room = browserRoom;
+      browserRoom = null;
+      if (browserMicTrack) {
+        try { if (room) await room.localParticipant.unpublishTrack(browserMicTrack); } catch (error) {}
+        try { browserMicTrack.stop(); } catch (error) {}
+        browserMicTrack = null;
+      }
+      browserScreenTracks.forEach(track => { try { track.stop(); } catch (error) {} });
+      browserScreenTracks = [];
+      if (room) {
+        try { await room.disconnect(); } catch (error) {}
+      }
+      micEnabled = false;
+      emitMic(false, "Mic OFF.");
+    }
+    micButton.addEventListener("click", async function () {
       if (!active) {
         micStatus.textContent = "Mic ke liye pehle Live session start karein.";
         return;
       }
-      if (!window.FFArenaLive || typeof window.FFArenaLive.setMicrophoneEnabled !== "function") {
-        micStatus.textContent = "Mic control ke liye FF Arena ka updated Android app chahiye.";
-        return;
-      }
       micButton.disabled = true;
-      window.FFArenaLive.setMicrophoneEnabled(!micEnabled);
+      try {
+        if (nativeLive) {
+          window.FFArenaLive.setMicrophoneEnabled(!micEnabled);
+          return;
+        }
+        if (!browserRoom) throw new Error("Live connection nahi mila. Live dobara start karein.");
+        if (browserMicTrack) {
+          await browserRoom.localParticipant.unpublishTrack(browserMicTrack);
+          browserMicTrack.stop();
+          browserMicTrack = null;
+          micEnabled = false;
+          emitMic(false, "Mic OFF. Admin aapki awaaz nahi sun sakta.");
+        } else {
+          const sdk = await import("https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.esm.mjs");
+          browserMicTrack = await sdk.createLocalAudioTrack();
+          await browserRoom.localParticipant.publishTrack(browserMicTrack);
+          micEnabled = true;
+          emitMic(true, "Mic ON — Admin aapko sun sakta hai.");
+        }
+      } catch (error) {
+        micStatus.textContent = error.message || "Mic control nahi ho saka.";
+        micButton.disabled = false;
+      }
     });
     window.addEventListener("ffarena-mic-status", function (event) {
       const detail = event.detail || {};
@@ -108,58 +191,47 @@
       micButton.disabled = !active;
     });
 
-    async function post(url, payload) {
-      const response = await fetch(url, {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": csrf,
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        body: JSON.stringify(payload || {})
-      });
-      const data = await response.json().catch(function () { return {}; });
-      if (!response.ok) throw new Error(data.error || "Live request failed.");
-      return data;
-    }
-
     form.addEventListener("submit", async function (event) {
       event.preventDefault();
       if (!consent.checked) {
         status.textContent = "Live start karne se pehle consent checkbox select karein.";
         return;
       }
-      if (!window.FFArenaLive || typeof window.FFArenaLive.start !== "function") {
-        status.textContent = "Screen Live ke liye FF Arena ka updated Android app zaroori hai.";
-        return;
-      }
+      if (startButton.disabled) return;
       startButton.disabled = true;
       status.textContent = "Secure Live session connect ho raha hai…";
       try {
         const session = await post(tokenUrl, {});
-        awaitingNativeStart = true;
-        window.FFArenaLive.start(session.url, session.token);
-        status.textContent = "Android permission approve karein. Uske baad Live stream start hogi.";
+        awaitingStart = true;
+        if (nativeLive) {
+          window.FFArenaLive.start(session.url, session.token);
+          status.textContent = "Android screen-share permission approve karein. Uske baad Live stream start hogi.";
+        } else {
+          await startBrowserLive(session);
+          awaitingStart = false;
+        }
       } catch (error) {
+        awaitingStart = false;
+        try { await post(endUrl, {}); } catch (ignored) {}
         status.textContent = error.message || "Live session start nahi ho saka.";
         startButton.disabled = false;
       }
     });
 
     stopButton.addEventListener("click", async function () {
-      if (window.FFArenaLive && typeof window.FFArenaLive.stop === "function") {
+      if (nativeLive && typeof window.FFArenaLive.stop === "function") {
         window.FFArenaLive.stop();
+      } else {
+        await stopBrowserLive();
       }
-      try {
-        await post(endUrl, {});
-      } catch (error) {
-        status.textContent = "Live stop request server tak nahi pahunchi: " + error.message;
-      }
+      try { await post(endUrl, {}); }
+      catch (error) { status.textContent = "Live stop request server tak nahi pahunchi: " + error.message; }
       active = false;
+      awaitingStart = false;
       backgroundWarningSent = false;
       startButton.disabled = false;
       stopButton.hidden = true;
+      emitLive(false, "Live session stop ho gaya.");
     });
 
     window.addEventListener("ffarena-live-status", function (event) {
@@ -167,25 +239,24 @@
       active = Boolean(detail.active);
       const roomJoinStep = document.getElementById("roomJoinStep");
       if (roomJoinStep) roomJoinStep.hidden = !active;
-      if (active) {
-        awaitingNativeStart = false;
-      } else if (awaitingNativeStart) {
-        awaitingNativeStart = false;
+      if (active) awaitingStart = false;
+      else if (awaitingStart) {
+        awaitingStart = false;
         post(endUrl, {}).catch(function () {});
+        startButton.disabled = false;
       }
       status.textContent = detail.message || (active ? "Live active hai." : "Live inactive hai.");
       startButton.disabled = active;
       stopButton.hidden = !active;
       micButton.disabled = !active;
-      if (!active && micEnabled && window.FFArenaLive && typeof window.FFArenaLive.setMicrophoneEnabled === "function") {
-        window.FFArenaLive.setMicrophoneEnabled(false);
+      if (!active) {
+        backgroundWarningSent = false;
+        if (browserRoom) stopBrowserLive();
       }
-      if (!active) backgroundWarningSent = false;
     });
 
     pollAdminMessages();
     window.setInterval(pollAdminMessages, 3000);
-
     document.addEventListener("visibilitychange", function () {
       if (document.visibilityState === "hidden" && active && !backgroundWarningSent) {
         backgroundWarningSent = true;
