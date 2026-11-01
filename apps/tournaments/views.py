@@ -14,7 +14,7 @@ from django.http import FileResponse, Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from urllib.parse import quote, urlencode, urlsplit
+from urllib.parse import quote, urlencode, urlsplit, parse_qs
 from django.views.decorators.http import require_POST
 
 from apps.accounts.models import Wallet, WalletTransaction, AdminWallet, AdminWalletTransaction
@@ -434,8 +434,16 @@ def decline_playing(request, registration_id):
 def send_room_details(request, tournament_id):
     invite_link = (request.POST.get("room_invite_link") or "").strip()
     parsed = urlsplit(invite_link) if invite_link else None
-    if not parsed or parsed.scheme != "https" or parsed.hostname != "ffshare.garena.com":
-        messages.error(request, "Official https://ffshare.garena.com/ room invite link paste karein.")
+    query = parse_qs(parsed.query) if parsed else {}
+    if (
+        not parsed
+        or parsed.scheme != "https"
+        or parsed.hostname != "ffshare.garena.com"
+        or query.get("action", [""])[0] != "qrcode_room_invite_link"
+        or not query.get("room_id", [""])[0]
+        or not query.get("qr_serect_code", [""])[0]
+    ):
+        messages.error(request, "Valid official Garena invite link paste karein (room_id aur qr_serect_code ke saath).")
         return redirect("tournaments:admin_room_page", tournament_id=tournament_id)
 
     with transaction.atomic():
