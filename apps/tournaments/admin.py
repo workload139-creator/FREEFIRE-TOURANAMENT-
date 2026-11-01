@@ -617,7 +617,7 @@ class TournamentAdmin(admin.ModelAdmin):
         from django.urls import reverse
         from django.utils import timezone
 
-        if obj.is_unlimited_br or obj.mode == Tournament.Mode.VS:
+        if not obj.is_free_fan_tournament:
             try:
                 assign_teams_for_tournament(obj.pk)
             except ValueError as exc:
