@@ -20,7 +20,7 @@ from django.views.decorators.http import require_POST
 from apps.accounts.models import Wallet, WalletTransaction, AdminWallet, AdminWalletTransaction
 from .forms import KillSubmissionForm, RegistrationForm
 from .ai_review import AIReviewError, analyze_kill_evidence, fingerprint_evidence
-from .registration_services import RegistrationError, create_pending_registration, assign_teams_for_tournament, maybe_start_next_full_tournament, create_next_tournament_round
+from .registration_services import RegistrationError, create_pending_registration, assign_teams_for_tournament, create_next_tournament_round
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import LiveKillEvent, KillSubmission, Registration, Tournament, TournamentLedgerEntry, TournamentLiveSession
 from .kill_services import reward_for_tournament, rewards_for_tournament
@@ -567,13 +567,10 @@ def admin_finish_tournament(request, tournament_id):
     tournament.status = Tournament.Status.COMPLETED
     tournament.save(update_fields=["status", "updated_at"])
     next_round = create_next_tournament_round(tournament.pk)
-    next_started = maybe_start_next_full_tournament()
-    if next_started:
-        messages.success(request, "Tournament COMPLETED. Iska result History mein save hai aur agla full verified tournament LIVE ho gaya.")
-    elif next_round:
-        messages.success(request, f"Tournament COMPLETED. Naya round '{next_round.title}' create ho gaya; players ko dobara register karna hoga.")
+    if next_round:
+        messages.success(request, f"Tournament COMPLETED. History mein save hai aur naya round '{next_round.title}' registration ke liye ready hai. Admin ise Live Monitor se manually LIVE kare.")
     else:
-        messages.success(request, "Tournament COMPLETED. Existing next round ko duplicate nahi kiya; previous result History mein safe hai.")
+        messages.success(request, "Tournament COMPLETED. History safe hai; existing next round duplicate nahi kiya. Agla event Admin Live Monitor se manually LIVE kare.")
     return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
 
 
@@ -605,6 +602,49 @@ def admin_set_first_place_winner(request, tournament_id):
         tournament.save(update_fields=["winner_uid", "updated_at"])
         messages.success(request, "First-place winner save ho gaya. Prize amount tournament ke First Prize pool se hi liya jayega.")
     return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
+
+
+@login_required
+@user_passes_test(lambda user: user.is_staff)
+def admin_live_monitor(request):
+    """Central admin view for the single global LIVE tournament and manual queue."""
+    process_expired_ready_registrations()
+    live_tournaments = Tournament.objects.filter(
+        status=Tournament.Status.LIVE
+    ).order_by("-updated_at", "-pk")
+    waiting_tournaments = Tournament.objects.filter(
+        status=Tournament.Status.UPCOMING
+    ).order_by("created_at", "pk")
+    completed_recent = Tournament.objects.filter(
+        status=Tournament.Status.COMPLETED
+    ).order_by("-updated_at", "-pk")[:12]
+
+    def attach_admin_links(items):
+        for item in items:
+            if item.is_free_fan_tournament:
+                item.admin_edit_url = reverse("admin:tournaments_freefantournament_change", args=[item.pk])
+            elif item.is_diwali_offer:
+                item.admin_edit_url = reverse("admin:tournaments_diwalioffertournament_change", args=[item.pk])
+            elif item.is_unlimited_br:
+                item.admin_edit_url = reverse("admin:tournaments_unlimitedtournament_change", args=[item.pk])
+            else:
+                item.admin_edit_url = reverse("admin:tournaments_tournament_change", args=[item.pk])
+            item.control_url = reverse("tournaments:admin_tournament_dashboard", args=[item.pk])
+
+    live_tournaments = list(live_tournaments)
+    waiting_tournaments = list(waiting_tournaments)
+    completed_recent = list(completed_recent)
+    attach_admin_links(live_tournaments)
+    attach_admin_links(waiting_tournaments)
+    attach_admin_links(completed_recent)
+    return render(request, "tournaments/live_monitor.html", {
+        "live_tournaments": live_tournaments,
+        "waiting_tournaments": waiting_tournaments,
+        "completed_recent": completed_recent,
+        "live_count": len(live_tournaments),
+    })
+
+
 
 
 @login_required

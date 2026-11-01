@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}FF Arena · Live Monitor<script>
+(function () {
+  // Refresh the queue while the admin is viewing it so LIVE changes appear promptly.
+  window.setInterval(function () {
+    if (document.visibilityState === "visible") window.location.reload();
+  }, 15000);
+})();
+</script>
+{% endblock %}
+{% block content %}
+<style>
+.ff-monitor{max-width:1250px;margin:0 auto;padding:26px 14px 48px;color:#eaf2ff}
+.ff-monitor .hero{padding:24px;border:1px solid #36d9ff66;border-radius:20px;background:radial-gradient(circle at 90% 0%,#ffb52b22,transparent 38%),linear-gradient(135deg,#12243a,#080f1c);box-shadow:0 16px 38px #0005}
+.ff-monitor h1{font-size:clamp(24px,4vw,36px);font-weight:900;color:#fff;margin:0 0 8px}
+.ff-monitor .muted{color:#aebed2}
+.ff-monitor .section{margin-top:24px;padding:18px;border:1px solid #45617d88;border-radius:17px;background:linear-gradient(145deg,#101e30,#0a1220)}
+.ff-monitor .section h2{font-size:19px;font-weight:850;color:#fff;margin:0 0 14px}
+.ff-monitor .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.ff-monitor .event{padding:16px;border:1px solid #ffffff22;border-radius:13px;background:#15243a}
+.ff-monitor .event h3{font-size:16px;color:#fff;font-weight:850;margin:8px 0}
+.ff-monitor .meta{font-size:12px;color:#b8c9dc;line-height:1.7}
+.ff-monitor .pill{display:inline-block;padding:5px 9px;border-radius:99px;font-size:11px;font-weight:900;letter-spacing:.05em}
+.ff-monitor .live{background:#07543f;color:#8dffd4;border:1px solid #23c997}
+.ff-monitor .waiting{background:#483516;color:#ffdb8b;border:1px solid #d69c35}
+.ff-monitor .done{background:#29374b;color:#c9d8ea;border:1px solid #61758f}
+.ff-monitor .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:13px}
+.ff-monitor a.action{display:inline-block;padding:9px 12px;border-radius:9px;background:#087eb8;color:#fff;text-decoration:none;font-size:12px;font-weight:850}
+.ff-monitor a.secondary{background:#263951;border:1px solid #58708d}
+.ff-monitor .empty{padding:18px;border:1px dashed #63758a;border-radius:12px;color:#b9c9da}
+.ff-monitor .warning{margin-top:14px;padding:12px 14px;border-radius:11px;background:#402b17;border:1px solid #b77a2c;color:#ffe0a8}
+</style>
+<div class="container ff-monitor">
+ <div class="hero">
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+   <div><span class="pill live">CENTRAL CONTROL</span><h1>🎮 FF Arena · Live Monitor</h1><p class="muted mb-0">All tournament formats ek hi jagah. Ek waqt mein sirf ek event LIVE rakhein. Agla event Admin manually start karega.</p></div>
+   <a class="action" href="/admin/">← Admin Home</a>
+  </div>
+  <div class="mt-3"><strong>{{ live_count }}</strong> tournament(s) currently LIVE · <strong>{{ waiting_tournaments|length }}</strong> waiting for Admin start</div>
+  {% if live_count > 1 %}<div class="warning">Warning: Database mein ek se zyada LIVE records mil rahe hain. Naya event start na karein; pehle extra LIVE events ko finish/cancel karein.</div>{% endif %}
+ </div>
+
+ <section class="section">
+  <h2>🔴 LIVE Now — every format</h2>
+  {% if live_tournaments %}
+   <div class="grid">
+    {% for tournament in live_tournaments %}
+     <article class="event">
+      <span class="pill live">● LIVE</span>
+      <h3>{{ tournament.title }}</h3>
+      <div class="meta">{{ tournament.get_mode_display }} · {% if tournament.mode == "BR" %}{{ tournament.get_br_format_display }}{% else %}{{ tournament.get_vs_format_display }}{% endif %}<br>{{ tournament.get_gender_category_display }} · {{ tournament.paid_players_count }} verified players<br>Room: {% if tournament.room_id %}Set{% else %}Missing{% endif %} · Password: {% if tournament.room_password %}Set{% else %}Missing{% endif %}</div>
+      <div class="actions"><a class="action" href="{{ tournament.control_url }}">Open Live Monitor</a><a class="action secondary" href="{{ tournament.admin_edit_url }}">Edit / Room Settings</a></div>
+     </article>
+    {% endfor %}
+   </div>
+  {% else %}<div class="empty">Abhi koi tournament LIVE nahi hai. Waiting queue se Admin agla event LIVE kar sakta hai.</div>{% endif %}
+ </section>
+
+ <section class="section">
+  <h2>🟠 Registration Open / Waiting — Admin manually LIVE kare</h2>
+  {% if waiting_tournaments %}
+   <div class="grid">
+    {% for tournament in waiting_tournaments %}
+     <article class="event">
+      <span class="pill waiting">REGISTRATION OPEN · WAITING</span>
+      <h3>{{ tournament.title }}</h3>
+      <div class="meta">{{ tournament.get_mode_display }} · {% if tournament.mode == "BR" %}{{ tournament.get_br_format_display }}{% else %}{{ tournament.get_vs_format_display }}{% endif %}<br>{{ tournament.get_gender_category_display }} · {{ tournament.paid_players_count }} verified / {{ tournament.max_players }} capacity<br>Room: {% if tournament.room_id %}Set{% else %}Not set{% endif %} · Password: {% if tournament.room_password %}Set{% else %}Not set{% endif %}</div>
+      <div class="actions"><a class="action" href="{{ tournament.admin_edit_url }}">Set Room ID / Password &amp; LIVE</a><a class="action secondary" href="{{ tournament.control_url }}">Open Tournament Control</a></div>
+      {% if live_count %}<small class="muted d-block mt-2">Current LIVE event finish/cancel hone ke baad hi start karein.</small>{% endif %}
+     </article>
+    {% endfor %}
+   </div>
+  {% else %}<div class="empty">Koi waiting tournament nahi hai.</div>{% endif %}
+ </section>
+
+ <section class="section">
+  <h2>📚 Recently Completed — history retained</h2>
+  {% if completed_recent %}
+   <div class="grid">
+    {% for tournament in completed_recent %}
+     <article class="event">
+      <span class="pill done">COMPLETED</span><h3>{{ tournament.title }}</h3>
+      <div class="meta">{{ tournament.get_mode_display }} · {% if tournament.mode == "BR" %}{{ tournament.get_br_format_display }}{% else %}{{ tournament.get_vs_format_display }}{% endif %}<br>{{ tournament.paid_players_count }} verified players</div>
+      <div class="actions"><a class="action secondary" href="{{ tournament.control_url }}">View Match / Results</a></div>
+     </article>
+    {% endfor %}
+   </div>
+  {% else %}<div class="empty">Abhi completed history nahi hai.</div>{% endif %}
+ </section>
+</div>
+{% endblock %}

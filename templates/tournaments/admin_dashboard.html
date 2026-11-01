@@ -35,7 +35,7 @@
 </style>
 <div class="container py-4 ff-admin-dashboard">
     <div class="ff-admin-hero"><div><span class="ff-admin-eyebrow">FF ARENA · CONTROL CENTER</span><h2>🔥 Tournament Command Center</h2><p>Live match operations, player verification, AI evidence review and secure rewards — all in one place.</p></div><span class="ff-admin-live-pill"><i></i> ADMIN CONSOLE</span></div>
-    <h4>{{ tournament.title }}</h4>
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2"><h4 class="mb-0">{{ tournament.title }}</h4><a class="btn btn-info fw-bold" href="{% url 'tournaments:admin_live_monitor' %}">← All Tournaments · Central Live Monitor</a></div>
     <p class="ff-admin-subtitle">Tournament-scoped operations · Payment verification · Live player monitoring · AI-assisted evidence review · Admin-controlled payouts</p>
 
     <div class="card p-3 my-3">

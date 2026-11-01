@@ -22,7 +22,7 @@ from .models import KillSubmission, Registration, Tournament, TournamentLedgerEn
 
 from .services import cancel_tournament_and_refund
 from .kill_services import reward_for_tournament
-from .registration_services import assign_teams_for_tournament, tournament_team_size, maybe_start_next_full_tournament, create_next_tournament_round
+from .registration_services import assign_teams_for_tournament, tournament_team_size, create_next_tournament_round
 
 
 class TournamentAdminForm(forms.ModelForm):
@@ -563,10 +563,9 @@ class TournamentAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
         if obj.status == Tournament.Status.CANCELLED and previous_status != Tournament.Status.CANCELLED:
-            # Cancellation refunds are idempotent; release the global LIVE slot and
-            # start the oldest already-full verified tournament, if any.
+            # Cancellation/refunds release the single LIVE slot. Admin manually
+            # selects the next event from the central Live Monitor.
             cancel_tournament_and_refund(obj.pk)
-            maybe_start_next_full_tournament()
 
         if obj.status == Tournament.Status.COMPLETED and previous_status != Tournament.Status.COMPLETED:
             next_round = create_next_tournament_round(obj.pk)
@@ -793,8 +792,6 @@ def verify_entry_payments(modeladmin, request, queryset):
                 status=TournamentLedgerEntry.Status.COMPLETED,
                 description="Tournament entry payment verified by admin against the actual payment receipt.",
             )
-            from .registration_services import maybe_start_unlimited_tournament
-            maybe_start_unlimited_tournament(registration.tournament_id)
             verified_count += 1
 
     if verified_count:
