@@ -63,7 +63,7 @@ class PaymentAIAssessmentRulesTests(TestCase):
         event = self.make_event()
         result = build_payment_assessment(event, None)
         self.assertFalse(result["eligible"])
-        self.assertFalse(result["checks"]["live_ai_uid_verified"])
+        self.assertFalse(result["checks"]["live_identity_verified"])
 
     def test_low_confidence_or_refunded_player_is_held(self):
         live_slot = SimpleNamespace(identity_verified_at=object())
