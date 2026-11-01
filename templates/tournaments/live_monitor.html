@@ -48,8 +48,8 @@
      <article class="event">
       <span class="pill live">● LIVE</span>
       <h3>{{ tournament.title }}</h3>
-      <div class="meta">{{ tournament.get_mode_display }} · {% if tournament.mode == "BR" %}{{ tournament.get_br_format_display }}{% else %}{{ tournament.get_vs_format_display }}{% endif %}<br>{{ tournament.get_gender_category_display }} · {{ tournament.paid_players_count }} verified players<br>Room: {% if tournament.room_id %}Set{% else %}Missing{% endif %} · Password: {% if tournament.room_password %}Set{% else %}Missing{% endif %}</div>
-      <div class="actions"><a class="action" href="{{ tournament.control_url }}">Open Live Monitor</a><a class="action secondary" href="{{ tournament.admin_edit_url }}">Edit / Room Settings</a></div>
+      <div class="meta">{{ tournament.get_mode_display }} · {% if tournament.mode == "BR" %}{{ tournament.get_br_format_display }}{% else %}{{ tournament.get_vs_format_display }}{% endif %}<br>{{ tournament.get_gender_category_display }} · {{ tournament.paid_players_count }} verified players<br>Invite Link: {% if tournament.room_invite_link %}Set{% else %}Missing{% endif %}</div>
+      <div class="actions"><a class="action" href="{{ tournament.control_url }}">Open Live Monitor</a><a class="action secondary" href="{{ tournament.room_form_url }}">Set / Update Invite Link</a><a class="action" href="{{ tournament.admin_edit_url }}">Edit Tournament</a></div>
      </article>
     {% endfor %}
    </div>
@@ -65,7 +65,7 @@
       <span class="pill waiting">REGISTRATION OPEN · WAITING</span>
       <h3>{{ tournament.title }}</h3>
       <div class="meta">{{ tournament.get_mode_display }} · {% if tournament.mode == "BR" %}{{ tournament.get_br_format_display }}{% else %}{{ tournament.get_vs_format_display }}{% endif %}<br>{{ tournament.get_gender_category_display }} · {{ tournament.paid_players_count }} verified / {{ tournament.max_players }} capacity<br>Room: {% if tournament.room_id %}Set{% else %}Not set{% endif %} · Password: {% if tournament.room_password %}Set{% else %}Not set{% endif %}</div>
-      <div class="actions"><a class="action" href="{{ tournament.admin_edit_url }}">Set Room ID / Password &amp; LIVE</a><a class="action secondary" href="{{ tournament.control_url }}">Open Tournament Control</a></div>
+      <div class="actions"><a class="action" href="{{ tournament.admin_edit_url }}">Set Room Invite Link &amp; LIVE</a><a class="action secondary" href="{{ tournament.control_url }}">Open Tournament Control</a></div>
       {% if live_count %}<small class="muted d-block mt-2">Current LIVE event finish/cancel hone ke baad hi start karein.</small>{% endif %}
      </article>
     {% endfor %}
