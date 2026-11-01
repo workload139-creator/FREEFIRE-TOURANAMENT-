@@ -46,7 +46,7 @@ def build_payment_assessment(event, live_slot, prior_count=0):
         "confidence_pass": Decimal(str(event.confidence or 0)) >= MIN_CONFIDENCE,
         "candidate_text_present": bool((event.detected_text or "").strip()),
         "session_registration_matches": event.session.registration_id == registration.pk,
-        "no_reward_already_issued": not bool(event.reward_reference),
+        "no_reward_already_issued": not bool(getattr(event, "reward_reference", None)),
     }
     reviewer_reports = run_four_stage_review(event, live_slot)
     checks["four_ai_review"] = reviewer_reports
