@@ -10,3 +10,4 @@ qrcode>=8.0,<9.0
 livekit-api>=1.0.0,<2.0.0
 livekit>=1.0.0,<2.0.0
 django-cloudinary-storage @ git+https://github.com/klis87/django-cloudinary-storage.git@4d17f7db908c4fe4618ff9595fb1fb1c5c722fbe
+pytesseract>=0.3.13,<0.4.0
