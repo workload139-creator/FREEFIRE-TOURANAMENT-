@@ -68,11 +68,12 @@ class TournamentAdminForm(forms.ModelForm):
             self.fields["auto_reopen"].help_text = (
                 "Internal recurring-series setting; normal tournaments mein zaroorat nahi."
             )
-        self.fields["winner_uid"].label = "First Place Winner — Free Fire UID"
-        self.fields["winner_uid"].help_text = (
-            "Tournament ka first-place player choose karne ke liye us verified registration ki Free Fire UID enter karein. "
-            "Leaderboard par us player ko first place dikhaya jayega; prize payout alag se manually verify karna hoga."
-        )
+        if "winner_uid" in self.fields:
+            self.fields["winner_uid"].label = "First Place Winner — Free Fire UID"
+            self.fields["winner_uid"].help_text = (
+                "Tournament ka first-place player choose karne ke liye us verified registration ki Free Fire UID enter karein. "
+                "Leaderboard par us player ko first place dikhaya jayega; prize payout alag se manually verify karna hoga."
+            )
 
     def clean(self):
         cleaned = super().clean()
