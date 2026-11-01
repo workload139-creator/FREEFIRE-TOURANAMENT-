@@ -39,8 +39,10 @@ def approve_live_kill_event(event_id, admin_user):
         or not getattr(player, "uid_verified", False)
     ):
         return False, "Player/session eligibility changed; reward held."
-    if not event.match_id or not event.kill_at:
-        return False, "Match ID and kill timestamp are required before approval."
+    if not event.evidence_image:
+        return False, "Kill screenshot evidence is required before approval."
+    if not event.match_id or not event.kill_at or not event.attributed_player_name:
+        return False, "Admin must enter the actual match ID, kill time and in-game killer nickname before approval."
 
     already_verified = LiveKillEvent.objects.filter(
         tournament=event.tournament,
@@ -61,6 +63,7 @@ def approve_live_kill_event(event_id, admin_user):
     if total_verified_kills >= 2 and not reward_rows:
         return False, "No reward is configured for this tournament."
     reference = f"livekill:{event.event_uuid}" if reward_rows else ""
+    wallet_balances = {}
     if reward_rows:
         wallet, _ = PlayerShopWallet.objects.select_for_update().get_or_create(user=player)
     for currency, quantity, label in reward_rows:
@@ -71,6 +74,7 @@ def approve_live_kill_event(event_id, admin_user):
             return False, "A matching wallet transaction already exists; duplicate credit blocked."
         balance = int(getattr(wallet, currency))
         new_balance = balance + int(quantity)
+        wallet_balances[currency] = {"before": balance, "credited": int(quantity), "after": new_balance}
         setattr(wallet, currency, new_balance)
         PlayerShopWalletTransaction.objects.create(
             user=player,
@@ -107,6 +111,7 @@ def approve_live_kill_event(event_id, admin_user):
             for currency, quantity, _ in reward_rows if int(quantity) > 0
         ],
         "approved_by": str(admin_user.pk),
+        "wallet_balances": wallet_balances,
     }
     event.review_reason = ("Manually approved by Admin; rewards credited once after minimum two verified kills." if reward_rows else "First kill verified by Admin; reward held until the second distinct verified kill.")
     event.save(update_fields=(
