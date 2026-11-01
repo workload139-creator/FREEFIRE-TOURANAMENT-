@@ -113,22 +113,18 @@
       if (!response.ok) throw new Error(data.error || "Live request failed.");
       return data;
     }
-    async function startBrowserLive(session) {
-      if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== "function") {
-        throw new Error("Is browser mein screen sharing supported nahi hai. Android phone par FF Arena APK use karein; desktop Chrome/Edge mein website se Live start kar sakte hain.");
+    async function startBrowserLive(session, displayStream) {
+      if (!displayStream || !displayStream.getVideoTracks().length) {
+        throw new Error("Browser se screen video permission nahi mili.");
       }
-      status.textContent = "Browser screen-share permission kholega. Share tab/screen select karein…";
       const sdk = await import("https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.esm.mjs");
-      const tracks = await sdk.createLocalScreenTracks({audio: false});
-      if (!tracks || !tracks.length) throw new Error("Browser ne screen-share track nahi diya.");
-      browserScreenTracks = tracks;
-      const videoTrack = tracks.find(track => track.kind === "video");
-      if (!videoTrack) throw new Error("Screen video track nahi mila.");
+      browserScreenTracks = displayStream.getTracks();
+      const videoTrack = displayStream.getVideoTracks()[0];
       const room = new sdk.Room();
       browserRoom = room;
       await room.connect(session.url, session.token);
-      await room.localParticipant.publishTrack(videoTrack);
-      videoTrack.mediaStreamTrack.addEventListener("ended", async function () {
+      await room.localParticipant.publishTrack(videoTrack, {source: sdk.Track.Source.ScreenShare});
+      videoTrack.addEventListener("ended", async function () {
         if (browserRoom === room) {
           await stopBrowserLive();
           try { await post(endUrl, {}); } catch (error) {}
@@ -172,9 +168,14 @@
           micEnabled = false;
           emitMic(false, "Mic OFF. Admin aapki awaaz nahi sun sakta.");
         } else {
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error("Is browser mein microphone access available nahi hai.");
+          }
+          const micStream = await navigator.mediaDevices.getUserMedia({audio: true});
+          browserMicTrack = micStream.getAudioTracks()[0];
+          if (!browserMicTrack) throw new Error("Microphone audio track nahi mila.");
           const sdk = await import("https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.esm.mjs");
-          browserMicTrack = await sdk.createLocalAudioTrack();
-          await browserRoom.localParticipant.publishTrack(browserMicTrack);
+          await browserRoom.localParticipant.publishTrack(browserMicTrack, {source: sdk.Track.Source.Microphone});
           micEnabled = true;
           emitMic(true, "Mic ON — Admin aapko sun sakta hai.");
         }
@@ -200,17 +201,30 @@
       if (startButton.disabled) return;
       startButton.disabled = true;
       status.textContent = "Secure Live session connect ho raha hai…";
+      let displayStream = null;
       try {
+        // getDisplayMedia must be called directly from the user's click, before
+        // network requests or dynamic imports, otherwise browsers can suppress
+        // the permission prompt because transient user activation has expired.
+        if (!nativeLive) {
+          if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== "function") {
+            throw new Error("Is browser mein screen sharing supported nahi hai. Android phone par FF Arena APK ya desktop Chrome/Edge use karein.");
+          }
+          status.textContent = "Abhi browser ka Share screen/tab prompt khulega. Screen select karke Share dabayein…";
+          displayStream = await navigator.mediaDevices.getDisplayMedia({video: {frameRate: 15}, audio: false});
+        }
+        status.textContent = "Secure Live session connect ho raha hai…";
         const session = await post(tokenUrl, {});
         awaitingStart = true;
         if (nativeLive) {
           window.FFArenaLive.start(session.url, session.token);
           status.textContent = "Android screen-share permission approve karein. Uske baad Live stream start hogi.";
         } else {
-          await startBrowserLive(session);
+          await startBrowserLive(session, displayStream);
           awaitingStart = false;
         }
       } catch (error) {
+        if (displayStream) displayStream.getTracks().forEach(track => { try { track.stop(); } catch (ignored) {} });
         awaitingStart = false;
         try { await post(endUrl, {}); } catch (ignored) {}
         status.textContent = error.message || "Live session start nahi ho saka.";
