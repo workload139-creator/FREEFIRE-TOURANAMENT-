@@ -29,6 +29,8 @@ class LiveAIAgentSlot(models.Model):
     slot_number = models.PositiveSmallIntegerField()
     state = models.CharField(max_length=12, choices=State.choices, default=State.WAITING, db_index=True)
     last_heartbeat_at = models.DateTimeField(null=True, blank=True)
+    identity_verified_at = models.DateTimeField(null=True, blank=True)
+    identity_ocr_confidence = models.DecimalField(max_digits=5, decimal_places=4, default=0)
     frames_seen = models.PositiveBigIntegerField(default=0)
     detections_seen = models.PositiveIntegerField(default=0)
     last_error = models.CharField(max_length=250, blank=True)
