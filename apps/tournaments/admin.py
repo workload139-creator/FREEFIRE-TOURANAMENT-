@@ -48,9 +48,6 @@ class TournamentAdminForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if not self.instance.pk:
             self.initial["status"] = Tournament.Status.UPCOMING
-            # New entries created from the dedicated BR proxy admin are always paid unlimited BR rounds.
-            if self.instance._meta.proxy and self.instance._meta.model_name == "unlimitedtournament":
-                self.initial["is_unlimited_br"] = True
             if self.instance._meta.proxy and self.instance._meta.model_name == "diwalioffertournament":
                 self.initial.update({
                     "mode": Tournament.Mode.BR, "br_format": Tournament.BRFormat.SOLO,
@@ -79,9 +76,6 @@ class TournamentAdminForm(forms.ModelForm):
         cleaned = super().clean()
         if not cleaned.get("gender_category"):
             cleaned["gender_category"] = Tournament.GenderCategory.OPEN
-        # The dedicated proxy admin must never create a normal/non-series tournament.
-        if self.instance._meta.proxy and self.instance._meta.model_name == "unlimitedtournament":
-            cleaned["is_unlimited_br"] = True
         if self.instance._meta.proxy and self.instance._meta.model_name == "diwalioffertournament":
             cleaned.update({
                 "mode": Tournament.Mode.BR,
@@ -485,11 +479,11 @@ class TournamentAdmin(admin.ModelAdmin):
     exclude = ("is_unlimited_br", "is_free_fan_tournament", "auto_start_at_capacity", "auto_reopen", "series_root")
     list_display = (
         "title", "open_tournament_control", "mode", "br_format", "vs_format", "gender_category",
-        "entry_fee", "prize_pool", "max_players", "start_time", "status", "winner_prize_paid",
+        "entry_fee", "prize_pool", "max_players", "status", "winner_prize_paid",
     )
-    list_filter = ("mode", "br_format", "vs_format", "gender_category", "status", "start_time")
+    list_filter = ("mode", "br_format", "vs_format", "gender_category", "status")
     search_fields = ("title", "description")
-    ordering = ("start_time",)
+    ordering = ("-created_at",)
     # Keep tournament setup separate from registrations and kill evidence.
     # Those have their own admin sections so adding/editing a tournament stays manageable.
     inlines = ()
@@ -522,7 +516,11 @@ class TournamentAdmin(admin.ModelAdmin):
         )
 
     def has_add_permission(self, request):
-        # Tournament rounds are provisioned by the arena system; Admin only controls existing rounds.
+        # Tournament rounds are provisioned by the arena system; Admin only edits existing rounds.
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        # Keep match, registration, payment and result history immutable; use Cancel/Refund instead.
         return False
 
     def get_form(self, request, obj=None, **kwargs):
@@ -535,7 +533,10 @@ class TournamentAdmin(admin.ModelAdmin):
                     (Tournament.Status.CANCELLED, "Cancelled"),
                 ])
             elif obj.status == Tournament.Status.LIVE:
-                allowed.append((Tournament.Status.CANCELLED, "Cancelled"))
+                allowed.extend([
+                    (Tournament.Status.COMPLETED, "Completed"),
+                    (Tournament.Status.CANCELLED, "Cancelled"),
+                ])
             form.base_fields["status"].choices = allowed
         return form
 
@@ -574,23 +575,7 @@ class TournamentAdmin(admin.ModelAdmin):
             cancel_tournament_and_refund(obj.pk)
             maybe_start_next_full_tournament()
 
-        # Re-open a fresh no-date 49-player round only after admin marks the current round complete.
-        if obj.status == Tournament.Status.COMPLETED and previous_status != Tournament.Status.COMPLETED:
-            root = Tournament.objects.get(pk=obj.series_root_id or obj.pk)
-            if root.auto_reopen and not root.series_rounds.filter(status=Tournament.Status.UPCOMING).exists():
-                next_round_number = root.series_rounds.count() + 2
-                Tournament.objects.create(
-                    title=f"{root.title} - Round {next_round_number}"[:120],
-                    mode=Tournament.Mode.BR, br_format=root.br_format or Tournament.BRFormat.SOLO,
-                    vs_format="", description=root.description,
-                    entry_fee=Decimal("0.00") if root.is_free_fan_tournament else root.entry_fee,
-                    prize_pool=root.prize_pool, max_players=root.max_players,
-                    start_time=timezone.now() + timedelta(minutes=10),
-                    status=Tournament.Status.UPCOMING, is_unlimited_br=True,
-                    is_free_fan_tournament=root.is_free_fan_tournament,
-                    winner_coins_prize=root.winner_coins_prize,
-                    auto_start_at_capacity=True, auto_reopen=True, series_root=root,
-                )
+        # Completing an event never creates another tournament; only existing records are managed.
 
         # Publish room access only when admin moves the tournament into LIVE.
         if obj.status != Tournament.Status.LIVE or was_live:
@@ -744,9 +729,9 @@ class TournamentAdmin(admin.ModelAdmin):
         encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
         return format_html('<img src="data:image/png;base64,{}" width="120" height="120" alt="Winner UPI payment QR" />', encoded)
     fieldsets = (
-        ("1. Tournament Details — kya ban raha hai?", {"description": "Title public tournament name hai. Mode mein BR ya CS/VS chunein. CS/VS mein 1v1/2v2/3v3/4v4 format chunein. Gender Category se Open, Boys Only, Girls Only ya Girls vs Boys event banayein. Har saved tournament ka apna alag control panel hai.", "fields": ("tournament_control_panel", "title", "description", "mode", "br_format", "vs_format", "gender_category")}),
+        ("1. Existing Tournament Details", {"description": "Yahan sirf pehle se website par maujood tournament edit karein. BR page par Solo, Duo aur Squad rounds manage hote hain; CS/VS page par 1v1, 2v2, 3v3 aur 4v4. Naya tournament create nahi hota.", "fields": ("tournament_control_panel", "title", "description", "mode", "br_format", "vs_format", "gender_category")}),
         ("2. Fees & Players — entry aur capacity", {"description": "Entry Fee player se li jane wali registration fee hai. Prize Pool tournament ka first-place prize hai; ise admin ke funds aur payout process ke mutabik set karein. Max Players room capacity hai (maximum 49). BR format Solo/Duo/Squad chunein. Normal BR mein har approved kill par 5 Diamonds; minimum 2 verified kills. Free Fan event ka alag Fan Token rule rahega. Evidence verification zaroori hai.", "fields": ("entry_fee", "prize_pool", "max_players")}),
-        ("4. Schedule & Status — publish / LIVE", {"description": "Start Time tournament ka scheduled time hai. Draft public list mein nahi dikhta; Upcoming se listing/registration khulti hai. LIVE karne se pehle Room Details section mein Room ID aur Password bharna zaroori hai. LIVE karne par verified paid players ko YES/NO confirmation email bhejne ki koshish hoti hai; email delivery SMTP setup par depend karti hai.", "fields": ("start_time", "status")}),
+        ("4. Status — LIVE / COMPLETED / CANCELLED", {"description": "Tournament ki public listing date/time par depend nahi karti. Room ID aur Password set karke LIVE karein; eligible players ka existing 5-minute YES/NO confirmation flow wahi rahega. Match khatam hone par Live Monitor se COMPLETED karein. Cancel karne par existing refund workflow chalega.", "fields": ("status",)}),
         ("5. Room Details — private until YES", {"description": "Room ID aur Password game room ke credentials hain. Tournament LIVE karte waqt dono bharein. Player ko room tabhi dikhega jab woh deadline ke andar YES kare. Credentials public description/website post mein na likhein.", "fields": ("room_id", "room_password")}),
         ("6. BR Winning Team Rewards", {"description": "Tournament Completed hone ke baad winning BR team ke har player ka registered Free Fire UID yahan alag line ya comma se likhein. Admin action se har verified winner ko 10 Fan Tokens + 50 Coins ek hi baar milenge; har reward ledger mein save hoga.", "fields": ("winner_team_uids",)}),
         ("7. First Place Winner & payout tracking", {"description": "Tournament complete/review ke baad winner ki registered Free Fire UID enter karein. Neeche player ki saved UPI/QR details dekh sakte hain. Winner Prize Reference mein actual transfer ka real UTR enter karne ke baad hi payout action use karein. Is field ko bharna apne-aap paise transfer nahi karta.", "fields": ("winner_uid", "winner_payout_destination", "winner_payout_qr", "winner_prize_reference", "winner_prize_paid")}),
@@ -894,29 +879,17 @@ def mark_manual_upi_refunds_paid(modeladmin, request, queryset):
 class UnlimitedTournamentAdmin(TournamentAdmin):
     """Dedicated admin list for paid BR Solo/Duo/Squad unlimited events."""
 
-    # Unlike the general Tournament admin, this proxy exposes its series controls.
-    exclude = ("is_free_fan_tournament",)
-
-    def get_fieldsets(self, request, obj=None):
-        # Existing tournament setup is locked; the series flags are never editable here.
-        if obj and obj.pk:
-            return super().get_fieldsets(request, obj)
-        fieldsets = list(super().get_fieldsets(request, obj))
-        fieldsets.insert(
-            2,
-            ("3. Unlimited BR Series", {
-                "description": "Paid BR Solo/Duo/Squad series settings. New records in this section are automatically marked as Unlimited BR. Capacity is set from the selected format.",
-                "fields": ("is_unlimited_br", "auto_start_at_capacity", "auto_reopen", "series_root"),
-            }),
-        )
-        return tuple(fieldsets)
+    # One dedicated BR page for all existing Solo, Duo and Squad rounds.
+    exclude = ("is_unlimited_br", "is_free_fan_tournament", "auto_start_at_capacity", "auto_reopen", "series_root")
+    list_filter = ("br_format", "status")
+    ordering = ("-created_at",)
 
     def get_queryset(self, request):
         return super(TournamentAdmin, self).get_queryset(request).filter(
-            is_unlimited_br=True,
             is_free_fan_tournament=False,
             is_diwali_offer=False,
             mode=Tournament.Mode.BR,
+            gender_category__in=(Tournament.GenderCategory.OPEN, Tournament.GenderCategory.BOYS, Tournament.GenderCategory.GIRLS),
         )
 
 

@@ -9,7 +9,6 @@ from .services import process_expired_ready_registrations
 PUBLIC_STATUSES = (
     Tournament.Status.UPCOMING,
     Tournament.Status.LIVE,
-    Tournament.Status.COMPLETED,
 )
 
 

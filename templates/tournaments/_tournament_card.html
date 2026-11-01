@@ -12,7 +12,7 @@
     <div><small>1 Kill Reward</small><strong>{% if tournament.is_diwali_offer %}5 Coins{% elif tournament.is_free_fan_tournament %}2 Kills = 1 Fan Token{% elif tournament.mode == "VS" %}2 Coins{% elif tournament.br_format == "duo" or tournament.br_format == "squad" %}5 Diamonds + 2 Coins{% else %}5 Diamonds{% endif %}</strong></div>
     <div><small>Players</small><strong>{% if tournament.is_unlimited_br %}{{ tournament.paid_players_count }}{% else %}{{ tournament.confirmed_players_count }}{% endif %}/{{ tournament.max_players }}</strong></div>
   </div>
-  <p>Status: {{ tournament.get_status_display }}</p>
+  <p>Status: {% if tournament.status == "upcoming" %}Registration Open{% elif tournament.status == "live" %}LIVE{% elif tournament.status == "completed" %}COMPLETED{% else %}{{ tournament.get_status_display }}{% endif %}</p>
   <div>
     {% if tournament.status == "draft" %}
       <span class="button button-outline" aria-disabled="true">Admin setup pending</span>
