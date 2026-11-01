@@ -18,7 +18,7 @@ from apps.tournaments.live_ai_models import (
     LiveKillEvent,
 )
 from apps.tournaments.models import TournamentLiveSession
-from apps.tournaments.live_ai_review import run_four_stage_review
+from apps.tournaments.live_ai_review import run_two_agent_review
 
 logger = logging.getLogger(__name__)
 POLL_SECONDS = 5
@@ -46,7 +46,7 @@ def build_payment_assessment(event, prior_count=0):
         "session_registration_matches": event.session.registration_id == registration.pk,
         "no_reward_already_issued": not bool(getattr(event, "reward_reference", None)),
     }
-    reviewer_reports = run_four_stage_review(event, event.session)
+    reviewer_reports = run_two_agent_review(event, event.session)
     checks["two_analysis_agents"] = reviewer_reports
     checks["two_analysis_agents_passed"] = all(reviewer_reports[name]["passed"] for name in ("ff_arena_agent_local_1", "ff_arena_agent_local_2"))
     eligible = all(value for key, value in checks.items() if key != "two_analysis_agents") and checks["two_analysis_agents_passed"]
