@@ -636,6 +636,7 @@ def admin_tournament_dashboard(request, tournament_id):
             rewards_for_tournament(tournament, live_session.approved_live_kills)
             if live_session.approved_live_kills >= 2 else []
         )
+    live_leaderboard = sorted(live_sessions, key=lambda item: item.approved_live_kills, reverse=True)
     live_kill_events = LiveKillEvent.objects.filter(tournament=tournament).select_related("registration", "registration__player", "session").order_by("-detected_at")[:200]
     tournament_history = TournamentLedgerEntry.objects.filter(
         tournament=tournament
@@ -658,6 +659,7 @@ def admin_tournament_dashboard(request, tournament_id):
         "status_change_url": status_change_url,
         "registrations": registrations,
         "live_sessions": live_sessions,
+        "live_leaderboard": live_leaderboard,
         "live_kill_events": live_kill_events,
         "tournament_history": tournament_history,
         "pending_payments": registrations.filter(payment_verified=False, entry_fee_paid__gt=0),
