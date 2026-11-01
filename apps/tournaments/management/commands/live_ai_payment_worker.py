@@ -45,7 +45,7 @@ def build_payment_assessment(event, prior_count=0):
         "session_registration_matches": event.session.registration_id == registration.pk,
         "no_reward_already_issued": not bool(getattr(event, "reward_reference", None)),
     }
-    checks["kill_signal_present"] = bool(__import__("re").search(r"\\b(eliminated|knocked|headshot|kill|killed)\\b", " ".join(str(event.detected_text or "").casefold().split())))
+    checks["kill_signal_present"] = any(word in " ".join(str(event.detected_text or "").casefold().split()).split() for word in ("eliminated", "knocked", "headshot", "kill", "killed"))
     checks["evidence_image_present"] = bool(event.evidence_image)
     checks["match_id_present"] = bool(event.match_id)
     checks["kill_time_present"] = bool(event.kill_at)
