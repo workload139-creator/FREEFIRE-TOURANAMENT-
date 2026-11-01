@@ -288,6 +288,20 @@ def create_pending_registration(*, tournament_id, player, free_fire_uid, payment
         currency_amount=currency_amount,
         status=registration_status,
     )
+    if payment_verified and payment_method in ("diamonds", "coins", "fan_tokens"):
+        from apps.social.models import PlayerShopWallet, PlayerShopWalletTransaction
+
+        shop_wallet.refresh_from_db()
+        balance_after = getattr(shop_wallet, payment_method)
+        PlayerShopWalletTransaction.objects.create(
+            user=player, wallet=shop_wallet, currency=payment_method,
+            direction=PlayerShopWalletTransaction.Direction.DEBIT,
+            quantity=currency_amount, balance_after=balance_after,
+            source="tournament_entry", reference=str(registration.pk),
+            idempotency_key=f"tournament-entry:{registration.pk}:debit",
+            description=f"Tournament #{tournament.pk} entry fee",
+        )
+
     TournamentLedgerEntry.objects.create(
         tournament=tournament, player=player, registration=registration,
         entry_type=TournamentLedgerEntry.EntryType.ENTRY,
