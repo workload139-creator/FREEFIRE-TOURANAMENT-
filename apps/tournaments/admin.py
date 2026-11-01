@@ -136,7 +136,7 @@ class RegistrationInline(admin.TabularInline):
         "player", "player_contact", "player_payout_qr", "free_fire_uid",
         "payment_method", "currency_amount", "entry_fee_paid", "payment_reference",
         "verification_photo", "team_number", "team_position", "room_details_sent", "ready_deadline",
-        "ready_confirmed_at", "refund_processed", "refund_reference", "registered_at",
+        "ready_confirmed_at", "no_response_count", "refund_processed", "refund_reference", "registered_at",
     )
     can_delete = False
     ordering = ("registered_at",)
