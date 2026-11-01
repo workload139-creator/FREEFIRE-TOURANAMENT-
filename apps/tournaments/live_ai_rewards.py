@@ -28,7 +28,7 @@ def approve_live_kill_event(event_id, admin_user):
     assessment = getattr(event, "payment_assessment", None)
     player = registration.player
     if not assessment or not assessment.eligible:
-        return False, "Payment AI has not marked this event eligible."
+        return False, "AI Assessment has not marked this event eligible."
     if (
         event.tournament.status != "live"
         or event.session.status != "active"
