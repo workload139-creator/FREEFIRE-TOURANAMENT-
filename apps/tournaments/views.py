@@ -540,7 +540,13 @@ def room_qr_file(request, tournament_id):
         raise Http404("Room QR file is unavailable.")
 
     content_type = mimetypes.guess_type(tournament.room_qr_code.name)[0] or "application/octet-stream"
-    response = FileResponse(file_handle, content_type=content_type)
+    download = request.GET.get("download") == "1"
+    response = FileResponse(
+        file_handle,
+        content_type=content_type,
+        as_attachment=download,
+        filename=f"ff-arena-room-{tournament.pk}-qr.png" if download else None,
+    )
     response["Cache-Control"] = "private, no-store"
     response["X-Content-Type-Options"] = "nosniff"
     return response
