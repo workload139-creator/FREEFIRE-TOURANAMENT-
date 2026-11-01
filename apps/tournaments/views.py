@@ -649,6 +649,7 @@ def admin_live_monitor(request):
             else:
                 item.admin_edit_url = reverse("admin:tournaments_tournament_change", args=[item.pk])
             item.control_url = reverse("tournaments:admin_tournament_dashboard", args=[item.pk])
+            item.room_form_url = reverse("tournaments:admin_room_page", args=[item.pk])
 
     live_tournaments = list(live_tournaments)
     waiting_tournaments = list(waiting_tournaments)
