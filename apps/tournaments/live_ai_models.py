@@ -63,6 +63,7 @@ class LiveKillEvent(models.Model):
     session = models.ForeignKey("tournaments.TournamentLiveSession", on_delete=models.PROTECT, related_name="kill_events")
     event_fingerprint = models.CharField(max_length=64, unique=True)
     match_id = models.CharField(max_length=100, blank=True, db_index=True)
+    attributed_player_name = models.CharField(max_length=80, blank=True, default="")
     kill_at = models.DateTimeField(null=True, blank=True, db_index=True)
     detected_text = models.TextField(blank=True)
     confidence = models.DecimalField(max_digits=5, decimal_places=4, default=0)
