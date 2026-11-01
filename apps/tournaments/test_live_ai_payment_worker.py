@@ -34,6 +34,7 @@ class PaymentAIAssessmentRulesTests(TestCase):
             match_id="MATCH-001",
             kill_at=object(),
             attributed_player_name="RegisteredNick",
+            evidence_image="kill.jpg",
         )
 
     def test_first_valid_kill_waits_for_minimum_two(self):
