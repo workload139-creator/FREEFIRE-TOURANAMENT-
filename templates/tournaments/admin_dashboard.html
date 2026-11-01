@@ -405,6 +405,7 @@
                 const messageInput = col.querySelector(".ff-player-message");
                 const messageStatus = col.querySelector(".ff-message-status");
                 const audioElements = [];
+                let listenEnabled = false;
                 const room = new window.LivekitClient.Room({adaptiveStream: true, dynacast: true});
                 rooms.push(room);
                 room.on(window.LivekitClient.RoomEvent.TrackSubscribed, (track) => {
@@ -420,21 +421,24 @@
                     } else if (track.kind === window.LivekitClient.Track.Kind.Audio) {
                         const element = track.attach();
                         element.autoplay = true;
-                        element.muted = true;
+                        element.muted = !listenEnabled;
                         element.style.display = "none";
                         col.appendChild(element);
                         audioElements.push(element);
-                        audioStatus.textContent = "Player mic ON — Listen button se awaaz sun sakte hain.";
+                        audioStatus.textContent = listenEnabled ? "Player mic ON — audio connected." : "Player mic ON — Listen ON dabakar awaaz sunein.";
+                        if (listenEnabled) element.play().catch(() => { audioStatus.textContent = "Browser audio playback allow karein."; });
                     }
                 });
                 listenButton.addEventListener("click", async () => {
-                    const nextMuted = audioElements.length ? !audioElements[0].muted : true;
-                    audioElements.forEach(element => { element.muted = nextMuted; });
-                    listenButton.textContent = nextMuted ? "🔇 Listen OFF" : "🔊 Listen ON";
-                    if (!audioElements.length) audioStatus.textContent = "Player ne abhi mic ON nahi kiya.";
-                    if (!nextMuted) {
+                    listenEnabled = !listenEnabled;
+                    audioElements.forEach(element => { element.muted = !listenEnabled; });
+                    listenButton.textContent = listenEnabled ? "🔊 Listen ON" : "🔇 Listen OFF";
+                    if (!audioElements.length) {
+                        audioStatus.textContent = listenEnabled ? "Listen ON — player ke mic publish karte hi audio chalega." : "Player mic audio ke liye Listen ON karein.";
+                    }
+                    if (listenEnabled && audioElements.length) {
                         try { await Promise.all(audioElements.map(element => element.play())); }
-                        catch (error) { audioStatus.textContent = "Browser audio permission/playback allow karein."; }
+                        catch (error) { audioStatus.textContent = "Browser audio playback allow karein."; }
                     }
                 });
                 talkButton.addEventListener("click", async () => {
