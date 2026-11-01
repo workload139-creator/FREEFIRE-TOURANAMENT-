@@ -38,7 +38,22 @@ def _ocr_words(image, config):
         except (IndexError, TypeError, ValueError):
             continue
         if confidence >= MIN_OCR_CONFIDENCE:
-            words.append({"token": token, "confidence": confidence})
+            def numeric_field(name):
+            try:
+                return int(data.get(name, [])[index])
+            except (IndexError, TypeError, ValueError):
+                return None
+
+        block_num = numeric_field("block_num")
+        par_num = numeric_field("par_num")
+        line_num = numeric_field("line_num")
+        words.append({
+            "token": token,
+            "confidence": confidence,
+            "block_num": block_num,
+            "par_num": par_num,
+            "line_num": line_num,
+        })
     return words
 
 
@@ -63,27 +78,49 @@ def extract_profile_identity(image, registered_uid):
     if not has_uid_label or not uid_scores:
         return False, 0.0, "", 0.0
 
-    counts = {}
-    for word in words:
-        token = word["token"]
-        if (
-            len(token) < 4
-            or not re.search(r"[a-z]", token)
-            or token in PROFILE_UI_WORDS
-        ):
-            continue
-        counts.setdefault(token, []).append(word["confidence"])
-
-    candidates = [
-        (token, scores)
-        for token, scores in counts.items()
-        if len(scores) >= 2
+    # On the supplied profile sample, the IGN is the single name token on
+    # the line immediately above the visible language label ("English").
+    # The guild/clan text also appears elsewhere in the header, so simple
+    # repeated-token counting would be ambiguous and is deliberately avoided.
+    language_lines = [
+        word for word in words
+        if word["token"] == "english"
+        and word["block_num"] is not None
+        and word["par_num"] is not None
+        and word["line_num"] is not None
     ]
-    if len(candidates) != 1:
+    if len(language_lines) != 1:
         return True, min(uid_scores) / 100.0, "", 0.0
 
-    nickname, scores = candidates[0]
-    nickname_confidence = min(sorted(scores, reverse=True)[:2]) / 100.0
+    language = language_lines[0]
+    previous_line_numbers = [
+        word["line_num"]
+        for word in words
+        if word["block_num"] == language["block_num"]
+        and word["par_num"] == language["par_num"]
+        and word["line_num"] is not None
+        and word["line_num"] < language["line_num"]
+    ]
+    if not previous_line_numbers:
+        return True, min(uid_scores) / 100.0, "", 0.0
+
+    nickname_line = max(previous_line_numbers)
+    name_words = [
+        word for word in words
+        if word["block_num"] == language["block_num"]
+        and word["par_num"] == language["par_num"]
+        and word["line_num"] == nickname_line
+        and len(word["token"]) >= 4
+        and re.search(r"[a-z]", word["token"])
+        and word["token"] not in PROFILE_UI_WORDS
+    ]
+    nickname_tokens = {word["token"] for word in name_words}
+    if len(nickname_tokens) != 1:
+        return True, min(uid_scores) / 100.0, "", 0.0
+
+    nickname = next(iter(nickname_tokens))
+    scores = [word["confidence"] for word in name_words if word["token"] == nickname]
+    nickname_confidence = min(scores) / 100.0
     return True, min(uid_scores) / 100.0, nickname, nickname_confidence
 
 
