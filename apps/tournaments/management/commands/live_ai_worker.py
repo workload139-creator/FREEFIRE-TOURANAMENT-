@@ -22,7 +22,6 @@ from PIL import Image
 import pytesseract
 
 from apps.tournaments.live_ai_models import LiveAIAgentSlot
-from apps.tournaments.management.commands.live_ai_payment_worker import PaymentAIWorker
 from apps.tournaments.live_ai_ocr import verify_profile_uid
 from apps.tournaments.live_ai_killfeed import live_kill_detection_enabled, scan_full_frame_for_kill_text
 from apps.tournaments.models import TournamentLiveSession
@@ -328,12 +327,6 @@ class Command(BaseCommand):
             "Starting LiveKit worker: UID verification plus BR/VS full-frame kill candidates; rewards require Admin review."
         ))
         try:
-            async def run_agent_pools():
-                await asyncio.gather(
-                    LiveAIWorker(options["poll_seconds"]).run(),
-                    PaymentAIWorker(options["poll_seconds"]).run(),
-                )
-
-            asyncio.run(run_agent_pools())
+            asyncio.run(LiveAIWorker(options["poll_seconds"]).run())
         except KeyboardInterrupt:
             self.stdout.write("Live AI worker stopped.")
