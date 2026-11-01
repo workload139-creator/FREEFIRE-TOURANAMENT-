@@ -121,10 +121,12 @@ class TournamentAdminForm(forms.ModelForm):
 
         # Room credentials must be saved in the same admin submission that makes it LIVE.
         if cleaned.get("status") == Tournament.Status.LIVE:
-            if not (cleaned.get("room_id") or "").strip():
-                self.add_error("room_id", "Tournament LIVE karne se pehle Room ID bharo.")
-            if not (cleaned.get("room_password") or "").strip():
-                self.add_error("room_password", "Tournament LIVE karne se pehle Room Password bharo.")
+            room_id = cleaned.get("room_id") or getattr(self.instance, "room_id", "")
+            room_password = cleaned.get("room_password") or getattr(self.instance, "room_password", "")
+            if not (room_id or "").strip():
+                self.add_error("room_id", "Tournament LIVE karne se pehle Live Monitor mein Room ID bharo.")
+            if not (room_password or "").strip():
+                self.add_error("room_password", "Tournament LIVE karne se pehle Live Monitor mein Room Password bharo.")
         return cleaned
 
 
