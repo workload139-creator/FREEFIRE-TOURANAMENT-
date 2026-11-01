@@ -61,7 +61,7 @@ def validate_match_dates(reviewer_reports, tournament):
     )
     reference_time = live_started_at or (
         tournament.updated_at
-        if tournament.status in ("live", "completed")
+        if getattr(tournament, "status", "") in ("live", "completed")
         else tournament.start_time
     )
     tournament_date = timezone.localtime(reference_time).date()
