@@ -8,12 +8,15 @@ import re
 from datetime import datetime
 
 from django.http import JsonResponse
+from django.db import transaction
 from django.core.files.base import ContentFile
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from .models import LiveKillEvent, TournamentLiveSession
+from .live_ai_models import LiveAIPaymentAssessment
+from .management.commands.live_ai_payment_worker import build_payment_assessment
 
 
 @csrf_exempt
@@ -82,13 +85,43 @@ def ingest_live_kill_candidate(request):
             "review_reason": "Worker OCR candidate; independent validation and Admin approval required.",
         },
     )
+    evidence_saved = False
     if evidence_bytes and not event.evidence_image:
         event.evidence_image.save(f"{event.event_uuid}.jpg", ContentFile(evidence_bytes), save=True)
+        evidence_saved = True
+
+    # Assess immediately when a candidate arrives. The periodic Payment AI worker
+    # remains a retry/fallback, but the admin queue no longer stays blank simply
+    # because a separate Render worker is not running.
+    assessment = LiveAIPaymentAssessment.objects.filter(event=event).first()
+    if assessment is None:
+        try:
+            prior_count = LiveAIPaymentAssessment.objects.filter(
+                event__registration=event.registration,
+                event__tournament=event.tournament,
+                event__status=LiveKillEvent.Status.VERIFIED,
+                eligible=True,
+            ).count()
+            with transaction.atomic():
+                assessment, _ = LiveAIPaymentAssessment.objects.get_or_create(
+                    event=event,
+                    defaults=build_payment_assessment(event, prior_count),
+                )
+        except Exception:
+            # Candidate evidence must remain safely queued even if assessment fails.
+            import logging
+            logging.getLogger(__name__).exception(
+                "Synchronous AI assessment failed for live kill event %s", event.pk
+            )
+
     return JsonResponse({
         "success": True,
         "created": created,
         "event_uuid": str(event.event_uuid),
         "status": event.status,
+        "assessment_ready": bool(assessment),
+        "assessment_reason": assessment.decision_reason if assessment else "Assessment queued for retry.",
+        "evidence_saved": evidence_saved,
         "reward_paid": False,
         "message": "Candidate saved once. No wallet credit was issued.",
     }, status=201 if created else 200)
