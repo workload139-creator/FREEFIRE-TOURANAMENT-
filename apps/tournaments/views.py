@@ -638,8 +638,18 @@ def admin_tournament_dashboard(request, tournament_id):
     refund_history = registrations.filter(
         Q(refund_processed=True) | Q(status__in=[Registration.Status.CANCELLED, Registration.Status.NOT_PLAYING])
     ).select_related("player").order_by("-refund_processed_at", "-registered_at")
+    if tournament.is_free_fan_tournament:
+        status_change_url = reverse("admin:tournaments_freefantournament_change", args=[tournament.pk])
+    elif tournament.is_diwali_offer:
+        status_change_url = reverse("admin:tournaments_diwalioffertournament_change", args=[tournament.pk])
+    elif tournament.is_unlimited_br:
+        status_change_url = reverse("admin:tournaments_unlimitedtournament_change", args=[tournament.pk])
+    else:
+        status_change_url = reverse("admin:tournaments_tournament_change", args=[tournament.pk])
+
     context = {
         "tournament": tournament,
+        "status_change_url": status_change_url,
         "registrations": registrations,
         "live_sessions": live_sessions,
         "live_kill_events": live_kill_events,
