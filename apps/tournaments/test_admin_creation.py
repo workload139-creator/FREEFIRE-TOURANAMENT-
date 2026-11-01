@@ -77,7 +77,7 @@ class TournamentAdminCreationTests(TestCase):
         self.assertContains(response, live.title)
         self.assertContains(response, waiting.title)
         self.assertContains(response, "Set Room ID / Password &amp; LIVE")
-        self.assertContains(response, "Registration Open")
+        self.assertContains(response, "REGISTRATION OPEN")
 
     def test_finishing_live_event_does_not_auto_start_next_full_event(self):
         Tournament.objects.filter(status=Tournament.Status.LIVE).update(status=Tournament.Status.UPCOMING)
