@@ -160,6 +160,75 @@
     }
 })();
 </script>
+<script>
+/* Installed APK: quietly sync server-rendered page changes without reinstalling the app.
+   Never reload while a player is sharing gameplay, editing a form, or in a live room. */
+(function () {
+    if (!/FFArenaAndroidApp/i.test(navigator.userAgent || "")) return;
+    var liveSharing = false;
+    var syncBusy = false;
+    var intervalMs = 30000;
+    var path = window.location.pathname || "";
+    var excludedPath = /\/(admin|.*room|.*live)(\/|$)/i.test(path);
+    window.addEventListener("ffarena-live-status", function (event) {
+        liveSharing = !!(event.detail && event.detail.active);
+    });
+    function hasUnsavedFormData() {
+        if (document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return true;
+        var fields = document.querySelectorAll("input, textarea, select");
+        for (var i = 0; i < fields.length; i++) {
+            var field = fields[i];
+            if (field.type === "hidden" || field.type === "submit" || field.type === "button") continue;
+            if (field.type === "checkbox" || field.type === "radio") {
+                if (field.checked !== field.defaultChecked) return true;
+            } else if (field.value !== field.defaultValue) {
+                return true;
+            }
+        }
+        return false;
+    }
+    async function syncServerPage() {
+        if (syncBusy || excludedPath || liveSharing || document.visibilityState !== "visible"
+                || !navigator.onLine || hasUnsavedFormData()) return;
+        var currentMain = document.getElementById("main-content");
+        if (!currentMain) return;
+        syncBusy = true;
+        try {
+            var response = await fetch(window.location.href, {
+                method: "GET",
+                credentials: "same-origin",
+                cache: "no-store",
+                headers: { "X-FFArena-App-Sync": "1" }
+            });
+            if (!response.ok || response.redirected || !/text\/html/i.test(response.headers.get("content-type") || "")) return;
+            var html = await response.text();
+            var parsed = new DOMParser().parseFromString(html, "text/html");
+            var freshMain = parsed.getElementById("main-content");
+            if (!freshMain || freshMain.innerHTML === currentMain.innerHTML) return;
+            if (liveSharing || hasUnsavedFormData()) return;
+            try { sessionStorage.setItem("ffarena-sync-scroll", String(window.scrollY || 0)); } catch (ignored) {}
+            window.location.reload();
+        } catch (ignored) {
+            // Sync is best-effort; the current page remains usable offline or on server errors.
+        } finally {
+            syncBusy = false;
+        }
+    }
+    try {
+        var savedScroll = sessionStorage.getItem("ffarena-sync-scroll");
+        if (savedScroll !== null) {
+            sessionStorage.removeItem("ffarena-sync-scroll");
+            window.addEventListener("load", function () {
+                window.scrollTo(0, Math.max(0, parseInt(savedScroll, 10) || 0));
+            }, { once: true });
+        }
+    } catch (ignored) {}
+    window.setInterval(syncServerPage, intervalMs);
+    document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "visible") syncServerPage();
+    });
+})();
+</script>
 <script src="{% static 'js/main.js' %}" defer></script>
 {% block extra_js %}{% endblock %}
 </body>

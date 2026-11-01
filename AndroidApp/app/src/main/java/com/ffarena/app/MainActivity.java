@@ -845,8 +845,17 @@ public class MainActivity extends Activity {
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setJavaScriptCanOpenWindowsAutomatically(true);
         settings.setSupportMultipleWindows(false);
+        // Reuse cached static assets while always requesting fresh server-rendered pages.
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setDatabaseEnabled(true);
+        settings.setLoadsImagesAutomatically(true);
+        if (Build.VERSION.SDK_INT >= 23) {
+            settings.setOffscreenPreRaster(true);
+        }
+        if (Build.VERSION.SDK_INT >= 26) {
+            webView.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, true);
+        }
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         settings.setAllowFileAccess(false);
         settings.setSupportZoom(false);
         settings.setLoadsImagesAutomatically(true);
