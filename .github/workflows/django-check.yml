@@ -21,5 +21,6 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python manage.py check
       - run: python manage.py help live_ai_worker
+      - run: python manage.py help live_ai_payment_worker
       - run: python manage.py makemigrations --check --dry-run
       - run: python manage.py test
