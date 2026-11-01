@@ -32,18 +32,22 @@ def _one_event_per_format(queryset, format_field, formats):
 
 
 def _fixed_br_slots():
-    """Return the three permanent BR format records seeded by migration 0019.
+    """Return the latest public BR event for each Solo, Duo and Squad format.
 
-    These records are edited in Django Admin under Unlimited BR. Do not create
-    database rows while serving a public GET request, and do not mix in Diwali,
-    Free Fan, Girls-vs-Boys or one-off BR rounds.
+    Include older non-series BR rows as well as recurring series rows so that
+    existing tournaments remain visible after the arena listing change.
+    Girls-vs-Boys, Diwali and Free Fan events keep their dedicated pages.
     """
     base = Tournament.objects.filter(
         mode=Tournament.Mode.BR,
         is_free_fan_tournament=False,
         is_diwali_offer=False,
-        is_unlimited_br=True,
-        gender_category=Tournament.GenderCategory.OPEN,
+        gender_category__in=(
+            Tournament.GenderCategory.OPEN,
+            Tournament.GenderCategory.BOYS,
+            Tournament.GenderCategory.GIRLS,
+        ),
+        status__in=PUBLIC_STATUSES,
     )
     return _one_event_per_format(
         base,
