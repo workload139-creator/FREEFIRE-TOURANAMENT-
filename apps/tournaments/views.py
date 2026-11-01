@@ -231,7 +231,9 @@ def clash_squad_list(request):
     return render(request, 'tournaments/clash_squad_list.html', {'tournaments': tournaments})
 
 def unlimited_tournament_list(request):
-    """Dedicated page for recurring Unlimited BR tournaments."""
+    """Unlimited BR rounds are managed privately from the dedicated admin section."""
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return redirect("tournaments:list")
     process_expired_ready_registrations()
     tournaments = Tournament.objects.filter(
         mode=Tournament.Mode.BR,
