@@ -21,7 +21,11 @@ These roles are not four independent large language models. They are independent
 
 ## Safety and payout boundary
 
-OCR or a visual model can identify a possible killfeed event, but cannot by itself prove which registered player made the kill. The system must hold ambiguous events for Admin review. No AI worker may directly credit a wallet. Only the transaction-safe, idempotent Admin-approved settlement path can issue a reward, and duplicate events must never create a second credit.
+The current sample evidence in the repository contains a Free Fire profile screen, a BR-RANKED main lobby, and a training-ground gameplay frame. The profile/lobby OCR path requires the exact registered UID, one unambiguous repeated profile nickname, and that same nickname plus the observed BR-RANKED and START labels in a later frame. This is sample-layout support only; Clash Squad/VS lobby layouts are not enabled until a real VS sample is reviewed.
+
+The training-ground frame shows an “ELIMINATION STREAK” banner, not a killfeed row with both killer and victim. It does not support reliable killer attribution, match ID or kill-time extraction. The OCR worker may collect possible text candidates for Admin review, but it must not infer a kill from the streak banner or credit a wallet.
+
+LIVE_AI_REWARD_SETTLEMENT_ENABLED defaults to false. Keep it unset/false until real-device profile-to-lobby verification, actual BR/VS killfeed attribution, duplicate/replay protection, concurrent approval and atomic ledger tests have all passed. Even after that gate is deliberately enabled, AI workers do not pay; Admin approval remains required.
 
 ## Validation required before production
 
