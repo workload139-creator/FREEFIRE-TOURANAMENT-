@@ -15,18 +15,6 @@
   <p class="message success">Aapki participation confirm ho gayi hai. Neeche diye gaye steps follow karein.</p>
 
 
-  <section id="playerLiveAudio" style="padding:18px;margin:18px 0;border:1px solid rgba(56,189,248,.55);border-radius:16px">
-    <h3>🎙️ Player Microphone & Admin Messages</h3>
-    <p>Mic default OFF rahega. Aap khud ON karenge tabhi Live Monitor par aapki awaaz sunai degi. Admin ki awaaz aapko isi Live session mein sunai degi.</p>
-    <button type="button" class="btn-primary" id="togglePlayerMic" disabled>🎙️ Turn Mic ON</button>
-    <span id="playerMicStatus" class="help-text" role="status" aria-live="polite">Pehle screen Live start karein.</span>
-    <div id="adminLiveMessages" aria-live="polite" style="margin-top:14px;padding:12px;border-radius:12px;background:rgba(127,127,127,.12)">
-      <strong>Admin Messages</strong>
-      <p id="adminLiveMessageEmpty" class="help-text mb-0">Abhi koi naya message nahi hai.</p>
-      <div id="adminLiveMessageList"></div>
-    </div>
-  </section>
-
   <section id="liveAiShare" style="padding:20px;margin:18px 0;border:1px solid rgba(34,197,94,.55);border-radius:16px">
    <h2>📡 FF Arena Live AI</h2>
    <p>YES confirm karne ke baad yahin <strong>Start Live AI</strong> dabayein. FF Arena APK Android ka screen-share prompt kholegi; supported desktop browsers mein website browser ka screen-share prompt kholegi. Live active hone par isi page par Mic ON/OFF aur JOIN ROOM milega. Free Fire kholkar apni <strong>Profile screen</strong> dikhayein. Nickname aur UID saaf nazar aane chahiye. Uske baad lobby mein jaakar match shuru karein aur poore match mein screen share chalu rakhein.</p>
@@ -45,6 +33,31 @@
    <p id="liveAiStatus" class="help-text" role="status" aria-live="polite">Live abhi start nahi hua.</p>
    <p class="help-text">Profile screen ko Live start hote hi clearly dikhayein; phir lobby aur match continue karein. App switch hone par warning record ho sakti hai; isse automatic ban ya removal nahi hoga. Aap kabhi bhi Live stop kar sakte hain.</p>
   </section>
+
+
+
+  <section id="roomJoinStep" hidden style="padding:20px;margin:18px 0;border:2px solid var(--primary,#f59e0b);border-radius:16px;text-align:center">
+   <h2>🚀 JOIN ROOM</h2>
+   <p>Admin ka saved Garena invite link isi ek button se khulega. Free Fire India aur Free Fire MAX dono ke liye alag button ya app selection ki zaroorat nahi hai. Screen-share permission approve karke Live AI active karein; tabhi JOIN ROOM dikhega.</p>
+   {% if tournament.room_invite_link %}
+    <a class="btn-primary" href="{% url 'tournaments:room_invite_open' registration.id %}" style="display:inline-block;width:100%;padding:16px;font-size:18px">🔥 JOIN ROOM IN FREE FIRE</a>
+   {% else %}
+    <p class="help-text">Admin ne abhi invite link add nahi kiya hai. Link add hone par yahan JOIN ROOM dikhega.</p>
+   {% endif %}
+  </section>
+
+    <section id="playerLiveAudio" hidden style="padding:18px;margin:18px 0;border:1px solid rgba(56,189,248,.55);border-radius:16px">
+      <h3>🎙️ Player Microphone & Admin Messages</h3>
+      <p>Mic default OFF rahega. Aap khud ON karenge tabhi Live Monitor par aapki awaaz sunai degi. Admin ki awaaz aapko isi Live session mein sunai degi.</p>
+      <button type="button" class="btn-primary" id="togglePlayerMic" disabled>🎙️ Turn Mic ON</button>
+      <span id="playerMicStatus" class="help-text" role="status" aria-live="polite">Pehle screen Live start karein.</span>
+      <div id="adminLiveMessages" aria-live="polite" style="margin-top:14px;padding:12px;border-radius:12px;background:rgba(127,127,127,.12)">
+        <strong>Admin Messages</strong>
+        <p id="adminLiveMessageEmpty" class="help-text mb-0">Abhi koi naya message nahi hai.</p>
+        <div id="adminLiveMessageList"></div>
+      </div>
+    </section>
+
   <script>
   (function () {
     const form = document.getElementById("liveAiConsentForm");
@@ -157,6 +170,7 @@
       micButton.disabled = true;
       try {
         if (nativeLive) {
+          micStatus.textContent = micEnabled ? "Mic OFF ho raha hai…" : "Android microphone permission check ho rahi hai…";
           window.FFArenaLive.setMicrophoneEnabled(!micEnabled);
           return;
         }
@@ -252,7 +266,9 @@
       const detail = event.detail || {};
       active = Boolean(detail.active);
       const roomJoinStep = document.getElementById("roomJoinStep");
+      const playerLiveAudio = document.getElementById("playerLiveAudio");
       if (roomJoinStep) roomJoinStep.hidden = !active;
+      if (playerLiveAudio) playerLiveAudio.hidden = !active;
       if (active) awaitingStart = false;
       else if (awaitingStart) {
         awaitingStart = false;
@@ -281,15 +297,6 @@
   </script>
 
 
-  <section id="roomJoinStep" hidden style="padding:20px;margin:18px 0;border:2px solid var(--primary,#f59e0b);border-radius:16px;text-align:center">
-   <h2>🚀 JOIN ROOM</h2>
-   <p>Admin ka saved Garena invite link isi ek button se khulega. Free Fire India aur Free Fire MAX dono ke liye alag button ya app selection ki zaroorat nahi hai. Screen-share permission approve karke Live AI active karein; tabhi JOIN ROOM dikhega.</p>
-   {% if tournament.room_invite_link %}
-    <a class="btn-primary" href="{% url 'tournaments:room_invite_open' registration.id %}" style="display:inline-block;width:100%;padding:16px;font-size:18px">🔥 JOIN ROOM IN FREE FIRE</a>
-   {% else %}
-    <p class="help-text">Admin ne abhi invite link add nahi kiya hai. Link add hone par yahan JOIN ROOM dikhega.</p>
-   {% endif %}
-  </section>
 
   <section style="padding:22px;margin:22px 0;border:2px solid var(--primary, #f59e0b);border-radius:16px;text-align:center">
    <div style="font-size:34px;margin-bottom:8px">🤖</div>
