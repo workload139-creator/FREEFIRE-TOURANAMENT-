@@ -1,7 +1,6 @@
-"""Subscribe to player streams and verify the registered Free Fire UID via OCR.
+"""Subscribe to BR/VS LiveKit streams, verify UID and submit kill candidates for Admin review.
 
-This stage verifies identity only. It does not read/attribute killfeed entries or
-issue wallet credits. No frames or OCR text are persisted.
+OCR is a candidate signal only. This worker never approves kills or issues wallet credits.
 """
 import asyncio
 import logging
@@ -57,6 +56,7 @@ def active_sessions():
         TournamentLiveSession.objects.filter(
             status=TournamentLiveSession.Status.ACTIVE,
             tournament__status="live",
+            tournament__mode__in=("BR", "VS"),
             registration__status="ready",
             registration__payment_verified=True,
             registration__refund_processed=False,
@@ -68,7 +68,7 @@ def active_sessions():
 
 
 @sync_to_async
-def update_slots(session_uuid, state, frames_delta=0, error=""):
+def update_slots(session_uuid, state, frames_delta=0, detections_delta=0, error=""):
     LiveAIAgentSlot.objects.filter(session__session_uuid=session_uuid).update(
         state=state,
         last_heartbeat_at=timezone.now(),
