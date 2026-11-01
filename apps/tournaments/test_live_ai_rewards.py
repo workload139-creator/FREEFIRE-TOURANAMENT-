@@ -1,7 +1,7 @@
 import os
 from unittest.mock import patch
 
-from django.test import SimpleTestCase
+from django.test import TestCase
 
 from apps.tournaments.live_ai_rewards import (
     approve_live_kill_event,
@@ -9,7 +9,7 @@ from apps.tournaments.live_ai_rewards import (
 )
 
 
-class LiveAIRewardSettlementGateTests(SimpleTestCase):
+class LiveAIRewardSettlementGateTests(TestCase):
     def test_wallet_settlement_is_disabled_when_flag_is_missing(self):
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("LIVE_AI_REWARD_SETTLEMENT_ENABLED", None)
