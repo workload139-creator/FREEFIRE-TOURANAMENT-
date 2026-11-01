@@ -20,7 +20,7 @@ from django.views.decorators.http import require_POST
 from apps.accounts.models import Wallet, WalletTransaction, AdminWallet, AdminWalletTransaction
 from .forms import KillSubmissionForm, RegistrationForm
 from .ai_review import AIReviewError, analyze_kill_evidence, fingerprint_evidence
-from .registration_services import RegistrationError, create_pending_registration, assign_teams_for_tournament, maybe_start_next_full_tournament
+from .registration_services import RegistrationError, create_pending_registration, assign_teams_for_tournament, maybe_start_next_full_tournament, create_next_tournament_round
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import LiveKillEvent, KillSubmission, Registration, Tournament, TournamentLedgerEntry, TournamentLiveSession
 from .kill_services import reward_for_tournament, rewards_for_tournament
@@ -566,11 +566,14 @@ def admin_finish_tournament(request, tournament_id):
 
     tournament.status = Tournament.Status.COMPLETED
     tournament.save(update_fields=["status", "updated_at"])
+    next_round = create_next_tournament_round(tournament.pk)
     next_started = maybe_start_next_full_tournament()
     if next_started:
-        messages.success(request, "Tournament complete ho gaya. Agla full verified tournament automatically LIVE ho gaya.")
+        messages.success(request, "Tournament COMPLETED. Iska result History mein save hai aur agla full verified tournament LIVE ho gaya.")
+    elif next_round:
+        messages.success(request, f"Tournament COMPLETED. Naya round '{next_round.title}' create ho gaya; players ko dobara register karna hoga.")
     else:
-        messages.success(request, "Tournament complete ho gaya. LIVE slot ab free hai; agla tournament verified capacity par start hoga.")
+        messages.success(request, "Tournament COMPLETED. Existing next round ko duplicate nahi kiya; previous result History mein safe hai.")
     return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
 
 
