@@ -501,8 +501,10 @@ class TournamentAdmin(admin.ModelAdmin):
     )
 
     def get_queryset(self, request):
-        # Keep free and unlimited series in their own proxy-admin menus.
-        return super().get_queryset(request).filter(is_unlimited_br=False, is_free_fan_tournament=False)
+        # Show every tournament in the main admin changelist, including
+        # recurring/unlimited BR and Free Fan events. The separate proxy
+        # admin pages remain available for their focused workflows.
+        return super().get_queryset(request)
 
     @admin.display(description="Tournament Control")
     def open_tournament_control(self, obj):
