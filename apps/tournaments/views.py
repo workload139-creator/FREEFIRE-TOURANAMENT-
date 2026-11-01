@@ -319,7 +319,7 @@ def tournament_register(request, tournament_id):
         messages.error(request, "Yeh Girls Only tournament hai. Profile mein Girl category select karne wale players hi join kar sakte hain.")
         return redirect("tournaments:detail", tournament_id=tournament.pk)
     if request.method == "GET":
-        time_closed = tournament.start_time <= timezone.now() and not tournament.is_unlimited_br
+        time_closed = tournament.start_time <= timezone.now() and not tournament.is_unlimited_br and not tournament.series_root_id
         if tournament.status != Tournament.Status.UPCOMING or time_closed or tournament.is_full:
             messages.error(request, "Yeh tournament abhi registration ke liye available nahi hai.")
             return redirect("tournaments:list")
