@@ -94,6 +94,23 @@ def assess_activity_event(event_id):
                 elif item.payment_verified and item.payment_method in ("diamonds", "coins", "fan_tokens") and item.currency_amount <= 0:
                     risk, score = PlayerActivityEvent.Risk.HIGH, 85
                     finding = "Currency-paid registration has a zero or invalid currency amount."
+                elif item.payment_verified and item.payment_method in ("diamonds", "coins", "fan_tokens"):
+                    ShopTxn = apps.get_model("social", "PlayerShopWalletTransaction")
+                    key = f"tournament-entry:{item.pk}:debit"
+                    txns = ShopTxn.objects.filter(idempotency_key=key)
+                    txn = txns.first()
+                    if txns.count() != 1 or not txn:
+                        risk, score = PlayerActivityEvent.Risk.CRITICAL, 100
+                        finding = "Verified currency tournament entry is missing its unique wallet debit ledger record."
+                    elif (
+                        txn.user_id != item.player_id
+                        or txn.currency != item.payment_method
+                        or txn.direction != "debit"
+                        or txn.quantity != item.currency_amount
+                        or txn.reference != str(item.pk)
+                    ):
+                        risk, score = PlayerActivityEvent.Risk.CRITICAL, 100
+                        finding = "Tournament entry debit ledger does not match the player, currency, or registered amount."
         elif model == "accounts.wallet":
             Wallet = apps.get_model("accounts", "Wallet")
             item = Wallet.objects.filter(pk=object_id).only("balance").first()
@@ -103,6 +120,34 @@ def assess_activity_event(event_id):
         elif model == "accounts.wallettransaction" and event.object_status == "failed":
             risk, score = PlayerActivityEvent.Risk.MEDIUM, 55
             finding = "A wallet transaction is marked failed and needs reconciliation."
+        elif model == "social.currencygift":
+            Gift = apps.get_model("social", "CurrencyGift")
+            ShopTxn = apps.get_model("social", "PlayerShopWalletTransaction")
+            gift = Gift.objects.filter(pk=object_id).first()
+            if gift:
+                sender_key = f"currency-gift:{gift.pk}:sender-debit"
+                receiver_key = f"currency-gift:{gift.pk}:receiver-credit"
+                sender_rows = ShopTxn.objects.filter(idempotency_key=sender_key)
+                receiver_rows = ShopTxn.objects.filter(idempotency_key=receiver_key)
+                sender_txn = sender_rows.first()
+                receiver_txn = receiver_rows.first()
+                if sender_rows.count() != 1 or receiver_rows.count() != 1 or not sender_txn or not receiver_txn:
+                    risk, score = PlayerActivityEvent.Risk.CRITICAL, 100
+                    finding = "Currency gift is missing one or both unique wallet ledger records (sender debit / receiver credit)."
+                elif (
+                    sender_txn.user_id != gift.sender_id
+                    or receiver_txn.user_id != gift.recipient_id
+                    or sender_txn.currency != gift.currency
+                    or receiver_txn.currency != gift.currency
+                    or sender_txn.direction != "debit"
+                    or receiver_txn.direction != "credit"
+                    or sender_txn.quantity != gift.quantity
+                    or receiver_txn.quantity != gift.quantity
+                    or sender_txn.reference != str(gift.pk)
+                    or receiver_txn.reference != str(gift.pk)
+                ):
+                    risk, score = PlayerActivityEvent.Risk.CRITICAL, 100
+                    finding = "Gift ledger does not match the gift sender, receiver, currency, or quantity."
         elif model == "social.playershopwallettransaction" and int(event.metadata.get("quantity", 0) or 0) <= 0:
             risk, score = PlayerActivityEvent.Risk.HIGH, 80
             finding = "A shop-wallet ledger transaction has a zero or invalid quantity."
