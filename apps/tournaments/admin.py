@@ -912,6 +912,9 @@ class UnlimitedTournamentAdmin(TournamentAdmin):
     exclude = ("is_free_fan_tournament",)
 
     def get_fieldsets(self, request, obj=None):
+        # Existing tournament setup is locked; the series flags are never editable here.
+        if obj and obj.pk:
+            return super().get_fieldsets(request, obj)
         fieldsets = list(super().get_fieldsets(request, obj))
         fieldsets.insert(
             2,
