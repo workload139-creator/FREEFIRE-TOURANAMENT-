@@ -1,68 +1,80 @@
-"""Independent Payment & Reward AI worker for 50 per-player slots.
+"""Independent Payment & Reward AI worker.
 
-It validates candidate eligibility, computes advisory reward proposals and records
-an auditable assessment. It NEVER credits a wallet; Admin approval is mandatory.
+Assesses Live Kill AI candidates and writes advisory proposals only.
+It never verifies kills or credits player wallets; Admin approval is mandatory.
 """
 import asyncio
 import logging
-import os
+import time
 from decimal import Decimal
 
 from asgiref.sync import sync_to_async
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
 from apps.tournaments.kill_services import rewards_for_tournament
-from apps.tournaments.live_ai_models import LiveAIAgentSlot, LiveAIPaymentAssessment, LiveKillEvent
+from apps.tournaments.live_ai_models import (
+    LiveAIAgentSlot,
+    LiveAIPaymentAssessment,
+    LiveKillEvent,
+)
 from apps.tournaments.models import TournamentLiveSession
 
 logger = logging.getLogger(__name__)
 POLL_SECONDS = 5
 MIN_KILLS_FOR_REWARD = 2
+MIN_CONFIDENCE = Decimal("0.7500")
 
 
 def build_payment_assessment(event, live_slot, prior_count=0):
-    """Pure validation/rules function, intentionally incapable of wallet writes."""
+    """Pure eligibility/rules function; deliberately has no wallet dependency."""
+    registration = event.registration
+    player = registration.player
     checks = {
+        "session_active": event.session.status == TournamentLiveSession.Status.ACTIVE,
         "tournament_live": event.tournament.status == "live",
         "supported_mode": event.tournament.mode in ("BR", "VS"),
-        "registration_ready": event.registration.status == "ready",
-        "payment_verified": bool(event.registration.payment_verified),
-        "not_refunded": not bool(event.registration.refund_processed) and event.registration.status != "refunded",
-        "live_ai_uid_verified": bool(live_slot and live_slot.identity_verified_at),
-                "player_uid_matches": str(event.registration.free_fire_uid or "").strip() == str(getattr(event.registration.player, "free_fire_uid", "") or "").strip(),
-                "account_uid_verified": bool(getattr(event.registration.player, "uid_verified", False)),
-                "session_active": event.session.status == TournamentLiveSession.Status.ACTIVE,
-        "ocr_confidence_pass": Decimal(str(event.confidence)) >= Decimal("0.75"),
+        "registration_ready": registration.status == "ready",
+        "payment_verified": bool(registration.payment_verified),
+        "not_refunded": not registration.refund_processed and registration.status != "refunded",
+        "live_identity_verified": bool(live_slot and live_slot.identity_verified_at),
+        "registered_uid_matches_account": str(registration.free_fire_uid or "").strip()
+            == str(getattr(player, "free_fire_uid", "") or "").strip(),
+        "account_uid_verified": bool(getattr(player, "uid_verified", False)),
+        "confidence_pass": Decimal(str(event.confidence or 0)) >= MIN_CONFIDENCE,
         "candidate_text_present": bool((event.detected_text or "").strip()),
-        "event_session_matches": event.session.registration_id == event.registration_id,
+        "session_registration_matches": event.session.registration_id == registration.pk,
+        "no_reward_already_issued": not bool(event.reward_reference),
     }
     eligible = all(checks.values())
     proposed_kills = int(prior_count) + (1 if eligible else 0)
     rewards = []
-    reason = "Held: " + ", ".join(key for key, passed in checks.items() if not passed)
+    failed = [name for name, passed in checks.items() if not passed]
+    reason = "Held for Admin review: " + ", ".join(failed)
     if eligible and proposed_kills >= MIN_KILLS_FOR_REWARD:
         rewards = [
             {"currency": currency, "quantity": quantity, "label": label}
             for currency, quantity, label in rewards_for_tournament(event.tournament, proposed_kills)
+            if quantity > 0
         ]
-        reason = "Payment AI checks passed; proposed reward awaits Admin verification."
+        reason = "Automated checks passed; proposed reward only. Admin must verify kills before credit."
     elif eligible:
-        reason = f"Candidate passed checks; {MIN_KILLS_FOR_REWARD - proposed_kills} more verified kill(s) needed before reward proposal."
+        reason = f"Candidate passed checks; {MIN_KILLS_FOR_REWARD - proposed_kills} more candidate kill(s) needed."
     return {
         "eligible": eligible,
         "proposed_kills": proposed_kills if eligible else 0,
         "proposed_rewards": rewards,
         "checks": checks,
         "decision_reason": reason[:250],
+        "worker_version": "payment-ai-v1",
     }
 
 
 @sync_to_async
 def assess_pending_events(batch_size=100):
-    """Assess unreviewed candidate events exactly once; no wallet writes occur."""
+    """Lock and assess new events once, leaving their review and payout state untouched."""
     assessed = 0
     with transaction.atomic():
         events = list(
@@ -73,20 +85,27 @@ def assess_pending_events(batch_size=100):
         )
         for event in events:
             live_slot = LiveAIAgentSlot.objects.filter(
-                session=event.session,
-                kind=LiveAIAgentSlot.Kind.LIVE,
+                session=event.session, kind=LiveAIAgentSlot.Kind.LIVE
             ).first()
-            result = build_payment_assessment(
-                event,
-                live_slot,
-                prior_count=LiveAIPaymentAssessment.objects.filter(
-                    event__registration=event.registration,
-                    eligible=True,
-                ).count(),
+            prior_count = LiveAIPaymentAssessment.objects.filter(
+                event__registration=event.registration, eligible=True
+            ).count()
+            LiveAIPaymentAssessment.objects.create(
+                event=event,
+                **build_payment_assessment(event, live_slot, prior_count),
             )
-            LiveAIPaymentAssessment.objects.create(event=event, **result)
+            LiveAIAgentSlot.objects.filter(
+                session=event.session, kind=LiveAIAgentSlot.Kind.PAYMENT
+            ).update(
+                state=LiveAIAgentSlot.State.PROCESSING,
+                last_heartbeat_at=timezone.now(),
+                detections_seen=F("detections_seen") + 1,
+                last_error="",
+                updated_at=timezone.now(),
+            )
             assessed += 1
     return assessed
+
 
 @sync_to_async
 def heartbeat_payment_slots():
@@ -99,20 +118,8 @@ def heartbeat_payment_slots():
         registration__payment_verified=True,
         registration__refund_processed=False,
     )
-    pending = LiveKillEvent.objects.filter(
-        session__in=active_slots.values("session_id"),
-        status=LiveKillEvent.Status.REVIEW,
-        payment_assessment__isnull=True,
-    ).values("session_id")
-    pending_ids = list(pending.values_list("session_id", flat=True).distinct())
-    active_slots.exclude(session_id__in=pending_ids).update(
+    active_slots.exclude(state=LiveAIAgentSlot.State.PROCESSING).update(
         state=LiveAIAgentSlot.State.CONNECTED,
-        last_heartbeat_at=now,
-        last_error="",
-        updated_at=now,
-    )
-    active_slots.filter(session_id__in=pending_ids).update(
-        state=LiveAIAgentSlot.State.PROCESSING,
         last_heartbeat_at=now,
         last_error="",
         updated_at=now,
@@ -135,14 +142,17 @@ class PaymentAIWorker:
                 raise
             except Exception:
                 logger.exception("Payment AI worker cycle failed.")
-            if once:\n                return\n            await asyncio.sleep(self.poll_seconds)
+            if once:
+                return
+            await asyncio.sleep(self.poll_seconds)
 
 
 class Command(BaseCommand):
     help = "Run the independent Payment & Reward AI assessment worker."
 
     def add_arguments(self, parser):
-        parser.add_argument("--poll-seconds", type=int, default=POLL_SECONDS)\n        parser.add_argument("--once", action="store_true")
+        parser.add_argument("--poll-seconds", type=int, default=POLL_SECONDS)
+        parser.add_argument("--once", action="store_true")
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.SUCCESS(
