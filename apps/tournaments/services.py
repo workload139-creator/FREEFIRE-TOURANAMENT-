@@ -1,10 +1,35 @@
 from decimal import Decimal
+from datetime import timedelta
 
 from django.db import transaction
 from django.utils import timezone
 
 from apps.accounts.models import AdminWallet, AdminWalletTransaction, Wallet, WalletTransaction
 from .models import Registration, Tournament, TournamentLedgerEntry
+from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
+
+
+@transaction.atomic
+def record_ready_no(registration_id, *, player=None, force=False):
+    """Count one NO or expired confirmation window; refund exactly on the third."""
+    registration = Registration.objects.select_for_update().select_related("player").get(pk=registration_id)
+    if player is not None and registration.player_id != player.pk:
+        return False, "Registration does not belong to this player."
+    if registration.status != Registration.Status.WAITING_READY or registration.refund_processed:
+        return False, "Registration is not awaiting confirmation."
+    now = timezone.now()
+    if not force and (not registration.ready_deadline or now < registration.ready_deadline):
+        return False, "Confirmation window has not expired."
+
+    registration.no_response_count = min(3, registration.no_response_count + 1)
+    if registration.no_response_count >= 3:
+        registration.ready_deadline = now
+        registration.save(update_fields=["no_response_count", "ready_deadline", "updated_at"])
+        return mark_not_playing_and_refund(registration.pk)
+
+    registration.ready_deadline = now + timedelta(seconds=PLAYER_CONFIRMATION_TIMEOUT_SECONDS)
+    registration.save(update_fields=["no_response_count", "ready_deadline", "updated_at"])
+    return True, f"NO recorded ({registration.no_response_count}/3). Another confirmation window started."
 
 
 @transaction.atomic
@@ -248,7 +273,7 @@ def cancel_tournament_and_refund(tournament_id):
 
 @transaction.atomic
 def process_expired_ready_registrations(limit=500):
-    """Mark players who missed the 5-minute room confirmation window."""
+    """Count each missed 5-minute confirmation as NO; refund after three."""
     now = timezone.now()
     registration_ids = list(
         Registration.objects.filter(
@@ -260,7 +285,7 @@ def process_expired_ready_registrations(limit=500):
     )
     processed = 0
     for registration_id in registration_ids:
-        changed, _message = mark_not_playing_and_refund(registration_id)
+        changed, _message = record_ready_no(registration_id)
         if changed:
             processed += 1
     return processed
