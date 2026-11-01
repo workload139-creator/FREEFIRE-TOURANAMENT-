@@ -1,4 +1,6 @@
 """Private ingestion endpoint for the separate LiveKit vision worker."""
+import base64
+import binascii
 import hmac
 import json
 import os
@@ -6,6 +8,7 @@ import re
 from datetime import datetime
 
 from django.http import JsonResponse
+from django.core.files.base import ContentFile
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
@@ -21,7 +24,7 @@ def ingest_live_kill_candidate(request):
     supplied = request.headers.get("Authorization", "")
     if not expected or not supplied.startswith("Bearer ") or not hmac.compare_digest(supplied[7:].strip(), expected):
         return JsonResponse({"error": "Unauthorized worker."}, status=401)
-    if len(request.body) > 32_000:
+    if len(request.body) > 3_000_000:
         return JsonResponse({"error": "Payload too large."}, status=413)
     try:
         payload = json.loads(request.body.decode("utf-8"))
@@ -29,6 +32,7 @@ def ingest_live_kill_candidate(request):
         fingerprint = str(payload.get("event_fingerprint", "")).lower()
         confidence = float(payload.get("confidence", 0))
         detected_text = str(payload.get("detected_text", ""))[:5000]
+        evidence_image_b64 = str(payload.get("evidence_image_b64", ""))
         match_id = str(payload.get("match_id", ""))[:100]
         attributed_player_name = str(payload.get("attributed_player_name", "")).strip()[:80]
         kill_at_raw = payload.get("kill_at")
@@ -55,6 +59,14 @@ def ingest_live_kill_candidate(request):
                 kill_at = timezone.make_aware(kill_at, timezone.get_current_timezone())
         except ValueError:
             return JsonResponse({"error": "Invalid kill timestamp."}, status=400)
+    if len(evidence_image_b64) > 2_800_000:
+        return JsonResponse({"error": "Evidence image is too large."}, status=413)
+    try:
+        evidence_bytes = base64.b64decode(evidence_image_b64, validate=True) if evidence_image_b64 else b""
+    except (ValueError, binascii.Error):
+        return JsonResponse({"error": "Invalid evidence image."}, status=400)
+    if evidence_bytes and not evidence_bytes.startswith(b"\xff\xd8\xff"):
+        return JsonResponse({"error": "Evidence must be a JPEG screenshot."}, status=400)
     event, created = LiveKillEvent.objects.get_or_create(
         event_fingerprint=fingerprint,
         defaults={
@@ -70,6 +82,8 @@ def ingest_live_kill_candidate(request):
             "review_reason": "Worker OCR candidate; independent validation and Admin approval required.",
         },
     )
+    if evidence_bytes and not event.evidence_image:
+        event.evidence_image.save(f"{event.event_uuid}.jpg", ContentFile(evidence_bytes), save=True)
     return JsonResponse({
         "success": True,
         "created": created,

@@ -23,7 +23,7 @@ class PaymentAIAssessmentRulesTests(TestCase):
             payment_verified=True,
             refund_processed=refunded,
         )
-        session = SimpleNamespace(registration_id=7, status="active")
+        session = SimpleNamespace(registration_id=7, status="active", identity_verified_at=object())
         return SimpleNamespace(
             tournament=tournament,
             registration=registration,
@@ -34,12 +34,12 @@ class PaymentAIAssessmentRulesTests(TestCase):
             match_id="MATCH-001",
             kill_at=object(),
             attributed_player_name="RegisteredNick",
+            evidence_image="kill.jpg",
         )
 
     def test_first_valid_kill_waits_for_minimum_two(self):
         event = self.make_event()
-        live_slot = SimpleNamespace(identity_verified_at=object())
-        result = build_payment_assessment(event, live_slot, prior_count=0)
+        result = build_payment_assessment(event, prior_count=0)
         self.assertTrue(result["eligible"])
         self.assertEqual(result["proposed_kills"], 1)
         self.assertEqual(result["proposed_rewards"], [])
@@ -47,49 +47,40 @@ class PaymentAIAssessmentRulesTests(TestCase):
 
     def test_second_valid_kill_proposes_br_diamonds_without_crediting_wallet(self):
         event = self.make_event()
-        live_slot = SimpleNamespace(identity_verified_at=object())
-        result = build_payment_assessment(event, live_slot, prior_count=1)
+        result = build_payment_assessment(event, prior_count=1)
         self.assertTrue(result["eligible"])
         self.assertEqual(result["proposed_kills"], 2)
         self.assertEqual(result["proposed_rewards"], [
             {"currency": "diamonds", "quantity": 10, "label": "Diamonds"}
         ])
         self.assertNotIn("wallet", result)
-        self.assertTrue(result["checks"]["four_ai_passed"])
-        self.assertEqual(len(result["checks"]["four_ai_review"]), 4)
+        self.assertTrue(result["checks"]["two_analysis_agents_passed"])
+        self.assertEqual(len(result["checks"]["two_analysis_agents"]), 2)
 
     def test_training_ground_or_unsupported_mode_is_held(self):
         event = self.make_event(mode="TRAINING")
-        live_slot = SimpleNamespace(identity_verified_at=object())
-        result = build_payment_assessment(event, live_slot)
+        result = build_payment_assessment(event)
         self.assertFalse(result["eligible"])
         self.assertFalse(result["checks"]["supported_mode"])
         self.assertEqual(result["proposed_rewards"], [])
 
-    def test_four_stage_review_holds_candidate_without_match_and_killer_attribution(self):
+    def test_second_agent_requires_saved_kill_screenshot(self):
         event = self.make_event()
-        event.match_id = ""
-        event.kill_at = None
-        event.attributed_player_name = ""
-        live_slot = SimpleNamespace(identity_verified_at=object())
-        result = build_payment_assessment(event, live_slot)
+        event.evidence_image = None
+        result = build_payment_assessment(event)
         self.assertFalse(result["eligible"])
-        self.assertFalse(result["checks"]["four_ai_passed"])
-        self.assertFalse(result["checks"]["four_ai_review"]["ff_arena_agent_local_2"]["passed"])
+        self.assertFalse(result["checks"]["two_analysis_agents_passed"])
+        self.assertFalse(result["checks"]["two_analysis_agents"]["ff_arena_agent_local_2"]["passed"])
 
     def test_uid_verification_is_required(self):
         event = self.make_event()
-        result = build_payment_assessment(event, None)
+        event.session.identity_verified_at = None
+        result = build_payment_assessment(event)
         self.assertFalse(result["eligible"])
         self.assertFalse(result["checks"]["live_identity_verified"])
 
     def test_low_confidence_or_refunded_player_is_held(self):
-        live_slot = SimpleNamespace(identity_verified_at=object())
-        low_confidence = build_payment_assessment(
-            self.make_event(confidence="0.40"), live_slot
-        )
-        refunded = build_payment_assessment(
-            self.make_event(refunded=True), live_slot
-        )
+        low_confidence = build_payment_assessment(self.make_event(confidence="0.40"))
+        refunded = build_payment_assessment(self.make_event(refunded=True))
         self.assertFalse(low_confidence["eligible"])
         self.assertFalse(refunded["eligible"])

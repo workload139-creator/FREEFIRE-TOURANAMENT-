@@ -9,18 +9,16 @@ from decimal import Decimal
 
 from asgiref.sync import sync_to_async
 from django.core.management.base import BaseCommand
-from django.db import transaction
-from django.db.models import F
+from django.db import transaction, models
 from django.utils import timezone
 
 from apps.tournaments.kill_services import rewards_for_tournament
 from apps.tournaments.live_ai_models import (
-    LiveAIAgentSlot,
     LiveAIPaymentAssessment,
     LiveKillEvent,
 )
 from apps.tournaments.models import TournamentLiveSession
-from apps.tournaments.live_ai_review import run_four_stage_review
+from apps.tournaments.live_ai_review import run_two_agent_review
 
 logger = logging.getLogger(__name__)
 POLL_SECONDS = 5
@@ -28,7 +26,7 @@ MIN_KILLS_FOR_REWARD = 2
 MIN_CONFIDENCE = Decimal("0.7500")
 
 
-def build_payment_assessment(event, live_slot, prior_count=0):
+def build_payment_assessment(event, prior_count=0):
     """Pure eligibility/rules function; deliberately has no wallet dependency."""
     registration = event.registration
     player = registration.player
@@ -39,7 +37,7 @@ def build_payment_assessment(event, live_slot, prior_count=0):
         "registration_ready": registration.status == "ready",
         "payment_verified": bool(registration.payment_verified),
         "not_refunded": not registration.refund_processed and registration.status != "refunded",
-        "live_identity_verified": bool(live_slot and live_slot.identity_verified_at),
+        "live_identity_verified": bool(event.session.identity_verified_at),
         "registered_uid_matches_account": str(registration.free_fire_uid or "").strip()
             == str(getattr(player, "free_fire_uid", "") or "").strip(),
         "account_uid_verified": bool(getattr(player, "uid_verified", False)),
@@ -48,10 +46,10 @@ def build_payment_assessment(event, live_slot, prior_count=0):
         "session_registration_matches": event.session.registration_id == registration.pk,
         "no_reward_already_issued": not bool(getattr(event, "reward_reference", None)),
     }
-    reviewer_reports = run_four_stage_review(event, live_slot)
-    checks["four_ai_review"] = reviewer_reports
-    checks["four_ai_passed"] = all(report["passed"] for report in reviewer_reports.values())
-    eligible = all(value for key, value in checks.items() if key != "four_ai_review")
+    reviewer_reports = run_two_agent_review(event, event.session)
+    checks["two_analysis_agents"] = reviewer_reports
+    checks["two_analysis_agents_passed"] = all(reviewer_reports[name]["passed"] for name in ("ff_arena_agent_local_1", "ff_arena_agent_local_2"))
+    eligible = all(value for key, value in checks.items() if key != "two_analysis_agents") and checks["two_analysis_agents_passed"]
     proposed_kills = int(prior_count) + (1 if eligible else 0)
     rewards = []
     failed = [name for name, passed in checks.items() if not passed]
@@ -87,9 +85,6 @@ def assess_pending_events(batch_size=100):
             .order_by("detected_at")[:batch_size]
         )
         for event in events:
-            live_slot = LiveAIAgentSlot.objects.filter(
-                session=event.session, kind=LiveAIAgentSlot.Kind.LIVE
-            ).first()
             prior_count = LiveAIPaymentAssessment.objects.filter(
                 event__registration=event.registration,
                 event__tournament=event.tournament,
@@ -98,38 +93,17 @@ def assess_pending_events(batch_size=100):
             ).count()
             LiveAIPaymentAssessment.objects.create(
                 event=event,
-                **build_payment_assessment(event, live_slot, prior_count),
+                **build_payment_assessment(event, prior_count),
             )
-            LiveAIAgentSlot.objects.filter(
-                session=event.session, kind=LiveAIAgentSlot.Kind.PAYMENT
-            ).update(
-                state=LiveAIAgentSlot.State.PROCESSING,
-                last_heartbeat_at=timezone.now(),
-                detections_seen=F("detections_seen") + 1,
-                last_error="",
+            TournamentLiveSession.objects.filter(pk=event.session_id).update(
+                monitor_detections_seen=models.F("monitor_detections_seen") + 1,
+                monitor_last_heartbeat_at=timezone.now(),
                 updated_at=timezone.now(),
             )
             assessed += 1
     return assessed
 
 
-@sync_to_async
-def heartbeat_payment_slots():
-    now = timezone.now()
-    active_slots = LiveAIAgentSlot.objects.filter(
-        kind=LiveAIAgentSlot.Kind.PAYMENT,
-        session__status=TournamentLiveSession.Status.ACTIVE,
-        tournament__status="live",
-        registration__status="ready",
-        registration__payment_verified=True,
-        registration__refund_processed=False,
-    )
-    active_slots.update(
-        state=LiveAIAgentSlot.State.CONNECTED,
-        last_heartbeat_at=now,
-        last_error="",
-        updated_at=now,
-    )
 
 
 class PaymentAIWorker:
@@ -141,7 +115,6 @@ class PaymentAIWorker:
         while True:
             try:
                 count = await assess_pending_events()
-                await heartbeat_payment_slots()
                 if count:
                     logger.info("Payment AI assessed %s new candidate event(s).", count)
             except asyncio.CancelledError:

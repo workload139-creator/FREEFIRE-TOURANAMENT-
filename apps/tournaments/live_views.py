@@ -13,16 +13,14 @@ from django.db.models import F
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
 from livekit import api
 
-from .models import LiveAIAgentSlot, Registration, Tournament, TournamentLiveSession
+from .models import Registration, Tournament, TournamentLiveSession
 
 logger = logging.getLogger(__name__)
 
-# One isolated logical Live agent slot per eligible player; media processing is shared.
-MAX_LIVE_PLAYER_AGENTS_PER_TOURNAMENT = 50
 
 
 def _livekit_config():
@@ -74,16 +72,7 @@ def tournament_live_token(request, registration_id):
             registration=registration, status=TournamentLiveSession.Status.ACTIVE
         ).first()
         if session is None:
-            active_agents = TournamentLiveSession.objects.filter(
-                tournament=tournament,
-                status=TournamentLiveSession.Status.ACTIVE,
-            ).count()
-            if active_agents >= MAX_LIVE_PLAYER_AGENTS_PER_TOURNAMENT:
-                return JsonResponse({
-                    "error": "This tournament has reached its 50-player Live AI session limit.",
-                    "agent_capacity": MAX_LIVE_PLAYER_AGENTS_PER_TOURNAMENT,
-                    "active_agent_sessions": active_agents,
-                }, status=409)
+
             session_id = uuid.uuid4()
             room_name = f"ffarena-tournament-{tournament.pk}-reg-{registration.pk}-{session_id.hex[:12]}"
             identity = f"ffarena-player-{registration.player_id}-reg-{registration.pk}-{session_id.hex[:8]}"
@@ -103,59 +92,6 @@ def tournament_live_token(request, registration_id):
                 if session is None:
                     raise
 
-        # Allocate one isolated logical Live slot and one Payment slot for this player.
-        # A shared worker pool performs the compute; these are not 100 heavyweight processes.
-        existing_slots = {
-            slot.kind: slot
-            for slot in LiveAIAgentSlot.objects.filter(session=session)
-        }
-        if existing_slots:
-            slot_number = next(iter(existing_slots.values())).slot_number
-        else:
-            occupied = set(
-                LiveAIAgentSlot.objects.filter(
-                    tournament=tournament,
-                    session__status=TournamentLiveSession.Status.ACTIVE,
-                ).values_list("slot_number", flat=True)
-            )
-            slot_number = next(
-                (number for number in range(1, MAX_LIVE_PLAYER_AGENTS_PER_TOURNAMENT + 1)
-                 if number not in occupied),
-                None,
-            )
-        if slot_number is None or not 1 <= slot_number <= MAX_LIVE_PLAYER_AGENTS_PER_TOURNAMENT:
-            return JsonResponse({"error": "All 50 paired Live/Payment AI slots are occupied."}, status=409)
-
-        # Reuse a slot row from an ended session instead of exhausting slot numbers
-        # after every reconnect. The tournament row lock serializes this allocation.
-        for kind in (LiveAIAgentSlot.Kind.LIVE, LiveAIAgentSlot.Kind.PAYMENT):
-            slot = existing_slots.get(kind) or LiveAIAgentSlot.objects.filter(
-                tournament=tournament, kind=kind, slot_number=slot_number
-            ).first()
-            if slot:
-                slot.registration = registration
-                slot.session = session
-                slot.state = LiveAIAgentSlot.State.WAITING
-                slot.last_heartbeat_at = None
-                slot.identity_verified_at = None
-                slot.identity_ocr_confidence = 0
-                slot.frames_seen = 0
-                slot.detections_seen = 0
-                slot.last_error = ""
-                slot.save(update_fields=[
-                    "registration", "session", "state", "last_heartbeat_at",
-                    "identity_verified_at", "identity_ocr_confidence", "frames_seen",
-                    "detections_seen", "last_error", "updated_at",
-                ])
-            else:
-                LiveAIAgentSlot.objects.create(
-                    tournament=tournament,
-                    registration=registration,
-                    session=session,
-                    kind=kind,
-                    slot_number=slot_number,
-                    state=LiveAIAgentSlot.State.WAITING,
-                )
 
     try:
         token = (
@@ -178,16 +114,11 @@ def tournament_live_token(request, registration_id):
             "session_id": str(session.session_uuid),
             "expires_in": 1800,
             "recording": False,
-            "player_agent": {
+            "monitor": {
                 "session_id": str(session.session_uuid),
                 "registration_id": registration.pk,
-                "state": "awaiting_android_stream",
-                "scope": "one_isolated_agent_slot_per_player",
-                "active_sessions": TournamentLiveSession.objects.filter(
-                    tournament=tournament,
-                    status=TournamentLiveSession.Status.ACTIVE,
-                ).count(),
-                "capacity": MAX_LIVE_PLAYER_AGENTS_PER_TOURNAMENT,
+                "state": session.monitor_state,
+                "architecture": "shared_tournament_monitor",
             },
         })
     except Exception:
@@ -197,6 +128,52 @@ def tournament_live_token(request, registration_id):
         ).update(status=TournamentLiveSession.Status.ENDED, ended_at=timezone.now())
         return JsonResponse({"error": "LiveKit token could not be created. Check server logs and LiveKit credentials."}, status=503)
 
+
+
+@login_required
+@require_GET
+def admin_tournament_live_tokens(request, tournament_id):
+    """Issue subscribe-only tokens for active sessions in one staff-selected tournament."""
+    if not request.user.is_staff:
+        return JsonResponse({"error": "Staff access required."}, status=403)
+    url, key, secret = _livekit_config()
+    if not url:
+        return JsonResponse({"error": "LiveKit configuration is unavailable."}, status=503)
+    tournament = get_object_or_404(Tournament, pk=tournament_id)
+    sessions = TournamentLiveSession.objects.filter(
+        tournament=tournament,
+        status=TournamentLiveSession.Status.ACTIVE,
+        registration__status=Registration.Status.READY,
+        registration__payment_verified=True,
+        registration__refund_processed=False,
+    ).select_related("registration", "registration__player").order_by("started_at")
+    streams = []
+    for session in sessions:
+        identity = f"ffarena-admin-{request.user.pk}-{session.session_uuid.hex[:12]}"
+        token = (
+            api.AccessToken(key, secret)
+            .with_identity(identity)
+            .with_name("FF Arena Admin Monitor")
+            .with_ttl(timedelta(minutes=10))
+            .with_grants(api.VideoGrants(
+                room_join=True,
+                room=session.room_name,
+                can_publish=False,
+                can_subscribe=True,
+            ))
+            .to_jwt()
+        )
+        streams.append({
+            "registration_id": session.registration_id,
+            "player": session.registration.player.get_username(),
+            "uid": session.registration.free_fire_uid,
+            "session_id": str(session.session_uuid),
+            "room_name": session.room_name,
+            "token": token,
+            "url": url,
+            "state": session.monitor_state,
+        })
+    return JsonResponse({"tournament_id": tournament.pk, "streams": streams})
 
 @login_required
 @require_POST

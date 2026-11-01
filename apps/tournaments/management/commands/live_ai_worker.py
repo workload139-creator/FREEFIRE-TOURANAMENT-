@@ -3,6 +3,8 @@
 OCR is a candidate signal only. This worker never approves kills or issues wallet credits.
 """
 import asyncio
+import base64
+import io
 import logging
 import os
 import time
@@ -15,13 +17,12 @@ from decimal import Decimal
 
 from asgiref.sync import sync_to_async
 from django.core.management.base import BaseCommand, CommandError
-from django.db.models import F
 from django.utils import timezone
+from django.db.models import F
 from livekit import api, rtc
 from PIL import Image
 import pytesseract
 
-from apps.tournaments.live_ai_models import LiveAIAgentSlot
 from apps.tournaments.live_ai_ocr import verify_profile_uid
 from apps.tournaments.live_ai_killfeed import live_kill_detection_enabled, scan_full_frame_for_kill_text
 from apps.tournaments.models import TournamentLiveSession
@@ -67,34 +68,27 @@ def active_sessions():
 
 
 @sync_to_async
-def update_slots(session_uuid, state, frames_delta=0, detections_delta=0, error=""):
-    """Update only the Live Kill AI slot; Payment AI has its own worker lifecycle."""
-    LiveAIAgentSlot.objects.filter(
-        session__session_uuid=session_uuid,
-        kind=LiveAIAgentSlot.Kind.LIVE,
-    ).update(
-        state=state,
-        last_heartbeat_at=timezone.now(),
-        frames_seen=F("frames_seen") + max(0, int(frames_delta)),
-        detections_seen=F("detections_seen") + max(0, int(detections_delta)),
-        last_error=error[:250],
+def update_monitor(session_uuid, state, frames_delta=0, detections_delta=0, error=""):
+    """Update one shared-monitor status record stored on the player's live session."""
+    TournamentLiveSession.objects.filter(session_uuid=session_uuid).update(
+        monitor_state=state,
+        monitor_last_heartbeat_at=timezone.now(),
+        monitor_frames_seen=F("monitor_frames_seen") + max(0, int(frames_delta)),
+        monitor_detections_seen=F("monitor_detections_seen") + max(0, int(detections_delta)),
+        monitor_last_error=error[:250],
         updated_at=timezone.now(),
     )
 
 
 @sync_to_async
 def mark_identity_verified(session_uuid, confidence):
-    """Identity evidence belongs to the Live slot, never the Payment slot."""
     now = timezone.now()
-    LiveAIAgentSlot.objects.filter(
-        session__session_uuid=session_uuid,
-        kind=LiveAIAgentSlot.Kind.LIVE,
-    ).update(
+    TournamentLiveSession.objects.filter(session_uuid=session_uuid).update(
         identity_verified_at=now,
         identity_ocr_confidence=Decimal(str(round(float(confidence), 4))),
-        state=LiveAIAgentSlot.State.PROCESSING,
-        last_heartbeat_at=now,
-        last_error="",
+        monitor_state="processing",
+        monitor_last_heartbeat_at=now,
+        monitor_last_error="",
         updated_at=now,
     )
 
@@ -118,12 +112,15 @@ def _scan_kill_candidate(frame):
         if not relevant:
             return None
         text = " ".join(item["text"] for item in words)[:5000]
-        return text, min(item["confidence"] for item in relevant)
+        buffer = io.BytesIO()
+        image.save(buffer, format="JPEG", quality=82, optimize=True)
+        evidence_b64 = base64.b64encode(buffer.getvalue()).decode("ascii")
+        return text, min(item["confidence"] for item in relevant), evidence_b64
     finally:
         image.close()
 
 
-def _post_kill_candidate(session_uuid, detected_text, confidence, fingerprint):
+def _post_kill_candidate(session_uuid, detected_text, confidence, fingerprint, evidence_image_b64):
     base = os.getenv("LIVE_AI_INGEST_URL", "").strip()
     token = os.getenv("LIVE_AI_INGEST_TOKEN", "").strip()
     if not base or not token:
@@ -133,6 +130,7 @@ def _post_kill_candidate(session_uuid, detected_text, confidence, fingerprint):
         "event_fingerprint": fingerprint,
         "confidence": confidence,
         "detected_text": detected_text,
+        "evidence_image_b64": evidence_image_b64,
     }).encode("utf-8")
     request = urllib.request.Request(
         base.rstrip("/") + "/tournaments/live/ai/kill-candidate/",
@@ -197,7 +195,7 @@ class LiveAIWorker:
                         worker.last_kill_scan_at = now
                         candidate = await asyncio.to_thread(_scan_kill_candidate, frame)
                         if candidate:
-                            detected_text, confidence = candidate
+                            detected_text, confidence, evidence_image_b64 = candidate
                             # Stable fingerprint: do not include a time bucket. A persistent
                             # killfeed notification can remain on screen across many OCR scans;
                             # time-bucket fingerprints would turn that one notification into
@@ -209,11 +207,11 @@ class LiveAIWorker:
                             ).hexdigest()
                             if fingerprint != worker.last_kill_fingerprint:
                                 accepted = await asyncio.to_thread(
-                                    _post_kill_candidate, worker.session_uuid, detected_text, confidence, fingerprint
+                                    _post_kill_candidate, worker.session_uuid, detected_text, confidence, fingerprint, evidence_image_b64
                                 )
                                 if accepted:
                                     worker.last_kill_fingerprint = fingerprint
-                                    await update_slots(worker.session_uuid, LiveAIAgentSlot.State.PROCESSING, detections_delta=1)
+                                    await update_monitor(worker.session_uuid, "processing", detections_delta=1)
                 except Exception:
                     logger.exception("Live AI frame analysis failed for session %s", worker.session_uuid)
         except asyncio.CancelledError:
@@ -248,7 +246,7 @@ class LiveAIWorker:
 
         await room.connect(self.url, self._token(session))
         self.workers[session_uuid] = worker
-        await update_slots(session_uuid, LiveAIAgentSlot.State.CONNECTED)
+        await update_monitor(session_uuid, "connected")
         logger.info("Live AI subscriber connected: session=%s room=%s", session_uuid, worker.room_name)
 
     async def _disconnect(self, session_uuid, error=""):
@@ -262,9 +260,9 @@ class LiveAIWorker:
                 await worker.room.disconnect()
             except Exception:
                 logger.exception("Room disconnect failed for session %s", session_uuid)
-        await update_slots(
+        await update_monitor(
             session_uuid,
-            LiveAIAgentSlot.State.DEGRADED if error else LiveAIAgentSlot.State.STOPPED,
+            "degraded" if error else "stopped",
             error=error,
         )
 
@@ -284,18 +282,18 @@ class LiveAIWorker:
                         await self._connect(session)
                     except Exception as exc:
                         logger.exception("Could not subscribe to LiveKit session %s", session_uuid)
-                        await update_slots(
+                        await update_monitor(
                             session_uuid,
-                            LiveAIAgentSlot.State.DEGRADED,
+                            "degraded",
                             error=f"LiveKit subscriber error: {exc}",
                         )
 
                 for session_uuid, worker in tuple(self.workers.items()):
                     delta = worker.frames_pending
                     worker.frames_pending = 0
-                    await update_slots(
+                    await update_monitor(
                         session_uuid,
-                        LiveAIAgentSlot.State.PROCESSING if worker.identity_verified else LiveAIAgentSlot.State.CONNECTED,
+                        "processing" if worker.identity_verified else "connected",
                         frames_delta=delta,
                     )
 
