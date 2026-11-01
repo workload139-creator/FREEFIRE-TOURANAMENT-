@@ -416,6 +416,7 @@ def confirm_playing(request, registration_id):
 @login_required
 @require_POST
 def decline_playing(request, registration_id):
+    get_object_or_404(Registration, pk=registration_id, player=request.user)
     changed, detail = record_ready_no(registration_id, player=request.user, force=True)
     if changed:
         registration = Registration.objects.get(pk=registration_id)
