@@ -1,3 +1,4 @@
+# Tournament Admin now controls existing rounds; round creation is disabled.
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
@@ -18,55 +19,75 @@ class TournamentAdminCreationTests(TestCase):
         )
         self.client.force_login(self.admin_user)
 
-    def test_add_form_uses_easy_datetime_input_and_upcoming_default(self):
+    def make_tournament(self, title, status=Tournament.Status.UPCOMING):
+        return Tournament.objects.create(
+            title=title,
+            mode=Tournament.Mode.BR,
+            br_format=Tournament.BRFormat.SOLO,
+            entry_fee="10.00",
+            prize_pool="100.00",
+            max_players=49,
+            start_time=timezone.now() + timedelta(days=1),
+            status=status,
+            room_id="ROOM123",
+            room_password="PASS123",
+        )
+
+    def test_admin_cannot_create_new_tournament(self):
+        existing_count = Tournament.objects.count()
         response = self.client.get(reverse("admin:tournaments_tournament_add"))
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(Tournament.objects.count(), existing_count)
+
+    def test_existing_tournament_edit_exposes_only_status_control(self):
+        tournament = self.make_tournament("Existing BR Round")
+        response = self.client.get(
+            reverse("admin:tournaments_tournament_change", args=[tournament.pk])
+        )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'type="datetime-local"')
-        self.assertContains(response, 'value="upcoming" selected')
+        self.assertContains(response, "Tournament Control")
+        self.assertNotContains(response, 'name="title"')
+        self.assertNotContains(response, 'name="entry_fee"')
+        self.assertNotContains(response, 'name="prize_pool"')
+        self.assertContains(response, 'name="status"')
+        self.assertContains(response, 'value="live"')
+        self.assertContains(response, 'value="cancelled"')
+        self.assertNotContains(response, 'value="completed"')
 
-    def test_admin_can_create_tournament_and_public_hub_shows_categories(self):
-        start_time = timezone.localtime(
-            timezone.now() + timedelta(days=1)
-        ).strftime("%Y-%m-%dT%H:%M")
-
+    def test_admin_can_start_existing_tournament_when_no_other_is_live(self):
+        Tournament.objects.filter(status=Tournament.Status.LIVE).update(status=Tournament.Status.UPCOMING)
+        tournament = self.make_tournament("Ready BR Round")
         response = self.client.post(
-            reverse("admin:tournaments_tournament_add"),
-            {
-                "title": "Admin Created Test Tournament",
-                "mode": Tournament.Mode.BR,
-                "vs_format": "",
-                "description": "Created through Django admin test.",
-                "entry_fee": "10.00",
-                "prize_pool": "100.00",
-                "max_players": "49",
-                "start_time": start_time,
-                "status": Tournament.Status.UPCOMING,
-                "room_id": "",
-                "room_password": "",
-                "registrations-TOTAL_FORMS": "0",
-                "registrations-INITIAL_FORMS": "0",
-                "registrations-MIN_NUM_FORMS": "0",
-                "registrations-MAX_NUM_FORMS": "1000",
-                "kill_submissions-TOTAL_FORMS": "0",
-                "kill_submissions-INITIAL_FORMS": "0",
-                "kill_submissions-MIN_NUM_FORMS": "0",
-                "kill_submissions-MAX_NUM_FORMS": "1000",
-                "_save": "Save",
-            },
+            reverse("admin:tournaments_tournament_change", args=[tournament.pk]),
+            {"status": Tournament.Status.LIVE, "_save": "Save"},
             follow=True,
         )
 
-        self.assertEqual(
-            Tournament.objects.filter(
-                title="Admin Created Test Tournament",
-                status=Tournament.Status.UPCOMING,
-            ).count(),
-            1,
-            msg=response.content.decode("utf-8", errors="replace")[:5000],
+        tournament.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(tournament.status, Tournament.Status.LIVE)
+
+    def test_admin_cannot_start_second_live_tournament(self):
+        Tournament.objects.create(
+            title="Already Live",
+            mode=Tournament.Mode.BR,
+            br_format=Tournament.BRFormat.SOLO,
+            entry_fee="10.00",
+            prize_pool="100.00",
+            max_players=49,
+            start_time=timezone.now() + timedelta(days=1),
+            status=Tournament.Status.LIVE,
+            room_id="ROOM-LIVE",
+            room_password="PASS-LIVE",
+        )
+        waiting = self.make_tournament("Waiting BR Round")
+        response = self.client.post(
+            reverse("admin:tournaments_tournament_change", args=[waiting.pk]),
+            {"status": Tournament.Status.LIVE, "_save": "Save"},
+            follow=True,
         )
 
-        public_response = self.client.get(reverse("tournaments:list"))
-        self.assertContains(public_response, "Battle Royale")
-        self.assertContains(public_response, "Girls vs Boys")
-        self.assertNotContains(public_response, "Admin Created Test Tournament")
+        waiting.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(waiting.status, Tournament.Status.UPCOMING)

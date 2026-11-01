@@ -22,7 +22,7 @@ from .models import KillSubmission, Registration, Tournament, TournamentLedgerEn
 
 from .services import cancel_tournament_and_refund
 from .kill_services import reward_for_tournament
-from .registration_services import assign_teams_for_tournament, tournament_team_size
+from .registration_services import assign_teams_for_tournament, tournament_team_size, maybe_start_next_full_tournament
 
 
 class TournamentAdminForm(forms.ModelForm):
@@ -68,11 +68,12 @@ class TournamentAdminForm(forms.ModelForm):
             self.fields["auto_reopen"].help_text = (
                 "Internal recurring-series setting; normal tournaments mein zaroorat nahi."
             )
-        self.fields["winner_uid"].label = "First Place Winner — Free Fire UID"
-        self.fields["winner_uid"].help_text = (
-            "Tournament ka first-place player choose karne ke liye us verified registration ki Free Fire UID enter karein. "
-            "Leaderboard par us player ko first place dikhaya jayega; prize payout alag se manually verify karna hoga."
-        )
+        if "winner_uid" in self.fields:
+            self.fields["winner_uid"].label = "First Place Winner — Free Fire UID"
+            self.fields["winner_uid"].help_text = (
+                "Tournament ka first-place player choose karne ke liye us verified registration ki Free Fire UID enter karein. "
+                "Leaderboard par us player ko first place dikhaya jayega; prize payout alag se manually verify karna hoga."
+            )
 
     def clean(self):
         cleaned = super().clean()
@@ -121,10 +122,12 @@ class TournamentAdminForm(forms.ModelForm):
 
         # Room credentials must be saved in the same admin submission that makes it LIVE.
         if cleaned.get("status") == Tournament.Status.LIVE:
-            if not (cleaned.get("room_id") or "").strip():
-                self.add_error("room_id", "Tournament LIVE karne se pehle Room ID bharo.")
-            if not (cleaned.get("room_password") or "").strip():
-                self.add_error("room_password", "Tournament LIVE karne se pehle Room Password bharo.")
+            room_id = cleaned.get("room_id") or getattr(self.instance, "room_id", "")
+            room_password = cleaned.get("room_password") or getattr(self.instance, "room_password", "")
+            if not (room_id or "").strip():
+                self.add_error("room_id", "Tournament LIVE karne se pehle Live Monitor mein Room ID bharo.")
+            if not (room_password or "").strip():
+                self.add_error("room_password", "Tournament LIVE karne se pehle Live Monitor mein Room Password bharo.")
         return cleaned
 
 
@@ -490,7 +493,7 @@ class TournamentAdmin(admin.ModelAdmin):
     # Keep tournament setup separate from registrations and kill evidence.
     # Those have their own admin sections so adding/editing a tournament stays manageable.
     inlines = ()
-    actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid, award_arena_currency_winner, award_br_winner_team, create_next_round_preserving_history,)
+    actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid,)
     readonly_fields = (
         "tournament_control_panel", "winner_prize_paid",
         "kill_prize_distributed", "kill_prize_pool", "kill_prize_reference",
@@ -516,10 +519,46 @@ class TournamentAdmin(admin.ModelAdmin):
             url, obj.title,
         )
 
+    def has_add_permission(self, request):
+        # Tournament rounds are provisioned by the arena system; Admin only controls existing rounds.
+        return False
+
+    def get_fieldsets(self, request, obj=None):
+        if obj and obj.pk:
+            return (
+                ("Tournament Control — Live Monitor", {
+                    "description": "Tournament setup is locked. Use Live Monitor for players, room access, evidence and first-place prize. Here Admin may only change status.",
+                    "fields": ("title", "status", "room_id", "room_password"),
+                }),
+            )
+        return super().get_fieldsets(request, obj)
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if obj and "status" in form.base_fields:
+            allowed = [(obj.status, obj.get_status_display())]
+            if obj.status == Tournament.Status.UPCOMING:
+                allowed.extend([
+                    (Tournament.Status.LIVE, "Live"),
+                    (Tournament.Status.CANCELLED, "Cancelled"),
+                ])
+            elif obj.status == Tournament.Status.LIVE:
+                allowed.append((Tournament.Status.CANCELLED, "Cancelled"))
+            form.base_fields["status"].choices = allowed
+        return form
+
     def save_model(self, request, obj, form, change):
         previous_status = None
         if change and obj.pk:
+            # Lock all tournament rows in a stable order so manual starts cannot overlap.
+            list(Tournament.objects.select_for_update().order_by("pk").values_list("pk", flat=True))
             previous_status = Tournament.objects.filter(pk=obj.pk).values_list("status", flat=True).first()
+            if obj.status == Tournament.Status.LIVE:
+                another_live = Tournament.objects.filter(status=Tournament.Status.LIVE).exclude(pk=obj.pk).first()
+                if another_live:
+                    obj.status = previous_status
+                    messages.error(request, f"{another_live.title} is already LIVE. Cancel/finish it before starting another tournament.")
+                    return
 
         # All newly-created paid BR events belong to the unlimited BR series and its public listing.
         # Free Fan events remain separate; CS/VS events are not changed by this rule.
@@ -536,6 +575,12 @@ class TournamentAdmin(admin.ModelAdmin):
 
         was_live = previous_status == Tournament.Status.LIVE
         super().save_model(request, obj, form, change)
+
+        if obj.status == Tournament.Status.CANCELLED and previous_status != Tournament.Status.CANCELLED:
+            # Cancellation refunds are idempotent; release the global LIVE slot and
+            # start the oldest already-full verified tournament, if any.
+            cancel_tournament_and_refund(obj.pk)
+            maybe_start_next_full_tournament()
 
         # Re-open a fresh no-date 49-player round only after admin marks the current round complete.
         if obj.status == Tournament.Status.COMPLETED and previous_status != Tournament.Status.COMPLETED:
@@ -565,7 +610,10 @@ class TournamentAdmin(admin.ModelAdmin):
         from django.urls import reverse
         from django.utils import timezone
 
-        if obj.is_unlimited_br or obj.mode == Tournament.Mode.VS:
+        if not obj.is_free_fan_tournament and Registration.objects.filter(
+            tournament=obj, payment_verified=True, refund_processed=False,
+            status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
+        ).exists():
             try:
                 assign_teams_for_tournament(obj.pk)
             except ValueError as exc:
@@ -640,17 +688,23 @@ class TournamentAdmin(admin.ModelAdmin):
         return actions
 
     def has_delete_permission(self, request, obj=None):
-        if obj is not None:
-            # Keep financial/registration history intact. Empty tournaments can still be deleted.
-            if obj.registrations.exists() or TournamentLedgerEntry.objects.filter(tournament=obj).exists():
-                return False
-        return super().has_delete_permission(request, obj)
+        # Tournament records are retained for payment, refund, and match audit history.
+        return False
 
     def get_readonly_fields(self, request, obj=None):
         fields = list(super().get_readonly_fields(request, obj))
+        if obj and obj.pk:
+            fields.extend((
+                "title", "room_id", "room_password", "winner_uid", "winner_team_uids",
+                "entry_fee", "prize_pool", "max_players", "start_time", "mode",
+                "br_format", "vs_format", "gender_category", "description",
+                "winner_prize_reference", "winner_prize_paid", "kill_prize_distributed",
+                "kill_prize_pool", "kill_prize_reference", "winner_payout_destination",
+                "winner_payout_qr", "tournament_control_panel",
+            ))
         if obj and obj.winner_prize_paid:
             fields.append("winner_uid")
-        return tuple(fields)
+        return tuple(dict.fromkeys(fields))
 
     @admin.display(description="Winner UPI destination")
     def winner_payout_destination(self, obj):
@@ -773,9 +827,8 @@ def verify_entry_payments(modeladmin, request, queryset):
                 status=TournamentLedgerEntry.Status.COMPLETED,
                 description="Tournament entry payment verified by admin against the actual payment receipt.",
             )
-            if registration.tournament.auto_start_at_capacity:
-                from .registration_services import maybe_start_unlimited_tournament
-                maybe_start_unlimited_tournament(registration.tournament_id)
+            from .registration_services import maybe_start_unlimited_tournament
+            maybe_start_unlimited_tournament(registration.tournament_id)
             verified_count += 1
 
     if verified_count:
@@ -860,6 +913,9 @@ class UnlimitedTournamentAdmin(TournamentAdmin):
     exclude = ("is_free_fan_tournament",)
 
     def get_fieldsets(self, request, obj=None):
+        # Existing tournament setup is locked; the series flags are never editable here.
+        if obj and obj.pk:
+            return super().get_fieldsets(request, obj)
         fieldsets = list(super().get_fieldsets(request, obj))
         fieldsets.insert(
             2,
@@ -880,12 +936,15 @@ class UnlimitedTournamentAdmin(TournamentAdmin):
 
 
 @admin.register(FreeFanTournament)
-class FreeFanTournamentAdmin(admin.ModelAdmin):
-    """Dedicated admin list for the existing Free Fan Tournament proxy."""
-    list_display = ("id", "title", "status", "max_players", "start_time", "created_at")
-    list_filter = ("status", "mode", "br_format")
+class FreeFanTournamentAdmin(TournamentAdmin):
+    """Existing Free Fan rounds use the same restricted Live Monitor workflow."""
+    list_display = ("id", "title", "open_tournament_control", "status", "max_players", "created_at")
+    list_filter = ("status",)
     search_fields = ("title",)
     ordering = ("-created_at",)
+
+    def get_queryset(self, request):
+        return super(TournamentAdmin, self).get_queryset(request).filter(is_free_fan_tournament=True)
 
 
 @admin.register(DiwaliOfferTournament)
