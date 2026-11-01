@@ -148,6 +148,37 @@ def assess_activity_event(event_id):
                 ):
                     risk, score = PlayerActivityEvent.Risk.CRITICAL, 100
                     finding = "Gift ledger does not match the gift sender, receiver, currency, or quantity."
+        elif model in ("social.dailyspin", "social.fantokenaward"):
+            ShopTxn = apps.get_model("social", "PlayerShopWalletTransaction")
+            if model == "social.dailyspin":
+                item = apps.get_model("social", "DailySpin").objects.filter(pk=object_id).first()
+                key = f"daily-spin:{object_id}"
+                expected_currency = item.currency if item else ""
+                expected_quantity = item.quantity if item else 0
+                expected_user_id = item.user_id if item else None
+                expected_direction = "credit"
+            else:
+                item = apps.get_model("social", "FanTokenAward").objects.filter(pk=object_id).first()
+                key = f"fan-token-award:{item.user_id}:{item.follower_milestone}" if item else ""
+                expected_currency = "fan_tokens"
+                expected_quantity = item.quantity if item else 0
+                expected_user_id = item.user_id if item else None
+                expected_direction = "credit"
+            if item:
+                rows = ShopTxn.objects.filter(idempotency_key=key)
+                txn = rows.first()
+                if rows.count() != 1 or not txn:
+                    risk, score = PlayerActivityEvent.Risk.CRITICAL, 100
+                    finding = "Reward record is missing its unique wallet credit ledger entry."
+                elif (
+                    txn.user_id != expected_user_id
+                    or txn.currency != expected_currency
+                    or txn.direction != expected_direction
+                    or txn.quantity != expected_quantity
+                    or txn.reference != (str(item.pk) if model == "social.dailyspin" else str(item.follower_milestone))
+                ):
+                    risk, score = PlayerActivityEvent.Risk.CRITICAL, 100
+                    finding = "Reward ledger does not match the player, currency, quantity, or source record."
         elif model == "social.playershopwallettransaction" and int(event.metadata.get("quantity", 0) or 0) <= 0:
             risk, score = PlayerActivityEvent.Risk.HIGH, 80
             finding = "A shop-wallet ledger transaction has a zero or invalid quantity."
