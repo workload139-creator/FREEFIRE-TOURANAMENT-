@@ -618,11 +618,30 @@ def admin_live_monitor(request):
     completed_recent = Tournament.objects.filter(
         status=Tournament.Status.COMPLETED
     ).order_by("-updated_at", "-pk")[:12]
+
+    def attach_admin_links(items):
+        for item in items:
+            if item.is_free_fan_tournament:
+                item.admin_edit_url = reverse("admin:tournaments_freefantournament_change", args=[item.pk])
+            elif item.is_diwali_offer:
+                item.admin_edit_url = reverse("admin:tournaments_diwalioffertournament_change", args=[item.pk])
+            elif item.is_unlimited_br:
+                item.admin_edit_url = reverse("admin:tournaments_unlimitedtournament_change", args=[item.pk])
+            else:
+                item.admin_edit_url = reverse("admin:tournaments_tournament_change", args=[item.pk])
+            item.control_url = reverse("tournaments:admin_tournament_dashboard", args=[item.pk])
+
+    live_tournaments = list(live_tournaments)
+    waiting_tournaments = list(waiting_tournaments)
+    completed_recent = list(completed_recent)
+    attach_admin_links(live_tournaments)
+    attach_admin_links(waiting_tournaments)
+    attach_admin_links(completed_recent)
     return render(request, "tournaments/live_monitor.html", {
         "live_tournaments": live_tournaments,
         "waiting_tournaments": waiting_tournaments,
         "completed_recent": completed_recent,
-        "live_count": live_tournaments.count(),
+        "live_count": len(live_tournaments),
     })
 
 
