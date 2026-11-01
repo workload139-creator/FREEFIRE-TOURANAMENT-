@@ -160,8 +160,10 @@ def admin_tournament_live_tokens(request, tournament_id):
     )
     pending_counts = dict(
         LiveKillEvent.objects.filter(
-            tournament=tournament, registration_id__in=registration_ids
-        ).exclude(status=LiveKillEvent.Status.VERIFIED).values("registration_id").annotate(
+            tournament=tournament,
+            registration_id__in=registration_ids,
+            status=LiveKillEvent.Status.REVIEW,
+        ).values("registration_id").annotate(
             total=Count("id")
         ).values_list("registration_id", "total")
     )
