@@ -93,7 +93,7 @@
                 <td>{{ event.confidence }}</td>
                 <td>{% if event.session.identity_verified_at %}UID Verified{% else %}UID Pending{% endif %}</td>
                 <td>{% if event.payment_assessment %}{{ event.payment_assessment.decision_reason }}{% else %}Waiting for analysis{% endif %}</td>
-                <td>{% if event.payment_assessment %}{{ event.payment_assessment.proposed_kills }} kills · {{ event.payment_assessment.proposed_rewards }}{% else %}Pending{% endif %}</td>
+                <td>{% if event.payment_assessment %}{{ event.payment_assessment.proposed_kills }} kills · {{ event.payment_assessment.proposed_rewards }}{% else %}Pending{% endif %}{% if event.reward_payload.wallet_balances %}<br><small>Wallet: {{ event.reward_payload.wallet_balances }}</small>{% endif %}</td>
                 <td>{{ event.get_status_display }}<br><small>{{ event.review_reason|default:"—" }}</small><br><a href="/admin/tournaments/livekillevent/" target="_blank" rel="noopener">Open Admin Review</a></td>
             </tr>
             {% empty %}<tr><td colspan="9">Abhi koi Live Kill event detect nahi hua.</td></tr>{% endfor %}
