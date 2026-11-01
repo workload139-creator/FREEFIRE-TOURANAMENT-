@@ -321,8 +321,13 @@ def tournament_live_end(request, registration_id):
     url, key, secret = _livekit_config()
     if url:
         try:
-            room_service = api.RoomServiceClient(url, key, secret)
-            async_to_sync(room_service.remove_participant)(room_name, player_identity)
+            async def remove_player_from_room():
+                async with api.LiveKitAPI(url, key, secret) as lkapi:
+                    await lkapi.room.remove_participant(
+                        api.RoomParticipantIdentity(room=room_name, identity=player_identity)
+                    )
+
+            async_to_sync(remove_player_from_room)()
         except Exception:
             logger.exception("Could not disconnect eliminated player from LiveKit room %s", room_name)
     return JsonResponse({"success": True, "message": "Live session ended; player stream disconnect requested."})
