@@ -581,23 +581,7 @@ class TournamentAdmin(admin.ModelAdmin):
             cancel_tournament_and_refund(obj.pk)
             maybe_start_next_full_tournament()
 
-        # Re-open a fresh no-date 49-player round only after admin marks the current round complete.
-        if obj.status == Tournament.Status.COMPLETED and previous_status != Tournament.Status.COMPLETED:
-            root = Tournament.objects.get(pk=obj.series_root_id or obj.pk)
-            if root.auto_reopen and not root.series_rounds.filter(status=Tournament.Status.UPCOMING).exists():
-                next_round_number = root.series_rounds.count() + 2
-                Tournament.objects.create(
-                    title=f"{root.title} - Round {next_round_number}"[:120],
-                    mode=Tournament.Mode.BR, br_format=root.br_format or Tournament.BRFormat.SOLO,
-                    vs_format="", description=root.description,
-                    entry_fee=Decimal("0.00") if root.is_free_fan_tournament else root.entry_fee,
-                    prize_pool=root.prize_pool, max_players=root.max_players,
-                    start_time=timezone.now() + timedelta(minutes=10),
-                    status=Tournament.Status.UPCOMING, is_unlimited_br=True,
-                    is_free_fan_tournament=root.is_free_fan_tournament,
-                    winner_coins_prize=root.winner_coins_prize,
-                    auto_start_at_capacity=True, auto_reopen=True, series_root=root,
-                )
+        # Completing an event never creates another tournament; only existing records are managed.
 
         # Publish room access only when admin moves the tournament into LIVE.
         if obj.status != Tournament.Status.LIVE or was_live:
