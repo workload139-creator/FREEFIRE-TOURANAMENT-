@@ -10,7 +10,7 @@ from datetime import timedelta
 
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
-from django.db.models import F
+from django.db.models import Count, F
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -168,7 +168,7 @@ def admin_tournament_live_tokens(request, tournament_id):
             tournament=tournament,
             registration_id__in=registration_ids,
             status=LiveKillEvent.Status.VERIFIED,
-        ).values("registration_id").annotate(total=__import__("django.db.models", fromlist=["Count"]).Count("id")).values_list("registration_id", "total")
+        ).values("registration_id").annotate(total=Count("id")).values_list("registration_id", "total")
     )
     candidate_counts = dict(
         LiveKillEvent.objects.filter(
@@ -203,6 +203,16 @@ def admin_tournament_live_tokens(request, tournament_id):
             "token": token,
             "url": url,
             "state": session.monitor_state,
+            "identity_verified": bool(session.identity_verified_at),
+            "identity_confidence": str(session.identity_ocr_confidence),
+            "approved_kills": verified_counts.get(session.registration_id, 0),
+            "pending_kills": candidate_counts.get(session.registration_id, 0),
+            "reward_preview": rewards_for_tournament(tournament, verified_counts.get(session.registration_id, 0)) if verified_counts.get(session.registration_id, 0) >= 2 else [],
+            "frames_seen": session.monitor_frames_seen,
+            "detections_seen": session.monitor_detections_seen,
+            "last_heartbeat": session.monitor_last_heartbeat_at.isoformat() if session.monitor_last_heartbeat_at else None,
+            "monitor_error": session.monitor_last_error,
+            "background_warnings": session.background_warning_count,
         })
     return JsonResponse({"tournament_id": tournament.pk, "streams": streams})
 
