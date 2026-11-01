@@ -23,7 +23,7 @@ class SingleAIAssessmentRulesTests(TestCase):
             payment_verified=True,
             refund_processed=refunded,
         )
-        session = SimpleNamespace(registration_id=7, status="active", identity_verified_at=object())
+        session = SimpleNamespace(registration_id=7, status="active", identity_verified_at=object(), observed_player_nickname="RegisteredNick")
         return SimpleNamespace(
             tournament=tournament,
             registration=registration,
@@ -78,6 +78,14 @@ class SingleAIAssessmentRulesTests(TestCase):
         result = build_payment_assessment(event)
         self.assertFalse(result["eligible"])
         self.assertFalse(result["checks"]["live_identity_verified"])
+
+
+    def test_profile_nickname_binding_is_required(self):
+        event = self.make_event()
+        event.session.observed_player_nickname = ""
+        result = build_payment_assessment(event)
+        self.assertFalse(result["eligible"])
+        self.assertFalse(result["checks"]["profile_nickname_bound"])
 
     def test_low_confidence_or_refunded_player_is_held(self):
         low_confidence = build_payment_assessment(self.make_event(confidence="0.40"))

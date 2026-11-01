@@ -23,12 +23,13 @@ from livekit import api, rtc
 from PIL import Image
 import pytesseract
 
-from apps.tournaments.live_ai_ocr import verify_profile_uid
+from apps.tournaments.live_ai_ocr import verify_profile_identity, verify_bound_nickname_visible
 from apps.tournaments.live_ai_killfeed import live_kill_detection_enabled, scan_full_frame_for_kill_text
 from apps.tournaments.models import TournamentLiveSession
 
 logger = logging.getLogger(__name__)
 OCR_SAMPLE_INTERVAL = 2.0
+NICKNAME_SCAN_INTERVAL = 4.0
 KILL_SCAN_INTERVAL = 1.5
 KILL_TERMS = {"eliminated", "knocked", "headshot", "kill", "killed", "assist"}
 
@@ -45,7 +46,9 @@ class SessionWorker:
     frame_tasks: set = field(default_factory=set)
     frames_pending: int = 0
     identity_verified: bool = False
+    profile_nickname: str = ""
     last_ocr_at: float = 0.0
+    last_nickname_scan_at: float = 0.0
     last_kill_scan_at: float = 0.0
     last_kill_fingerprint: str = ""
 
@@ -63,6 +66,7 @@ def active_sessions():
         ).values(
             "session_uuid", "room_name", "participant_identity",
             "registration_id", "registration__free_fire_uid", "tournament__mode",
+            "identity_verified_at", "observed_player_nickname",
         )
     )
 
@@ -81,11 +85,15 @@ def update_monitor(session_uuid, state, frames_delta=0, detections_delta=0, erro
 
 
 @sync_to_async
-def mark_identity_verified(session_uuid, confidence):
+def mark_identity_verified(session_uuid, uid_confidence, nickname, nickname_confidence):
     now = timezone.now()
     TournamentLiveSession.objects.filter(session_uuid=session_uuid).update(
         identity_verified_at=now,
-        identity_ocr_confidence=Decimal(str(round(float(confidence), 4))),
+        identity_ocr_confidence=Decimal(str(round(float(uid_confidence), 4))),
+        observed_player_nickname=str(nickname or "")[:80],
+        nickname_ocr_confidence=Decimal(str(round(float(nickname_confidence), 4))),
+        nickname_verified_at=now,
+        nickname_last_seen_at=now,
         monitor_state="processing",
         monitor_last_heartbeat_at=now,
         monitor_last_error="",
@@ -93,12 +101,31 @@ def mark_identity_verified(session_uuid, confidence):
     )
 
 
+@sync_to_async
+def mark_nickname_seen(session_uuid):
+    now = timezone.now()
+    TournamentLiveSession.objects.filter(session_uuid=session_uuid).update(
+        nickname_last_seen_at=now,
+        monitor_last_heartbeat_at=now,
+        updated_at=now,
+    )
+
+
 def _ocr_frame_for_uid(frame, registered_uid):
-    """Convert a LiveKit frame to RGB and look for an exact UID label/value."""
+    """Convert a LiveKit frame to RGB and bind exact UID plus profile nickname."""
     rgb = frame.convert(rtc.VideoBufferType.RGB24)
     image = Image.frombytes("RGB", (rgb.width, rgb.height), bytes(rgb.data))
     try:
-        return verify_profile_uid(image, registered_uid)
+        return verify_profile_identity(image, registered_uid)
+    finally:
+        image.close()
+
+
+def _ocr_frame_for_nickname(frame, expected_nickname):
+    rgb = frame.convert(rtc.VideoBufferType.RGB24)
+    image = Image.frombytes("RGB", (rgb.width, rgb.height), bytes(rgb.data))
+    try:
+        return verify_bound_nickname_visible(image, expected_nickname)
     finally:
         image.close()
 
@@ -184,13 +211,27 @@ class LiveAIWorker:
                 try:
                     if not worker.identity_verified and now - worker.last_ocr_at >= OCR_SAMPLE_INTERVAL:
                         worker.last_ocr_at = now
-                        verified, confidence = await asyncio.to_thread(
+                        verified, uid_confidence, nickname, nickname_confidence = await asyncio.to_thread(
                             _ocr_frame_for_uid, frame, worker.free_fire_uid
                         )
-                        if verified:
+                        if verified and nickname:
                             worker.identity_verified = True
-                            await mark_identity_verified(worker.session_uuid, confidence)
-                            logger.info("Registered UID verified for session=%s registration=%s", worker.session_uuid, worker.registration_id)
+                            worker.profile_nickname = nickname
+                            worker.last_nickname_scan_at = now
+                            await mark_identity_verified(
+                                worker.session_uuid, uid_confidence, nickname, nickname_confidence
+                            )
+                            logger.info(
+                                "Registered UID and profile nickname verified for session=%s registration=%s",
+                                worker.session_uuid, worker.registration_id,
+                            )
+                    if worker.identity_verified and worker.profile_nickname and now - worker.last_nickname_scan_at >= NICKNAME_SCAN_INTERVAL:
+                        worker.last_nickname_scan_at = now
+                        nickname_seen, _ = await asyncio.to_thread(
+                            _ocr_frame_for_nickname, frame, worker.profile_nickname
+                        )
+                        if nickname_seen:
+                            await mark_nickname_seen(worker.session_uuid)
                     if live_kill_detection_enabled(worker.tournament_mode) and worker.identity_verified and now - worker.last_kill_scan_at >= KILL_SCAN_INTERVAL:
                         worker.last_kill_scan_at = now
                         candidate = await asyncio.to_thread(_scan_kill_candidate, frame)
@@ -232,6 +273,8 @@ class LiveAIWorker:
             free_fire_uid=str(session["registration__free_fire_uid"] or ""),
             tournament_mode=str(session["tournament__mode"] or ""),
             room=room,
+            identity_verified=bool(session.get("identity_verified_at") and session.get("observed_player_nickname")),
+            profile_nickname=str(session.get("observed_player_nickname") or ""),
         )
 
         @room.on("track_subscribed")

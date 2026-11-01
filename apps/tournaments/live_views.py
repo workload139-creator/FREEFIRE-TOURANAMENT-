@@ -196,6 +196,9 @@ def admin_tournament_live_tokens(request, tournament_id):
             "state": session.monitor_state,
             "identity_verified": bool(session.identity_verified_at),
             "identity_confidence": str(session.identity_ocr_confidence),
+            "profile_nickname": session.observed_player_nickname,
+            "nickname_verified_at": session.nickname_verified_at.isoformat() if session.nickname_verified_at else None,
+            "nickname_last_seen_at": session.nickname_last_seen_at.isoformat() if session.nickname_last_seen_at else None,
             "approved_kills": verified_counts.get(session.registration_id, 0),
             "pending_kills": pending_counts.get(session.registration_id, 0),
             "reward_preview": rewards_for_tournament(
