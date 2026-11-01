@@ -1,65 +1,23 @@
-
 {% extends "base.html" %}
-
 {% block content %}
 <div class="container py-4">
-    <h2>Free Fire — Room & Ready Check</h2>
+    <h2>Free Fire — Room Invite Link</h2>
     <p><strong>Tournament:</strong> {{ tournament.title }} · <strong>Status:</strong> {{ tournament.get_status_display }}</p>
-    <p>Room ID/password sirf tournament LIVE hone ke baad ready-check ke liye release honge. Player YES confirm karega to hi room details dikhengi.</p>
-
-    {% if messages %}
-        {% for message in messages %}
-            <p>{{ message }}</p>
-        {% endfor %}
-    {% endif %}
-
+    <p>Room ID, Password aur QR ki jagah ab sirf official Garena Room Invite Link use hoga. Is link ko LIVE se pehle Tournament Admin form mein ya LIVE ke baad yahan save/update karein.</p>
+    {% if messages %}{% for message in messages %}<p class="alert alert-info">{{ message }}</p>{% endfor %}{% endif %}
     {% if tournament.status == "live" %}
-    <form method="post" enctype="multipart/form-data"
-          action="{% url 'tournaments:send_room_details' tournament.id %}">
+    <form method="post" action="{% url 'tournaments:send_room_details' tournament.id %}">
         {% csrf_token %}
-
         <div class="mb-3">
-            <label for="room_id">Room ID</label>
-            <input id="room_id" type="text" name="room_id"
-                   class="form-control" required>
+            <label for="room_invite_link">Official Free Fire Room Invite Link</label>
+            <textarea id="room_invite_link" name="room_invite_link" class="form-control" rows="4" maxlength="1500" required placeholder="https://ffshare.garena.com/?region=IND&amp;lang=en&amp;action=qrcode_room_invite_link&amp;room_id=...">{{ tournament.room_invite_link }}</textarea>
+            <small>Only https://ffshare.garena.com/ links are accepted. Save this to release the YES/NO confirmation to eligible verified players.</small>
         </div>
-        <button type="button" class="btn btn-outline-secondary btn-sm mb-3" id="copyAdminRoomId">Copy Room ID</button>
-
-        <div class="mb-3">
-            <label for="room_password">Room Password</label>
-            <input id="room_password" type="password"
-                   name="room_password" class="form-control" required>
-        </div>
-        <button type="button" class="btn btn-outline-secondary btn-sm mb-3" id="copyAdminRoomPassword">Copy Room Password</button>
-
-        <div class="mb-3">
-            <label for="room_qr_code">Free Fire Room QR Code (optional)</label>
-            <input id="room_qr_code" type="file" name="room_qr_code" class="form-control" accept="image/png,image/jpeg,image/webp">
-            <small>Free Fire se generate kiya hua asli Custom Room QR upload karein.</small>
-            {% if tournament.room_qr_code %}<img src="{% url "tournaments:room_qr_file" tournament.id %}" alt="Current room QR" style="max-width:220px;width:100%;background:#fff;padding:8px"><a class="btn btn-outline-secondary btn-sm d-block mt-2" href="{% url 'tournaments:room_qr_file' tournament.id %}?download=1">Download Room QR</a>{% endif %}
-        </div>
-
-        <button type="submit" class="btn btn-primary">
-            Release Room Details & Start 5-Minute Confirmation
-        </button>
+        <button type="submit" class="btn btn-primary">Save Link & Release Player Confirmation</button>
     </form>
     {% else %}
-    <div class="alert alert-warning">Pehle tournament ko Django Admin mein LIVE karo. Isse pehle room details players ko release nahi hongi.</div>
+    <div class="alert alert-warning">Tournament LIVE hone se pehle Tournament Admin edit form mein Room Invite Link set karein. LIVE ke baad yahan se player confirmation release kar sakte hain.</div>
     {% endif %}
     <p><a href="{% url 'tournaments:admin_tournament_dashboard' tournament.id %}">← Back to this tournament's control panel</a></p>
 </div>
-<script>
-(function () {
-  function copyInput(id, label) {
-    const field = document.getElementById(id);
-    if (!field || !field.value) { alert(label + " enter karein."); return; }
-    const fallback = function () { field.select(); document.execCommand("copy"); };
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(field.value).then(function () { alert(label + " copied."); }).catch(fallback);
-    } else { fallback(); alert(label + " copied."); }
-  }
-  document.getElementById("copyAdminRoomId")?.addEventListener("click", function () { copyInput("room_id", "Room ID"); });
-  document.getElementById("copyAdminRoomPassword")?.addEventListener("click", function () { copyInput("room_password", "Room Password"); });
-})();
-</script>
 {% endblock %}
