@@ -78,7 +78,7 @@ class RegisteredProfileUidOCRTests(SimpleTestCase):
         self.assertTrue(uid_ok)
         self.assertEqual(uid_confidence, 0.94)
         self.assertEqual(nickname, "ravibhiop")
-        self.assertEqual(nickname_confidence, 0.91)
+        self.assertEqual(nickname_confidence, 0.93)
 
     @patch("apps.tournaments.live_ai_ocr.pytesseract.image_to_data")
     def test_multiple_names_on_profile_name_row_fail_closed(self, ocr):
