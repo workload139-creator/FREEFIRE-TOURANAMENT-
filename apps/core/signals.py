@@ -14,7 +14,7 @@ def connect_activity_signals():
         ("accounts", "WithdrawalRequest"),
         ("social", "PlayerShopWallet"), ("social", "PlayerShopWalletTransaction"),
         ("social", "ShopPaymentRequest"), ("social", "CurrencyWithdrawalRequest"),
-        ("social", "DailySpin"), ("social", "CurrencyGift"),
+        ("social", "DailySpin"), ("social", "FanTokenAward"), ("social", "CurrencyGift"),
         ("social", "Follow"), ("social", "FriendRequest"),
         ("social", "PhotoPost"), ("social", "UserReport"),
         ("tournaments", "Registration"), ("tournaments", "TournamentLedgerEntry"),
