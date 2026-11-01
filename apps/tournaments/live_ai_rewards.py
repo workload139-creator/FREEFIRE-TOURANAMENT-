@@ -1,4 +1,7 @@
 """Admin-triggered, idempotent live-kill reward settlement."""
+import os
+import re
+
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
@@ -8,12 +11,28 @@ from .live_ai_models import LiveKillEvent
 from .models import Registration, TournamentLedgerEntry
 
 
+def live_ai_reward_settlement_enabled():
+    """Require an explicit opt-in; the production-safe default is disabled."""
+    return os.getenv("LIVE_AI_REWARD_SETTLEMENT_ENABLED", "").strip().lower() in {
+        "1", "true", "yes", "on",
+    }
+
+
+def _normalise_nickname(value):
+    return re.sub(r"[^a-z0-9]", "", str(value or "").casefold())
+
+
 @transaction.atomic
 def approve_live_kill_event(event_id, admin_user):
     """Approve one event and credit internal currency exactly once.
 
     This is an explicit Admin action, never called by either AI worker.
+    Settlement remains disabled by default until real-device identity,
+    killer attribution, duplicate-delivery and atomic-ledger tests pass.
     """
+    if not live_ai_reward_settlement_enabled():
+        return False, "Live AI wallet settlement is disabled pending real-stream and ledger validation."
+
     event = (
         LiveKillEvent.objects.select_for_update()
         .select_related("tournament", "registration__player", "session")
@@ -41,8 +60,16 @@ def approve_live_kill_event(event_id, admin_user):
         return False, "Player/session eligibility changed; reward held."
     if not event.evidence_image:
         return False, "Kill screenshot evidence is required before approval."
+    if not (
+        event.session.identity_verified_at
+        and event.session.lobby_nickname_verified_at
+        and event.session.verified_nickname
+    ):
+        return False, "Profile UID and BR lobby nickname must both be verified before approval."
     if not event.match_id or not event.kill_at or not event.attributed_player_name:
         return False, "Admin must enter the actual match ID, kill time and in-game killer nickname before approval."
+    if _normalise_nickname(event.attributed_player_name) != _normalise_nickname(event.session.verified_nickname):
+        return False, "In-game killer nickname does not match the live-verified player nickname."
 
     already_verified = LiveKillEvent.objects.filter(
         tournament=event.tournament,
