@@ -282,7 +282,7 @@ class LiveAIWorker:
                         await self._connect(session)
                     except Exception as exc:
                         logger.exception("Could not subscribe to LiveKit session %s", session_uuid)
-                        await update_slots(
+                        await update_monitor(
                             session_uuid,
                             "degraded",
                             error=f"LiveKit subscriber error: {exc}",
@@ -291,7 +291,7 @@ class LiveAIWorker:
                 for session_uuid, worker in tuple(self.workers.items()):
                     delta = worker.frames_pending
                     worker.frames_pending = 0
-                    await update_slots(
+                    await update_monitor(
                         session_uuid,
                         "processing" if worker.identity_verified else "connected",
                         frames_delta=delta,
