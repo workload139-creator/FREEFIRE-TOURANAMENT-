@@ -297,6 +297,18 @@ def tournament_live_end(request, registration_id):
         )
         if session.registration.player_id != request.user.pk and not request.user.is_staff:
             return JsonResponse({"error": "Not allowed."}, status=403)
+        # Staff can mark a BR player eliminated only after the required two kills
+        # have been independently approved. A player may still end their own stream.
+        if request.user.is_staff and session.tournament.mode == "BR":
+            approved_kills = LiveKillEvent.objects.filter(
+                tournament=session.tournament,
+                registration=session.registration,
+                status=LiveKillEvent.Status.VERIFIED,
+            ).count()
+            if approved_kills < 2:
+                return JsonResponse({
+                    "error": f"BR elimination cannot be finalized yet: {approved_kills}/2 Admin-confirmed kills. Review and approve at least 2 kills first."
+                }, status=409)
         if session.status == TournamentLiveSession.Status.ENDED:
             return JsonResponse({"success": True, "message": "Live session was already ended."})
         session.status = TournamentLiveSession.Status.ENDED
