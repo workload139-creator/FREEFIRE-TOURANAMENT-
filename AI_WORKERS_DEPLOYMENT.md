@@ -1,38 +1,34 @@
-# FF Arena AI worker deployment
+# FF Arena: self-hosted AI plan (no paid AI APIs)
 
-## What this Blueprint adds
+FF Arena's four verification roles are implemented as project-owned Python logic and open-source computer-vision components. The app must not call OpenAI, Ollama Cloud, or paid inference APIs.
 
-- `ff-arena-live-ai-worker`: Docker worker with Tesseract OCR installed. It subscribes to eligible LiveKit player streams and submits OCR candidates to the website.
-- `ff-arena-payment-ai-worker`: separate Docker worker that creates advisory eligibility/reward assessments for candidate events.
+## Four project-owned roles
 
-The workers share the existing website's Django secret and database connection through Render `fromService` references. LiveKit credentials and the ingest token are referenced from the existing website service; no secret is stored in this repository.
+1. **Assessment 1 — player identity:** validate the registered Free Fire UID against profile/history evidence and account registration.
+2. **Assessment 2 — match evidence:** inspect history screenshots, timestamps, match context, and killfeed evidence.
+3. **Agent 1 — live evidence collector:** consume the player's LiveKit stream, sample frames, run local OCR/vision checks, and submit candidate evidence.
+4. **Agent 2 — reward safety:** re-check registration/payment/session eligibility, distinct event fingerprints, minimum verified kills, and idempotent ledger settlement.
 
-## Before syncing the Blueprint
+These roles are not four independent large language models. They are independently testable, explainable local agents. Open-source OCR/vision models may be run locally or on a machine the project owner controls. A model is not considered trained merely because sample screenshots were uploaded; training requires labelled examples, train/validation splits, evaluation, and versioned model artifacts.
 
-In the existing Render web service named `FREEFIRE-TOURANAMENT-`, confirm these environment keys exist and are valid:
+## No-paid-compute deployment policy
 
-- `DJANGO_SECRET_KEY`
-- `DATABASE_URL`
-- `LIVEKIT_URL`
-- `LIVEKIT_API_KEY`
-- `LIVEKIT_API_SECRET`
-- `LIVE_AI_INGEST_TOKEN`
+- Do not provision Render Starter background workers automatically.
+- Keep the existing website service unchanged.
+- During development, run the local AI worker commands on the owner's computer.
+- A free website host is not a reliable always-on GPU/CPU worker. For 24/7 processing, use an owner-controlled computer/server or explicitly choose a hosting budget later.
+- Do not store model weights, private evidence, or credentials in GitHub.
 
-The web service must also have the matching `LIVE_AI_INGEST_TOKEN` value configured for its private candidate-ingest endpoint. Do not commit or paste any secret into GitHub.
+## Safety and payout boundary
 
-The Blueprint provisions two `starter` background workers in Singapore. These are paid Render resources. Review the current Render pricing and approve the cost in the Render Dashboard before syncing the Blueprint. Do not change the existing website service's type, runtime, or start command as part of this worker rollout.
+OCR or a visual model can identify a possible killfeed event, but cannot by itself prove which registered player made the kill. The system must hold ambiguous events for Admin review. No AI worker may directly credit a wallet. Only the transaction-safe, idempotent Admin-approved settlement path can issue a reward, and duplicate events must never create a second credit.
 
-## Current safety boundary
+## Validation required before production
 
-These workers do not automatically approve kills or credit wallets. Live OCR is a candidate signal, not proof of the killer. Payment AI writes an assessment/proposal only. Admin verification and the existing idempotent settlement path remain the payout gate until reliable killer attribution, match/time evidence, restart/concurrency idempotency, and end-to-end payout tests pass.
-
-The two workers are not 50 independent physical compute instances. The database has per-player logical Live/Payment slots; actual concurrent stream capacity must be load-tested before advertising a 50-player guarantee.
-
-## Post-deploy verification
-
-1. Confirm both workers build successfully and remain running.
-2. Check Live worker logs for LiveKit connection, stream subscription, UID verification, and candidate submission.
-3. Check Payment worker logs for candidate assessment cycles and slot heartbeats.
-4. Create a controlled test tournament/session and use test evidence only.
-5. Confirm duplicate candidate submissions create one event and never produce duplicate wallet transactions.
-6. Keep production auto-credit disabled until all attribution and accounting tests pass.
+- UID/profile consistency and evidence date-window tests.
+- BR/VS mode and tournament/session/payment eligibility tests.
+- Duplicate fingerprints, repeated worker delivery, concurrent approval, and worker restart tests.
+- Correct second-distinct-verified-kill reward threshold and tournament-specific currency tests.
+- Evidence privacy and permanent storage tests.
+- LiveKit disconnect/reconnect, frame sampling, and realistic concurrency tests.
+- Full browser tests for player pages and Admin actions.
