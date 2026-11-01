@@ -85,6 +85,16 @@ urlpatterns = [
         views.admin_tournament_dashboard,
         name="admin_tournament_dashboard",
     ),
+    path(
+        "admin/tournament/<int:tournament_id>/finish/",
+        views.admin_finish_tournament,
+        name="admin_finish_tournament",
+    ),
+    path(
+        "admin/tournament/<int:tournament_id>/first-place/",
+        views.admin_set_first_place_winner,
+        name="admin_set_first_place_winner",
+    ),
     path("my-registrations/", views.my_registrations, name="my_registrations"),
     path("leaderboard/<int:tournament_id>/", views.leaderboard, name="leaderboard"),
 ]
