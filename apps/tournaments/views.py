@@ -20,7 +20,7 @@ from django.views.decorators.http import require_POST
 from apps.accounts.models import Wallet, WalletTransaction, AdminWallet, AdminWalletTransaction
 from .forms import KillSubmissionForm, RegistrationForm
 from .ai_review import AIReviewError, analyze_kill_evidence, fingerprint_evidence
-from .registration_services import RegistrationError, create_pending_registration, assign_teams_for_tournament
+from .registration_services import RegistrationError, create_pending_registration, assign_teams_for_tournament, maybe_start_next_full_tournament
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import LiveKillEvent, KillSubmission, Registration, Tournament, TournamentLedgerEntry, TournamentLiveSession
 from .kill_services import reward_for_tournament, rewards_for_tournament
@@ -544,6 +544,58 @@ def room_qr_file(request, tournament_id):
     response["Cache-Control"] = "private, no-store"
     response["X-Content-Type-Options"] = "nosniff"
     return response
+
+
+@login_required
+@user_passes_test(lambda user: user.is_staff)
+@require_POST
+@transaction.atomic
+def admin_finish_tournament(request, tournament_id):
+    # Serialize the global LIVE slot with all automatic/manual start paths.
+    list(Tournament.objects.select_for_update().order_by("pk").values_list("pk", flat=True))
+    tournament = get_object_or_404(Tournament.objects.select_for_update(), pk=tournament_id)
+    if tournament.status != Tournament.Status.LIVE:
+        messages.error(request, "Sirf LIVE tournament ko finish kiya ja sakta hai.")
+        return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
+
+    tournament.status = Tournament.Status.COMPLETED
+    tournament.save(update_fields=["status", "updated_at"])
+    next_started = maybe_start_next_full_tournament()
+    if next_started:
+        messages.success(request, "Tournament complete ho gaya. Agla full verified tournament automatically LIVE ho gaya.")
+    else:
+        messages.success(request, "Tournament complete ho gaya. LIVE slot ab free hai; agla tournament verified capacity par start hoga.")
+    return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
+
+
+@login_required
+@user_passes_test(lambda user: user.is_staff)
+@require_POST
+@transaction.atomic
+def admin_set_first_place_winner(request, tournament_id):
+    tournament = get_object_or_404(Tournament.objects.select_for_update(), pk=tournament_id)
+    if tournament.status != Tournament.Status.COMPLETED:
+        messages.error(request, "First-place winner set karne se pehle Live Monitor se tournament finish karein.")
+        return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
+    if tournament.winner_prize_paid:
+        messages.error(request, "First-place prize already paid hai; winner UID change nahi ho sakti.")
+        return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
+
+    uid = (request.POST.get("winner_uid") or "").strip()
+    matches = Registration.objects.select_for_update().filter(
+        tournament=tournament,
+        free_fire_uid=uid,
+        payment_verified=True,
+        refund_processed=False,
+        status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
+    )
+    if not uid or matches.count() != 1:
+        messages.error(request, "Winner UID ka exactly one verified, non-refunded registration se match hona zaroori hai.")
+    else:
+        tournament.winner_uid = uid
+        tournament.save(update_fields=["winner_uid", "updated_at"])
+        messages.success(request, "First-place winner save ho gaya. Prize amount tournament ke First Prize pool se hi liya jayega.")
+    return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
 
 
 @login_required
