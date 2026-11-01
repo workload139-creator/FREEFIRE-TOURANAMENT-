@@ -24,13 +24,16 @@ from PIL import Image
 import pytesseract
 
 from apps.tournaments.live_ai_ocr import extract_profile_identity, verify_br_lobby_nickname
-from apps.tournaments.live_ai_killfeed import live_kill_detection_enabled, scan_full_frame_for_kill_text
+from apps.tournaments.live_ai_killfeed import (
+    is_kill_signal_text,
+    live_kill_detection_enabled,
+    scan_full_frame_for_kill_text,
+ )
 from apps.tournaments.models import TournamentLiveSession
 
 logger = logging.getLogger(__name__)
 OCR_SAMPLE_INTERVAL = 2.0
 KILL_SCAN_INTERVAL = 1.5
-KILL_TERMS = {"eliminated", "knocked", "headshot", "kill", "killed", "assist"}
 
 
 @dataclass
@@ -124,7 +127,7 @@ def _scan_kill_candidate(frame):
     image = Image.frombytes("RGB", (rgb.width, rgb.height), bytes(rgb.data))
     try:
         words = scan_full_frame_for_kill_text(image)
-        relevant = [item for item in words if item["text"].lower() in KILL_TERMS]
+        relevant = [item for item in words if is_kill_signal_text(item["text"])]
         if not relevant:
             return None
         text = " ".join(item["text"] for item in words)[:5000]
