@@ -146,7 +146,7 @@ def maybe_start_unlimited_tournament(tournament_id):
     # Lock every tournament row in a stable order to serialize competing starts.
     list(Tournament.objects.select_for_update().order_by("pk").values_list("pk", flat=True))
     tournament = Tournament.objects.select_for_update().get(pk=tournament_id)
-    if not tournament.auto_start_at_capacity or tournament.status != Tournament.Status.UPCOMING:
+    if tournament.status != Tournament.Status.UPCOMING:
         return False
     if Tournament.objects.filter(status=Tournament.Status.LIVE).exclude(pk=tournament.pk).exists():
         return False
@@ -176,6 +176,18 @@ def maybe_start_unlimited_tournament(tournament_id):
     )
     transaction.on_commit(lambda tournament_id=tournament.pk: send_unlimited_live_notifications(tournament_id))
     return True
+
+@transaction.atomic
+def maybe_start_next_full_tournament():
+    """Start the oldest full, verified waiting round after the current LIVE round ends."""
+    if Tournament.objects.filter(status=Tournament.Status.LIVE).exists():
+        return False
+    candidates = Tournament.objects.filter(status=Tournament.Status.UPCOMING).order_by("created_at", "pk")
+    for candidate_id in candidates.values_list("pk", flat=True):
+        if maybe_start_unlimited_tournament(candidate_id):
+            return True
+    return False
+
 
 @transaction.atomic
 def create_pending_registration(*, tournament_id, player, free_fire_uid, payment_reference="", payment_method="upi"):
