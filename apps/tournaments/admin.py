@@ -22,7 +22,7 @@ from .models import KillSubmission, Registration, Tournament, TournamentLedgerEn
 
 from .services import cancel_tournament_and_refund
 from .kill_services import reward_for_tournament
-from .registration_services import assign_teams_for_tournament, tournament_team_size
+from .registration_services import assign_teams_for_tournament, tournament_team_size, maybe_start_next_full_tournament
 
 
 class TournamentAdminForm(forms.ModelForm):
@@ -582,6 +582,12 @@ class TournamentAdmin(admin.ModelAdmin):
 
         was_live = previous_status == Tournament.Status.LIVE
         super().save_model(request, obj, form, change)
+
+        if obj.status == Tournament.Status.CANCELLED and previous_status != Tournament.Status.CANCELLED:
+            # Cancellation refunds are idempotent; release the global LIVE slot and
+            # start the oldest already-full verified tournament, if any.
+            cancel_tournament_and_refund(obj.pk)
+            maybe_start_next_full_tournament()
 
         # Re-open a fresh no-date 49-player round only after admin marks the current round complete.
         if obj.status == Tournament.Status.COMPLETED and previous_status != Tournament.Status.COMPLETED:
