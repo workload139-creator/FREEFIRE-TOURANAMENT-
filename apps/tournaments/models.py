@@ -447,5 +447,28 @@ class TournamentLiveSession(models.Model):
         return f"{self.tournament} · {self.registration.free_fire_uid} · {self.status}"
 
 
+class TournamentLiveMessage(models.Model):
+    """Short private admin-to-player messages attached to one active live session."""
+
+    registration = models.ForeignKey(
+        Registration, on_delete=models.CASCADE, related_name="live_control_messages"
+    )
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="sent_live_control_messages"
+    )
+    body = models.CharField(max_length=500)
+    created_at = models.DateTimeField(auto_now_add=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ("created_at",)
+        indexes = [
+            models.Index(fields=("registration", "created_at"), name="live_msg_reg_created_idx"),
+        ]
+
+    def __str__(self):
+        return f"Live message for registration {self.registration_id}"
+
+
 # Register separate Live AI models after core tournament models are defined.
 from .live_ai_models import LiveAIAgentSlot, LiveKillEvent
