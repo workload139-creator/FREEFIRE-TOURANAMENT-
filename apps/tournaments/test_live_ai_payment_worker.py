@@ -59,8 +59,7 @@ class PaymentAIAssessmentRulesTests(TestCase):
 
     def test_training_ground_or_unsupported_mode_is_held(self):
         event = self.make_event(mode="TRAINING")
-        live_slot = SimpleNamespace(identity_verified_at=object())
-        result = build_payment_assessment(event, live_slot)
+        result = build_payment_assessment(event)
         self.assertFalse(result["eligible"])
         self.assertFalse(result["checks"]["supported_mode"])
         self.assertEqual(result["proposed_rewards"], [])
