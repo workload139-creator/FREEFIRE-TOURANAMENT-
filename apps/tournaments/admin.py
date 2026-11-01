@@ -1259,7 +1259,7 @@ class RegistrationAdmin(admin.ModelAdmin):
             "fields": ("entry_fee_paid", "payment_method", "currency_amount", "payment_reference", "payment_submitted_at", "payment_verified"),
         }),
         ("4. Match / Room Readiness", {
-            "description": "Room ID/password sirf eligible paid players ko share karein. Ready deadline aur confirmation check karein.",
+            "description": "Garena Room Invite Link sirf eligible paid players ke liye hai. Ready deadline, three NO attempts aur refund status check karein.",
             "fields": ("room_details_sent", "ready_deadline", "ready_confirmed_at"),
         }),
         ("5. Cancellation / Refund Tracking", {
