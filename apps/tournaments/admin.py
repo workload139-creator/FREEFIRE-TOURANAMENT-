@@ -1,5 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal
+from urllib.parse import parse_qs, urlsplit
 
 from django import forms
 from django.conf import settings
@@ -80,6 +81,18 @@ class TournamentAdminForm(forms.ModelForm):
         cleaned = super().clean()
         if not cleaned.get("gender_category"):
             cleaned["gender_category"] = Tournament.GenderCategory.OPEN
+        invite_link = (cleaned.get("room_invite_link") or "").strip()
+        if invite_link:
+            parsed = urlsplit(invite_link)
+            query = parse_qs(parsed.query)
+            if (
+                parsed.scheme != "https"
+                or parsed.hostname != "ffshare.garena.com"
+                or query.get("action", [""])[0] != "qrcode_room_invite_link"
+                or not query.get("room_id", [""])[0]
+                or not query.get("qr_serect_code", [""])[0]
+            ):
+                self.add_error("room_invite_link", "Official Garena invite link with room_id and qr_serect_code required.")
         if self.instance._meta.proxy and self.instance._meta.model_name == "diwalioffertournament":
             cleaned.update({
                 "mode": Tournament.Mode.BR,
