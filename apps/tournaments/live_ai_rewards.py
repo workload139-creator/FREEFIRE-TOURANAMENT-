@@ -48,7 +48,16 @@ def approve_live_kill_event(event_id, admin_user):
         status=LiveKillEvent.Status.VERIFIED,
     ).count()
     total_verified_kills = already_verified + 1
-    reward_rows = rewards_for_tournament(event.tournament, total_verified_kills) if total_verified_kills >= 2 else []
+    if total_verified_kills >= 2:
+        total_rewards = rewards_for_tournament(event.tournament, total_verified_kills)
+        previous_rewards = dict((currency, quantity) for currency, quantity, _ in rewards_for_tournament(event.tournament, already_verified))
+        reward_rows = [
+            (currency, int(quantity) - int(previous_rewards.get(currency, 0)), label)
+            for currency, quantity, label in total_rewards
+            if int(quantity) - int(previous_rewards.get(currency, 0)) > 0
+        ]
+    else:
+        reward_rows = []
     if total_verified_kills >= 2 and not reward_rows:
         return False, "No reward is configured for this tournament."
     reference = f"livekill:{event.event_uuid}" if reward_rows else ""
