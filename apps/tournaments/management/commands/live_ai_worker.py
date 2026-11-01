@@ -68,7 +68,11 @@ def active_sessions():
 
 @sync_to_async
 def update_slots(session_uuid, state, frames_delta=0, detections_delta=0, error=""):
-    LiveAIAgentSlot.objects.filter(session__session_uuid=session_uuid).update(
+    """Update only the Live Kill AI slot; Payment AI has its own worker lifecycle."""
+    LiveAIAgentSlot.objects.filter(
+        session__session_uuid=session_uuid,
+        kind=LiveAIAgentSlot.Kind.LIVE,
+    ).update(
         state=state,
         last_heartbeat_at=timezone.now(),
         frames_seen=F("frames_seen") + max(0, int(frames_delta)),
@@ -80,8 +84,12 @@ def update_slots(session_uuid, state, frames_delta=0, detections_delta=0, error=
 
 @sync_to_async
 def mark_identity_verified(session_uuid, confidence):
+    """Identity evidence belongs to the Live slot, never the Payment slot."""
     now = timezone.now()
-    LiveAIAgentSlot.objects.filter(session__session_uuid=session_uuid).update(
+    LiveAIAgentSlot.objects.filter(
+        session__session_uuid=session_uuid,
+        kind=LiveAIAgentSlot.Kind.LIVE,
+    ).update(
         identity_verified_at=now,
         identity_ocr_confidence=Decimal(str(round(float(confidence), 4))),
         state=LiveAIAgentSlot.State.PROCESSING,
