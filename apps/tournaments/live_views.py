@@ -292,14 +292,23 @@ def player_live_messages(request, registration_id):
 def tournament_live_end(request, registration_id):
     """Idempotently end the player's session; no reward or registration state is changed."""
     with transaction.atomic():
-        session = get_object_or_404(
-            TournamentLiveSession.objects.select_for_update().select_related("registration"),
+        # A registration can have several historical sessions after a player
+        # retries Live. Select only the current active row; querying by
+        # registration_id alone raises MultipleObjectsReturned on retries.
+        sessions = TournamentLiveSession.objects.select_for_update().select_related("registration")
+        session = sessions.filter(
             registration_id=registration_id,
-        )
+            status=TournamentLiveSession.Status.ACTIVE,
+        ).order_by("-started_at").first()
+        if session is None:
+            latest = sessions.filter(registration_id=registration_id).order_by("-started_at").first()
+            if latest is None:
+                return JsonResponse({"error": "Live session not found."}, status=404)
+            if latest.registration.player_id != request.user.pk and not request.user.is_staff:
+                return JsonResponse({"error": "Not allowed."}, status=403)
+            return JsonResponse({"success": True, "message": "Live session was already ended."})
         if session.registration.player_id != request.user.pk and not request.user.is_staff:
             return JsonResponse({"error": "Not allowed."}, status=403)
-        if session.status == TournamentLiveSession.Status.ENDED:
-            return JsonResponse({"success": True, "message": "Live session was already ended."})
         # Staff can mark a BR player eliminated only after the required two kills
         # have been independently approved. A player may still end their own stream.
         if request.user.is_staff and session.tournament.mode == "BR":
