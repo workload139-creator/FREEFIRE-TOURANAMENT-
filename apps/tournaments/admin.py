@@ -892,7 +892,7 @@ class UnlimitedTournamentAdmin(TournamentAdmin):
 @admin.register(FreeFanTournament)
 class FreeFanTournamentAdmin(TournamentAdmin):
     """Existing Free Fan rounds use the same restricted Live Monitor workflow."""
-    list_display = ("id", "title", "open_tournament_control", "status", "max_players", "created_at")
+    list_display = ("id", "title", "open_tournament_control", "status_label", "max_players", "created_at")
     list_filter = ("status",)
     search_fields = ("title",)
     ordering = ("-created_at",)
@@ -909,7 +909,7 @@ class DiwaliOfferTournamentAdmin(TournamentAdmin):
         "is_unlimited_br", "is_free_fan_tournament", "is_diwali_offer",
         "auto_start_at_capacity", "auto_reopen", "series_root", "start_time",
     )
-    list_display = ("title", "open_tournament_control", "entry_fee", "max_players", "status", "winner_uid", "created_at")
+    list_display = ("title", "open_tournament_control", "entry_fee", "max_players", "status_label", "winner_uid", "created_at")
     list_filter = ("status",)
     ordering = ("-created_at",)
     actions = (cancel_and_refund_tournaments, award_diwali_winner_diamonds)
