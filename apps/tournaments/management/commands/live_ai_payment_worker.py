@@ -87,7 +87,10 @@ def assess_pending_events(batch_size=100):
                 session=event.session, kind=LiveAIAgentSlot.Kind.LIVE
             ).first()
             prior_count = LiveAIPaymentAssessment.objects.filter(
-                event__registration=event.registration,\n                event__tournament=event.tournament,\n                event__status__in=(LiveKillEvent.Status.REVIEW, LiveKillEvent.Status.VERIFIED),\n                eligible=True
+                event__registration=event.registration,
+                event__tournament=event.tournament,
+                event__status__in=(LiveKillEvent.Status.REVIEW, LiveKillEvent.Status.VERIFIED),
+                eligible=True
             ).count()
             LiveAIPaymentAssessment.objects.create(
                 event=event,
