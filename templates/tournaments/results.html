@@ -3,7 +3,7 @@
 {% block content %}
 <section class="container" style="max-width:1100px;margin:38px auto;padding:0 18px">
   <div class="section-heading">
-    <div><span class="section-label">MATCH HISTORY</span><h1>Tournament <span>Results</span></h1><p>Completed tournaments and admin-approved player results.</p></div>
+    <div><span class="section-label">MATCH HISTORY</span><h1>Tournament <span>Results</span></h1><p>Completed matches, first-place winners and public leaderboards.</p></div>
   </div>
   <div class="tournament-grid">
     {% for tournament in completed_tournaments %}
@@ -14,11 +14,21 @@
         <div class="tournament-body">
           <h3>{{ tournament.title }}</h3>
           <div class="tournament-info">
+            <div><small>FORMAT</small><strong>{% if tournament.mode == "BR" %}{{ tournament.get_br_format_display }}{% else %}{{ tournament.get_vs_format_display }}{% endif %}</strong></div>
+            <div><small>PLAYERS</small><strong>{{ tournament.result_player_count }}</strong></div>
             <div><small>PRIZE POOL</small><strong>₹{{ tournament.prize_pool }}</strong></div>
-            <div><small>MODE</small><strong>{{ tournament.mode }}</strong></div>
           </div>
-          <p>Match date: {{ tournament.start_time|date:"d M Y, h:i A" }}</p>
-          <a class="btn-join" href="{% url 'tournaments:leaderboard' tournament.id %}">View leaderboard →</a>
+          <div class="result-winner" style="margin:16px 0;padding:14px;border:1px solid #f4c76b66;border-radius:14px;background:#f4c76b12">
+            <small style="display:block;color:#f4c76b;font-weight:900;letter-spacing:1px">🥇 FIRST PLACE</small>
+            {% if tournament.winner_uid %}
+              <strong style="display:block;font-size:18px;margin-top:5px">{{ tournament.first_place_player|default:"Verified winner" }}</strong>
+              <span>Free Fire UID: {{ tournament.winner_uid }}</span>
+            {% else %}
+              <strong>Winner details pending admin verification</strong>
+            {% endif %}
+          </div>
+          <p>Entry fee: ₹{{ tournament.entry_fee }} · Status: Completed</p>
+          <a class="btn-join" href="{% url 'tournaments:leaderboard' tournament.id %}">View full leaderboard & match details →</a>
         </div>
       </article>
     {% empty %}
