@@ -46,3 +46,24 @@ class LiveKillEventAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+from .live_ai_models import LiveAIPaymentAssessment
+
+
+@admin.register(LiveAIPaymentAssessment)
+class LiveAIPaymentAssessmentAdmin(admin.ModelAdmin):
+    list_display = ("event", "eligible", "proposed_kills", "worker_version", "assessed_at")
+    list_filter = ("eligible", "worker_version", "event__tournament__mode")
+    search_fields = ("event__registration__free_fire_uid", "event__registration__player__username", "event__event_fingerprint")
+    readonly_fields = tuple(field.name for field in LiveAIPaymentAssessment._meta.fields)
+    actions = None
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
