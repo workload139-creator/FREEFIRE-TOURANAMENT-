@@ -8,6 +8,7 @@ import re
 from datetime import datetime
 
 from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.core.files.base import ContentFile
 from django.utils import timezone
@@ -125,3 +126,38 @@ def ingest_live_kill_candidate(request):
         "reward_paid": False,
         "message": "Candidate saved once. No wallet credit was issued.",
     }, status=201 if created else 200)
+
+
+
+@login_required
+@require_POST
+def admin_approve_live_kill(request, event_id):
+    """Admin confirms one candidate after supplying match attribution; payout remains idempotent."""
+    if not request.user.is_staff:
+        return JsonResponse({"error": "Staff access required."}, status=403)
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+        match_id = str(payload.get("match_id", "")).strip()[:100]
+        killer_name = str(payload.get("attributed_player_name", "")).strip()[:80]
+        kill_at_raw = str(payload.get("kill_at", "")).strip()
+        if not match_id or not killer_name or not kill_at_raw:
+            return JsonResponse({"error": "Match ID, kill time and in-game killer name are required."}, status=400)
+        kill_at = datetime.fromisoformat(kill_at_raw.replace("Z", "+00:00"))
+        if timezone.is_naive(kill_at):
+            kill_at = timezone.make_aware(kill_at, timezone.get_current_timezone())
+    except (ValueError, TypeError, UnicodeDecodeError, json.JSONDecodeError):
+        return JsonResponse({"error": "Invalid approval details. Use a valid date/time."}, status=400)
+
+    from .live_ai_rewards import approve_live_kill_event
+    with transaction.atomic():
+        event = LiveKillEvent.objects.select_for_update().get(pk=event_id)
+        if event.status != LiveKillEvent.Status.REVIEW:
+            return JsonResponse({"error": "This kill is no longer awaiting Admin review."}, status=409)
+        event.match_id = match_id
+        event.kill_at = kill_at
+        event.attributed_player_name = killer_name
+        event.save(update_fields=("match_id", "kill_at", "attributed_player_name"))
+        ok, message = approve_live_kill_event(event.pk, request.user)
+        if not ok:
+            return JsonResponse({"error": message}, status=409)
+    return JsonResponse({"success": True, "message": message, "event_id": event_id})
