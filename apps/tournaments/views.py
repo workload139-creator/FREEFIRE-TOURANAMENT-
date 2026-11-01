@@ -1182,9 +1182,26 @@ def admin_kill_batch_review(request):
 
 
 def results(request):
-    completed_tournaments = Tournament.objects.filter(
-        status=Tournament.Status.COMPLETED
-    ).order_by("-start_time")
+    completed_tournaments = list(
+        Tournament.objects.filter(status=Tournament.Status.COMPLETED)
+        .order_by("-updated_at", "-pk")
+    )
+    for tournament in completed_tournaments:
+        winner_registration = Registration.objects.filter(
+            tournament=tournament,
+            free_fire_uid=str(tournament.winner_uid or "").strip(),
+            payment_verified=True,
+            refund_processed=False,
+            status__in=[
+                Registration.Status.CONFIRMED,
+                Registration.Status.WAITING_READY,
+                Registration.Status.READY,
+            ],
+        ).select_related("player").first() if tournament.winner_uid else None
+        tournament.first_place_player = (
+            winner_registration.player.username if winner_registration else ""
+        )
+        tournament.result_player_count = tournament.paid_players_count
     return render(
         request,
         "tournaments/results.html",
