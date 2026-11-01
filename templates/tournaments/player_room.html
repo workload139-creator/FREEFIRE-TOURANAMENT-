@@ -27,7 +27,7 @@
      <input type="checkbox" id="liveAiConsent" required style="margin-top:4px">
      <span>Main samajhta/samajhti hoon ki meri screen Live AI review ke liye share hogi aur main is sharing ke liye sahmati deta/deti hoon.</span>
     </label>
-    <button type="submit" class="btn-primary" id="startLiveAiButton">▶ Start Live AI</button>
+    <button type="button" class="btn-primary" id="startLiveAiButton">▶ Start Live AI</button>
     <button type="button" class="button button-outline" id="stopLiveAiButton" hidden>■ Stop Live</button>
    </form>
    <p id="liveAiStatus" class="help-text" role="status" aria-live="polite">Live abhi start nahi hua.</p>
@@ -69,7 +69,9 @@
     const tokenUrl = "{% url 'tournaments:live_token' registration.id %}";
     const endUrl = "{% url 'tournaments:live_end' registration.id %}";
     const warningUrl = "{% url 'tournaments:live_background_warning' registration.id %}";
-    const nativeLive = window.FFArenaLive && typeof window.FFArenaLive.start === "function";
+    function isNativeLive() {
+      return Boolean(window.FFArenaLive && typeof window.FFArenaLive.start === "function");
+    }
     let active = false;
     let awaitingStart = false;
     let backgroundWarningSent = false;
@@ -169,7 +171,7 @@
       }
       micButton.disabled = true;
       try {
-        if (nativeLive) {
+        if (isNativeLive()) {
           micStatus.textContent = micEnabled ? "Mic OFF ho raha hai…" : "Android microphone permission check ho rahi hai…";
           window.FFArenaLive.setMicrophoneEnabled(!micEnabled);
           return;
@@ -206,7 +208,7 @@
       micButton.disabled = !active;
     });
 
-    form.addEventListener("submit", async function (event) {
+    startButton.addEventListener("click", async function (event) {
       event.preventDefault();
       if (!consent.checked) {
         status.textContent = "Live start karne se pehle consent checkbox select karein.";
@@ -220,7 +222,7 @@
         // getDisplayMedia must be called directly from the user's click, before
         // network requests or dynamic imports, otherwise browsers can suppress
         // the permission prompt because transient user activation has expired.
-        if (!nativeLive) {
+        if (!isNativeLive()) {
           if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== "function") {
             throw new Error("Is browser mein screen sharing supported nahi hai. Android phone par FF Arena APK ya desktop Chrome/Edge use karein.");
           }
@@ -247,7 +249,7 @@
     });
 
     stopButton.addEventListener("click", async function () {
-      if (nativeLive && typeof window.FFArenaLive.stop === "function") {
+      if (isNativeLive() && typeof window.FFArenaLive.stop === "function") {
         window.FFArenaLive.stop();
       } else {
         await stopBrowserLive();
@@ -269,6 +271,9 @@
       const playerLiveAudio = document.getElementById("playerLiveAudio");
       if (roomJoinStep) roomJoinStep.hidden = !active;
       if (playerLiveAudio) playerLiveAudio.hidden = !active;
+      startButton.hidden = active;
+      const consentLabel = consent.closest("label");
+      if (consentLabel) consentLabel.hidden = active;
       if (active) awaitingStart = false;
       else if (awaitingStart) {
         awaitingStart = false;
