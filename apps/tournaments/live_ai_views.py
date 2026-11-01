@@ -30,6 +30,7 @@ def ingest_live_kill_candidate(request):
         confidence = float(payload.get("confidence", 0))
         detected_text = str(payload.get("detected_text", ""))[:5000]
         match_id = str(payload.get("match_id", ""))[:100]
+        attributed_player_name = str(payload.get("attributed_player_name", "")).strip()[:80]
         kill_at_raw = payload.get("kill_at")
     except (ValueError, TypeError, UnicodeDecodeError):
         return JsonResponse({"error": "Invalid JSON payload."}, status=400)
@@ -61,6 +62,7 @@ def ingest_live_kill_candidate(request):
             "registration": session.registration,
             "session": session,
             "match_id": match_id,
+            "attributed_player_name": attributed_player_name,
             "kill_at": kill_at,
             "detected_text": detected_text,
             "confidence": confidence,
