@@ -918,9 +918,9 @@ class DiwaliOfferTournamentAdmin(TournamentAdmin):
                 "description": "Yeh event regular BR se alag hai. System fixed rakha gaya hai: 1 Diamond entry, 49 Solo players, 20 Diamonds first prize, 5 Coins per approved kill, minimum 2 verified kills. Public page par date/time nahi dikhega.",
                 "fields": ("tournament_control_panel", "title", "description", "entry_fee", "max_players", "status"),
             }),
-            ("🎮 Private Room Details", {
-                "description": "Round LIVE hone par eligible players ko room details private bhejne ke liye yahan Room ID aur Password set karein.",
-                "fields": ("room_id", "room_password"),
+            ("🎮 Free Fire Room Invite Link", {
+                "description": "Official Garena invite link yahan set karein. Player ko JOIN ROOM sirf Live AI screen-share permission active hone ke baad dikhega.",
+                "fields": ("room_invite_link",),
             }),
             ("🏆 Winner & Diwali Prize", {
                 "description": "Round Completed karne ke baad verified winner ka registered Free Fire UID enter karein. Neeche action se 20 Diamonds ek baar credit honge.",
