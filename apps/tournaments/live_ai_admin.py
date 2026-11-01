@@ -1,24 +1,9 @@
-"""Admin visibility for the separate 50+50 Live AI agent pools."""
+"""Admin review for shared Live Monitor kill evidence and advisory reward assessments."""
 from django.contrib import admin, messages
 from django.utils import timezone
 from .live_ai_rewards import approve_live_kill_event
 
-from .live_ai_models import LiveAIAgentSlot, LiveAIPaymentAssessment, LiveKillEvent
-
-
-@admin.register(LiveAIAgentSlot)
-class LiveAIAgentSlotAdmin(admin.ModelAdmin):
-    list_display = ("tournament", "registration", "kind", "slot_number", "state", "frames_seen", "detections_seen", "last_heartbeat_at", "identity_verified_at", "identity_ocr_confidence")
-    list_filter = ("kind", "state", "tournament__mode")
-    search_fields = ("registration__free_fire_uid", "registration__player__username", "tournament__title")
-    readonly_fields = tuple(field.name for field in LiveAIAgentSlot._meta.fields)
-    actions = None
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
+from .live_ai_models import LiveAIPaymentAssessment, LiveKillEvent
 
 
 @admin.register(LiveKillEvent)
