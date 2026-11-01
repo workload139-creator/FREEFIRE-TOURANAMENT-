@@ -60,7 +60,7 @@ def build_payment_assessment(event, live_slot, prior_count=0):
         ]
         reason = "Automated checks passed; proposed reward only. Admin must verify kills before credit."
     elif eligible:
-        reason = f"Candidate passed checks; {MIN_KILLS_FOR_REWARD - proposed_kills} more candidate kill(s) needed."
+        reason = f"Candidate passed checks; {MIN_KILLS_FOR_REWARD - proposed_kills} more Admin-verified kill(s) needed."
     return {
         "eligible": eligible,
         "proposed_kills": proposed_kills if eligible else 0,
@@ -89,7 +89,7 @@ def assess_pending_events(batch_size=100):
             prior_count = LiveAIPaymentAssessment.objects.filter(
                 event__registration=event.registration,
                 event__tournament=event.tournament,
-                event__status__in=(LiveKillEvent.Status.REVIEW, LiveKillEvent.Status.VERIFIED),
+                event__status=LiveKillEvent.Status.VERIFIED,
                 eligible=True
             ).count()
             LiveAIPaymentAssessment.objects.create(
