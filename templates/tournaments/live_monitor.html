@@ -1,5 +1,13 @@
 {% extends "base.html" %}
-{% block title %}FF Arena · Live Monitor{% endblock %}
+{% block title %}FF Arena · Live Monitor<script>
+(function () {
+  // Refresh the queue while the admin is viewing it so LIVE changes appear promptly.
+  window.setInterval(function () {
+    if (document.visibilityState === "visible") window.location.reload();
+  }, 15000);
+})();
+</script>
+{% endblock %}
 {% block content %}
 <style>
 .ff-monitor{max-width:1250px;margin:0 auto;padding:26px 14px 48px;color:#eaf2ff}
