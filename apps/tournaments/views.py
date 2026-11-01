@@ -472,6 +472,32 @@ def send_room_details(request, tournament_id):
 
 
 @login_required
+def room_invite_open(request, registration_id):
+    registration = get_object_or_404(
+        Registration.objects.select_related("tournament"),
+        pk=registration_id,
+        player=request.user,
+    )
+    tournament = registration.tournament
+    allowed = (
+        tournament.status == Tournament.Status.LIVE
+        and registration.status == Registration.Status.READY
+        and registration.payment_verified
+        and not registration.refund_processed
+        and registration.room_details_sent
+        and bool(tournament.room_invite_link)
+        and TournamentLiveSession.objects.filter(
+            registration=registration,
+            status=TournamentLiveSession.Status.ACTIVE,
+        ).exists()
+    )
+    if not allowed:
+        messages.error(request, "Room Invite Link sirf confirmed player ki active Live AI session ke dauran khulega.")
+        return redirect("tournaments:player_room", registration_id=registration.pk)
+    return redirect(tournament.room_invite_link)
+
+
+@login_required
 @user_passes_test(lambda user: user.is_staff)
 def admin_room_page(request, tournament_id):
     tournament = get_object_or_404(Tournament, pk=tournament_id)
