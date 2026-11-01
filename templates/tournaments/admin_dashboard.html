@@ -5,7 +5,7 @@
     <h2>🔥 Tournament Admin Control</h2>
     <h4>{{ tournament.title }}</h4>
     <p>Yeh page sirf is tournament ka control panel hai. Neeche har section ka kaam diya hai. Pehle payment/UTR verify karein, phir LIVE aur room confirmation manage karein, phir Live AI monitoring aur refunds review karein.</p>
-    <div class="alert alert-warning"><strong>{% if tournament.is_diwali_offer %}🪔 Diwali Offer reward rule:{% else %}BR reward rule:{% endif %}</strong> {% if tournament.is_diwali_offer %}1 Diamond entry · 20 Diamonds first prize · 5 Coins per approved kill · minimum 2 verified kills.{% else %}Minimum 2 verified kills. Solo: 5 Diamonds per approved kill. Duo/Squad: 5 Diamonds + 2 Coins per approved kill.{% endif %} Registered player ki active Live stream se Kill events monitor honge. Live AI aur Payment AI ki alag status rows neeche dekhein.</div>
+    <div class="alert alert-warning"><strong>{% if tournament.is_diwali_offer %}🪔 Diwali Offer reward rule:{% else %}BR reward rule:{% endif %}</strong> {% if tournament.is_diwali_offer %}1 Diamond entry · 20 Diamonds first prize · 5 Coins per approved kill · minimum 2 verified kills.{% else %}Minimum 2 verified kills. Solo: 5 Diamonds per approved kill. Duo/Squad: 5 Diamonds + 2 Coins per approved kill.{% endif %} Live stream subscriber abhi frame-read/connection status record karta hai; Killfeed OCR aur automatic reward abhi active nahi hain. Live AI aur Payment AI ki alag logical slot rows neeche dekhein.</div>
 
     <div class="row g-3 my-3">
         <div class="col-md-4"><div class="card p-3"><h6>Total Registrations</h6><h3>{{ total_players }}</h3></div></div>
@@ -59,8 +59,8 @@
     </div>
 
     <div class="card p-3 my-3">
-        <h4>3. Live AI + Payment AI — real-time player monitoring</h4>
-        <p>Ab players screenshot/video upload nahi karte. Har active eligible player ke saath ek Live Kill AI slot aur ek Payment & Reward AI slot pair hota hai. Existing Player Activity AI alag dashboard/function mein hi rahega.</p>
+        <h4>3. Live AI + Payment AI — stream subscriber and slot status</h4>
+        <p>Players screenshot/video upload nahi karte. Har active eligible player ke saath ek Live Kill AI slot aur ek Payment & Reward AI logical slot pair hota hai. Worker filhaal video frames/heartbeat count karta hai; Killfeed OCR, event verification aur automatic payout abhi implement/test hone baaki hain. Existing Player Activity AI alag dashboard/function mein hi rahega.</p>
         <div class="table-responsive"><table class="table table-striped table-bordered">
             <thead><tr><th>Player / UID</th><th>AI Slot</th><th>Slot #</th><th>Session</th><th>State</th><th>Frames</th><th>Detections</th><th>Last Error</th></tr></thead>
             <tbody>
