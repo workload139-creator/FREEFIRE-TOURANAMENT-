@@ -9,6 +9,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db import IntegrityError, transaction
+from django.db.models import Count
 from django.http import FileResponse, Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -565,7 +566,18 @@ def admin_tournament_dashboard(request, tournament_id):
     for registration in registrations:
         registration.shop_wallet = shop_wallets.get(registration.player_id)
         registration.inr_wallet = inr_wallets.get(registration.player_id)
-    live_sessions = TournamentLiveSession.objects.filter(tournament=tournament).select_related("registration", "registration__player").order_by("-started_at")
+    live_sessions = list(TournamentLiveSession.objects.filter(tournament=tournament).select_related("registration", "registration__player").order_by("-started_at"))
+    verified_kill_counts = dict(
+        LiveKillEvent.objects.filter(tournament=tournament, status=LiveKillEvent.Status.VERIFIED)
+        .values("registration_id").annotate(total=Count("id")).values_list("registration_id", "total")
+    )
+    for live_session in live_sessions:
+        live_session.approved_live_kills = verified_kill_counts.get(live_session.registration_id, 0)
+        live_session.wallet_balance = shop_wallets.get(live_session.registration.player_id)
+        live_session.reward_preview = (
+            rewards_for_tournament(tournament, live_session.approved_live_kills)
+            if live_session.approved_live_kills >= 2 else []
+        )
     live_kill_events = LiveKillEvent.objects.filter(tournament=tournament).select_related("registration", "registration__player", "session").order_by("-detected_at")[:200]
     tournament_history = TournamentLedgerEntry.objects.filter(
         tournament=tournament
