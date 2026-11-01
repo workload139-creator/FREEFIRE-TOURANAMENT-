@@ -3,6 +3,7 @@ from unittest.mock import patch
 from django.test import SimpleTestCase
 
 from apps.tournaments.live_ai_killfeed import (
+    is_kill_signal_text,
     live_kill_detection_enabled,
     scan_full_frame_for_kill_text,
 )
@@ -15,6 +16,12 @@ class LiveKillfeedOCRTests(SimpleTestCase):
         self.assertFalse(live_kill_detection_enabled(""))
         self.assertFalse(live_kill_detection_enabled("TRAINING_GROUND"))
         self.assertFalse(live_kill_detection_enabled("CUSTOM"))
+
+    def test_training_ground_elimination_streak_is_not_a_killfeed_event(self):
+        self.assertFalse(is_kill_signal_text("ELIMINATION"))
+        self.assertFalse(is_kill_signal_text("STREAK!"))
+        self.assertTrue(is_kill_signal_text("ELIMINATED"))
+        self.assertTrue(is_kill_signal_text("HEADSHOT"))
 
     @patch("apps.tournaments.live_ai_killfeed.pytesseract.image_to_data")
     def test_scans_words_without_assuming_a_fixed_screen_region(self, ocr):
