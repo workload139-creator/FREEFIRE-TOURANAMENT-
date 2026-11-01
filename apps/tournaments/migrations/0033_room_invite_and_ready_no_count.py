@@ -10,7 +10,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="tournament",
             name="room_invite_link",
-            field=models.URLField(blank=True, default="", max_length=1500),
+            field=models.URLField(blank=True, default="", help_text="Official Free Fire India / MAX room invite link from ffshare.garena.com.", max_length=1500),
         ),
         migrations.AddField(
             model_name="registration",
