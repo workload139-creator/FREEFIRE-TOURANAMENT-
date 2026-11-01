@@ -161,9 +161,9 @@
             {% empty %}<tr><td colspan="10">Is tournament mein abhi koi Live session nahi hai.</td></tr>{% endfor %}
             </tbody>
         </table></div>
-        <div class="ff-ai-heading"><div><span class="ff-admin-eyebrow">EVIDENCE INTELLIGENCE</span><h5 class="mt-1">🤖 Kill Evidence & AI Assessment Queue</h5></div><span class="ff-ai-tag">2 AGENT REVIEW</span></div><p class="ff-ai-note">Agent 1 checks player identity and tournament eligibility. Agent 2 checks killfeed signal and screenshot evidence. A pending/failed check is held for Admin review; AI never pays a player.</p>
+        <div class="ff-ai-heading"><div><span class="ff-admin-eyebrow">EVIDENCE INTELLIGENCE</span><h5 class="mt-1">🤖 Kill Evidence & AI Assessment Queue</h5></div><span class="ff-ai-tag">ONE AI ASSESSMENT</span></div><p class="ff-ai-note">One advisory assessment checks player UID, tournament eligibility, kill signal, evidence frame, match ID, kill time and in-game name. All check results and reasons remain visible. AI never approves kills or pays a player; Admin makes the final decision.</p>
         <div class="table-responsive"><table class="table table-striped table-bordered align-middle">
-            <thead><tr><th>Evidence</th><th>Detected At</th><th>Player / UID</th><th>Mode</th><th>Confidence</th><th>AI 1 · Identity</th><th>AI 2 · Kill Evidence</th><th>Suggested Kills / Reward</th><th>Admin Status</th></tr></thead>
+            <thead><tr><th>Evidence</th><th>Detected At</th><th>Player / UID</th><th>Mode</th><th>Confidence</th><th>AI Assessment · Checks & Reasons</th><th>Suggested Kills / Reward</th><th>Admin Status</th></tr></thead>
             <tbody>
             {% for event in live_kill_events %}
             <tr>
@@ -172,12 +172,11 @@
                 <td>{{ event.registration.player.username }} / {{ event.registration.free_fire_uid }}</td>
                 <td>{{ event.tournament.mode }} · {{ event.tournament.br_format|default:event.tournament.vs_format }}</td>
                 <td>{{ event.confidence }}</td>
-                <td>{% if event.payment_assessment.checks.two_analysis_agents.ff_arena_agent_local_1.passed %}<span class="ff-ai-pass">✓ Identity passed</span>{% else %}<span class="ff-ai-hold">● Identity held</span>{% endif %}</td>
-                <td>{% if event.payment_assessment.checks.two_analysis_agents.ff_arena_agent_local_2.passed %}<span class="ff-ai-pass">✓ Evidence passed</span>{% else %}<span class="ff-ai-hold">● Evidence held</span>{% endif %}<br><small>{% if event.payment_assessment %}{{ event.payment_assessment.decision_reason }}{% else %}Waiting for assessment{% endif %}</small></td>
+                <td>{% if event.payment_assessment %}<strong>{% if event.payment_assessment.eligible %}<span class="ff-ai-pass">Assessment passed</span>{% else %}<span class="ff-ai-hold">Needs Admin review</span>{% endif %}</strong><br><small>{{ event.payment_assessment.decision_reason }}</small><details class="mt-2"><summary>View all assessment checks</summary><div class="mt-2">{% for check_name, check_value in event.payment_assessment.checks.items %}<div>{{ check_name }}: {% if check_value %}<span class="text-success">PASS</span>{% else %}<span class="text-warning">CHECK / HOLD</span>{% endif %}</div>{% endfor %}</div></details>{% else %}<span class="ff-ai-hold">Waiting for assessment</span>{% endif %}</td>
                 <td>{% if event.payment_assessment %}{{ event.payment_assessment.proposed_kills }} kills · {{ event.payment_assessment.proposed_rewards }}{% else %}Pending{% endif %}{% if event.reward_payload.wallet_balances %}<br><small>Wallet: {{ event.reward_payload.wallet_balances }}</small>{% endif %}</td>
                 <td>{{ event.get_status_display }}<br><small>{{ event.review_reason|default:"—" }}</small><br><a href="/admin/tournaments/livekillevent/" target="_blank" rel="noopener">Open Admin Review</a></td>
             </tr>
-            {% empty %}<tr><td colspan="9">Abhi koi Live Kill event detect nahi hua.</td></tr>{% endfor %}
+            {% empty %}<tr><td colspan="8">Abhi koi Live Kill event detect nahi hua.</td></tr>{% endfor %}
             </tbody>
         </table></div>
     </div>
@@ -278,6 +277,7 @@
                     '<div class="col-12"><small class="ff-monitor-error">' + esc(stream.monitor_error || 'No monitor error reported') + '</small></div></div>' +
                     '<div class="ff-live-video mt-2 bg-dark rounded d-flex align-items-center justify-content-center" style="min-height:190px;overflow:hidden"><span class="text-white-50">Waiting for player screen…</span></div>' +
                     '<div class="d-flex flex-wrap gap-2 mt-3">' +
+                    '<button type="button" class="btn btn-sm btn-outline-danger ff-eliminated">☠️ Mark eliminated & end Live</button>' +
                     '<button type="button" class="btn btn-sm btn-outline-info ff-listen-toggle">🔇 Listen OFF</button>' +
                     '<button type="button" class="btn btn-sm btn-outline-warning ff-talk-toggle">🎙️ Talk to player</button>' +
                     '<button type="button" class="btn btn-sm btn-outline-secondary ff-request-mic">Request player mic</button></div>' +
@@ -286,6 +286,25 @@
                 grid.appendChild(col);
                 const videoBox = col.querySelector(".ff-live-video");
                 const audioStatus = col.querySelector(".ff-audio-status");
+                const eliminatedButton = col.querySelector(".ff-eliminated");
+                eliminatedButton.addEventListener("click", async () => {
+                    if (!confirm("Player elimination confirm hai? BR mein minimum 2 Admin-verified kills required hain. Session end karna hai?")) return;
+                    eliminatedButton.disabled = true;
+                    try {
+                        const response = await fetch("/tournaments/live/registration/" + stream.registration_id + "/end/", {
+                            method: "POST", credentials: "same-origin",
+                            headers: {"X-CSRFToken": csrfToken, "X-Requested-With": "XMLHttpRequest"}
+                        });
+                        const result = await response.json().catch(() => ({}));
+                        if (!response.ok) throw new Error(result.error || result.message || "Live session end nahi hua.");
+                        videoBox.innerHTML = '<span class="text-warning">Player eliminated · Live ended</span>';
+                        audioStatus.textContent = "Elimination marked by Admin. Player Live session ended.";
+                        eliminatedButton.textContent = "✓ Live ended";
+                    } catch (error) {
+                        messageStatus.textContent = error.message;
+                        eliminatedButton.disabled = false;
+                    }
+                });
                 const listenButton = col.querySelector(".ff-listen-toggle");
                 const talkButton = col.querySelector(".ff-talk-toggle");
                 const messageForm = col.querySelector(".ff-player-message-form");
