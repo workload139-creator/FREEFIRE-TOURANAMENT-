@@ -13,12 +13,15 @@ class PaymentAIAssessmentRulesTests(TestCase):
             is_free_fan_tournament=False,
             br_format="solo",
         )
+        player = SimpleNamespace(free_fire_uid="9876543210", uid_verified=True)
         registration = SimpleNamespace(
+            player=player,
+            free_fire_uid="9876543210",
             status=status,
             payment_verified=True,
             refund_processed=refunded,
         )
-        session = SimpleNamespace(registration_id=7)
+        session = SimpleNamespace(registration_id=7, status="active")
         return SimpleNamespace(
             tournament=tournament,
             registration=registration,
