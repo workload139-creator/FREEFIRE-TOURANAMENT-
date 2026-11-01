@@ -83,3 +83,24 @@ class LiveKillEvent(models.Model):
 
     def __str__(self):
         return f"Live kill candidate {self.event_uuid} · {self.registration.free_fire_uid}"
+
+
+
+class LiveAIPaymentAssessment(models.Model):
+    """Independent Payment AI assessment; advisory only until Admin approval."""
+    event = models.OneToOneField(
+        LiveKillEvent, on_delete=models.PROTECT, related_name="payment_assessment"
+    )
+    eligible = models.BooleanField(default=False, db_index=True)
+    proposed_kills = models.PositiveSmallIntegerField(default=0)
+    proposed_rewards = models.JSONField(default=list, blank=True)
+    checks = models.JSONField(default=dict, blank=True)
+    decision_reason = models.CharField(max_length=250, blank=True)
+    worker_version = models.CharField(max_length=32, default="payment-ai-v1")
+    assessed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-assessed_at",)
+
+    def __str__(self):
+        return f"Payment AI · event {self.event_id} · {'eligible' if self.eligible else 'held'}"
