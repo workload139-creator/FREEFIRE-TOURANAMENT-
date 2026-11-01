@@ -29,7 +29,6 @@ from apps.tournaments.models import TournamentLiveSession
 logger = logging.getLogger(__name__)
 OCR_SAMPLE_INTERVAL = 2.0
 KILL_SCAN_INTERVAL = 1.5
-KILL_EVENT_DEDUPE_SECONDS = 8
 KILL_TERMS = {"eliminated", "knocked", "headshot", "kill", "killed", "assist"}
 
 
@@ -191,9 +190,14 @@ class LiveAIWorker:
                         candidate = await asyncio.to_thread(_scan_kill_candidate, frame)
                         if candidate:
                             detected_text, confidence = candidate
-                            bucket = int(time.time() // KILL_EVENT_DEDUPE_SECONDS)
+                            # Stable fingerprint: do not include a time bucket. A persistent
+                            # killfeed notification can remain on screen across many OCR scans;
+                            # time-bucket fingerprints would turn that one notification into
+                            # repeated reward candidates every few seconds. The DB unique
+                            # constraint then deduplicates this event across worker restarts.
+                            normalized_text = " ".join(detected_text.casefold().split())
                             fingerprint = hashlib.sha256(
-                                f"{worker.session_uuid}|{bucket}|{detected_text.lower()}".encode("utf-8")
+                                f"{worker.session_uuid}|{normalized_text}".encode("utf-8")
                             ).hexdigest()
                             if fingerprint != worker.last_kill_fingerprint:
                                 accepted = await asyncio.to_thread(
