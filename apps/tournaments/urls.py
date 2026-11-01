@@ -70,6 +70,7 @@ urlpatterns = [
         views.player_room,
         name="player_room",
     ),
+    path("registration/<int:registration_id>/room-invite/", views.room_invite_open, name="room_invite_open"),
 
     # Admin room management
     path(

@@ -14,7 +14,7 @@ from django.http import FileResponse, Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, urlencode, urlsplit, parse_qs
 from django.views.decorators.http import require_POST
 
 from apps.accounts.models import Wallet, WalletTransaction, AdminWallet, AdminWalletTransaction
@@ -24,7 +24,7 @@ from .registration_services import RegistrationError, create_pending_registratio
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import LiveKillEvent, KillSubmission, Registration, Tournament, TournamentLedgerEntry, TournamentLiveSession
 from .kill_services import reward_for_tournament, rewards_for_tournament
-from .services import process_expired_ready_registrations, mark_not_playing_and_refund
+from .services import process_expired_ready_registrations, record_ready_no
 from .kill_safety import validate_match_dates, has_duplicate_match_id, get_match_id
 
 import qrcode
@@ -398,9 +398,9 @@ def confirm_playing(request, registration_id):
         if registration.status != Registration.Status.WAITING_READY or not registration.payment_verified:
             messages.error(request, "Is registration ki confirmation available nahi hai ya deadline khatam ho chuki hai.")
             return redirect("tournaments:player_room", registration_id=registration.pk)
-        if not registration.room_details_sent or not registration.tournament.room_id:
-            messages.error(request, "Room details abhi available nahi hain.")
-            return redirect("tournaments:list")
+        if not registration.room_details_sent:
+            messages.error(request, "Tournament ka ready-check abhi release nahi hua hai.")
+            return redirect("tournaments:player_room", registration_id=registration.pk)
         if not registration.ready_deadline or timezone.now() >= registration.ready_deadline:
             messages.error(request, "Confirmation ke 5 minute khatam ho gaye. Admin se contact karein.")
             return redirect("tournaments:player_room", registration_id=registration.pk)
@@ -416,36 +416,41 @@ def confirm_playing(request, registration_id):
 @login_required
 @require_POST
 def decline_playing(request, registration_id):
-    process_expired_ready_registrations()
-    registration = get_object_or_404(Registration, pk=registration_id, player=request.user)
-    if registration.status != Registration.Status.WAITING_READY:
-        messages.error(request, "Is registration ke liye NO option ab available nahi hai.")
-        return redirect("tournaments:my_registrations")
-    registration.ready_deadline = timezone.now()
-    registration.save(update_fields=["ready_deadline", "updated_at"])
-    changed, detail = mark_not_playing_and_refund(registration.pk)
+    get_object_or_404(Registration, pk=registration_id, player=request.user)
+    changed, detail = record_ready_no(registration_id, player=request.user, force=True)
     if changed:
-        messages.warning(request, "Aap NOT PLAYING mark ho gaye. Refund original in-app wallet currency mein credit hua hai; wallet history check karein.")
+        registration = Registration.objects.get(pk=registration_id)
+        if registration.refund_processed:
+            messages.warning(request, "Aapne 3 baar NO kiya. Registration band ho gayi aur entry fee ka one-time refund wallet mein credit hua hai.")
+        else:
+            messages.info(request, f"NO record ho gaya ({registration.no_response_count}/3). Agla confirmation prompt shuru ho gaya hai.")
     else:
         messages.error(request, "Status update nahi ho saka: " + detail)
-    return redirect("tournaments:my_registrations")
+    return redirect("tournaments:player_room", registration_id=registration_id)
 
 
 @login_required
 @user_passes_test(lambda user: user.is_staff)
 @require_POST
 def send_room_details(request, tournament_id):
-    room_id = request.POST.get("room_id", "").strip()
-    room_password = request.POST.get("room_password", "").strip()
-    room_qr_code = request.FILES.get("room_qr_code")
-    if not room_id or not room_password:
-        messages.error(request, "Room ID aur password dono bharo.")
+    invite_link = (request.POST.get("room_invite_link") or "").strip()
+    parsed = urlsplit(invite_link) if invite_link else None
+    query = parse_qs(parsed.query) if parsed else {}
+    if (
+        not parsed
+        or parsed.scheme != "https"
+        or parsed.hostname != "ffshare.garena.com"
+        or query.get("action", [""])[0] != "qrcode_room_invite_link"
+        or not query.get("room_id", [""])[0]
+        or not query.get("qr_serect_code", [""])[0]
+    ):
+        messages.error(request, "Valid official Garena invite link paste karein (room_id aur qr_serect_code ke saath).")
         return redirect("tournaments:admin_room_page", tournament_id=tournament_id)
 
     with transaction.atomic():
         tournament = get_object_or_404(Tournament.objects.select_for_update(), pk=tournament_id)
         if tournament.status != Tournament.Status.LIVE:
-            messages.error(request, "Room details sirf tournament LIVE hone ke baad release ki ja sakti hain.")
+            messages.error(request, "Room invite link LIVE hone ke baad yahan release karein. LIVE se pehle Tournament Admin form mein save kar sakte hain.")
             return redirect("tournaments:admin_room_page", tournament_id=tournament_id)
 
         try:
@@ -454,19 +459,8 @@ def send_room_details(request, tournament_id):
             messages.error(request, str(exc))
             return redirect("tournaments:admin_room_page", tournament_id=tournament_id)
 
-        tournament.room_id = room_id
-        tournament.room_password = room_password
-        update_fields = ["room_id", "room_password", "updated_at"]
-        if room_qr_code:
-            if getattr(room_qr_code, "content_type", "") not in ("image/jpeg", "image/png", "image/webp"):
-                messages.error(request, "Room QR ke liye JPG, PNG ya WebP image upload karein.")
-                return redirect("tournaments:admin_room_page", tournament_id=tournament_id)
-            if room_qr_code.size > 5 * 1024 * 1024:
-                messages.error(request, "Room QR image 5 MB se chhoti honi chahiye.")
-                return redirect("tournaments:admin_room_page", tournament_id=tournament_id)
-            tournament.room_qr_code = room_qr_code
-            update_fields.append("room_qr_code")
-        tournament.save(update_fields=update_fields)
+        tournament.room_invite_link = invite_link
+        tournament.save(update_fields=["room_invite_link", "updated_at"])
 
         now = timezone.now()
         eligible = Registration.objects.select_for_update().filter(
@@ -479,10 +473,37 @@ def send_room_details(request, tournament_id):
             room_details_sent=True,
             ready_deadline=now + timedelta(seconds=PLAYER_CONFIRMATION_TIMEOUT_SECONDS),
             ready_confirmed_at=None,
+            no_response_count=0,
         )
 
-    messages.success(request, f"Room details set ho gayi. {assigned_count} verified players ko {team_size}-player teams mein assign kiya. Eligible players ko 5 minute ke andar YES confirm karna hoga.")
+    messages.success(request, f"Official Room Invite Link save ho gaya. {assigned_count} verified players ko {team_size}-player teams mein assign kiya. Eligible players ko 5 minute mein YES/NO dena hai; har timeout bhi NO count hoga.")
     return redirect("tournaments:admin_room_page", tournament_id=tournament_id)
+
+
+@login_required
+def room_invite_open(request, registration_id):
+    registration = get_object_or_404(
+        Registration.objects.select_related("tournament"),
+        pk=registration_id,
+        player=request.user,
+    )
+    tournament = registration.tournament
+    allowed = (
+        tournament.status == Tournament.Status.LIVE
+        and registration.status == Registration.Status.READY
+        and registration.payment_verified
+        and not registration.refund_processed
+        and registration.room_details_sent
+        and bool(tournament.room_invite_link)
+        and TournamentLiveSession.objects.filter(
+            registration=registration,
+            status=TournamentLiveSession.Status.ACTIVE,
+        ).exists()
+    )
+    if not allowed:
+        messages.error(request, "Room Invite Link sirf confirmed player ki active Live AI session ke dauran khulega.")
+        return redirect("tournaments:player_room", registration_id=registration.pk)
+    return redirect(tournament.room_invite_link)
 
 
 @login_required
@@ -504,7 +525,6 @@ def player_room(request, registration_id):
         registration.payment_verified
         and registration.room_details_sent
         and registration.status == Registration.Status.READY
-        and bool(registration.tournament.room_id)
         and (registration.status == Registration.Status.READY or (
             registration.ready_deadline and timezone.now() < registration.ready_deadline
         ))
@@ -630,6 +650,7 @@ def admin_live_monitor(request):
             else:
                 item.admin_edit_url = reverse("admin:tournaments_tournament_change", args=[item.pk])
             item.control_url = reverse("tournaments:admin_tournament_dashboard", args=[item.pk])
+            item.room_form_url = reverse("tournaments:admin_room_page", args=[item.pk])
 
     live_tournaments = list(live_tournaments)
     waiting_tournaments = list(waiting_tournaments)

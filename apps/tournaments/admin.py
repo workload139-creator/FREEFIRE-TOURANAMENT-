@@ -1,5 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal
+from urllib.parse import parse_qs, urlsplit
 
 from django import forms
 from django.conf import settings
@@ -57,8 +58,12 @@ class TournamentAdminForm(forms.ModelForm):
                 self.fields["start_time"].required = False
         if "gender_category" in self.fields:
             self.fields["gender_category"].required = False
+        if "room_invite_link" in self.fields:
+            self.fields["room_invite_link"].label = "Free Fire Room Invite Link"
+            self.fields["room_invite_link"].required = False
+            self.fields["room_invite_link"].help_text = "Official https://ffshare.garena.com/ invite link. Set before LIVE or update after LIVE in the tournament Room Invite page."
         self.fields["status"].help_text = (
-            "Registration open rakhein, room details set karke LIVE karein, match ke baad COMPLETED karein, "
+            "Registration open rakhein, Room Invite Link set karke LIVE karein, match ke baad COMPLETED karein, "
             "ya cancellation/refund ke liye CANCELLED select karein."
         )
         if "auto_reopen" in self.fields:
@@ -76,6 +81,18 @@ class TournamentAdminForm(forms.ModelForm):
         cleaned = super().clean()
         if not cleaned.get("gender_category"):
             cleaned["gender_category"] = Tournament.GenderCategory.OPEN
+        invite_link = (cleaned.get("room_invite_link") or "").strip()
+        if invite_link:
+            parsed = urlsplit(invite_link)
+            query = parse_qs(parsed.query)
+            if (
+                parsed.scheme != "https"
+                or parsed.hostname != "ffshare.garena.com"
+                or query.get("action", [""])[0] != "qrcode_room_invite_link"
+                or not query.get("room_id", [""])[0]
+                or not query.get("qr_serect_code", [""])[0]
+            ):
+                self.add_error("room_invite_link", "Official Garena invite link with room_id and qr_serect_code required.")
         if self.instance._meta.proxy and self.instance._meta.model_name == "diwalioffertournament":
             cleaned.update({
                 "mode": Tournament.Mode.BR,
@@ -114,14 +131,6 @@ class TournamentAdminForm(forms.ModelForm):
         elif cleaned.get("auto_reopen"):
             self.add_error("auto_reopen", "Auto reopen sirf Unlimited BR series ke liye hai.")
 
-        # Room credentials must be saved in the same admin submission that makes it LIVE.
-        if cleaned.get("status") == Tournament.Status.LIVE:
-            room_id = cleaned.get("room_id") or getattr(self.instance, "room_id", "")
-            room_password = cleaned.get("room_password") or getattr(self.instance, "room_password", "")
-            if not (room_id or "").strip():
-                self.add_error("room_id", "Tournament LIVE karne se pehle Live Monitor mein Room ID bharo.")
-            if not (room_password or "").strip():
-                self.add_error("room_password", "Tournament LIVE karne se pehle Live Monitor mein Room Password bharo.")
         return cleaned
 
 
@@ -133,14 +142,14 @@ class RegistrationInline(admin.TabularInline):
         "player", "player_contact", "player_payout_qr", "free_fire_uid",
         "payment_method", "currency_amount", "entry_fee_paid",
         "payment_reference", "payment_verified", "status", "verification_photo",
-        "team_number", "team_position", "room_details_sent", "ready_deadline", "ready_confirmed_at",
+        "team_number", "team_position", "room_details_sent", "ready_deadline", "ready_confirmed_at", "no_response_count",
         "refund_processed", "refund_reference", "registered_at",
     )
     readonly_fields = (
         "player", "player_contact", "player_payout_qr", "free_fire_uid",
         "payment_method", "currency_amount", "entry_fee_paid", "payment_reference",
         "verification_photo", "team_number", "team_position", "room_details_sent", "ready_deadline",
-        "ready_confirmed_at", "refund_processed", "refund_reference", "registered_at",
+        "ready_confirmed_at", "no_response_count", "refund_processed", "refund_reference", "registered_at",
     )
     can_delete = False
     ordering = ("registered_at",)
@@ -458,7 +467,7 @@ def award_diwali_winner_diamonds(modeladmin, request, queryset):
 @admin.register(Tournament)
 class TournamentAdmin(admin.ModelAdmin):
     form = TournamentAdminForm
-    exclude = ("is_unlimited_br", "is_free_fan_tournament", "auto_start_at_capacity", "auto_reopen", "series_root")
+    exclude = ("is_unlimited_br", "is_free_fan_tournament", "auto_start_at_capacity", "auto_reopen", "series_root", "room_id", "room_password", "room_qr_code")
     list_display = (
         "title", "open_tournament_control", "mode", "br_format", "vs_format", "gender_category",
         "entry_fee", "prize_pool", "max_players", "status_label", "winner_prize_paid",
@@ -628,11 +637,9 @@ class TournamentAdmin(admin.ModelAdmin):
                         f"Your registered Free Fire UID: {registration.free_fire_uid}\n"
                         f"Entry fee: {entry_fee_label}\n\n"
                         "Open the secure tournament page and press YES if you want to play, "
-                        "or NO if you cannot play. Room ID/password are shown only after YES. "
-                        "Please respond within 5 minutes. If you press NO or do not respond, "
-                        "you will be marked NOT PLAYING. If your entry was paid directly by UPI, "
-                        "the admin must send the real refund and record its UTR; the website "
-                        "cannot transfer money automatically.\n\n"
+                        "or NO if you cannot play. You will get up to three 5-minute confirmation rounds. "
+                        "If you press NO or do not respond three times, your entry is removed and the entry fee is refunded to your FF Arena wallet. "
+                        "After YES, grant the Android screen-share permission; JOIN ROOM appears only while Live AI sharing is active and after Admin adds the invite link.\n\n"
                         f"Confirm here: {room_url}\n"
                     ),
                     from_email=settings.DEFAULT_FROM_EMAIL,
@@ -726,8 +733,8 @@ class TournamentAdmin(admin.ModelAdmin):
     fieldsets = (
         ("1. Existing Tournament Details", {"description": "Yahan sirf pehle se website par maujood tournament edit karein. BR page par Solo, Duo aur Squad rounds manage hote hain; CS/VS page par 1v1, 2v2, 3v3 aur 4v4. Naya tournament create nahi hota.", "fields": ("tournament_control_panel", "title", "description", "mode", "br_format", "vs_format", "gender_category")}),
         ("2. Fees & Players — entry aur capacity", {"description": "Entry Fee player se li jane wali registration fee hai. Prize Pool tournament ka first-place prize hai; ise admin ke funds aur payout process ke mutabik set karein. Max Players room capacity hai (maximum 49). BR format Solo/Duo/Squad chunein. Normal BR mein har approved kill par 5 Diamonds; minimum 2 verified kills. Free Fan event ka alag Fan Token rule rahega. Evidence verification zaroori hai.", "fields": ("entry_fee", "prize_pool", "max_players")}),
-        ("4. Status — LIVE / COMPLETED / CANCELLED", {"description": "Tournament ki public listing date/time par depend nahi karti. Room ID aur Password set karke LIVE karein; eligible players ka existing 5-minute YES/NO confirmation flow wahi rahega. Match khatam hone par Live Monitor se COMPLETED karein. Cancel karne par existing refund workflow chalega.", "fields": ("status",)}),
-        ("5. Room Details — private until YES", {"description": "Room ID aur Password game room ke credentials hain. Tournament LIVE karte waqt dono bharein. Player ko room tabhi dikhega jab woh deadline ke andar YES kare. Credentials public description/website post mein na likhein.", "fields": ("room_id", "room_password")}),
+        ("4. Status — LIVE / COMPLETED / CANCELLED", {"description": "Tournament ki public listing date/time par depend nahi karti. Room Invite Link set karke LIVE karein; eligible players ko 3 attempts wala 5-minute YES/NO confirmation flow milega. Match khatam hone par Live Monitor se COMPLETED karein. Cancel karne par existing refund workflow chalega.", "fields": ("status",)}),
+        ("5. Free Fire Room Invite Link", {"description": "Official Garena ffshare.garena.com invite link yahan set karein. Player ko JOIN ROOM sirf Live AI screen-share permission active hone ke baad dikhega.", "fields": ("room_invite_link",)}),
         ("6. BR Winning Team Rewards", {"description": "Tournament Completed hone ke baad winning BR team ke har player ka registered Free Fire UID yahan alag line ya comma se likhein. Admin action se har verified winner ko 10 Fan Tokens + 50 Coins ek hi baar milenge; har reward ledger mein save hoga.", "fields": ("winner_team_uids",)}),
         ("7. First Place Winner & payout tracking", {"description": "Tournament complete/review ke baad winner ki registered Free Fire UID enter karein. Neeche player ki saved UPI/QR details dekh sakte hain. Winner Prize Reference mein actual transfer ka real UTR enter karne ke baad hi payout action use karein. Is field ko bharna apne-aap paise transfer nahi karta.", "fields": ("winner_uid", "winner_payout_destination", "winner_payout_qr", "winner_prize_reference", "winner_prize_paid")}),
     )
@@ -873,7 +880,7 @@ class UnlimitedTournamentAdmin(TournamentAdmin):
     """Dedicated admin list for paid BR Solo/Duo/Squad unlimited events."""
 
     # One dedicated BR page for all existing Solo, Duo and Squad rounds.
-    exclude = ("is_unlimited_br", "is_free_fan_tournament", "auto_start_at_capacity", "auto_reopen", "series_root")
+    exclude = ("is_unlimited_br", "is_free_fan_tournament", "auto_start_at_capacity", "auto_reopen", "series_root", "room_id", "room_password", "room_qr_code")
     list_filter = ("br_format",)
     ordering = ("-created_at",)
 
@@ -924,9 +931,9 @@ class DiwaliOfferTournamentAdmin(TournamentAdmin):
                 "description": "Yeh event regular BR se alag hai. System fixed rakha gaya hai: 1 Diamond entry, 49 Solo players, 20 Diamonds first prize, 5 Coins per approved kill, minimum 2 verified kills. Public page par date/time nahi dikhega.",
                 "fields": ("tournament_control_panel", "title", "description", "entry_fee", "max_players", "status"),
             }),
-            ("🎮 Private Room Details", {
-                "description": "Round LIVE hone par eligible players ko room details private bhejne ke liye yahan Room ID aur Password set karein.",
-                "fields": ("room_id", "room_password"),
+            ("🎮 Free Fire Room Invite Link", {
+                "description": "Official Garena invite link yahan set karein. Player ko JOIN ROOM sirf Live AI screen-share permission active hone ke baad dikhega.",
+                "fields": ("room_invite_link",),
             }),
             ("🏆 Winner & Diwali Prize", {
                 "description": "Round Completed karne ke baad verified winner ka registered Free Fire UID enter karein. Neeche action se 20 Diamonds ek baar credit honge.",
@@ -1265,7 +1272,7 @@ class RegistrationAdmin(admin.ModelAdmin):
             "fields": ("entry_fee_paid", "payment_method", "currency_amount", "payment_reference", "payment_submitted_at", "payment_verified"),
         }),
         ("4. Match / Room Readiness", {
-            "description": "Room ID/password sirf eligible paid players ko share karein. Ready deadline aur confirmation check karein.",
+            "description": "Garena Room Invite Link sirf eligible paid players ke liye hai. Ready deadline, three NO attempts aur refund status check karein.",
             "fields": ("room_details_sent", "ready_deadline", "ready_confirmed_at"),
         }),
         ("5. Cancellation / Refund Tracking", {

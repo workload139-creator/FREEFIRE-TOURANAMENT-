@@ -54,12 +54,14 @@ def validate_match_dates(reviewer_reports, tournament):
     # Date-free rounds can remain open for registration for many days. Validate
     # evidence against the actual LIVE session where possible, not the round's
     # creation timestamp; fall back to the status-change timestamp for older events.
-    live_started_at = tournament.live_sessions.order_by("started_at").values_list(
-        "started_at", flat=True
-    ).first()
+    live_sessions = getattr(tournament, "live_sessions", None)
+    live_started_at = (
+        live_sessions.order_by("started_at").values_list("started_at", flat=True).first()
+        if live_sessions is not None else None
+    )
     reference_time = live_started_at or (
         tournament.updated_at
-        if tournament.status in ("live", "completed")
+        if getattr(tournament, "status", "") in ("live", "completed")
         else tournament.start_time
     )
     tournament_date = timezone.localtime(reference_time).date()
