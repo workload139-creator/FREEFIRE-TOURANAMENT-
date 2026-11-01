@@ -30,6 +30,9 @@ class PaymentAIAssessmentRulesTests(TestCase):
             session=session,
             confidence=confidence,
             detected_text="Enemy eliminated",
+            match_id="MATCH-001",
+            kill_at=object(),
+            attributed_player_name="RegisteredNick",
         )
 
     def test_first_valid_kill_waits_for_minimum_two(self):
@@ -51,6 +54,8 @@ class PaymentAIAssessmentRulesTests(TestCase):
             {"currency": "diamonds", "quantity": 10, "label": "Diamonds"}
         ])
         self.assertNotIn("wallet", result)
+        self.assertTrue(result["checks"]["four_ai_passed"])
+        self.assertEqual(len(result["checks"]["four_ai_review"]), 4)
 
     def test_training_ground_or_unsupported_mode_is_held(self):
         event = self.make_event(mode="TRAINING")
