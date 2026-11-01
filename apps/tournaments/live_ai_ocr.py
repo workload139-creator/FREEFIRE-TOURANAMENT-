@@ -10,7 +10,7 @@ from pytesseract import Output
 
 
 def verify_profile_uid(image, registered_uid):
-    uid = re.sub(r"\\D", "", str(registered_uid or ""))
+    uid = re.sub(r"\D", "", str(registered_uid or ""))
     if not uid:
         return False, 0.0
 
@@ -31,12 +31,12 @@ def verify_profile_uid(image, registered_uid):
 
     # Require the profile's UID label and the exact UID token in the same OCR
     # result. Do not fuzzy-match digits: a mismatch must remain unverified.
-    has_uid_label = any(re.search(r"\\buid\\b", word, re.IGNORECASE) for word, _ in words)
+    has_uid_label = any(re.search(r"\buid\b", word, re.IGNORECASE) for word, _ in words)
     if not has_uid_label:
         return False, 0.0
 
     for word, score in words:
-        digits = re.sub(r"\\D", "", word)
+        digits = re.sub(r"\D", "", word)
         if digits == uid:
             return True, min(1.0, score / 100.0)
     return False, 0.0
