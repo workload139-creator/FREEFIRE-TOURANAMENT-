@@ -18,7 +18,8 @@ from django.views.decorators.http import require_GET, require_POST
 
 from livekit import api
 
-from .models import Registration, Tournament, TournamentLiveMessage, TournamentLiveSession
+from .models import LiveKillEvent, Registration, Tournament, TournamentLiveMessage, TournamentLiveSession
+from .kill_services import rewards_for_tournament
 
 logger = logging.getLogger(__name__)
 
@@ -119,6 +120,18 @@ def tournament_live_token(request, registration_id):
                 "session_id": str(session.session_uuid),
                 "registration_id": registration.pk,
                 "state": session.monitor_state,
+            "identity_verified": bool(session.identity_verified_at),
+            "identity_confidence": str(session.identity_ocr_confidence),
+            "approved_kills": verified_counts.get(session.registration_id, 0),
+            "pending_kills": candidate_counts.get(session.registration_id, 0),
+            "reward_preview": rewards_for_tournament(
+                tournament, verified_counts.get(session.registration_id, 0)
+            ) if verified_counts.get(session.registration_id, 0) >= 2 else [],
+            "frames_seen": session.monitor_frames_seen,
+            "detections_seen": session.monitor_detections_seen,
+            "last_heartbeat": session.monitor_last_heartbeat_at.isoformat() if session.monitor_last_heartbeat_at else None,
+            "monitor_error": session.monitor_last_error,
+            "background_warnings": session.background_warning_count,
                 "architecture": "shared_tournament_monitor",
             },
         })
@@ -148,6 +161,22 @@ def admin_tournament_live_tokens(request, tournament_id):
         registration__payment_verified=True,
         registration__refund_processed=False,
     ).select_related("registration", "registration__player").order_by("started_at")
+    sessions = list(sessions)
+    registration_ids = [session.registration_id for session in sessions]
+    verified_counts = dict(
+        LiveKillEvent.objects.filter(
+            tournament=tournament,
+            registration_id__in=registration_ids,
+            status=LiveKillEvent.Status.VERIFIED,
+        ).values("registration_id").annotate(total=__import__("django.db.models", fromlist=["Count"]).Count("id")).values_list("registration_id", "total")
+    )
+    candidate_counts = dict(
+        LiveKillEvent.objects.filter(
+            tournament=tournament, registration_id__in=registration_ids
+        ).exclude(status=LiveKillEvent.Status.VERIFIED).values("registration_id").annotate(
+            total=__import__("django.db.models", fromlist=["Count"]).Count("id")
+        ).values_list("registration_id", "total")
+    )
     streams = []
     for session in sessions:
         identity = f"ffarena-admin-{request.user.pk}-{session.session_uuid.hex[:12]}"
