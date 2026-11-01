@@ -14,14 +14,8 @@ table{width:100%;border-collapse:collapse;min-width:650px}th,td{padding:9px;bord
 <p style="color:#fdbb74;font-size:12px">Rule-based AI review: risk aur priority batata hai. Payment approval/payout sirf admin karega; AI paise transfer nahi karega.</p></div>
 
 <div class="ai-section">
-<h2>🔌 AI provider connection status</h2>
-<p>OpenAI: {% if ai_api_configured.openai %}<b style="color:#16803c">API key configured</b>{% else %}<b style="color:#b42318">API key missing</b>{% endif %}</p>
-<p>Ollama: {% if ai_api_configured.ollama %}<b style="color:#16803c">API key configured</b>{% else %}<b style="color:#b42318">API key missing</b>{% endif %}</p>
-<form method="post" action="{% url 'admin:ai_assessment_test_apis' %}">
-{% csrf_token %}
-<button type="submit" class="button" style="background:#e97816;color:white;border:0;padding:10px 16px;border-radius:7px;font-weight:bold">Test OpenAI + Ollama APIs</button>
-</form>
-<p style="font-size:12px;color:#667085;margin-top:10px">The test sends a tiny generic prompt to each provider. No player names, UPI IDs, payment references, screenshots, phone numbers or wallet records are sent.</p>
+<h2>🧠 Four local AI reviewers</h2>
+<p>No external AI service or API key is used. Assessment 1 reads history screenshots; Assessment 2 samples match video frames; Agent 1 compares UID/date/kills/mode; Agent 2 checks evidence integrity and duplicates. Tesseract OCR and FFmpeg must be available on the server. These checks are advisory; uncertain cases go to Admin Review.</p>
 </div>
 
 <div class="ai-section">

@@ -24,6 +24,117 @@
    <p class="help-text" style="margin-bottom:0">Note: Game khulne ke baad Custom Room mein Room ID aur Password manually enter/paste karein. FF Arena kisi game ke andar automatically room join nahi kar sakta. India-region account ke liye Free Fire India aur non-India account ke liye Free Fire MAX ka sahi version chunein.</p>
   </section>
 
+  <section id="liveAiShare" style="padding:20px;margin:18px 0;border:1px solid rgba(34,197,94,.55);border-radius:16px">
+   <h2>📡 FF Arena Live AI</h2>
+   <p>Live start karne se pehle Free Fire kholkar apni <strong>Profile screen</strong> dikhayein. Nickname aur UID saaf nazar aane chahiye. Uske baad lobby mein jaakar match shuru karein aur poore match mein screen share chalu rakhein.</p>
+   <div role="note" style="padding:14px;margin:12px 0;border:1px solid #f59e0b;border-radius:12px;background:rgba(245,158,11,.08)"><strong>⚠️ AI PROFILE VERIFICATION RULE</strong><p style="margin:8px 0 0">AI ko pehle aapki lobby/profile se nickname aur UID padhkar registered UID se match karna hoga. Profile nahi dikhayi, UID/nickname clear nahi hua ya identity match nahi hui, to kills verify nahi honge aur reward release nahi hoga. Match ke dauran AI sirf isi registered player ke killfeed events count karega.</p></div>
+   <p>Screen stream LiveKit ke secure room par share hoti hai. Full gameplay recording website par save nahi hoti; analysis ke liye frames temporary process honge.</p>
+   <p><strong>Privacy:</strong> Start karne par Android screen-sharing permission maangi jayegi. Free Fire aur notifications mein dikhne wali personal information bhi screen par aa sakti hai; share karne se pehle sensitive notifications band kar dein.</p>
+   <form id="liveAiConsentForm">
+    {% csrf_token %}
+    <label style="display:flex;gap:10px;align-items:flex-start;margin:14px 0">
+     <input type="checkbox" id="liveAiConsent" required style="margin-top:4px">
+     <span>Main samajhta/samajhti hoon ki meri screen Live AI review ke liye share hogi aur main is sharing ke liye sahmati deta/deti hoon.</span>
+    </label>
+    <button type="submit" class="btn-primary" id="startLiveAiButton">▶ Start Live AI</button>
+    <button type="button" class="button button-outline" id="stopLiveAiButton" hidden>■ Stop Live</button>
+   </form>
+   <p id="liveAiStatus" class="help-text" role="status" aria-live="polite">Live abhi start nahi hua.</p>
+   <p class="help-text">Profile screen ko Live start hote hi clearly dikhayein; phir lobby aur match continue karein. App switch hone par warning record ho sakti hai; isse automatic ban ya removal nahi hoga. Aap kabhi bhi Live stop kar sakte hain.</p>
+  </section>
+  <script>
+  (function () {
+    const form = document.getElementById("liveAiConsentForm");
+    const consent = document.getElementById("liveAiConsent");
+    const startButton = document.getElementById("startLiveAiButton");
+    const stopButton = document.getElementById("stopLiveAiButton");
+    const status = document.getElementById("liveAiStatus");
+    const csrf = form.querySelector("input[name=csrfmiddlewaretoken]")?.value || "";
+    const tokenUrl = "{% url 'tournaments:live_token' registration.id %}";
+    const endUrl = "{% url 'tournaments:live_end' registration.id %}";
+    const warningUrl = "{% url 'tournaments:live_background_warning' registration.id %}";
+    let active = false;
+    let awaitingNativeStart = false;
+    let backgroundWarningSent = false;
+
+    async function post(url, payload) {
+      const response = await fetch(url, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrf,
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        body: JSON.stringify(payload || {})
+      });
+      const data = await response.json().catch(function () { return {}; });
+      if (!response.ok) throw new Error(data.error || "Live request failed.");
+      return data;
+    }
+
+    form.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      if (!consent.checked) {
+        status.textContent = "Live start karne se pehle consent checkbox select karein.";
+        return;
+      }
+      if (!window.FFArenaLive || typeof window.FFArenaLive.start !== "function") {
+        status.textContent = "Screen Live ke liye FF Arena ka updated Android app zaroori hai.";
+        return;
+      }
+      startButton.disabled = true;
+      status.textContent = "Secure Live session connect ho raha hai…";
+      try {
+        const session = await post(tokenUrl, {});
+        awaitingNativeStart = true;
+        window.FFArenaLive.start(session.url, session.token);
+        status.textContent = "Android permission approve karein. Uske baad Live stream start hogi.";
+      } catch (error) {
+        status.textContent = error.message || "Live session start nahi ho saka.";
+        startButton.disabled = false;
+      }
+    });
+
+    stopButton.addEventListener("click", async function () {
+      if (window.FFArenaLive && typeof window.FFArenaLive.stop === "function") {
+        window.FFArenaLive.stop();
+      }
+      try {
+        await post(endUrl, {});
+      } catch (error) {
+        status.textContent = "Live stop request server tak nahi pahunchi: " + error.message;
+      }
+      active = false;
+      backgroundWarningSent = false;
+      startButton.disabled = false;
+      stopButton.hidden = true;
+    });
+
+    window.addEventListener("ffarena-live-status", function (event) {
+      const detail = event.detail || {};
+      active = Boolean(detail.active);
+      if (active) {
+        awaitingNativeStart = false;
+      } else if (awaitingNativeStart) {
+        awaitingNativeStart = false;
+        post(endUrl, {}).catch(function () {});
+      }
+      status.textContent = detail.message || (active ? "Live active hai." : "Live inactive hai.");
+      startButton.disabled = active;
+      stopButton.hidden = !active;
+      if (!active) backgroundWarningSent = false;
+    });
+
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden" && active && !backgroundWarningSent) {
+        backgroundWarningSent = true;
+        post(warningUrl, {}).catch(function () {});
+      }
+    });
+  })();
+  </script>
+
   <section id="roomSaveStep" style="padding:18px;margin:18px 0;border:1px solid var(--border-color, #555);border-radius:14px">
    <h3>1. Save Room Details</h3>
    <p>Sabse pehle room details save karein. Save hone ke baad ye button hat jayega.</p>
@@ -72,12 +183,11 @@
   </section>
 
   <section style="padding:22px;margin:22px 0;border:2px solid var(--primary, #f59e0b);border-radius:16px;text-align:center">
-   <div style="font-size:34px;margin-bottom:8px">🏆</div>
-   <h2 style="font-size:clamp(24px,5vw,36px);margin:0 0 10px">WIN PRIZE KE LIYE</h2>
-   <h2 style="font-size:clamp(22px,4vw,30px);margin:0 0 12px">KILL SUBMISSION</h2>
-   <p>Match ke baad 15–30 second video aur 2 game-history screenshots submit karein.</p>
-   <a class="btn-primary" style="display:block;width:100%;box-sizing:border-box;padding:18px 16px;font-size:18px;font-weight:800;text-align:center;margin-top:14px" href="{% url 'tournaments:kill_submission' registration.id %}">🎯 SUBMIT KILL VIDEO + 2 SCREENSHOTS</a>
-   <p class="help-text">Apni registered Free Fire UID hi use karein. AI evidence review aur tournament reward rules apply honge.</p>
+   <div style="font-size:34px;margin-bottom:8px">🤖</div>
+   <h2 style="font-size:clamp(22px,4vw,30px);margin:0 0 12px">LIVE AI KILL TRACKING</h2>
+   <p>Alag se Kill Submission, screenshot ya video upload nahi karna hai. Live share chalu rakhein. Background subscriber worker connect hone par stream frames read karega; Killfeed OCR aur automatic reward abhi testing/development mein hain.</p>
+   <p class="help-text">Jab Killfeed verification active hogi, tabhi verified event par BR/VS rule ke mutabik ek baar reward diya jayega. Filhaal automatic kill reward active nahi hai; Admin confirmation ke bina reward assume na karein.</p>
+   <div id="ffLiveAiStatus" role="status" aria-live="polite">Live AI pairing aapke stream session ke saath activate hoti hai.</div>
   </section>
  </div>
  <script>

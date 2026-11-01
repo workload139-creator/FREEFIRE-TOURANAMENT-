@@ -25,7 +25,6 @@ Set secrets in Render Dashboard → your web service → Environment; never comm
 - Permanent player photos, UPI QR images and match evidence: set `CLOUDINARY_URL` from your Cloudinary Console. Without it, Render local media is temporary; new uploads will not be durable.
 - Email OTP/password reset: `BREVO_API_KEY` and `DEFAULT_FROM_EMAIL` (the sender must be verified in Brevo). SMTP fallback uses `EMAIL_HOST_USER` and `EMAIL_HOST_PASSWORD`.
 - Tournament entry UPI: `FF_ARENA_UPI_ID` and optional `FF_ARENA_UPI_NAME`. The registration page shows an amount-specific QR and an “Open UPI app” link, then asks for the player's Profile UID, Free Fire UID and UTR. Registration remains pending until admin checks the actual incoming UPI/bank statement and verifies it.
-- Dual AI evidence review: set `OPENAI_API_KEY`, `OPENAI_KILL_REVIEW_MODEL`, `KILL_REVIEW_PROVIDER=dual`, `KILL_REVIEW_BASE_URL`, `KILL_REVIEW_API_KEY`, and `OLLAMA_KILL_REVIEW_MODEL`. The secondary endpoint must support image inputs and be reachable from Render. If either reviewer fails, the evidence goes to Admin Review. Keep all keys in Render Environment, never in GitHub.
 
 ## Local setup (Windows / PowerShell)
 
@@ -83,11 +82,14 @@ This command is not a background scheduler. Configure Windows Task Scheduler or 
 
 ## AI match-history review
 
-The kill-review flow runs two independent multimodal vision checks in dual mode: OpenAI assessment (`OPENAI_API_KEY`, `OPENAI_KILL_REVIEW_MODEL`) and an AI Agent through the configured OpenAI-compatible vision endpoint (`KILL_REVIEW_BASE_URL`, `KILL_REVIEW_API_KEY`, `OLLAMA_KILL_REVIEW_MODEL`). Both receive the two uploaded Free Fire history screenshots and five sampled frames from the submitted 15–30 second video. The prompt checks visible player UID, personal (not team) kills, BR/Clash Squad mode, match date/ID/result where shown, and whether the screenshots and video appear to show the same match.
+The existing evidence-review flow uses four local reviewers and does not call any external AI service:
 
-The app does not have an official Garena match-history API connection. AI must not claim it queried Garena or verified a match online; it can only assess the evidence uploaded by the player. A reward is automatically credited only when both models independently return the same kill count, high confidence, exact registered UID, complete evidence and consistent history, and the website's own payment/registration/UID checks also pass. If either model fails, a field is unreadable, the evidence is incomplete, or the models disagree, the submission remains pending for Admin Review and no automatic reward is issued. The AI Agent is still attempted even if the first AI fails.
+- Assessment 1 reads the two uploaded Free Fire history screenshots with local OCR.
+- Assessment 2 samples frames from the submitted match-history video and reads visible text with local OCR.
+- Agent 1 compares readable UID, kill count, date and BR/VS mode fields across the screenshots and video.
+- Agent 2 checks evidence fingerprints, duplicate/integrity signals and missing evidence.
 
-FFmpeg samples the video; install it or use the bundled `imageio-ffmpeg` binary. Players must consent to AI processing. Keep all AI keys in Render Environment, never in GitHub.
+Tesseract OCR and FFmpeg (or the bundled `imageio-ffmpeg` binary) must be available on the host. These local OCR/rule-based checks are advisory: they cannot query Garena or guarantee the source media is genuine. Unreadable fields, missing match identifiers, mismatches or uncertainty stay in Admin Review. This uploaded-evidence flow does not independently authorize automatic rewards. Keep the separate Live AI pipeline gated until real device streaming, frame assessment, event deduplication and exact-once reward tests pass.
 
 ## Durable media and Android app data
 
@@ -99,18 +101,6 @@ The Android app keeps WebView DOM storage and cookies enabled and flushes sessio
 
 Set `FF_ARENA_UPI_ID` in the Render environment to the UPI ID owned by the receiving account. Do not put API keys or bank credentials in source control. The UPI button only opens a UPI app with the amount prefilled; payment confirmation does not return to this website. Admin must match the actual incoming bank/UPI statement, enter the bank reference on the pending Deposit Request, and approve it in Django admin. Withdrawals still require an admin to send the payout manually and record its payout reference. The internal Admin Wallet is accounting inside the website, not a bank account.
 
-## Automatic Cashfree checkout setup
-
-The automatic checkout route is `/accounts/wallet/deposit/automatic/`. It creates a server-side Cashfree order, opens the existing secure checkout template, and credits the wallet only after the server verifies the order and successful payment. The browser redirect by itself never credits a wallet.
-
-If `CASHFREE_CLIENT_ID` or `CASHFREE_CLIENT_SECRET` is blank, the automatic deposit gateway intentionally remains unavailable and the deposit page displays a setup message. I cannot create or retrieve Cashfree credentials from source code. For sandbox testing, add these Render Environment variables (do not commit values):
-- `CASHFREE_CLIENT_ID` — Cashfree sandbox App ID
-- `CASHFREE_CLIENT_SECRET` — Cashfree sandbox secret
-- `CASHFREE_MODE=sandbox`
-
-Configure Cashfree's sandbox webhook URL as `https://YOUR-RENDER-HOST/accounts/wallet/deposit/cashfree/webhook/`. Set the return URL to `https://YOUR-RENDER-HOST/accounts/wallet/deposit/cashfree/return/` if the dashboard requests one; the order API also receives both URLs. The webhook signature is verified before processing. Test with sandbox transactions first.
-
-For real money, switch to production credentials and `CASHFREE_MODE=production` only after Cashfree has approved the actual tournament/entry-fee/prize use case and required business/KYC checks. A free account or sandbox keys do not authorize live real-money gaming. The code does not send withdrawals automatically; withdrawals remain admin-reviewed until an approved payout API is separately integrated and tested.
 
 ## Phone OTP and DigiLocker setup status
 

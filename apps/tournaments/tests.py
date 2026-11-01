@@ -45,60 +45,62 @@ class KillRewardTests(SimpleTestCase):
             calculate_proposed_reward(-1)
 
 class FourAIReviewTests(SimpleTestCase):
+    def _submission(self):
+        return SimpleNamespace(
+            registered_uid="1234567890",
+            free_fire_uid="1234567890",
+            history_image_one=SimpleNamespace(name="history-one.png"),
+            history_image_two=SimpleNamespace(name="history-two.png"),
+            history_video=SimpleNamespace(name="history.mp4"),
+        )
 
-    def _result(self, kills=4, uid="1234567890"):
-        return {
-            "proposed_kills": kills, "confidence": "high",
-            "uid_matches": True, "observed_uid": uid,
-            "history_consistent": True, "evidence_complete": True, "tampering_suspected": False,
-            "match_mode": "Battle Royale", "match_date": "2026-10-30",
-            "match_id": "match-123", "evidence_notes": "UID and personal kills are readable.",
-            "reason": "Evidence is clear.",
-        }
+    def _text(self, kills=4, uid="1234567890"):
+        return f"Free Fire UID: {uid} Battle Royale Kills: {kills} 30/10/2026"
 
-    @patch("apps.tournaments.ai_review.verify_evidence_integrity")
-    @patch("apps.tournaments.ai_review._analyze_with_provider")
-    def test_four_independent_passes_must_agree(self, review, integrity):
-        review.side_effect = [self._result(), self._result(), self._result(), self._result()]
-        result = analyze_kill_evidence(SimpleNamespace(registered_uid="1234567890"))
-        self.assertEqual(review.call_count, 4)
-        self.assertTrue(result["four_way_agreement"])
-        self.assertEqual(len(result["reviewer_reports"]), 4)
+    @patch("apps.tournaments.ai_review.verify_evidence_integrity", return_value={})
+    @patch("apps.tournaments.ai_review._bytes", side_effect=[b"image-one", b"image-two"])
+    @patch("apps.tournaments.ai_review._frames", return_value=([(10, b"frame")], ""))
+    @patch("apps.tournaments.ai_review._ocr")
+    def test_local_review_reports_cross_media_agreement(self, ocr, frames, read_bytes, integrity):
+        ocr.side_effect = [
+            (self._text(), ""),
+            (self._text(), ""),
+            (self._text(), ""),
+        ]
+        result = analyze_kill_evidence(self._submission())
+        self.assertTrue(result["dual_agreement"])
         self.assertEqual(result["proposed_kills"], 4)
-
-    @patch("apps.tournaments.ai_review.verify_evidence_integrity")
-    @patch("apps.tournaments.ai_review._analyze_with_provider")
-    def test_one_reviewer_failure_is_recorded_and_does_not_stop_others(self, review, integrity):
-        review.side_effect = [AIReviewError("OpenAI unavailable"), self._result(), self._result(), self._result()]
-        result = analyze_kill_evidence(SimpleNamespace(registered_uid="1234567890"))
-        self.assertEqual(review.call_count, 4)
+        self.assertEqual(len(result["reviewer_reports"]), 4)
         self.assertFalse(result["four_way_agreement"])
-        self.assertEqual(list(result["reviewer_reports"].values())[0]["status"], "FAILED")
 
-    @patch("apps.tournaments.ai_review.verify_evidence_integrity")
-    @patch("apps.tournaments.ai_review._analyze_with_provider")
-    def test_kill_disagreement_blocks_four_way_agreement(self, review, integrity):
-        review.side_effect = [self._result(4), self._result(4), self._result(5), self._result(4)]
-        result = analyze_kill_evidence(SimpleNamespace(registered_uid="1234567890"))
-        self.assertFalse(result["four_way_agreement"])
+    @patch("apps.tournaments.ai_review.verify_evidence_integrity", return_value={})
+    @patch("apps.tournaments.ai_review._bytes", side_effect=[b"image-one", b"image-two"])
+    @patch("apps.tournaments.ai_review._frames", return_value=([(10, b"frame")], ""))
+    @patch("apps.tournaments.ai_review._ocr")
+    def test_uid_mismatch_blocks_cross_media_agreement(self, ocr, frames, read_bytes, integrity):
+        ocr.side_effect = [
+            (self._text(), ""),
+            (self._text(), ""),
+            (self._text(uid="9999999999"), ""),
+        ]
+        result = analyze_kill_evidence(self._submission())
+        self.assertFalse(result["dual_agreement"])
+        self.assertEqual(result["proposed_kills"], 4)
+        self.assertFalse(result["uid_matches"])
+
+    @patch("apps.tournaments.ai_review.verify_evidence_integrity", return_value={})
+    @patch("apps.tournaments.ai_review._bytes", side_effect=[b"image-one", b"image-two"])
+    @patch("apps.tournaments.ai_review._frames", return_value=([], "FFmpeg unavailable"))
+    @patch("apps.tournaments.ai_review._ocr")
+    def test_missing_video_evidence_keeps_review_advisory(self, ocr, frames, read_bytes, integrity):
+        ocr.side_effect = [
+            (self._text(), ""),
+            (self._text(), ""),
+        ]
+        result = analyze_kill_evidence(self._submission())
+        self.assertFalse(result["dual_agreement"])
+        self.assertIsNone(result["proposed_kills"])
         self.assertEqual(result["confidence"], "low")
-
-    @patch("apps.tournaments.ai_review.verify_evidence_integrity")
-    @patch("apps.tournaments.ai_review._analyze_with_provider")
-    def test_uid_mismatch_blocks_four_way_agreement(self, review, integrity):
-        review.side_effect = [self._result(), self._result(), self._result(uid="9999999999"), self._result()]
-        result = analyze_kill_evidence(SimpleNamespace(registered_uid="1234567890"))
-        self.assertFalse(result["four_way_agreement"])
-
-    @patch("apps.tournaments.ai_review.verify_evidence_integrity")
-    @patch("apps.tournaments.ai_review._analyze_with_provider")
-    def test_low_confidence_or_incomplete_evidence_blocks_agreement(self, review, integrity):
-        incomplete = self._result()
-        incomplete["evidence_complete"] = False
-        review.side_effect = [self._result(), self._result(), incomplete, self._result()]
-        result = analyze_kill_evidence(SimpleNamespace(registered_uid="1234567890"))
-        self.assertFalse(result["four_way_agreement"])
-
 
 class TournamentSpecificRewardTests(SimpleTestCase):
 

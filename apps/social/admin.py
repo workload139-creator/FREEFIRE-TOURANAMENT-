@@ -410,7 +410,7 @@ def ai_assessment_dashboard(request):
     }
     return render(request, 'admin/ai_assessment_dashboard.html', {
         **admin.site.each_context(request), 'title': 'AI Assessment Dashboard', 'counts': counts,
-        'total_pending': total_pending, 'risk_alerts': risk_alerts, 'links': links, 'ai_api_configured': {'openai': bool(__import__('os').getenv('OPENAI_API_KEY')), 'ollama': bool(__import__('os').getenv('KILL_REVIEW_API_KEY') or __import__('os').getenv('OLLAMA_API_KEY'))},
+        'total_pending': total_pending, 'risk_alerts': risk_alerts, 'links': links,
         'pending_shop': pending_shop, 'pending_currency_withdrawals': pending_currency_withdrawals,
         'pending_deposits': pending_deposits, 'pending_cash_withdrawals': pending_cash_withdrawals,
         'pending_kills': pending_kills, 'kill_monitor_submissions': kill_monitor_submissions, 'kill_monitor_counts': kill_monitor_counts, 'pending_registrations': pending_registrations,
@@ -426,26 +426,6 @@ def _admin_get_urls_with_ai_assessment():
 
 admin.site.get_urls = _admin_get_urls_with_ai_assessment
 
-
-# Explicit admin-only API smoke test. Credentials stay on the server.
-from django.shortcuts import redirect
-
-
-def ai_assessment_test_apis(request):
-    if request.method != "POST":
-        return redirect("admin:ai_assessment_dashboard")
-    from .ai_providers import test_all_providers
-
-    results = test_all_providers()
-    local = results.get("local", {})
-    messages.info(
-        request,
-        "External OpenAI/Ollama tests are disabled. Local reviewers: "
-        f"Tesseract OCR={'available' if local.get('tesseract') else 'not detected'}; "
-        f"FFmpeg={'available' if local.get('ffmpeg') else 'not detected'}. "
-        "Evidence decisions still require Admin approval."
-    )
-    return redirect("admin:ai_assessment_dashboard")
 
 
 def player_activity_ai_dashboard(request):
@@ -478,12 +458,11 @@ def player_activity_ai_dashboard(request):
         'player_count': recent.exclude(player_id__isnull=True).values('player_id').distinct().count(),
     })
 
-def _admin_get_urls_with_ai_assessment_and_api_test():
+def _admin_get_urls_with_ai_assessment_and_activity():
     return [
-        path("ai-assessment/test-apis/", admin.site.admin_view(ai_assessment_test_apis), name="ai_assessment_test_apis"),
         path("ai-assessment/", admin.site.admin_view(ai_assessment_dashboard), name="ai_assessment_dashboard"),
         path("player-activity-ai/", admin.site.admin_view(player_activity_ai_dashboard), name="player_activity_ai_dashboard"),
     ] + _original_admin_get_urls()
 
 
-admin.site.get_urls = _admin_get_urls_with_ai_assessment_and_api_test
+admin.site.get_urls = _admin_get_urls_with_ai_assessment_and_activity

@@ -48,21 +48,12 @@
         <a class="button button-primary" href="{% url 'tournaments:player_room' registration.id %}">Open Room / Confirm</a>
       {% endif %}
       {% if registration.status == "ready" %}
-        <h3>Kill verification</h3>
-        {% with submission=registration.kill_submissions.all|first %}
-          {% if submission %}
-            <p>Kill proof status: <strong>{{ submission.get_status_display }}</strong></p>
-            {% if submission.ai_proposed_kills != None %}<p>AI suggested kills: {{ submission.ai_proposed_kills }}</p>{% endif %}
-            {% if submission.ai_confidence %}<p>AI confidence: {{ submission.ai_confidence }}</p>{% endif %}
-            {% if submission.ai_review_notes %}<p>AI notes: {{ submission.ai_review_notes }}</p>{% endif %}
-            {% if submission.admin_notes %}<p>Admin review notes: {{ submission.admin_notes }}</p>{% endif %}
-            <p>Evidence already submitted for this registration.</p>{% if submission.status == "approved" and submission.approved_reward %}<p><strong>Approved kill reward:</strong> {{ submission.approved_reward }} {% if registration.tournament.is_diwali_offer %}Coins{% elif registration.tournament.br_format == "duo" or registration.tournament.br_format == "squad" %}Diamonds + {{ submission.approved_coins_reward }} Coins{% elif registration.tournament.is_free_fan_tournament %}Fan Tokens{% elif registration.tournament.mode == "VS" %}Coins{% else %}Diamonds{% endif %}. Wallet history mein entries check karein.</p>{% elif submission.status == "pending" %}<p><strong>Status: Admin review pending.</strong> AI kill count ka suggestion deta hai; admin video, dono screenshots aur UID check karke final reward approve karega.</p>{% elif submission.status == "rejected" %}<p>Kill proof reject hui. Admin notes check karein ya support se contact karein.</p>{% endif %}
-          {% else %}
-            <p>Match ke baad 15–30 second ki gameplay/history video aur 2 clear game-history screenshots submit karein. UID registration wali UID se match honi chahiye.</p>
-            <a class="button button-primary" href="{% url 'tournaments:kill_submission' registration.id %}">Submit Kill Proof</a>
-          {% endif %}
-        {% endwith %}
-      {% endif %}
+        <section class="live-ai-status" style="margin:16px 0;padding:16px;border:1px solid var(--border-color,#334155);border-radius:14px">
+          <h3>🤖 Live AI Kill Tracking</h3>
+          <p>Match se pehle Free Fire profile screen par nickname aur UID clearly dikhayein. AI ko registered UID se identity match karni hogi; profile/identity clear nahi hui to kills verify aur reward release nahi honge. Uske baad lobby aur match ke dauran LiveKit screen share chalu rakhein.</p>
+          <p><strong>Reward rule:</strong> BR Solo mein 2 verified kills = 10 Diamonds; 3 = 15; 4 = 20 (5 Diamonds per verified kill). Duo/Squad ke additional Coins tournament rules ke mutabik honge. Reward sirf verified, unique kill events par milega.</p>
+          <p><strong>Current status:</strong> Live stream frame-reading base bana hai, lekin lobby/profile OCR, killfeed recognition aur automatic reward abhi testing/development mein hain. Feature activate hone se pehle reward wallet mein automatic credit hone ka daava nahi hai. Screenshot/video upload nahi karna hai.</p>
+        </section>
       <p><a href="{% url 'tournaments:detail' registration.tournament.id %}">Tournament details</a> · <a href="{% url 'tournaments:leaderboard' registration.tournament.id %}">Leaderboard</a></p>
     </article>
   {% empty %}

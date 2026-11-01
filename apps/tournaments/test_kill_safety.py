@@ -7,10 +7,10 @@ from .kill_safety import validate_match_dates, get_match_id
 
 
 REVIEWER_KEYS = (
-    "ff_arena_assessment_openai",
-    "ff_arena_assessment_ollama",
-    "ff_arena_agent_openai",
-    "ff_arena_agent_ollama",
+    "ff_arena_assessment_local_1",
+    "ff_arena_assessment_local_2",
+    "ff_arena_agent_local_1",
+    "ff_arena_agent_local_2",
 )
 
 
