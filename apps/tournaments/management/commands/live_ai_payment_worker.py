@@ -5,7 +5,6 @@ It never verifies kills or credits player wallets; Admin approval is mandatory.
 """
 import asyncio
 import logging
-import time
 from decimal import Decimal
 
 from asgiref.sync import sync_to_async
@@ -118,7 +117,7 @@ def heartbeat_payment_slots():
         registration__payment_verified=True,
         registration__refund_processed=False,
     )
-    active_slots.exclude(state=LiveAIAgentSlot.State.PROCESSING).update(
+    active_slots.update(
         state=LiveAIAgentSlot.State.CONNECTED,
         last_heartbeat_at=now,
         last_error="",
