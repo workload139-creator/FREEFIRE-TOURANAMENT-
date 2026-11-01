@@ -50,8 +50,9 @@
       {% if registration.status == "ready" %}
         <section class="live-ai-status" style="margin:16px 0;padding:16px;border:1px solid var(--border-color,#334155);border-radius:14px">
           <h3>🤖 Live AI Kill Tracking</h3>
-          <p>Ab screenshot ya video upload nahi karna hai. Tournament LIVE hote hi screen-share subscriber worker stream frames read karega. Killfeed OCR aur automatic reward abhi development/testing mein hain; verified reward feature active hone par wallet history mein dikhega.</p>
-          <p><strong>Dhyan dein:</strong> Live stream active rakhein aur FF Arena app ko background mein na bhejein. AI status aur reward sirf verified events ke baad update hoga.</p>
+          <p>Match se pehle Free Fire profile screen par nickname aur UID clearly dikhayein. AI ko registered UID se identity match karni hogi; profile/identity clear nahi hui to kills verify aur reward release nahi honge. Uske baad lobby aur match ke dauran LiveKit screen share chalu rakhein.</p>
+          <p><strong>Reward rule:</strong> BR Solo mein 2 verified kills = 10 Diamonds; 3 = 15; 4 = 20 (5 Diamonds per verified kill). Duo/Squad ke additional Coins tournament rules ke mutabik honge. Reward sirf verified, unique kill events par milega.</p>
+          <p><strong>Current status:</strong> Live stream frame-reading base bana hai, lekin lobby/profile OCR, killfeed recognition aur automatic reward abhi testing/development mein hain. Feature activate hone se pehle reward wallet mein automatic credit hone ka daava nahi hai. Screenshot/video upload nahi karna hai.</p>
         </section>
       <p><a href="{% url 'tournaments:detail' registration.tournament.id %}">Tournament details</a> · <a href="{% url 'tournaments:leaderboard' registration.tournament.id %}">Leaderboard</a></p>
     </article>
