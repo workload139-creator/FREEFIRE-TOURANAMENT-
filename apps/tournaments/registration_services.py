@@ -140,28 +140,42 @@ def assign_teams_for_tournament(tournament_id):
 
 
 @transaction.atomic
+@transaction.atomic
 def maybe_start_unlimited_tournament(tournament_id):
-    """Auto-start when the format's configured verified-player capacity is full."""
+    """Start a full verified tournament only when the global arena is free."""
+    # Lock every tournament row in a stable order to serialize competing starts.
+    list(Tournament.objects.select_for_update().order_by("pk").values_list("pk", flat=True))
     tournament = Tournament.objects.select_for_update().get(pk=tournament_id)
-    if not (tournament.is_unlimited_br or tournament.mode == Tournament.Mode.VS) or not tournament.auto_start_at_capacity or tournament.status != Tournament.Status.UPCOMING:
+    if not tournament.auto_start_at_capacity or tournament.status != Tournament.Status.UPCOMING:
         return False
-    active_count = Registration.objects.filter(
-        tournament=tournament,        payment_verified=True,
+    if Tournament.objects.filter(status=Tournament.Status.LIVE).exclude(pk=tournament.pk).exists():
+        return False
+
+    eligible = Registration.objects.filter(
+        tournament=tournament,
+        payment_verified=True,
+        refund_processed=False,
         status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
-    ).count()
+    )
+    active_count = eligible.count()
     team_size = tournament_team_size(tournament)
     if active_count < tournament.max_players or active_count % team_size:
         return False
 
-    # Paid Duo/Squad BR team slots are locked in as the event becomes LIVE.
-    # The separate Free Fan tournament keeps its original solo-entry flow unchanged.
     if not tournament.is_free_fan_tournament:
         assign_teams_for_tournament(tournament.pk)
+
     tournament.status = Tournament.Status.LIVE
     tournament.save(update_fields=["status", "updated_at"])
+    deadline = timezone.now() + timedelta(seconds=300)
+    eligible.filter(status=Registration.Status.CONFIRMED).update(
+        status=Registration.Status.WAITING_READY,
+        room_details_sent=True,
+        ready_deadline=deadline,
+        ready_confirmed_at=None,
+    )
     transaction.on_commit(lambda tournament_id=tournament.pk: send_unlimited_live_notifications(tournament_id))
     return True
-
 
 @transaction.atomic
 def create_pending_registration(*, tournament_id, player, free_fire_uid, payment_reference="", payment_method="upi"):
