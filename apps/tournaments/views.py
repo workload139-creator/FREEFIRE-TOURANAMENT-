@@ -1190,9 +1190,16 @@ def results(request):
         .order_by("-updated_at", "-pk")
     )
     for tournament in completed_tournaments:
-        winner_registration = Registration.objects.filter(
+        winner_uids = []
+        if str(tournament.winner_uid or "").strip():
+            winner_uids.append(str(tournament.winner_uid).strip())
+        for raw_uid in (tournament.winner_team_uids or "").replace(",", "\\n").splitlines():
+            uid = raw_uid.strip()
+            if uid and uid not in winner_uids:
+                winner_uids.append(uid)
+        winner_registrations = list(Registration.objects.filter(
             tournament=tournament,
-            free_fire_uid=str(tournament.winner_uid or "").strip(),
+            free_fire_uid__in=winner_uids,
             payment_verified=True,
             refund_processed=False,
             status__in=[
@@ -1200,10 +1207,9 @@ def results(request):
                 Registration.Status.WAITING_READY,
                 Registration.Status.READY,
             ],
-        ).select_related("player").first() if tournament.winner_uid else None
-        tournament.first_place_player = (
-            winner_registration.player.username if winner_registration else ""
-        )
+        ).select_related("player").order_by("registered_at")) if winner_uids else []
+        tournament.first_place_players = [row.player.username for row in winner_registrations]
+        tournament.first_place_player = tournament.first_place_players[0] if tournament.first_place_players else ""
         tournament.result_player_count = tournament.paid_players_count
     return render(
         request,
@@ -1242,7 +1248,14 @@ def leaderboard(request, tournament_id):
             "registration": registration,
             "submission": submission,
             "kills": submission.approved_kills if submission and submission.approved_kills is not None else -1,
-            "is_winner": bool(tournament.winner_uid and registration.free_fire_uid == tournament.winner_uid),
+            "is_winner": bool(
+                (tournament.winner_uid and registration.free_fire_uid == tournament.winner_uid)
+                or registration.free_fire_uid in {
+                    uid.strip()
+                    for uid in (tournament.winner_team_uids or "").replace(",", "\\n").splitlines()
+                    if uid.strip()
+                }
+            ),
         })
 
     # Admin-confirmed winner stays first; remaining verified entrants sort by approved kills,
