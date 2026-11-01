@@ -58,8 +58,8 @@ class TournamentAdminForm(forms.ModelForm):
         if "gender_category" in self.fields:
             self.fields["gender_category"].required = False
         self.fields["status"].help_text = (
-            "Website par dikhane aur registration kholne ke liye "
-            "'Upcoming' select karein. Draft tournaments public list mein nahi dikhte."
+            "Registration open rakhein, room details set karke LIVE karein, match ke baad COMPLETED karein, "
+            "ya cancellation/refund ke liye CANCELLED select karein."
         )
         if "auto_reopen" in self.fields:
             self.fields["auto_reopen"].help_text = (
@@ -479,9 +479,9 @@ class TournamentAdmin(admin.ModelAdmin):
     exclude = ("is_unlimited_br", "is_free_fan_tournament", "auto_start_at_capacity", "auto_reopen", "series_root")
     list_display = (
         "title", "open_tournament_control", "mode", "br_format", "vs_format", "gender_category",
-        "entry_fee", "prize_pool", "max_players", "status", "winner_prize_paid",
+        "entry_fee", "prize_pool", "max_players", "status_label", "winner_prize_paid",
     )
-    list_filter = ("mode", "br_format", "vs_format", "gender_category", "status")
+    list_filter = ("mode", "br_format", "vs_format", "gender_category")
     search_fields = ("title", "description")
     ordering = ("-created_at",)
     # Keep tournament setup separate from registrations and kill evidence.
@@ -499,6 +499,12 @@ class TournamentAdmin(admin.ModelAdmin):
         # recurring/unlimited BR and Free Fan events. The separate proxy
         # admin pages remain available for their focused workflows.
         return super().get_queryset(request)
+
+    @admin.display(description="Status")
+    def status_label(self, obj):
+        if obj.status == Tournament.Status.UPCOMING:
+            return "Registration Open"
+        return obj.get_status_display()
 
     @admin.display(description="Tournament Control")
     def open_tournament_control(self, obj):
@@ -526,7 +532,12 @@ class TournamentAdmin(admin.ModelAdmin):
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
         if obj and "status" in form.base_fields:
-            allowed = [(obj.status, obj.get_status_display())]
+            current_label = (
+                "Registration Open"
+                if obj.status == Tournament.Status.UPCOMING
+                else obj.get_status_display()
+            )
+            allowed = [(obj.status, current_label)]
             if obj.status == Tournament.Status.UPCOMING:
                 allowed.extend([
                     (Tournament.Status.LIVE, "Live"),
@@ -881,7 +892,7 @@ class UnlimitedTournamentAdmin(TournamentAdmin):
 
     # One dedicated BR page for all existing Solo, Duo and Squad rounds.
     exclude = ("is_unlimited_br", "is_free_fan_tournament", "auto_start_at_capacity", "auto_reopen", "series_root")
-    list_filter = ("br_format", "status")
+    list_filter = ("br_format",)
     ordering = ("-created_at",)
 
     def get_queryset(self, request):
