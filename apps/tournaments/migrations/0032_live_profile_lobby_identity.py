@@ -3,7 +3,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("tournaments", "0031_shared_live_monitor_session_state"),
+        ("tournaments", "0033_room_invite_and_ready_no_count"),
     ]
 
     operations = [
