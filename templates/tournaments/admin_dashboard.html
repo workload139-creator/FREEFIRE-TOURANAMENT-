@@ -260,7 +260,8 @@
                     '<div class="ff-live-video mt-2 bg-dark rounded d-flex align-items-center justify-content-center" style="min-height:190px;overflow:hidden"><span class="text-white-50">Waiting for player screen…</span></div>' +
                     '<div class="d-flex flex-wrap gap-2 mt-3">' +
                     '<button type="button" class="btn btn-sm btn-outline-info ff-listen-toggle">🔇 Listen OFF</button>' +
-                    '<button type="button" class="btn btn-sm btn-outline-warning ff-talk-toggle">🎙️ Talk to player</button></div>' +
+                    '<button type="button" class="btn btn-sm btn-outline-warning ff-talk-toggle">🎙️ Talk to player</button>' +
+                    '<button type="button" class="btn btn-sm btn-outline-secondary ff-request-mic">Request player mic</button></div>' +
                     '<div class="small text-muted ff-audio-status mt-2">Player mic status: waiting for audio</div>' +
                     '<form class="ff-player-message-form mt-3"><textarea class="form-control ff-player-message" rows="2" maxlength="500" placeholder="Private message to this player…"></textarea><button type="submit" class="btn btn-sm btn-primary mt-2">Send private message</button><small class="d-block mt-1 ff-message-status" role="status"></small></form></div>';
                 grid.appendChild(col);
@@ -321,6 +322,25 @@
                         talkButton.textContent = "🔴 Stop talking";
                     } catch (error) {
                         messageStatus.textContent = "Admin mic start nahi hua: " + esc(error.message);
+                    }
+                });
+                col.querySelector(".ff-request-mic").addEventListener("click", async () => {
+                    const button = col.querySelector(".ff-request-mic");
+                    button.disabled = true;
+                    try {
+                        const response = await fetch("/tournaments/live/admin/registration/" + stream.registration_id + "/message/", {
+                            method: "POST",
+                            credentials: "same-origin",
+                            headers: {"Content-Type":"application/json","X-CSRFToken":csrfToken,"X-Requested-With":"XMLHttpRequest"},
+                            body: JSON.stringify({message:"Admin requests your microphone. Please turn your mic ON only if you agree."})
+                        });
+                        const result = await response.json().catch(() => ({}));
+                        if (!response.ok) throw new Error(result.error || "Mic request failed.");
+                        messageStatus.textContent = "Mic request sent. Player must approve by turning their mic ON.";
+                    } catch (error) {
+                        messageStatus.textContent = error.message;
+                    } finally {
+                        button.disabled = false;
                     }
                 });
                 messageForm.addEventListener("submit", async (event) => {
