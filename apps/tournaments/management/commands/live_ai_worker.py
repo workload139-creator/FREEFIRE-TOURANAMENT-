@@ -147,36 +147,40 @@ class LiveAIWorker:
         )
 
     async def run(self):
-        while True:
-            sessions = await active_sessions()
-            current = {str(row["session_uuid"]): row for row in sessions}
+        try:
+            while True:
+                sessions = await active_sessions()
+                current = {str(row["session_uuid"]): row for row in sessions}
 
-            for session_uuid in set(self.workers) - set(current):
-                await self._disconnect(session_uuid)
+                for session_uuid in set(self.workers) - set(current):
+                    await self._disconnect(session_uuid)
 
-            for session_uuid, session in current.items():
-                if session_uuid in self.workers:
-                    continue
-                try:
-                    await self._connect(session)
-                except Exception as exc:
-                    logger.exception("Could not subscribe to LiveKit session %s", session_uuid)
+                for session_uuid, session in current.items():
+                    if session_uuid in self.workers:
+                        continue
+                    try:
+                        await self._connect(session)
+                    except Exception as exc:
+                        logger.exception("Could not subscribe to LiveKit session %s", session_uuid)
+                        await update_slots(
+                            session_uuid,
+                            LiveAIAgentSlot.State.DEGRADED,
+                            error=f"LiveKit subscriber error: {exc}",
+                        )
+
+                for session_uuid, worker in tuple(self.workers.items()):
+                    delta = worker.frames_pending
+                    worker.frames_pending = 0
                     await update_slots(
                         session_uuid,
-                        LiveAIAgentSlot.State.DEGRADED,
-                        error=f"LiveKit subscriber error: {exc}",
+                        LiveAIAgentSlot.State.CONNECTED,
+                        frames_delta=delta,
                     )
 
-            for session_uuid, worker in tuple(self.workers.items()):
-                delta = worker.frames_pending
-                worker.frames_pending = 0
-                await update_slots(
-                    session_uuid,
-                    LiveAIAgentSlot.State.CONNECTED,
-                    frames_delta=delta,
-                )
-
-            await asyncio.sleep(self.poll_seconds)
+                await asyncio.sleep(self.poll_seconds)
+        finally:
+            for session_uuid in tuple(self.workers):
+                await self._disconnect(session_uuid)
 
 
 class Command(BaseCommand):
