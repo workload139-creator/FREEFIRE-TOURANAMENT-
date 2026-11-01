@@ -1,4 +1,5 @@
 from django.urls import path
+from django.views.generic import RedirectView
 
 from . import views, api_views, self_refund, arena_views, live_views, live_ai_views
 
@@ -27,7 +28,8 @@ urlpatterns = [
 
     # Dedicated date-free tournament pages
     path("free-tournament/", views.free_fan_tournament_list, name="free_fan_list"),
-    path("unlimited/", views.unlimited_tournament_list, name="unlimited_list"),
+    # Backward-compatible old URL: Unlimited BR is now the main Battle Royale arena.
+    path("unlimited/", RedirectView.as_view(pattern_name="tournaments:battle_royale_list", permanent=True), name="unlimited_list"),
 
     # Public results page
     path("results/", views.results, name="results"),
