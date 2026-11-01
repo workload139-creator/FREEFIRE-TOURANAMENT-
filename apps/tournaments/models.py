@@ -268,7 +268,6 @@ class Registration(models.Model):
     ready_deadline = models.DateTimeField(null=True, blank=True)
     ready_confirmed_at = models.DateTimeField(null=True, blank=True)
     no_response_count = models.PositiveSmallIntegerField(default=0, help_text="NO responses or expired ready-check windows; refund after three.")
-    no_response_count = models.PositiveSmallIntegerField(default=0, help_text="Number of NO responses or expired ready-check windows; refund is issued after three.")
 
     refund_processed = models.BooleanField(default=False)
     refund_processed_at = models.DateTimeField(null=True, blank=True)
