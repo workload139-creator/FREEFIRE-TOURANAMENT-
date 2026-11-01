@@ -91,7 +91,7 @@ def approve_live_kill_event(event_id, admin_user):
     event.status = LiveKillEvent.Status.VERIFIED
     event.reviewed_at = timezone.now()
     event.reviewed_by = admin_user
-    event.reward_reference = reference
+    event.reward_reference = reference or None
     event.reward_payload = {
         "rewards": [
             {"currency": currency, "quantity": int(quantity)}
