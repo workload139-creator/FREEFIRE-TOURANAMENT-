@@ -70,6 +70,24 @@ class TournamentLiveShareController(context: Context) {
         }
     }
 
+    fun setMicrophoneEnabled(enabled: Boolean, callback: Callback) {
+        scope.launch {
+            try {
+                val activeRoom = room ?: throw IllegalStateException("Start Live screen sharing first.")
+                val published = activeRoom.localParticipant.setMicrophoneEnabled(enabled)
+                if (!published) {
+                    throw IllegalStateException("LiveKit could not change microphone state.")
+                }
+                callback.onResult(
+                    true,
+                    if (enabled) "Mic ON. Admin can hear you." else "Mic OFF. Admin cannot hear you."
+                )
+            } catch (error: Exception) {
+                callback.onResult(false, error.message ?: "Could not change microphone state.")
+            }
+        }
+    }
+
     fun stop(callback: Callback? = null) {
         scope.launch {
             val activeRoom = room

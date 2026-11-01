@@ -23,18 +23,20 @@
             <input id="room_id" type="text" name="room_id"
                    class="form-control" required>
         </div>
+        <button type="button" class="btn btn-outline-secondary btn-sm mb-3" id="copyAdminRoomId">Copy Room ID</button>
 
         <div class="mb-3">
             <label for="room_password">Room Password</label>
             <input id="room_password" type="password"
                    name="room_password" class="form-control" required>
         </div>
+        <button type="button" class="btn btn-outline-secondary btn-sm mb-3" id="copyAdminRoomPassword">Copy Room Password</button>
 
         <div class="mb-3">
             <label for="room_qr_code">Free Fire Room QR Code (optional)</label>
             <input id="room_qr_code" type="file" name="room_qr_code" class="form-control" accept="image/png,image/jpeg,image/webp">
             <small>Free Fire se generate kiya hua asli Custom Room QR upload karein.</small>
-            {% if tournament.room_qr_code %}<img src="{% url "tournaments:room_qr_file" tournament.id %}" alt="Current room QR" style="max-width:220px;width:100%;background:#fff;padding:8px">{% endif %}
+            {% if tournament.room_qr_code %}<img src="{% url "tournaments:room_qr_file" tournament.id %}" alt="Current room QR" style="max-width:220px;width:100%;background:#fff;padding:8px"><a class="btn btn-outline-secondary btn-sm d-block mt-2" href="{% url 'tournaments:room_qr_file' tournament.id %}?download=1">Download Room QR</a>{% endif %}
         </div>
 
         <button type="submit" class="btn btn-primary">
@@ -46,4 +48,18 @@
     {% endif %}
     <p><a href="{% url 'tournaments:admin_tournament_dashboard' tournament.id %}">← Back to this tournament's control panel</a></p>
 </div>
+<script>
+(function () {
+  function copyInput(id, label) {
+    const field = document.getElementById(id);
+    if (!field || !field.value) { alert(label + " enter karein."); return; }
+    const fallback = function () { field.select(); document.execCommand("copy"); };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(field.value).then(function () { alert(label + " copied."); }).catch(fallback);
+    } else { fallback(); alert(label + " copied."); }
+  }
+  document.getElementById("copyAdminRoomId")?.addEventListener("click", function () { copyInput("room_id", "Room ID"); });
+  document.getElementById("copyAdminRoomPassword")?.addEventListener("click", function () { copyInput("room_password", "Room Password"); });
+})();
+</script>
 {% endblock %}

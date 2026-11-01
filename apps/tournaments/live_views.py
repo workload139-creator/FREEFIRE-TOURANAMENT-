@@ -2,6 +2,7 @@
 
 LiveKit room media is streamed only; this module does not enable recording or egress.
 """
+import json
 import logging
 import os
 import uuid
@@ -17,7 +18,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from livekit import api
 
-from .models import Registration, Tournament, TournamentLiveSession
+from .models import Registration, Tournament, TournamentLiveMessage, TournamentLiveSession
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +134,7 @@ def tournament_live_token(request, registration_id):
 @login_required
 @require_GET
 def admin_tournament_live_tokens(request, tournament_id):
-    """Issue subscribe-only tokens for active sessions in one staff-selected tournament."""
+    """Issue per-player monitor tokens for audio/video subscribe and staff audio talkback."""
     if not request.user.is_staff:
         return JsonResponse({"error": "Staff access required."}, status=403)
     url, key, secret = _livekit_config()
@@ -158,7 +159,8 @@ def admin_tournament_live_tokens(request, tournament_id):
             .with_grants(api.VideoGrants(
                 room_join=True,
                 room=session.room_name,
-                can_publish=False,
+                # Staff can publish microphone audio back to this one player's room.
+                can_publish=True,
                 can_subscribe=True,
             ))
             .to_jwt()
@@ -174,6 +176,84 @@ def admin_tournament_live_tokens(request, tournament_id):
             "state": session.monitor_state,
         })
     return JsonResponse({"tournament_id": tournament.pk, "streams": streams})
+
+
+@login_required
+@require_POST
+def admin_send_live_message(request, registration_id):
+    """Persist a private staff-to-player message for the active tournament session."""
+    if not request.user.is_staff:
+        return JsonResponse({"error": "Staff access required."}, status=403)
+    registration = get_object_or_404(
+        Registration.objects.select_related("tournament", "player"),
+        pk=registration_id,
+        status=Registration.Status.READY,
+        payment_verified=True,
+        refund_processed=False,
+    )
+    if registration.tournament.status != Tournament.Status.LIVE:
+        return JsonResponse({"error": "Messages are available only during a LIVE tournament."}, status=409)
+    if not TournamentLiveSession.objects.filter(
+        registration=registration, status=TournamentLiveSession.Status.ACTIVE
+    ).exists():
+        return JsonResponse({"error": "Player Live session is not connected."}, status=409)
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return JsonResponse({"error": "Invalid message payload."}, status=400)
+    body = str(payload.get("message", "")).strip()
+    if not body or len(body) > 500:
+        return JsonResponse({"error": "Message 1 se 500 characters ke beech hona chahiye."}, status=400)
+    message = TournamentLiveMessage.objects.create(
+        registration=registration, sender=request.user, body=body
+    )
+    return JsonResponse({
+        "success": True,
+        "message_id": message.pk,
+        "created_at": message.created_at.isoformat(),
+        "message": "Private message player ko bhej diya gaya.",
+    }, status=201)
+
+
+@login_required
+@require_GET
+def player_live_messages(request, registration_id):
+    """Return only unread staff messages for the authenticated registration owner."""
+    registration = get_object_or_404(
+        Registration.objects.select_related("tournament"),
+        pk=registration_id,
+        player=request.user,
+        status=Registration.Status.READY,
+        payment_verified=True,
+        refund_processed=False,
+    )
+    if registration.tournament.status != Tournament.Status.LIVE or not TournamentLiveSession.objects.filter(
+        registration=registration, status=TournamentLiveSession.Status.ACTIVE
+    ).exists():
+        return JsonResponse({"messages": []})
+    try:
+        after = max(0, int(request.GET.get("after", "0")))
+    except (TypeError, ValueError):
+        after = 0
+    rows = list(
+        TournamentLiveMessage.objects.filter(
+            registration=registration,
+            sender__is_staff=True,
+            pk__gt=after,
+        ).select_related("sender").order_by("created_at")[:50]
+    )
+    if rows:
+        now = timezone.now()
+        TournamentLiveMessage.objects.filter(
+            pk__in=[row.pk for row in rows], read_at__isnull=True
+        ).update(read_at=now)
+    return JsonResponse({
+        "messages": [
+            {"id": row.pk, "message": row.body, "sender": row.sender.get_username(),
+             "created_at": row.created_at.isoformat()}
+            for row in rows
+        ]
+    })
 
 @login_required
 @require_POST

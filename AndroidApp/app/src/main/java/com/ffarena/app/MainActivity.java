@@ -60,6 +60,7 @@ public class MainActivity extends Activity {
     private WebView featureWebView;
     private String currentTab = "Home";
     private static final int REQUEST_MIC_PERMISSION = 7021;
+    private static final int REQUEST_NATIVE_MIC_PERMISSION = 7025;
     private static final int REQUEST_FILE_CHOOSER = 7022;
     private static final int REQUEST_SCREEN_CAPTURE = 7024;
     private ValueCallback<Uri[]> pendingFileCallback;
@@ -993,11 +994,44 @@ public class MainActivity extends Activity {
                         @Override
                         public void onResult(boolean success, String message) {
                             emitLiveStatus(false, message);
+                            emitMicStatus(false, "Live stopped. Mic OFF.");
                         }
                     });
                 }
             });
         }
+
+        @JavascriptInterface
+        public void setMicrophoneEnabled(boolean enabled) {
+            runOnUiThread(() -> setNativeMicrophoneEnabled(enabled));
+        }
+    }
+
+    private void setNativeMicrophoneEnabled(boolean enabled) {
+        if (liveShareController == null) {
+            emitMicStatus(false, "Start Live first.");
+            return;
+        }
+        if (enabled && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_NATIVE_MIC_PERMISSION);
+            return;
+        }
+        liveShareController.setMicrophoneEnabled(enabled, new TournamentLiveShareController.Callback() {
+            @Override
+            public void onResult(boolean success, String message) {
+                emitMicStatus(success && enabled, message);
+            }
+        });
+    }
+
+    private void emitMicStatus(boolean enabled, String message) {
+        runOnUiThread(() -> {
+            if (featureWebView == null || isFinishing() || isDestroyed()) return;
+            String safeMessage = JSONObject.quote(message == null ? "" : message);
+            String script = "window.dispatchEvent(new CustomEvent('ffarena-mic-status',{detail:{enabled:"
+                    + enabled + ",message:" + safeMessage + "}}));";
+            featureWebView.evaluateJavascript(script, null);
+        });
     }
 
     private void emitLiveStatus(boolean active, String message) {
@@ -1090,6 +1124,15 @@ public class MainActivity extends Activity {
                 request.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
             } else {
                 try { request.deny(); } catch (Exception ignored) {}
+            }
+        }
+        if (requestCode == REQUEST_NATIVE_MIC_PERMISSION) {
+            if (grantResults.length > 0
+                    && grantResults[0] == PackageManager.PERMISSION_GRANTED
+                    && checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                setNativeMicrophoneEnabled(true);
+            } else {
+                emitMicStatus(false, "Microphone permission denied. Mic remains OFF.");
             }
         }
     }

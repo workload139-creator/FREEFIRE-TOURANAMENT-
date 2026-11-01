@@ -222,6 +222,7 @@
     </div>
 
 
+<form id="ff-live-csrf-form" hidden>{% csrf_token %}</form>
 <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
 <script>
 (function () {
@@ -229,6 +230,8 @@
     if (!grid) return;
     const tournamentId = grid.dataset.tournamentId;
     const rooms = [];
+    let talkingRoom = null;
+    const csrfToken = document.querySelector("#ff-live-csrf-form [name=csrfmiddlewaretoken]")?.value || "";
     const esc = (value) => String(value || "").replace(/[&<>"']/g, ch => ({
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     }[ch]));
@@ -249,27 +252,125 @@
             for (const stream of data.streams) {
                 const col = document.createElement("div");
                 col.className = "col-12 col-md-6 col-xl-4";
-                col.innerHTML = '<div class="card h-100 p-2"><div class="d-flex justify-content-between gap-2"><strong>' +
+                col.innerHTML = '<div class="card h-100 p-3">' +
+                    '<div class="d-flex justify-content-between gap-2"><strong>' +
                     esc(stream.player) + ' · UID ' + esc(stream.uid) +
                     '</strong><small class="text-muted">' + esc(stream.state) +
-                    '</small></div><div class="ff-live-video mt-2 bg-dark rounded d-flex align-items-center justify-content-center" style="min-height:190px;overflow:hidden"><span class="text-white-50">Waiting for player screen…</span></div></div>';
+                    '</small></div>' +
+                    '<div class="ff-live-video mt-2 bg-dark rounded d-flex align-items-center justify-content-center" style="min-height:190px;overflow:hidden"><span class="text-white-50">Waiting for player screen…</span></div>' +
+                    '<div class="d-flex flex-wrap gap-2 mt-3">' +
+                    '<button type="button" class="btn btn-sm btn-outline-info ff-listen-toggle">🔇 Listen OFF</button>' +
+                    '<button type="button" class="btn btn-sm btn-outline-warning ff-talk-toggle">🎙️ Talk to player</button>' +
+                    '<button type="button" class="btn btn-sm btn-outline-secondary ff-request-mic">Request player mic</button></div>' +
+                    '<div class="small text-muted ff-audio-status mt-2">Player mic status: waiting for audio</div>' +
+                    '<form class="ff-player-message-form mt-3"><textarea class="form-control ff-player-message" rows="2" maxlength="500" placeholder="Private message to this player…"></textarea><button type="submit" class="btn btn-sm btn-primary mt-2">Send private message</button><small class="d-block mt-1 ff-message-status" role="status"></small></form></div>';
                 grid.appendChild(col);
                 const videoBox = col.querySelector(".ff-live-video");
+                const audioStatus = col.querySelector(".ff-audio-status");
+                const listenButton = col.querySelector(".ff-listen-toggle");
+                const talkButton = col.querySelector(".ff-talk-toggle");
+                const messageForm = col.querySelector(".ff-player-message-form");
+                const messageInput = col.querySelector(".ff-player-message");
+                const messageStatus = col.querySelector(".ff-message-status");
+                const audioElements = [];
                 const room = new window.LivekitClient.Room({adaptiveStream: true, dynacast: true});
                 rooms.push(room);
                 room.on(window.LivekitClient.RoomEvent.TrackSubscribed, (track) => {
-                    if (track.kind !== window.LivekitClient.Track.Kind.Video) return;
-                    videoBox.innerHTML = "";
-                    const element = track.attach();
-                    element.style.width = "100%";
-                    element.style.height = "auto";
-                    element.style.maxHeight = "360px";
-                    element.autoplay = true;
-                    element.playsInline = true;
-                    videoBox.appendChild(element);
+                    if (track.kind === window.LivekitClient.Track.Kind.Video) {
+                        videoBox.innerHTML = "";
+                        const element = track.attach();
+                        element.style.width = "100%";
+                        element.style.height = "auto";
+                        element.style.maxHeight = "360px";
+                        element.autoplay = true;
+                        element.playsInline = true;
+                        videoBox.appendChild(element);
+                    } else if (track.kind === window.LivekitClient.Track.Kind.Audio) {
+                        const element = track.attach();
+                        element.autoplay = true;
+                        element.muted = true;
+                        element.style.display = "none";
+                        col.appendChild(element);
+                        audioElements.push(element);
+                        audioStatus.textContent = "Player mic ON — Listen button se awaaz sun sakte hain.";
+                    }
+                });
+                listenButton.addEventListener("click", async () => {
+                    const nextMuted = audioElements.length ? !audioElements[0].muted : true;
+                    audioElements.forEach(element => { element.muted = nextMuted; });
+                    listenButton.textContent = nextMuted ? "🔇 Listen OFF" : "🔊 Listen ON";
+                    if (!audioElements.length) audioStatus.textContent = "Player ne abhi mic ON nahi kiya.";
+                    if (!nextMuted) {
+                        try { await Promise.all(audioElements.map(element => element.play())); }
+                        catch (error) { audioStatus.textContent = "Browser audio permission/playback allow karein."; }
+                    }
+                });
+                talkButton.addEventListener("click", async () => {
+                    try {
+                        if (talkingRoom === room) {
+                            await room.localParticipant.setMicrophoneEnabled(false);
+                            talkingRoom = null;
+                            talkButton.textContent = "🎙️ Talk to player";
+                            return;
+                        }
+                        if (talkingRoom) {
+                            await talkingRoom.localParticipant.setMicrophoneEnabled(false);
+                            document.querySelectorAll(".ff-talk-toggle").forEach(button => { button.textContent = "🎙️ Talk to player"; });
+                        }
+                        await room.localParticipant.setMicrophoneEnabled(true);
+                        talkingRoom = room;
+                        talkButton.textContent = "🔴 Stop talking";
+                    } catch (error) {
+                        messageStatus.textContent = "Admin mic start nahi hua: " + esc(error.message);
+                    }
+                });
+                col.querySelector(".ff-request-mic").addEventListener("click", async () => {
+                    const button = col.querySelector(".ff-request-mic");
+                    button.disabled = true;
+                    try {
+                        const response = await fetch("/tournaments/live/admin/registration/" + stream.registration_id + "/message/", {
+                            method: "POST",
+                            credentials: "same-origin",
+                            headers: {"Content-Type":"application/json","X-CSRFToken":csrfToken,"X-Requested-With":"XMLHttpRequest"},
+                            body: JSON.stringify({message:"Admin requests your microphone. Please turn your mic ON only if you agree."})
+                        });
+                        const result = await response.json().catch(() => ({}));
+                        if (!response.ok) throw new Error(result.error || "Mic request failed.");
+                        messageStatus.textContent = "Mic request sent. Player must approve by turning their mic ON.";
+                    } catch (error) {
+                        messageStatus.textContent = error.message;
+                    } finally {
+                        button.disabled = false;
+                    }
+                });
+                messageForm.addEventListener("submit", async (event) => {
+                    event.preventDefault();
+                    const message = messageInput.value.trim();
+                    if (!message) return;
+                    const button = messageForm.querySelector("button[type=submit]");
+                    button.disabled = true;
+                    try {
+                        const response = await fetch("/tournaments/live/admin/registration/" + stream.registration_id + "/message/", {
+                            method: "POST",
+                            credentials: "same-origin",
+                            headers: {"Content-Type":"application/json","X-CSRFToken":csrfToken,"X-Requested-With":"XMLHttpRequest"},
+                            body: JSON.stringify({message})
+                        });
+                        const result = await response.json().catch(() => ({}));
+                        if (!response.ok) throw new Error(result.error || "Message send failed.");
+                        messageInput.value = "";
+                        messageStatus.textContent = "Message sent to " + esc(stream.player) + ".";
+                    } catch (error) {
+                        messageStatus.textContent = error.message;
+                    } finally {
+                        button.disabled = false;
+                    }
                 });
                 room.on(window.LivekitClient.RoomEvent.Disconnected, () => {
                     videoBox.innerHTML = '<span class="text-warning">Player Live disconnected</span>';
+                    audioStatus.textContent = "Player Live disconnected.";
+                    if (talkingRoom === room) talkingRoom = null;
+                    talkButton.textContent = "🎙️ Talk to player";
                 });
                 try {
                     await room.connect(stream.url, stream.token, {autoSubscribe: true});
