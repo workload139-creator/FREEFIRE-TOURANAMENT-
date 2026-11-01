@@ -160,7 +160,10 @@ def maybe_start_unlimited_tournament(tournament_id):
     )
     active_count = eligible.count()
     team_size = tournament_team_size(tournament)
-    if active_count < tournament.max_players or active_count % team_size:
+    # Team modes must start on a complete team boundary. With a 49-seat
+    # ceiling, 2v2/3v3/4v4 and BR Duo/Squad start at 48; solo starts at 49.
+    target_capacity = tournament.max_players - (tournament.max_players % team_size)
+    if target_capacity <= 0 or active_count < target_capacity or active_count % team_size:
         return False
 
     if not tournament.is_free_fan_tournament:
