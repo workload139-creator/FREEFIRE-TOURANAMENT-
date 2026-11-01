@@ -137,12 +137,15 @@ def tournament_live_token(request, registration_id):
                 slot.session = session
                 slot.state = LiveAIAgentSlot.State.WAITING
                 slot.last_heartbeat_at = None
+                slot.identity_verified_at = None
+                slot.identity_ocr_confidence = 0
                 slot.frames_seen = 0
                 slot.detections_seen = 0
                 slot.last_error = ""
                 slot.save(update_fields=[
                     "registration", "session", "state", "last_heartbeat_at",
-                    "frames_seen", "detections_seen", "last_error", "updated_at",
+                    "identity_verified_at", "identity_ocr_confidence", "frames_seen",
+                    "detections_seen", "last_error", "updated_at",
                 ])
             else:
                 LiveAIAgentSlot.objects.create(
