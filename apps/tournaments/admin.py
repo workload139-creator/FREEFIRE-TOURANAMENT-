@@ -48,9 +48,6 @@ class TournamentAdminForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if not self.instance.pk:
             self.initial["status"] = Tournament.Status.UPCOMING
-            # New entries created from the dedicated BR proxy admin are always paid unlimited BR rounds.
-            if self.instance._meta.proxy and self.instance._meta.model_name == "unlimitedtournament":
-                self.initial["is_unlimited_br"] = True
             if self.instance._meta.proxy and self.instance._meta.model_name == "diwalioffertournament":
                 self.initial.update({
                     "mode": Tournament.Mode.BR, "br_format": Tournament.BRFormat.SOLO,
@@ -79,9 +76,6 @@ class TournamentAdminForm(forms.ModelForm):
         cleaned = super().clean()
         if not cleaned.get("gender_category"):
             cleaned["gender_category"] = Tournament.GenderCategory.OPEN
-        # The dedicated proxy admin must never create a normal/non-series tournament.
-        if self.instance._meta.proxy and self.instance._meta.model_name == "unlimitedtournament":
-            cleaned["is_unlimited_br"] = True
         if self.instance._meta.proxy and self.instance._meta.model_name == "diwalioffertournament":
             cleaned.update({
                 "mode": Tournament.Mode.BR,
