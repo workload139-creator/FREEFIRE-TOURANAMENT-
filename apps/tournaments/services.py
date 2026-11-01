@@ -161,7 +161,8 @@ def cancel_tournament_and_refund(tournament_id):
     tournament.status = Tournament.Status.CANCELLED
     tournament.room_id = ""
     tournament.room_password = ""
-    tournament.save(update_fields=["status", "room_id", "room_password", "updated_at"])
+    tournament.room_invite_link = ""
+    tournament.save(update_fields=["status", "room_id", "room_password", "room_invite_link", "updated_at"])
 
     refunded = 0
     registrations = Registration.objects.select_for_update().filter(tournament=tournament)
