@@ -120,18 +120,6 @@ def tournament_live_token(request, registration_id):
                 "session_id": str(session.session_uuid),
                 "registration_id": registration.pk,
                 "state": session.monitor_state,
-            "identity_verified": bool(session.identity_verified_at),
-            "identity_confidence": str(session.identity_ocr_confidence),
-            "approved_kills": verified_counts.get(session.registration_id, 0),
-            "pending_kills": candidate_counts.get(session.registration_id, 0),
-            "reward_preview": rewards_for_tournament(
-                tournament, verified_counts.get(session.registration_id, 0)
-            ) if verified_counts.get(session.registration_id, 0) >= 2 else [],
-            "frames_seen": session.monitor_frames_seen,
-            "detections_seen": session.monitor_detections_seen,
-            "last_heartbeat": session.monitor_last_heartbeat_at.isoformat() if session.monitor_last_heartbeat_at else None,
-            "monitor_error": session.monitor_last_error,
-            "background_warnings": session.background_warning_count,
                 "architecture": "shared_tournament_monitor",
             },
         })
@@ -170,11 +158,11 @@ def admin_tournament_live_tokens(request, tournament_id):
             status=LiveKillEvent.Status.VERIFIED,
         ).values("registration_id").annotate(total=Count("id")).values_list("registration_id", "total")
     )
-    candidate_counts = dict(
+    pending_counts = dict(
         LiveKillEvent.objects.filter(
             tournament=tournament, registration_id__in=registration_ids
         ).exclude(status=LiveKillEvent.Status.VERIFIED).values("registration_id").annotate(
-            total=__import__("django.db.models", fromlist=["Count"]).Count("id")
+            total=Count("id")
         ).values_list("registration_id", "total")
     )
     streams = []
@@ -206,8 +194,10 @@ def admin_tournament_live_tokens(request, tournament_id):
             "identity_verified": bool(session.identity_verified_at),
             "identity_confidence": str(session.identity_ocr_confidence),
             "approved_kills": verified_counts.get(session.registration_id, 0),
-            "pending_kills": candidate_counts.get(session.registration_id, 0),
-            "reward_preview": rewards_for_tournament(tournament, verified_counts.get(session.registration_id, 0)) if verified_counts.get(session.registration_id, 0) >= 2 else [],
+            "pending_kills": pending_counts.get(session.registration_id, 0),
+            "reward_preview": rewards_for_tournament(
+                tournament, verified_counts.get(session.registration_id, 0)
+            ) if verified_counts.get(session.registration_id, 0) >= 2 else [],
             "frames_seen": session.monitor_frames_seen,
             "detections_seen": session.monitor_detections_seen,
             "last_heartbeat": session.monitor_last_heartbeat_at.isoformat() if session.monitor_last_heartbeat_at else None,
