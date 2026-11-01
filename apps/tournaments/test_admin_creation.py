@@ -34,9 +34,10 @@ class TournamentAdminCreationTests(TestCase):
         )
 
     def test_admin_cannot_create_new_tournament(self):
+        existing_count = Tournament.objects.count()
         response = self.client.get(reverse("admin:tournaments_tournament_add"))
         self.assertEqual(response.status_code, 403)
-        self.assertEqual(Tournament.objects.count(), 0)
+        self.assertEqual(Tournament.objects.count(), existing_count)
 
     def test_existing_tournament_edit_exposes_only_status_control(self):
         tournament = self.make_tournament("Existing BR Round")
