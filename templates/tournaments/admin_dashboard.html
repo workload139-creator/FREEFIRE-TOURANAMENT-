@@ -1,11 +1,43 @@
 {% extends "base.html" %}
 {% block title %}{{ tournament.title }} | Tournament Admin{% endblock %}
 {% block content %}
-<div class="container py-4">
-    <h2>🔥 Tournament Admin Control</h2>
+<style>
+.ff-admin-dashboard{max-width:1500px;color:#eaf2ff;padding-bottom:48px}
+.ff-admin-dashboard .ff-admin-hero{position:relative;display:flex;justify-content:space-between;align-items:center;gap:18px;padding:26px 28px;margin:4px 0 12px;border:1px solid #35d7ff55;border-radius:22px;overflow:hidden;background:radial-gradient(ellipse at 10% 0%,#00d5ff24,transparent 48%),radial-gradient(ellipse at 95% 100%,#ffb00020,transparent 42%),linear-gradient(135deg,#101c31,#080e1b 72%);box-shadow:0 18px 55px #0006}
+.ff-admin-dashboard .ff-admin-hero h2{margin:6px 0;font-weight:850;letter-spacing:-.03em;color:#fff}
+.ff-admin-dashboard .ff-admin-hero p{margin:0;color:#aebed4}
+.ff-admin-dashboard .ff-admin-eyebrow{font-size:10px;font-weight:900;letter-spacing:.18em;color:#48dcff}
+.ff-admin-dashboard .ff-admin-live-pill,.ff-admin-dashboard .ff-ai-tag{white-space:nowrap;border:1px solid #40e3b477;border-radius:999px;padding:8px 12px;background:#0c3c344d;color:#83ffd7;font-size:10px;font-weight:900;letter-spacing:.1em}
+.ff-admin-dashboard .ff-admin-live-pill i{display:inline-block;width:7px;height:7px;margin-right:7px;border-radius:50%;background:#55ffc0;box-shadow:0 0 12px #55ffc0}
+.ff-admin-dashboard .ff-admin-subtitle{color:#9fb2ca;font-size:13px;margin:0 0 18px}
+.ff-admin-dashboard .ff-admin-rule{display:grid;gap:6px;padding:16px 18px;margin:14px 0 20px;border:1px solid #f3b84a55;border-radius:16px;background:linear-gradient(120deg,#3b2b102e,#121a28)}
+.ff-admin-dashboard .ff-admin-rule strong{color:#ffd477}.ff-admin-dashboard .ff-admin-rule span{color:#f3f6ff}.ff-admin-dashboard .ff-admin-rule small{color:#aebbd0}
+.ff-admin-dashboard>.row .card{height:100%;min-height:100px;border:1px solid #4b82b955!important;border-radius:16px!important;background:linear-gradient(145deg,#14243a,#0b1321)!important;color:#dcecff;box-shadow:0 10px 28px #0004}
+.ff-admin-dashboard>.row .card h6{color:#9db4d0;text-transform:uppercase;letter-spacing:.08em;font-size:10px;font-weight:800}
+.ff-admin-dashboard>.row .card h3{color:#fff;font-size:30px;font-weight:850;margin:6px 0 0}
+.ff-admin-dashboard>.card{margin-top:18px!important;padding:20px!important;border:1px solid #3d6a9655!important;border-radius:19px!important;background:linear-gradient(145deg,#101d30f5,#09111ef7)!important;color:#eaf2ff;box-shadow:0 14px 36px #0005}
+.ff-admin-dashboard>.card h4,.ff-admin-dashboard>.card h5{color:#f4f8ff;font-weight:800}
+.ff-admin-dashboard>.card p{color:#aebed2}
+.ff-admin-dashboard .table{--bs-table-bg:transparent;--bs-table-color:#dbe8f8;--bs-table-border-color:#ffffff18;margin-bottom:0;font-size:12px}
+.ff-admin-dashboard .table thead th{position:sticky;top:0;background:#162941;color:#75dcff;border-color:#ffffff20;text-transform:uppercase;letter-spacing:.06em;font-size:10px;white-space:nowrap}
+.ff-admin-dashboard .table td{background:#0d1928;color:#d8e5f5;vertical-align:middle;border-color:#ffffff12}
+.ff-admin-dashboard .table-striped>tbody>tr:nth-of-type(odd)>*{background:#122137;color:#d8e5f5}
+.ff-admin-dashboard .table a{color:#62dcff}.ff-admin-dashboard .table small{color:#9fb2c9}
+.ff-admin-dashboard .ff-ai-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:22px 0 6px}
+.ff-admin-dashboard .ff-ai-heading h5{color:#fff;font-weight:850}
+.ff-admin-dashboard .ff-ai-note{font-size:12px;color:#a9bbd1}
+.ff-admin-dashboard .ff-ai-pass{display:inline-block;padding:4px 8px;border-radius:7px;background:#0c553b;color:#8dffca;font-weight:800;font-size:10px}
+.ff-admin-dashboard .ff-ai-hold{display:inline-block;padding:4px 8px;border-radius:7px;background:#513914;color:#ffd27a;font-weight:800;font-size:10px}
+.ff-admin-dashboard #ff-live-grid .card{border:1px solid #34cfff55!important;border-radius:15px!important;background:linear-gradient(145deg,#14253b,#080f1b)!important;color:#fff;box-shadow:0 10px 30px #0005}
+.ff-admin-dashboard .btn-primary{background:linear-gradient(110deg,#087dbe,#0754a8);border:0;font-weight:800}
+.ff-admin-dashboard .btn-outline-secondary{border-color:#68839f;color:#c5d7ea}
+@media(max-width:700px){.ff-admin-dashboard .ff-admin-hero{padding:20px 17px;align-items:flex-start;flex-direction:column}.ff-admin-dashboard>.card{padding:14px!important}.ff-admin-dashboard .table{min-width:780px}.ff-admin-dashboard .ff-ai-heading{align-items:flex-start;flex-direction:column}}
+</style>
+<div class="container py-4 ff-admin-dashboard">
+    <div class="ff-admin-hero"><div><span class="ff-admin-eyebrow">FF ARENA · CONTROL CENTER</span><h2>🔥 Tournament Command Center</h2><p>Live match operations, player verification, AI evidence review and secure rewards — all in one place.</p></div><span class="ff-admin-live-pill"><i></i> ADMIN CONSOLE</span></div>
     <h4>{{ tournament.title }}</h4>
-    <p>Yeh page sirf is tournament ka control panel hai. Neeche har section ka kaam diya hai. Pehle payment/UTR verify karein, phir LIVE aur room confirmation manage karein, phir Live AI monitoring aur refunds review karein.</p>
-    <div class="alert alert-warning"><strong>{% if tournament.is_diwali_offer %}🪔 Diwali Offer reward rule:{% else %}BR reward rule:{% endif %}</strong> {% if tournament.is_diwali_offer %}1 Diamond entry · 20 Diamonds first prize · 5 Coins per approved kill · minimum 2 verified kills.{% else %}Minimum 2 verified kills. Solo: 5 Diamonds per approved kill. Duo/Squad: 5 Diamonds + 2 Coins per approved kill.{% endif %} Live stream subscriber abhi frame-read/connection status record karta hai; Killfeed OCR aur automatic reward abhi active nahi hain. Live AI aur Payment AI ki alag logical slot rows neeche dekhein.</div>
+    <p class="ff-admin-subtitle">Tournament-scoped operations · Payment verification · Live player monitoring · AI-assisted evidence review · Admin-controlled payouts</p>
+    <div class="ff-admin-rule"><strong>⚖️ Reward & safety rule</strong><span>{% if tournament.is_diwali_offer %}1 Diamond entry · 20 Diamonds first prize · 5 Coins per approved kill · minimum 2 verified kills.{% else %}Minimum 2 verified kills. Solo: 5 Diamonds per approved kill. Duo/Squad: 5 Diamonds + 2 Coins per approved kill.{% endif %}</span><small>AI assessment is advisory only. Admin verifies match ID, kill time and in-game name before any wallet credit. Duplicate reward protection remains enabled.</small></div>
 
     <div class="row g-3 my-3">
         <div class="col-md-4"><div class="card p-3"><h6>Total Registrations</h6><h3>{{ total_players }}</h3></div></div>
@@ -83,7 +115,7 @@
             {% empty %}<tr><td colspan="10">Is tournament mein abhi koi Live session nahi hai.</td></tr>{% endfor %}
             </tbody>
         </table></div>
-        <h5 class="mt-3">Kill Evidence & AI Analysis Queue</h5>
+        <div class="ff-ai-heading"><div><span class="ff-admin-eyebrow">EVIDENCE INTELLIGENCE</span><h5 class="mt-1">🤖 Kill Evidence & AI Assessment Queue</h5></div><span class="ff-ai-tag">2 AGENT REVIEW</span></div><p class="ff-ai-note">Agent 1 checks player identity and tournament eligibility. Agent 2 checks killfeed signal and screenshot evidence. A pending/failed check is held for Admin review; AI never pays a player.</p>
         <div class="table-responsive"><table class="table table-striped table-bordered align-middle">
             <thead><tr><th>Evidence</th><th>Detected At</th><th>Player / UID</th><th>Mode</th><th>Confidence</th><th>AI 1 · Identity</th><th>AI 2 · Kill Evidence</th><th>Suggested Kills / Reward</th><th>Admin Status</th></tr></thead>
             <tbody>
@@ -94,8 +126,8 @@
                 <td>{{ event.registration.player.username }} / {{ event.registration.free_fire_uid }}</td>
                 <td>{{ event.tournament.mode }} · {{ event.tournament.br_format|default:event.tournament.vs_format }}</td>
                 <td>{{ event.confidence }}</td>
-                <td>{% if event.session.identity_verified_at %}UID Verified{% else %}UID Pending{% endif %}</td>
-                <td>{% if event.payment_assessment %}{{ event.payment_assessment.decision_reason }}{% else %}Waiting for analysis{% endif %}</td>
+                <td>{% if event.payment_assessment.checks.two_analysis_agents.ff_arena_agent_local_1.passed %}<span class="ff-ai-pass">✓ Identity passed</span>{% else %}<span class="ff-ai-hold">● Identity held</span>{% endif %}</td>
+                <td>{% if event.payment_assessment.checks.two_analysis_agents.ff_arena_agent_local_2.passed %}<span class="ff-ai-pass">✓ Evidence passed</span>{% else %}<span class="ff-ai-hold">● Evidence held</span>{% endif %}<br><small>{% if event.payment_assessment %}{{ event.payment_assessment.decision_reason }}{% else %}Waiting for assessment{% endif %}</small></td>
                 <td>{% if event.payment_assessment %}{{ event.payment_assessment.proposed_kills }} kills · {{ event.payment_assessment.proposed_rewards }}{% else %}Pending{% endif %}{% if event.reward_payload.wallet_balances %}<br><small>Wallet: {{ event.reward_payload.wallet_balances }}</small>{% endif %}</td>
                 <td>{{ event.get_status_display }}<br><small>{{ event.review_reason|default:"—" }}</small><br><a href="/admin/tournaments/livekillevent/" target="_blank" rel="noopener">Open Admin Review</a></td>
             </tr>
