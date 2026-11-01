@@ -39,7 +39,7 @@ class TournamentAdminCreationTests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(Tournament.objects.count(), existing_count)
 
-    def test_existing_tournament_edit_exposes_only_status_control(self):
+    def test_existing_tournament_edit_exposes_invite_link_without_legacy_credentials(self):
         tournament = self.make_tournament("Existing BR Round")
         response = self.client.get(
             reverse("admin:tournaments_tournament_change", args=[tournament.pk])
@@ -47,9 +47,10 @@ class TournamentAdminCreationTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Tournament Control")
-        self.assertNotContains(response, 'name="title"')
-        self.assertNotContains(response, 'name="entry_fee"')
-        self.assertNotContains(response, 'name="prize_pool"')
+        self.assertContains(response, 'name="title"')
+        self.assertContains(response, 'name="room_invite_link"')
+        self.assertNotContains(response, 'name="room_id"')
+        self.assertNotContains(response, 'name="room_password"')
         self.assertContains(response, 'name="status"')
         self.assertContains(response, 'value="live"')
         self.assertContains(response, 'value="cancelled"')
@@ -60,7 +61,23 @@ class TournamentAdminCreationTests(TestCase):
         tournament = self.make_tournament("Ready BR Round")
         response = self.client.post(
             reverse("admin:tournaments_tournament_change", args=[tournament.pk]),
-            {"status": Tournament.Status.LIVE, "_save": "Save"},
+            {
+                "title": tournament.title,
+                "description": tournament.description,
+                "mode": tournament.mode,
+                "br_format": tournament.br_format,
+                "vs_format": "",
+                "gender_category": tournament.gender_category,
+                "entry_fee": str(tournament.entry_fee),
+                "prize_pool": str(tournament.prize_pool),
+                "max_players": str(tournament.max_players),
+                "room_invite_link": "",
+                "winner_team_uids": "",
+                "winner_uid": "",
+                "winner_prize_reference": "",
+                "status": Tournament.Status.LIVE,
+                "_save": "Save",
+            },
             follow=True,
         )
 
@@ -76,7 +93,7 @@ class TournamentAdminCreationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, live.title)
         self.assertContains(response, waiting.title)
-        self.assertContains(response, "Set Room ID / Password &amp; LIVE")
+        self.assertContains(response, "Set Room Invite Link &amp; LIVE")
         self.assertContains(response, "REGISTRATION OPEN")
 
     def test_finishing_live_event_does_not_auto_start_next_full_event(self):
