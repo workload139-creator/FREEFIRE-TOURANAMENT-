@@ -66,6 +66,8 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> pendingFileCallback;
     private PermissionRequest pendingMicRequest;
     private TournamentLiveShareController liveShareController;
+    // Keep the WebView runtime alive while the native MediaProjection stream is in the background.
+    private volatile boolean nativeLiveActive = false;
     private String pendingLiveServerUrl = "";
     private String pendingLiveToken = "";
     private long pendingApkDownloadId = -1L;
@@ -304,7 +306,10 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onPause() {
-        if (featureWebView != null) featureWebView.onPause();
+        // Free Fire is expected to become foreground while FF Arena publishes the screen.
+        // Do not pause WebView's runtime during an active native share; doing so can freeze
+        // its JS bridge/status and polling while the MediaProjection service is still live.
+        if (featureWebView != null && !nativeLiveActive) featureWebView.onPause();
         // Persist WebView cookies/session data so normal app updates and restarts keep the login.
         CookieManager.getInstance().flush();
         super.onPause();
@@ -1035,6 +1040,7 @@ public class MainActivity extends Activity {
     }
 
     private void emitLiveStatus(boolean active, String message) {
+        nativeLiveActive = active;
         runOnUiThread(() -> {
             if (featureWebView == null || isFinishing() || isDestroyed()) return;
             String safeMessage = JSONObject.quote(message == null ? "" : message);
