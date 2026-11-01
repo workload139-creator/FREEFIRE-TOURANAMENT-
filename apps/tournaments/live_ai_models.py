@@ -1,4 +1,4 @@
-"""Persistent state for the separate Live Kill and Reward AI agent pools."""
+"""Legacy slot records plus persistent live kill evidence and reward assessments."""
 import uuid
 
 from django.conf import settings
@@ -9,7 +9,7 @@ from apps.core.storage import PrivateMediaStorage
 
 
 class LiveAIAgentSlot(models.Model):
-    """One lightweight per-player logical slot; compute is supplied by shared workers."""
+    """Deprecated historical slot record; the shared monitor no longer creates or updates these rows."""
 
     class Kind(models.TextChoices):
         LIVE = "live", "Live Kill AI"
