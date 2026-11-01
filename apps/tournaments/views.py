@@ -442,7 +442,7 @@ def send_room_details(request, tournament_id):
     with transaction.atomic():
         tournament = get_object_or_404(Tournament.objects.select_for_update(), pk=tournament_id)
         if tournament.status != Tournament.Status.LIVE:
-            messages.error(request, "Room invite link sirf tournament LIVE hone ke baad is page se save karein. LIVE se pehle Tournament Admin form mein bhi link set kar sakte hain.")
+            messages.error(request, "Room invite link LIVE hone ke baad yahan release karein. LIVE se pehle Tournament Admin form mein save kar sakte hain.")
             return redirect("tournaments:admin_room_page", tournament_id=tournament_id)
 
         try:
@@ -454,7 +454,21 @@ def send_room_details(request, tournament_id):
         tournament.room_invite_link = invite_link
         tournament.save(update_fields=["room_invite_link", "updated_at"])
 
-    messages.success(request, f"Room invite link save ho gaya. {assigned_count} verified players ko {team_size}-player teams mein assign kiya. Existing YES/NO countdown reset nahi hua.")
+        now = timezone.now()
+        eligible = Registration.objects.select_for_update().filter(
+            tournament=tournament,
+            status=Registration.Status.CONFIRMED,
+            payment_verified=True,
+        )
+        eligible.update(
+            status=Registration.Status.WAITING_READY,
+            room_details_sent=True,
+            ready_deadline=now + timedelta(seconds=PLAYER_CONFIRMATION_TIMEOUT_SECONDS),
+            ready_confirmed_at=None,
+            no_response_count=0,
+        )
+
+    messages.success(request, f"Official Room Invite Link save ho gaya. {assigned_count} verified players ko {team_size}-player teams mein assign kiya. Eligible players ko 5 minute mein YES/NO dena hai; har timeout bhi NO count hoga.")
     return redirect("tournaments:admin_room_page", tournament_id=tournament_id)
 
 
