@@ -68,6 +68,38 @@ class TournamentAdminCreationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(tournament.status, Tournament.Status.LIVE)
 
+    def test_central_live_monitor_lists_live_and_waiting_tournaments(self):
+        Tournament.objects.filter(status=Tournament.Status.LIVE).update(status=Tournament.Status.UPCOMING)
+        live = self.make_tournament("Central Monitor LIVE", status=Tournament.Status.LIVE)
+        waiting = self.make_tournament("Central Monitor Waiting")
+        response = self.client.get(reverse("tournaments:admin_live_monitor"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, live.title)
+        self.assertContains(response, waiting.title)
+        self.assertContains(response, "Set Room ID / Password &amp; LIVE")
+        self.assertContains(response, "Registration Open")
+
+    def test_finishing_live_event_does_not_auto_start_next_full_event(self):
+        Tournament.objects.filter(status=Tournament.Status.LIVE).update(status=Tournament.Status.UPCOMING)
+        live = self.make_tournament("Current Live Event", status=Tournament.Status.LIVE)
+        waiting = self.make_tournament("Next Full Waiting Event")
+        Registration.objects.create(
+            tournament=waiting,
+            player=self.player,
+            free_fire_uid="1234567890",
+            status=Registration.Status.CONFIRMED,
+            payment_verified=True,
+        )
+        response = self.client.post(
+            reverse("tournaments:admin_finish_tournament", args=[live.pk]),
+            follow=True,
+        )
+        live.refresh_from_db()
+        waiting.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(live.status, Tournament.Status.COMPLETED)
+        self.assertEqual(waiting.status, Tournament.Status.UPCOMING)
+
     def test_tournament_live_monitor_renders_status_and_first_prize_controls(self):
         tournament = self.make_tournament("Monitor BR Round")
         response = self.client.get(
