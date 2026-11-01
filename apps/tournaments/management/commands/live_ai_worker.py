@@ -3,6 +3,8 @@
 OCR is a candidate signal only. This worker never approves kills or issues wallet credits.
 """
 import asyncio
+import base64
+import io
 import logging
 import os
 import time
@@ -110,12 +112,15 @@ def _scan_kill_candidate(frame):
         if not relevant:
             return None
         text = " ".join(item["text"] for item in words)[:5000]
-        return text, min(item["confidence"] for item in relevant)
+        buffer = io.BytesIO()
+        image.save(buffer, format="JPEG", quality=82, optimize=True)
+        evidence_b64 = base64.b64encode(buffer.getvalue()).decode("ascii")
+        return text, min(item["confidence"] for item in relevant), evidence_b64
     finally:
         image.close()
 
 
-def _post_kill_candidate(session_uuid, detected_text, confidence, fingerprint):
+def _post_kill_candidate(session_uuid, detected_text, confidence, fingerprint, evidence_image_b64):
     base = os.getenv("LIVE_AI_INGEST_URL", "").strip()
     token = os.getenv("LIVE_AI_INGEST_TOKEN", "").strip()
     if not base or not token:
@@ -125,6 +130,7 @@ def _post_kill_candidate(session_uuid, detected_text, confidence, fingerprint):
         "event_fingerprint": fingerprint,
         "confidence": confidence,
         "detected_text": detected_text,
+        "evidence_image_b64": evidence_image_b64,
     }).encode("utf-8")
     request = urllib.request.Request(
         base.rstrip("/") + "/tournaments/live/ai/kill-candidate/",
@@ -189,7 +195,7 @@ class LiveAIWorker:
                         worker.last_kill_scan_at = now
                         candidate = await asyncio.to_thread(_scan_kill_candidate, frame)
                         if candidate:
-                            detected_text, confidence = candidate
+                            detected_text, confidence, evidence_image_b64 = candidate
                             # Stable fingerprint: do not include a time bucket. A persistent
                             # killfeed notification can remain on screen across many OCR scans;
                             # time-bucket fingerprints would turn that one notification into
@@ -201,7 +207,7 @@ class LiveAIWorker:
                             ).hexdigest()
                             if fingerprint != worker.last_kill_fingerprint:
                                 accepted = await asyncio.to_thread(
-                                    _post_kill_candidate, worker.session_uuid, detected_text, confidence, fingerprint
+                                    _post_kill_candidate, worker.session_uuid, detected_text, confidence, fingerprint, evidence_image_b64
                                 )
                                 if accepted:
                                     worker.last_kill_fingerprint = fingerprint
