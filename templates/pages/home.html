@@ -78,7 +78,7 @@
 <section class="home-dashboard">
   <div class="section-heading"><div><span class="section-label">YOUR ARENA</span><h2>Everything <span>Important</span></h2><p>Tournaments, players, rewards aur community — sab ek jagah.</p></div></div>
   <div class="home-dashboard-grid">
-    <a class="home-dashboard-card matches" href="{% url 'tournaments:list' %}"><span>⚔️</span><strong>Matches</strong><small>BR · CS · Free · Unlimited · Girl vs Boy</small><b>Explore categories →</b></a>
+    <a class="home-dashboard-card matches" href="{% url 'tournaments:list' %}"><span>⚔️</span><strong>Matches</strong><small>BR · CS · Free · Girl vs Boy</small><b>Explore categories →</b></a>
     <a class="home-dashboard-card wallet" href="{% if user.is_authenticated %}{% url 'accounts:wallet' %}{% else %}{% url 'login' %}{% endif %}"><span>💎</span><strong>Wallet & Credits</strong><small>Balance, Diamonds, Coins and transaction history</small><b>Open wallet →</b></a>
     <a class="home-dashboard-card profile" href="{% if user.is_authenticated %}{% url 'accounts:profile' %}{% else %}{% url 'login' %}{% endif %}"><span>👤</span><strong>Player Profile</strong><small>Photo, player ID, followers and account settings</small><b>Open profile →</b></a>
     <a class="home-dashboard-card leaderboard" href="{% url 'tournaments:results' %}"><span>🏆</span><strong>Leaderboard & Results</strong><small>Track match results and player performance</small><b>View standings →</b></a>
