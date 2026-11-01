@@ -6,7 +6,7 @@ from .live_ai_models import LiveAIAgentSlot, LiveKillEvent
 
 @admin.register(LiveAIAgentSlot)
 class LiveAIAgentSlotAdmin(admin.ModelAdmin):
-    list_display = ("tournament", "registration", "kind", "slot_number", "state", "frames_seen", "detections_seen", "last_heartbeat_at")
+    list_display = ("tournament", "registration", "kind", "slot_number", "state", "frames_seen", "detections_seen", "last_heartbeat_at", "identity_verified_at", "identity_ocr_confidence")
     list_filter = ("kind", "state", "tournament__mode")
     search_fields = ("registration__free_fire_uid", "registration__player__username", "tournament__title")
     readonly_fields = tuple(field.name for field in LiveAIAgentSlot._meta.fields)
