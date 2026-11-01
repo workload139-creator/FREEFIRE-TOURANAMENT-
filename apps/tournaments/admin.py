@@ -825,9 +825,8 @@ def verify_entry_payments(modeladmin, request, queryset):
                 status=TournamentLedgerEntry.Status.COMPLETED,
                 description="Tournament entry payment verified by admin against the actual payment receipt.",
             )
-            if registration.tournament.auto_start_at_capacity:
-                from .registration_services import maybe_start_unlimited_tournament
-                maybe_start_unlimited_tournament(registration.tournament_id)
+            from .registration_services import maybe_start_unlimited_tournament
+            maybe_start_unlimited_tournament(registration.tournament_id)
             verified_count += 1
 
     if verified_count:
