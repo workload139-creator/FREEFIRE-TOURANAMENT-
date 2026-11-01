@@ -17,9 +17,9 @@
 
   <section id="liveAiShare" style="padding:20px;margin:18px 0;border:1px solid rgba(34,197,94,.55);border-radius:16px">
    <h2>📡 FF Arena Live AI</h2>
-   <p>YES confirm karne ke baad yahin <strong>Start Live AI</strong> dabayein. FF Arena APK Android ka screen-share prompt kholegi; supported desktop browsers mein website browser ka screen-share prompt kholegi. Live active hone par isi page par Mic ON/OFF aur JOIN ROOM milega. Free Fire kholkar apni <strong>Profile screen</strong> dikhayein. Nickname aur UID saaf nazar aane chahiye. Uske baad lobby mein jaakar match shuru karein aur poore match mein screen share chalu rakhein.</p>
+   <p>YES confirm karne ke baad <strong>Start Live AI</strong> dabayein. Isse aapki screen ka live video seedha FF Arena ke secure LiveKit room mein publish hoga — Google Meet ya kisi Google service par nahi. Android APK Android ka system screen-capture prompt kholegi; Laptop Chrome par aap Free Fire emulator/window ya poori screen choose kar sakte hain. Live active hone ke baad <strong>JOIN ROOM IN FREE FIRE</strong> dabayein. Free Fire khulte hi sharing jaari rahegi. Profile screen pehle dikhayein. Nickname aur UID saaf nazar aane chahiye. Uske baad lobby mein jaakar match shuru karein aur poore match mein screen share chalu rakhein.</p>
    <div role="note" style="padding:14px;margin:12px 0;border:1px solid #f59e0b;border-radius:12px;background:rgba(245,158,11,.08)"><strong>⚠️ AI PROFILE VERIFICATION RULE</strong><p style="margin:8px 0 0">AI ko pehle aapki lobby/profile se nickname aur UID padhkar registered UID se match karna hoga. Profile nahi dikhayi, UID/nickname clear nahi hua ya identity match nahi hui, to kills verify nahi honge aur reward release nahi hoga. Match ke dauran AI sirf isi registered player ke killfeed events count karega.</p></div>
-   <p>Screen stream LiveKit ke secure room par share hoti hai. Full gameplay recording website par save nahi hoti; analysis ke liye frames temporary process honge.</p>
+   <p><strong>Stream destination:</strong> Screen video encrypted LiveKit connection se FF Arena ke tournament room tak jaati hai. Google ko gameplay stream nahi bheji jaati. Full gameplay recording website par save nahi hoti; analysis ke liye frames temporary process honge.</p>
    <p><strong>Privacy:</strong> Start karne par app ya supported browser screen-sharing permission maangega. Free Fire aur notifications mein dikhne wali personal information bhi screen par aa sakti hai; share karne se pehle sensitive notifications band kar dein.</p>
    <form id="liveAiConsentForm">
     {% csrf_token %}
@@ -31,7 +31,7 @@
     <button type="button" class="button button-outline" id="stopLiveAiButton" hidden>■ Stop Live</button>
    </form>
    <p id="liveAiStatus" class="help-text" role="status" aria-live="polite">Live abhi start nahi hua.</p>
-   <p class="help-text">Profile screen ko Live start hote hi clearly dikhayein; phir lobby aur match continue karein. App switch hone par warning record ho sakti hai; isse automatic ban ya removal nahi hoga. Aap kabhi bhi Live stop kar sakte hain.</p>
+   <p id="mobileLiveAppHint" class="help-text" hidden>Mobile Chrome doosri app (Free Fire) ki screen capture nahi kar sakta. Gameplay Live share karne ke liye <a href="https://github.com/workload139-creator/FREEFIRE-TOURANAMENT-/releases/download/ff-arena-latest/app-release.apk">FF Arena Android APK install/open karein</a>. Laptop Chrome par Free Fire emulator/window share kar sakte hain.</p><p class="help-text">Profile screen ko Live start hote hi clearly dikhayein; phir JOIN ROOM dabakar Free Fire kholein aur match continue karein. Free Fire par switch karna expected hai; Live stream chalu rehni chahiye. Aap kabhi bhi Live stop kar sakte hain.</p>
   </section>
 
 
@@ -223,8 +223,14 @@
         // network requests or dynamic imports, otherwise browsers can suppress
         // the permission prompt because transient user activation has expired.
         if (!isNativeLive()) {
+          const isAndroidPhone = /Android/i.test(navigator.userAgent);
+          if (isAndroidPhone) {
+            const hint = document.getElementById("mobileLiveAppHint");
+            if (hint) hint.hidden = false;
+            throw new Error("Mobile Chrome doosri app ka gameplay capture nahi kar sakta. FF Arena Android APK se Live AI start karein.");
+          }
           if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== "function") {
-            throw new Error("Is browser mein screen sharing supported nahi hai. Android phone par FF Arena APK ya desktop Chrome/Edge use karein.");
+            throw new Error("Laptop/desktop Chrome ya Edge par Live Sharing chalayein; Android ke liye FF Arena APK use karein.");
           }
           status.textContent = "Abhi browser ka Share screen/tab prompt khulega. Screen select karke Share dabayein…";
           displayStream = await navigator.mediaDevices.getDisplayMedia({video: {frameRate: 15}, audio: false});
