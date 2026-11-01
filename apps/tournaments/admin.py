@@ -523,16 +523,6 @@ class TournamentAdmin(admin.ModelAdmin):
         # Tournament rounds are provisioned by the arena system; Admin only controls existing rounds.
         return False
 
-    def get_fieldsets(self, request, obj=None):
-        if obj and obj.pk:
-            return (
-                ("Tournament Control — Live Monitor", {
-                    "description": "Tournament setup is locked. Use Live Monitor for players, room access, evidence and first-place prize. Here Admin may only change status.",
-                    "fields": ("title", "status", "room_id", "room_password"),
-                }),
-            )
-        return super().get_fieldsets(request, obj)
-
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
         if obj and "status" in form.base_fields:
@@ -692,16 +682,9 @@ class TournamentAdmin(admin.ModelAdmin):
         return False
 
     def get_readonly_fields(self, request, obj=None):
+        # Keep audit/payout fields read-only, but allow normal tournament setup
+        # fields to be edited in the admin change form.
         fields = list(super().get_readonly_fields(request, obj))
-        if obj and obj.pk:
-            fields.extend((
-                "title", "room_id", "room_password", "winner_uid", "winner_team_uids",
-                "entry_fee", "prize_pool", "max_players", "start_time", "mode",
-                "br_format", "vs_format", "gender_category", "description",
-                "winner_prize_reference", "winner_prize_paid", "kill_prize_distributed",
-                "kill_prize_pool", "kill_prize_reference", "winner_payout_destination",
-                "winner_payout_qr", "tournament_control_panel",
-            ))
         if obj and obj.winner_prize_paid:
             fields.append("winner_uid")
         return tuple(dict.fromkeys(fields))
