@@ -1,4 +1,4 @@
-"""Independent Payment & Reward AI worker.
+"""Single advisory AI Assessment worker.
 
 Assesses Live Kill AI candidates and writes advisory proposals only.
 It never verifies kills or credits player wallets; Admin approval is mandatory.
@@ -18,7 +18,6 @@ from apps.tournaments.live_ai_models import (
     LiveKillEvent,
 )
 from apps.tournaments.models import TournamentLiveSession
-from apps.tournaments.live_ai_review import run_two_agent_review
 
 logger = logging.getLogger(__name__)
 POLL_SECONDS = 5
@@ -46,10 +45,12 @@ def build_payment_assessment(event, prior_count=0):
         "session_registration_matches": event.session.registration_id == registration.pk,
         "no_reward_already_issued": not bool(getattr(event, "reward_reference", None)),
     }
-    reviewer_reports = run_two_agent_review(event, event.session)
-    checks["two_analysis_agents"] = reviewer_reports
-    checks["two_analysis_agents_passed"] = all(reviewer_reports[name]["passed"] for name in ("ff_arena_agent_local_1", "ff_arena_agent_local_2"))
-    eligible = all(value for key, value in checks.items() if key != "two_analysis_agents") and checks["two_analysis_agents_passed"]
+    checks["kill_signal_present"] = bool(__import__("re").search(r"\\b(eliminated|knocked|headshot|kill|killed)\\b", " ".join(str(event.detected_text or "").casefold().split())))
+    checks["evidence_image_present"] = bool(event.evidence_image)
+    checks["match_id_present"] = bool(event.match_id)
+    checks["kill_time_present"] = bool(event.kill_at)
+    checks["killer_name_present"] = bool(event.attributed_player_name)
+    eligible = all(checks.values())
     proposed_kills = int(prior_count) + (1 if eligible else 0)
     rewards = []
     failed = [name for name, passed in checks.items() if not passed]
@@ -69,7 +70,7 @@ def build_payment_assessment(event, prior_count=0):
         "proposed_rewards": rewards,
         "checks": checks,
         "decision_reason": reason[:250],
-        "worker_version": "payment-ai-v1",
+        "worker_version": "single-assessment-v2",
     }
 
 
@@ -106,28 +107,28 @@ def assess_pending_events(batch_size=100):
 
 
 
-class PaymentAIWorker:
+class LiveAssessmentWorker:
     def __init__(self, poll_seconds=POLL_SECONDS):
         self.poll_seconds = max(2, int(poll_seconds))
 
     async def run(self, once=False):
-        logger.info("Payment AI worker started; wallet credit is disabled pending Admin approval.")
+        logger.info("Single AI Assessment worker started; wallet credit is disabled pending Admin approval.")
         while True:
             try:
                 count = await assess_pending_events()
                 if count:
-                    logger.info("Payment AI assessed %s new candidate event(s).", count)
+                    logger.info("AI Assessment reviewed %s new candidate event(s).", count)
             except asyncio.CancelledError:
                 raise
             except Exception:
-                logger.exception("Payment AI worker cycle failed.")
+                logger.exception("AI Assessment worker cycle failed.")
             if once:
                 return
             await asyncio.sleep(self.poll_seconds)
 
 
 class Command(BaseCommand):
-    help = "Run the independent Payment & Reward AI assessment worker."
+    help = "Run the single advisory live-kill AI assessment worker."
 
     def add_arguments(self, parser):
         parser.add_argument("--poll-seconds", type=int, default=POLL_SECONDS)
@@ -135,9 +136,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.SUCCESS(
-            "Starting Payment AI: eligibility checks and reward proposals only; no automatic wallet credit."
+            "Starting single AI Assessment: checks and reward proposals only; no automatic wallet credit."
         ))
         try:
-            asyncio.run(PaymentAIWorker(options["poll_seconds"]).run(once=options["once"]))
+            asyncio.run(LiveAssessmentWorker(options["poll_seconds"]).run(once=options["once"]))
         except KeyboardInterrupt:
             self.stdout.write("Payment AI worker stopped.")
