@@ -39,7 +39,7 @@ class PaymentAIAssessmentRulesTests(TestCase):
         self.assertTrue(result["eligible"])
         self.assertEqual(result["proposed_kills"], 1)
         self.assertEqual(result["proposed_rewards"], [])
-        self.assertIn("more verified kill", result["decision_reason"])
+        self.assertIn("more Admin-verified kill", result["decision_reason"])
 
     def test_second_valid_kill_proposes_br_diamonds_without_crediting_wallet(self):
         event = self.make_event()
