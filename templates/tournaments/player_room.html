@@ -4,11 +4,11 @@
 <section class="container" style="max-width:800px;margin:35px auto;padding:20px">
  <div class="tournament-card" style="padding:24px;border-radius:16px"><h1>🎮 Tournament Room</h1><h2>{{ tournament.title }}</h2><p><strong>Free Fire UID:</strong> {{ registration.free_fire_uid }}</p>{% if registration.team_number %}<p><strong>Your Team:</strong> Team {{ registration.team_number }} · Player {{ registration.team_position }}</p>{% endif %}<p><strong>Status:</strong> {{ registration.get_status_display }}</p></div>
  {% if registration.status == "waiting_ready" and registration.payment_verified %}
- <div class="tournament-card" style="padding:24px;margin-top:20px;border-radius:16px"><h2>⚠️ Confirm Before Entering</h2><p>Match join karne ke liye <strong>5 minute ke andar YES</strong> dabao. Room ID aur password sirf YES confirm karne ke baad dikhenge.</p><p><strong>Confirmation deadline:</strong> {{ registration.ready_deadline|date:"d M Y, h:i:s A" }}</p>
+ <div class="tournament-card" style="padding:24px;margin-top:20px;border-radius:16px"><h2>⚠️ Confirm Before Entering</h2><p>5 minute ke andar YES ya NO chunein. NO ya time-out ek attempt maana jayega. Teen attempts mein YES na hua to registration cancel aur refund hoga.</p><p><strong>NO attempts:</strong> {{ registration.no_response_count }}/3</p><p><strong>Confirmation deadline:</strong> {{ registration.ready_deadline|date:"d M Y, h:i:s A" }}</p>
  <p><strong>Time left:</strong> <span id="readyCountdown" data-deadline="{{ registration.ready_deadline|date:'c' }}">05:00</span></p>
  <form method="post" action="{% url 'tournaments:confirm_playing' registration.id %}" style="display:inline-block">{% csrf_token %}<button type="submit" class="btn-primary">YES, I AM PLAYING</button></form>
  <form method="post" action="{% url 'tournaments:decline_playing' registration.id %}" style="display:inline-block;margin-top:10px">{% csrf_token %}<button type="submit" class="button button-outline">NO, I CAN'T PLAY</button></form>
- <p class="help-text">5 minute mein YES na kiya ya NO chuna, to aap NOT PLAYING mark honge aur leaderboard se hataye jayenge. Direct UPI payment ka refund admin ko actual UPI transfer karke process karna hoga.</p></div>
+ <p class="help-text">Jawab na dena bhi har 5 minute par ek NO maana jayega. Teen NO/time-out ke baad aap tournament se hat jayenge aur ek baar entry fee original wallet currency mein refund hogi.</p></div>
  {% elif registration.status == "ready" and can_view_room %}
  <div class="tournament-card" style="padding:24px;margin-top:20px;border-radius:16px">
   <h2>🔥 Your Tournament Room</h2>
@@ -162,6 +162,8 @@
     window.addEventListener("ffarena-live-status", function (event) {
       const detail = event.detail || {};
       active = Boolean(detail.active);
+      const roomJoinStep = document.getElementById("roomJoinStep");
+      if (roomJoinStep) roomJoinStep.hidden = !active;
       if (active) {
         awaitingNativeStart = false;
       } else if (awaitingNativeStart) {
@@ -190,52 +192,14 @@
   })();
   </script>
 
-  <section id="roomSaveStep" style="padding:18px;margin:18px 0;border:1px solid var(--border-color, #555);border-radius:14px">
-   <h3>1. Save Room Details</h3>
-   <p>Sabse pehle room details save karein. Save hone ke baad ye button hat jayega.</p>
-   <button type="button" class="btn-primary" id="saveRoomDetails">☆ Save Room Details</button>
-   <p id="roomSaveStatus" class="help-text" aria-live="polite"></p>
-  </section>
-  <button type="button" class="btn-primary" id="joinTournamentButton" hidden style="width:100%;margin:14px 0;padding:16px;font-size:18px">🚀 JOIN TOURNAMENT</button>
-
-  <section id="qrJoinStep" hidden style="padding:18px;margin:18px 0;border:1px solid var(--border-color, #555);border-radius:14px">
-   <h3>2. Join Tournament</h3>
-   <p>QR se join karne ki koshish karein. Agar Free Fire MAX QR ko accept na kare, neeche ID aur Password wala backup use karein.</p>
-   {% if tournament.room_qr_code %}
-    <div style="text-align:center;padding:12px;background:#fff;border-radius:12px">
-     <img src="{% url "tournaments:room_qr_file" tournament.id %}" alt="Official Free Fire custom room QR code" style="width:min(100%,320px);height:auto;object-fit:contain">
-    </div>
-    <p class="help-text">Is QR ko Free Fire MAX ke official Custom Room QR scanner se scan karein, agar aapke game version mein scanner available hai.</p>
-    <a class="button button-outline" href="{% url 'tournaments:room_qr_file' tournament.id %}?download=1" download style="display:inline-block;margin-top:8px">⬇ Download Room QR</a>
-
+  <section id="roomJoinStep" hidden style="padding:20px;margin:18px 0;border:2px solid var(--primary,#f59e0b);border-radius:16px;text-align:center">
+   <h2>🚀 JOIN ROOM</h2>
+   <p>Screen-share permission allow karke Live AI active hone ke baad hi join button khulega. Free Fire India ya Free Fire MAX jo installed hai, Garena invite link usmein open hoga.</p>
+   {% if tournament.room_invite_link %}
+    <a class="btn-primary" href="{{ tournament.room_invite_link }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;width:100%;padding:16px;font-size:18px">🔥 JOIN ROOM IN FREE FIRE</a>
    {% else %}
-    <p class="help-text">Admin ne is tournament ka QR upload nahi kiya. ID aur Password se join karein.</p>
+    <p class="help-text">Admin ne abhi invite link add nahi kiya hai. Link add hone par yahan JOIN ROOM dikhega.</p>
    {% endif %}
-   <p id="roomActionStatus" class="help-text" aria-live="polite"></p>
-   <button type="button" class="button button-outline" id="qrFallbackButton">QR se join nahi hua? Room ID & Password use karein</button>
-  </section>
-
-  <section id="roomActions" hidden style="padding:18px;margin:18px 0;border:1px solid var(--border-color, #555);border-radius:14px">
-   <h3>2. Room ID copy karein</h3>
-   <p>Room ID copy karke Free Fire MAX ke Custom Room mein pehle Room ID wale box mein paste karein.</p>
-   <button type="button" class="button button-outline" id="copyRoomId">Copy Room ID</button>
-
-   <h3 style="margin-top:22px">3. Apne installed game mein Room ID paste karein</h3>
-   <p class="help-text">Upar diye gaye Free Fire MAX ya Free Fire India button se sahi game kholein. Game ke Custom Room mein Room ID paste karein.</p>
-
-   <h3 style="margin-top:22px">4. Password copy karein</h3>
-   <p>Ab Password copy karke Custom Room ke Password wale box mein paste karein.</p>
-   <button type="button" class="button button-outline" id="copyRoomPassword">Copy Password</button>
-
-   <div id="showDetailsGate" style="margin-top:22px">
-    <h3>5. Room Details</h3>
-    <p id="showDetailsMessage" class="help-text" aria-live="polite">Room ID ya Password pehli baar copy karne ke 2 minute baad Show Details option unlock hoga.</p>
-    <button type="button" class="button button-outline" id="showRoomDetails" hidden>Show Details</button>
-    <div id="roomDetailsReveal" hidden style="margin-top:12px;padding:14px;border-radius:12px;background:var(--card-bg, rgba(127,127,127,.12))">
-     <p>Room ID: <strong id="ffRoomId">{{ tournament.room_id|escape }}</strong></p>
-     <p>Room Password: <strong id="ffRoomPassword">{{ tournament.room_password|escape }}</strong></p>
-    </div>
-   </div>
   </section>
 
   <section style="padding:22px;margin:22px 0;border:2px solid var(--primary, #f59e0b);border-radius:16px;text-align:center">
@@ -391,7 +355,7 @@
    window.setInterval(refreshRoomFlow, 1000);
  })();
  </script>
- {% elif registration.status == "not_playing" %}<p class="message error">Aap NOT PLAYING mark ho chuke hain. Room access band hai. Agar entry fee UPI se di thi, refund ki actual transfer status admin se confirm karein.</p>
+ {% elif registration.status == "not_playing" %}<p class="message error">Aapne teen baar NO kiya ya confirmation ka jawab teen baar nahi diya. Aap tournament se hata diye gaye hain. {% if registration.refund_processed %}Entry fee ka one-time refund wallet mein credit ho gaya hai.{% else %}Refund pending hai; Admin se contact karein.{% endif %}</p>
  {% elif not registration.payment_verified %}<p class="message warning">Payment verify nahi hui hai. Admin ke payment verify karne ke baad hi participation confirmation aur room access milega.</p>
  {% else %}<p class="message">Room details abhi available nahi hain. Admin ke tournament room details release karne ka wait karein.</p>{% endif %}
  <a href="{% url 'tournaments:my_registrations' %}">← My Registrations</a>
