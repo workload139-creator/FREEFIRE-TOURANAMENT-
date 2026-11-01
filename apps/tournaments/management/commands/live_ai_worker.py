@@ -7,6 +7,9 @@ import asyncio
 import logging
 import os
 import time
+import hashlib
+import json
+import urllib.request
 from dataclasses import dataclass, field
 from datetime import timedelta
 from decimal import Decimal
@@ -21,10 +24,14 @@ import pytesseract
 
 from apps.tournaments.live_ai_models import LiveAIAgentSlot
 from apps.tournaments.live_ai_ocr import verify_profile_uid
+from apps.tournaments.live_ai_killfeed import live_kill_detection_enabled, scan_full_frame_for_kill_text
 from apps.tournaments.models import TournamentLiveSession
 
 logger = logging.getLogger(__name__)
 OCR_SAMPLE_INTERVAL = 2.0
+KILL_SCAN_INTERVAL = 1.5
+KILL_EVENT_DEDUPE_SECONDS = 8
+KILL_TERMS = {"eliminated", "knocked", "headshot", "kill", "killed", "assist"}
 
 
 @dataclass
@@ -34,11 +41,14 @@ class SessionWorker:
     participant_identity: str
     registration_id: int
     free_fire_uid: str
+    tournament_mode: str
     room: rtc.Room
     frame_tasks: set = field(default_factory=set)
     frames_pending: int = 0
     identity_verified: bool = False
     last_ocr_at: float = 0.0
+    last_kill_scan_at: float = 0.0
+    last_kill_fingerprint: str = ""
 
 
 @sync_to_async
@@ -52,7 +62,7 @@ def active_sessions():
             registration__refund_processed=False,
         ).values(
             "session_uuid", "room_name", "participant_identity",
-            "registration_id", "registration__free_fire_uid",
+            "registration_id", "registration__free_fire_uid", "tournament__mode",
         )
     )
 
@@ -63,6 +73,7 @@ def update_slots(session_uuid, state, frames_delta=0, error=""):
         state=state,
         last_heartbeat_at=timezone.now(),
         frames_seen=F("frames_seen") + max(0, int(frames_delta)),
+        detections_seen=F("detections_seen") + max(0, int(detections_delta)),
         last_error=error[:250],
         updated_at=timezone.now(),
     )
@@ -89,6 +100,45 @@ def _ocr_frame_for_uid(frame, registered_uid):
         return verify_profile_uid(image, registered_uid)
     finally:
         image.close()
+
+
+def _scan_kill_candidate(frame):
+    rgb = frame.convert(rtc.VideoBufferType.RGB24)
+    image = Image.frombytes("RGB", (rgb.width, rgb.height), bytes(rgb.data))
+    try:
+        words = scan_full_frame_for_kill_text(image)
+        relevant = [item for item in words if item["text"].lower() in KILL_TERMS]
+        if not relevant:
+            return None
+        text = " ".join(item["text"] for item in words)[:5000]
+        return text, min(item["confidence"] for item in relevant)
+    finally:
+        image.close()
+
+
+def _post_kill_candidate(session_uuid, detected_text, confidence, fingerprint):
+    base = os.getenv("LIVE_AI_INGEST_URL", "").strip()
+    token = os.getenv("LIVE_AI_INGEST_TOKEN", "").strip()
+    if not base or not token:
+        return False
+    payload = json.dumps({
+        "session_uuid": session_uuid,
+        "event_fingerprint": fingerprint,
+        "confidence": confidence,
+        "detected_text": detected_text,
+    }).encode("utf-8")
+    request = urllib.request.Request(
+        base.rstrip("/") + "/tournaments/live/ai/kill-candidate/",
+        data=payload,
+        headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=5) as response:
+            return 200 <= response.status < 300
+    except Exception:
+        logger.exception("Could not submit kill candidate for session %s", session_uuid)
+        return False
 
 
 class LiveAIWorker:
@@ -126,24 +176,34 @@ class LiveAIWorker:
                     continue
                 worker.frames_pending += 1
                 now = time.monotonic()
-                if worker.identity_verified or now - worker.last_ocr_at < OCR_SAMPLE_INTERVAL:
-                    continue
-                worker.last_ocr_at = now
                 try:
-                    verified, confidence = await asyncio.to_thread(
-                        _ocr_frame_for_uid, frame, worker.free_fire_uid
-                    )
-                    if verified:
-                        worker.identity_verified = True
-                        await mark_identity_verified(worker.session_uuid, confidence)
-                        logger.info(
-                            "Registered UID verified for session=%s registration=%s",
-                            worker.session_uuid,
-                            worker.registration_id,
+                    if not worker.identity_verified and now - worker.last_ocr_at >= OCR_SAMPLE_INTERVAL:
+                        worker.last_ocr_at = now
+                        verified, confidence = await asyncio.to_thread(
+                            _ocr_frame_for_uid, frame, worker.free_fire_uid
                         )
+                        if verified:
+                            worker.identity_verified = True
+                            await mark_identity_verified(worker.session_uuid, confidence)
+                            logger.info("Registered UID verified for session=%s registration=%s", worker.session_uuid, worker.registration_id)
+                    if live_kill_detection_enabled(worker.tournament_mode) and worker.identity_verified and now - worker.last_kill_scan_at >= KILL_SCAN_INTERVAL:
+                        worker.last_kill_scan_at = now
+                        candidate = await asyncio.to_thread(_scan_kill_candidate, frame)
+                        if candidate:
+                            detected_text, confidence = candidate
+                            bucket = int(time.time() // KILL_EVENT_DEDUPE_SECONDS)
+                            fingerprint = hashlib.sha256(
+                                f"{worker.session_uuid}|{bucket}|{detected_text.lower()}".encode("utf-8")
+                            ).hexdigest()
+                            if fingerprint != worker.last_kill_fingerprint:
+                                accepted = await asyncio.to_thread(
+                                    _post_kill_candidate, worker.session_uuid, detected_text, confidence, fingerprint
+                                )
+                                if accepted:
+                                    worker.last_kill_fingerprint = fingerprint
+                                    await update_slots(worker.session_uuid, LiveAIAgentSlot.State.PROCESSING, detections_delta=1)
                 except Exception:
-                    # Missing Tesseract or an OCR error must never count as identity proof.
-                    logger.exception("UID OCR failed for session %s", worker.session_uuid)
+                    logger.exception("Live AI frame analysis failed for session %s", worker.session_uuid)
         except asyncio.CancelledError:
             raise
         except Exception:
@@ -160,6 +220,7 @@ class LiveAIWorker:
             participant_identity=session["participant_identity"],
             registration_id=session["registration_id"],
             free_fire_uid=str(session["registration__free_fire_uid"] or ""),
+            tournament_mode=str(session["tournament__mode"] or ""),
             room=room,
         )
 
@@ -233,7 +294,7 @@ class LiveAIWorker:
 
 
 class Command(BaseCommand):
-    help = "Subscribe to active FF Arena LiveKit rooms and verify registered UID via OCR."
+    help = "Subscribe to active FF Arena LiveKit rooms, verify UID, and submit BR/VS kill candidates for Admin review."
 
     def add_arguments(self, parser):
         parser.add_argument("--poll-seconds", type=int, default=5)
@@ -251,7 +312,7 @@ class Command(BaseCommand):
                 "Tesseract OCR binary is missing. Run this command in the dedicated OCR worker image."
             ) from exc
         self.stdout.write(self.style.SUCCESS(
-            "Starting LiveKit UID verification worker. Killfeed recognition and rewards remain disabled."
+            "Starting LiveKit worker: UID verification plus BR/VS full-frame kill candidates; rewards require Admin review."
         ))
         try:
             asyncio.run(LiveAIWorker(options["poll_seconds"]).run())
