@@ -1,3 +1,4 @@
+"""Regression tests for independent Payment AI validation."""
 from types import SimpleNamespace
 from unittest import TestCase
 
