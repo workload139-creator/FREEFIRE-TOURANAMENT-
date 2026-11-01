@@ -18,11 +18,13 @@
         android:usesCleartextTraffic="false"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+        <!-- Screen sharing is independent of the optional player microphone.
+             Do not require RECORD_AUDIO just to start MediaProjection. -->
         <service
             android:name="io.livekit.android.room.track.screencapture.ScreenCaptureService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="mediaProjection|microphone" />
+            android:foregroundServiceType="mediaProjection" />
         <activity
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"

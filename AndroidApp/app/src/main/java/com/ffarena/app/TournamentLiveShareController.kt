@@ -50,7 +50,27 @@ class TournamentLiveShareController(context: Context) {
                 createdRoom.connect(serverUrl, participantToken)
                 val published = createdRoom.localParticipant.setScreenShareEnabled(
                     true,
-                    ScreenCaptureParams(permissionResultData)
+                    ScreenCaptureParams(
+                        mediaProjectionPermissionResultData = permissionResultData,
+                        onStop = {
+                            // Android can revoke MediaProjection independently of the
+                            // app. Tell the WebView so JOIN ROOM is not left in a false
+                            // active state and the server session can be closed cleanly.
+                            scope.launch {
+                                val stoppedRoom = room
+                                room = null
+                                try {
+                                    stoppedRoom?.disconnect()
+                                    stoppedRoom?.release()
+                                } catch (_: Exception) {
+                                }
+                                callback.onResult(
+                                    false,
+                                    "Android ne screen sharing rok di. Start Live AI dobara karein."
+                                )
+                            }
+                        }
+                    )
                 )
                 if (!published) {
                     throw IllegalStateException("LiveKit could not publish the screen share.")
