@@ -257,6 +257,14 @@
                     esc(stream.player) + ' · UID ' + esc(stream.uid) +
                     '</strong><small class="text-muted">' + esc(stream.state) +
                     '</small></div>' +
+                    '<div class="row g-2 mt-2 ff-player-metrics">' +
+                    '<div class="col-6"><small>UID verification</small><div class="fw-bold ff-uid-state">' + (stream.identity_verified ? '✓ Verified' : 'Waiting') + '</div></div>' +
+                    '<div class="col-6"><small>Verified kills</small><div class="fw-bold ff-kill-count">' + esc(stream.approved_kills) + '</div></div>' +
+                    '<div class="col-6"><small>Pending kill evidence</small><div class="fw-bold">' + esc(stream.pending_kills) + '</div></div>' +
+                    '<div class="col-6"><small>Reward preview</small><div class="fw-bold">' + esc(JSON.stringify(stream.reward_preview || [])) + '</div></div>' +
+                    '<div class="col-6"><small>Frames / detections</small><div>' + esc(stream.frames_seen) + ' / ' + esc(stream.detections_seen) + '</div></div>' +
+                    '<div class="col-6"><small>Background warnings</small><div>' + esc(stream.background_warnings) + '</div></div>' +
+                    '<div class="col-12"><small class="ff-monitor-error">' + esc(stream.monitor_error || 'No monitor error reported') + '</small></div></div>' +
                     '<div class="ff-live-video mt-2 bg-dark rounded d-flex align-items-center justify-content-center" style="min-height:190px;overflow:hidden"><span class="text-white-50">Waiting for player screen…</span></div>' +
                     '<div class="d-flex flex-wrap gap-2 mt-3">' +
                     '<button type="button" class="btn btn-sm btn-outline-info ff-listen-toggle">🔇 Listen OFF</button>' +
