@@ -232,7 +232,7 @@
         status.textContent = "Secure Live session connect ho raha hai…";
         const session = await post(tokenUrl, {});
         awaitingStart = true;
-        if (nativeLive) {
+        if (isNativeLive()) {
           window.FFArenaLive.start(session.url, session.token);
           status.textContent = "Android screen-share permission approve karein. Uske baad Live stream start hogi.";
         } else {

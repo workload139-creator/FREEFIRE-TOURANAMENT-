@@ -9,6 +9,7 @@ urlpatterns = [
     path("live/ai/kill-candidate/", live_ai_views.ingest_live_kill_candidate, name="live_ai_kill_ingest"),
     path("live/admin/kill/<int:event_id>/approve/", live_ai_views.admin_approve_live_kill, name="admin_approve_live_kill"),
     path("live/registration/<int:registration_id>/token/", live_views.tournament_live_token, name="live_token"),
+    path("live/leaderboard/<int:tournament_id>/streams/", live_views.leaderboard_live_tokens, name="leaderboard_live_tokens"),
     path("live/admin/tournament/<int:tournament_id>/tokens/", live_views.admin_tournament_live_tokens, name="admin_live_tokens"),
     path("live/admin/registration/<int:registration_id>/message/", live_views.admin_send_live_message, name="admin_live_message"),
     path("live/registration/<int:registration_id>/messages/", live_views.player_live_messages, name="player_live_messages"),

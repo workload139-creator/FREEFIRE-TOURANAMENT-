@@ -135,6 +135,65 @@ def tournament_live_token(request, registration_id):
 
 @login_required
 @require_GET
+def leaderboard_live_tokens(request, tournament_id):
+    """Issue subscribe-only tokens for active gameplay streams to verified tournament entrants."""
+    tournament = get_object_or_404(Tournament, pk=tournament_id)
+    viewer_is_eligible = Registration.objects.filter(
+        tournament=tournament,
+        player=request.user,
+        payment_verified=True,
+        refund_processed=False,
+        status__in=[
+            Registration.Status.CONFIRMED,
+            Registration.Status.WAITING_READY,
+            Registration.Status.READY,
+        ],
+    ).exists()
+    if not viewer_is_eligible:
+        return JsonResponse({"error": "Live gameplay sirf isi tournament ke verified players dekh sakte hain."}, status=403)
+
+    url, key, secret = _livekit_config()
+    if not url:
+        return JsonResponse({"error": "LiveKit configuration is unavailable."}, status=503)
+
+    sessions = TournamentLiveSession.objects.filter(
+        tournament=tournament,
+        status=TournamentLiveSession.Status.ACTIVE,
+        registration__status=Registration.Status.READY,
+        registration__payment_verified=True,
+        registration__refund_processed=False,
+    ).exclude(registration__player=request.user).select_related(
+        "registration", "registration__player"
+    ).order_by("started_at")
+
+    streams = []
+    for session in sessions:
+        identity = f"ffarena-viewer-{request.user.pk}-{session.session_uuid.hex[:12]}"
+        token = (
+            api.AccessToken(key, secret)
+            .with_identity(identity)
+            .with_name(request.user.get_username()[:64])
+            .with_ttl(timedelta(minutes=10))
+            .with_grants(api.VideoGrants(
+                room_join=True,
+                room=session.room_name,
+                can_publish=False,
+                can_subscribe=True,
+            ))
+            .to_jwt()
+        )
+        streams.append({
+            "registration_id": session.registration_id,
+            "player": session.registration.player.get_username(),
+            "uid": session.registration.free_fire_uid,
+            "url": url,
+            "token": token,
+        })
+    return JsonResponse({"tournament_id": tournament.pk, "streams": streams})
+
+
+@login_required
+@require_GET
 def admin_tournament_live_tokens(request, tournament_id):
     """Issue per-player monitor tokens for audio/video subscribe and staff audio talkback."""
     if not request.user.is_staff:
