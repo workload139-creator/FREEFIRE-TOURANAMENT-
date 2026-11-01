@@ -84,7 +84,7 @@
 
 
     <div id="ff-section-controls" class="card p-3 my-3 ff-section-card">
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3>
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
             <div>
                 <h4 class="mb-1">Live Monitor Controls</h4>
                 <p class="mb-0">Status changes, match finish and first-place winner selection stay inside this control panel.</p>
@@ -297,6 +297,7 @@
     const tournamentId = grid.dataset.tournamentId;
     const rooms = [];
     let talkingRoom = null;
+    let refreshInProgress = false;
     const csrfToken = document.querySelector("#ff-live-csrf-form [name=csrfmiddlewaretoken]")?.value || "";
     document.querySelectorAll(".ff-kill-approve-form").forEach(form => {
         form.addEventListener("submit", async (event) => {
@@ -331,6 +332,8 @@
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     }[ch]));
     async function startTournamentStreams() {
+        if (refreshInProgress) return;
+        refreshInProgress = true;
         try {
             const response = await fetch("/tournaments/live/admin/tournament/" + tournamentId + "/tokens/", {
                 credentials: "same-origin",
@@ -338,15 +341,21 @@
             });
             if (!response.ok) throw new Error(response.status === 403 ? "Staff permission required." : "Live stream token request failed.");
             const data = await response.json();
-            grid.innerHTML = "";
             if (!data.streams.length) {
-                grid.innerHTML = '<div class="col-12"><div class="alert alert-secondary mb-0">No active player screen shares in this tournament yet.</div></div>';
+                if (!grid.querySelector(".ff-live-player-card")) {
+                    grid.innerHTML = '<div class="col-12 ff-no-live-streams"><div class="alert alert-secondary mb-0">Waiting for players to press YES and start screen sharing… This monitor checks for new streams automatically.</div></div>';
+                }
                 return;
             }
+            const emptyState = grid.querySelector(".ff-no-live-streams");
+            if (emptyState) emptyState.remove();
             if (!window.LivekitClient) throw new Error("LiveKit browser player could not be loaded.");
             for (const stream of data.streams) {
+                const alreadyShown = Array.from(grid.querySelectorAll("[data-session-id]")).some(card => card.dataset.sessionId === stream.session_id);
+                if (alreadyShown) continue;
                 const col = document.createElement("div");
-                col.className = "col-12 col-md-6 col-xl-4";
+                col.className = "col-12 col-md-6 col-xl-4 ff-live-player-card";
+                col.dataset.sessionId = stream.session_id;
                 col.innerHTML = '<div class="card h-100 p-3">' +
                     '<div class="d-flex justify-content-between gap-2"><strong>' +
                     esc(stream.player) + ' · UID ' + esc(stream.uid) +
@@ -396,6 +405,7 @@
                 const messageInput = col.querySelector(".ff-player-message");
                 const messageStatus = col.querySelector(".ff-message-status");
                 const audioElements = [];
+                let listenEnabled = false;
                 const room = new window.LivekitClient.Room({adaptiveStream: true, dynacast: true});
                 rooms.push(room);
                 room.on(window.LivekitClient.RoomEvent.TrackSubscribed, (track) => {
@@ -411,21 +421,24 @@
                     } else if (track.kind === window.LivekitClient.Track.Kind.Audio) {
                         const element = track.attach();
                         element.autoplay = true;
-                        element.muted = true;
+                        element.muted = !listenEnabled;
                         element.style.display = "none";
                         col.appendChild(element);
                         audioElements.push(element);
-                        audioStatus.textContent = "Player mic ON — Listen button se awaaz sun sakte hain.";
+                        audioStatus.textContent = listenEnabled ? "Player mic ON — audio connected." : "Player mic ON — Listen ON dabakar awaaz sunein.";
+                        if (listenEnabled) element.play().catch(() => { audioStatus.textContent = "Browser audio playback allow karein."; });
                     }
                 });
                 listenButton.addEventListener("click", async () => {
-                    const nextMuted = audioElements.length ? !audioElements[0].muted : true;
-                    audioElements.forEach(element => { element.muted = nextMuted; });
-                    listenButton.textContent = nextMuted ? "🔇 Listen OFF" : "🔊 Listen ON";
-                    if (!audioElements.length) audioStatus.textContent = "Player ne abhi mic ON nahi kiya.";
-                    if (!nextMuted) {
+                    listenEnabled = !listenEnabled;
+                    audioElements.forEach(element => { element.muted = !listenEnabled; });
+                    listenButton.textContent = listenEnabled ? "🔊 Listen ON" : "🔇 Listen OFF";
+                    if (!audioElements.length) {
+                        audioStatus.textContent = listenEnabled ? "Listen ON — player ke mic publish karte hi audio chalega." : "Player mic audio ke liye Listen ON karein.";
+                    }
+                    if (listenEnabled && audioElements.length) {
                         try { await Promise.all(audioElements.map(element => element.play())); }
-                        catch (error) { audioStatus.textContent = "Browser audio permission/playback allow karein."; }
+                        catch (error) { audioStatus.textContent = "Browser audio playback allow karein."; }
                     }
                 });
                 talkButton.addEventListener("click", async () => {
@@ -502,11 +515,21 @@
                 }
             }
         } catch (error) {
-            grid.innerHTML = '<div class="col-12"><div class="alert alert-warning mb-0">' + esc(error.message) + '</div></div>';
+            if (!grid.querySelector(".ff-live-player-card")) {
+                grid.innerHTML = '<div class="col-12"><div class="alert alert-warning mb-0">' + esc(error.message) + '</div></div>';
+            }
+        } finally {
+            refreshInProgress = false;
         }
     }
     window.addEventListener("beforeunload", () => rooms.forEach(room => room.disconnect()));
     startTournamentStreams();
+    // Admin may open this page before any player presses YES. Keep discovering
+    // newly-started player sessions and add their LiveKit subscriptions without
+    // clearing already-connected player cards.
+    window.setInterval(() => {
+        if (document.visibilityState !== "hidden") startTournamentStreams();
+    }, 8000);
 })();
 </script>
 
