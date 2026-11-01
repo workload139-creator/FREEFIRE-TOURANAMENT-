@@ -68,6 +68,29 @@ class TournamentAdminCreationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(tournament.status, Tournament.Status.LIVE)
 
+    def test_live_monitor_can_finish_tournament_and_release_slot(self):
+        Tournament.objects.filter(status=Tournament.Status.LIVE).update(status=Tournament.Status.UPCOMING)
+        tournament = self.make_tournament("Finished BR Round", status=Tournament.Status.LIVE)
+        response = self.client.post(
+            reverse("tournaments:admin_finish_tournament", args=[tournament.pk]),
+            follow=True,
+        )
+
+        tournament.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(tournament.status, Tournament.Status.COMPLETED)
+
+    def test_live_monitor_cannot_finish_upcoming_tournament(self):
+        tournament = self.make_tournament("Upcoming BR Round")
+        response = self.client.post(
+            reverse("tournaments:admin_finish_tournament", args=[tournament.pk]),
+            follow=True,
+        )
+
+        tournament.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(tournament.status, Tournament.Status.UPCOMING)
+
     def test_admin_cannot_start_second_live_tournament(self):
         Tournament.objects.create(
             title="Already Live",
