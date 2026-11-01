@@ -56,6 +56,7 @@ class TournamentAdminCreationTests(TestCase):
         self.assertNotContains(response, 'value="completed"')
 
     def test_admin_can_start_existing_tournament_when_no_other_is_live(self):
+        Tournament.objects.filter(status=Tournament.Status.LIVE).update(status=Tournament.Status.UPCOMING)
         tournament = self.make_tournament("Ready BR Round")
         response = self.client.post(
             reverse("admin:tournaments_tournament_change", args=[tournament.pk]),
