@@ -65,6 +65,17 @@ class PaymentAIAssessmentRulesTests(TestCase):
         self.assertFalse(result["checks"]["supported_mode"])
         self.assertEqual(result["proposed_rewards"], [])
 
+    def test_four_stage_review_holds_candidate_without_match_and_killer_attribution(self):
+        event = self.make_event()
+        event.match_id = ""
+        event.kill_at = None
+        event.attributed_player_name = ""
+        live_slot = SimpleNamespace(identity_verified_at=object())
+        result = build_payment_assessment(event, live_slot)
+        self.assertFalse(result["eligible"])
+        self.assertFalse(result["checks"]["four_ai_passed"])
+        self.assertFalse(result["checks"]["four_ai_review"]["ff_arena_agent_local_2"]["passed"])
+
     def test_uid_verification_is_required(self):
         event = self.make_event()
         result = build_payment_assessment(event, None)
