@@ -71,6 +71,7 @@ class TournamentAdminCreationTests(TestCase):
                 "entry_fee": str(tournament.entry_fee),
                 "prize_pool": str(tournament.prize_pool),
                 "max_players": str(tournament.max_players),
+                "start_time": timezone.localtime(tournament.start_time).strftime("%Y-%m-%dT%H:%M"),
                 "room_invite_link": "",
                 "winner_team_uids": "",
                 "winner_uid": "",
@@ -78,11 +79,11 @@ class TournamentAdminCreationTests(TestCase):
                 "status": Tournament.Status.LIVE,
                 "_save": "Save",
             },
-            follow=True,
+            follow=False,
         )
 
         tournament.refresh_from_db()
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 302)
         self.assertEqual(tournament.status, Tournament.Status.LIVE)
 
     def test_central_live_monitor_lists_live_and_waiting_tournaments(self):
