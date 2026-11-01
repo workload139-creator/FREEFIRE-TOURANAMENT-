@@ -1,5 +1,6 @@
 """Admin visibility for the separate 50+50 Live AI agent pools."""
-from django.contrib import admin
+from django.contrib import admin, messages
+from .live_ai_rewards import approve_live_kill_event
 
 from .live_ai_models import LiveAIAgentSlot, LiveAIPaymentAssessment, LiveKillEvent
 
@@ -25,7 +26,29 @@ class LiveKillEventAdmin(admin.ModelAdmin):
     list_filter = ("status", "tournament__mode", "tournament__br_format", "tournament__vs_format")
     search_fields = ("registration__free_fire_uid", "registration__player__username", "match_id", "event_fingerprint")
     readonly_fields = ("event_uuid", "event_fingerprint", "tournament", "registration", "session", "match_id", "kill_at", "detected_text", "confidence", "evidence_image", "detected_at", "reward_reference", "reward_payload", "payment_ai_details")
-    actions = None
+    actions = ("approve_selected_live_kills", "reject_selected_live_kills")
+
+    @admin.action(description="Admin approve selected live kill candidates")
+    def approve_selected_live_kills(self, request, queryset):
+        approved = credited = skipped = 0
+        for event_id in list(queryset.values_list("pk", flat=True)):
+            ok, message = approve_live_kill_event(event_id, request.user)
+            if ok:
+                approved += 1
+                credited += int("credited once" in message)
+            else:
+                skipped += 1
+        self.message_user(request, f"Verified: {approved}; reward credit events: {credited}; held: {skipped}.", level=messages.SUCCESS if approved else messages.WARNING)
+
+    @admin.action(description="Reject selected live kill candidates")
+    def reject_selected_live_kills(self, request, queryset):
+        updated = queryset.filter(status=LiveKillEvent.Status.REVIEW).update(
+            status=LiveKillEvent.Status.REJECTED,
+            reviewed_at=__import__("django.utils.timezone", fromlist=["now"]).now(),
+            reviewed_by=request.user,
+            review_reason="Rejected by Admin.",
+        )
+        self.message_user(request, f"Rejected: {updated}", level=messages.WARNING)
 
     @admin.display(description="Payment AI assessment")
     def payment_ai_result(self, obj):
