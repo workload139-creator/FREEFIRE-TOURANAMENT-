@@ -20,7 +20,7 @@ from django.views.decorators.http import require_POST
 from apps.accounts.models import Wallet, WalletTransaction, AdminWallet, AdminWalletTransaction
 from .forms import KillSubmissionForm, RegistrationForm
 from .ai_review import AIReviewError, analyze_kill_evidence, fingerprint_evidence
-from .registration_services import RegistrationError, create_pending_registration, assign_teams_for_tournament, maybe_start_next_full_tournament
+from .registration_services import RegistrationError, create_pending_registration, assign_teams_for_tournament, maybe_start_next_full_tournament, create_next_tournament_round
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 from .models import LiveKillEvent, KillSubmission, Registration, Tournament, TournamentLedgerEntry, TournamentLiveSession
 from .kill_services import reward_for_tournament, rewards_for_tournament
@@ -319,7 +319,7 @@ def tournament_register(request, tournament_id):
         messages.error(request, "Yeh Girls Only tournament hai. Profile mein Girl category select karne wale players hi join kar sakte hain.")
         return redirect("tournaments:detail", tournament_id=tournament.pk)
     if request.method == "GET":
-        time_closed = tournament.start_time <= timezone.now() and not tournament.is_unlimited_br
+        time_closed = tournament.start_time <= timezone.now() and not tournament.is_unlimited_br and not tournament.series_root_id
         if tournament.status != Tournament.Status.UPCOMING or time_closed or tournament.is_full:
             messages.error(request, "Yeh tournament abhi registration ke liye available nahi hai.")
             return redirect("tournaments:list")
@@ -566,11 +566,14 @@ def admin_finish_tournament(request, tournament_id):
 
     tournament.status = Tournament.Status.COMPLETED
     tournament.save(update_fields=["status", "updated_at"])
+    next_round = create_next_tournament_round(tournament.pk)
     next_started = maybe_start_next_full_tournament()
     if next_started:
-        messages.success(request, "Tournament complete ho gaya. Agla full verified tournament automatically LIVE ho gaya.")
+        messages.success(request, "Tournament COMPLETED. Iska result History mein save hai aur agla full verified tournament LIVE ho gaya.")
+    elif next_round:
+        messages.success(request, f"Tournament COMPLETED. Naya round '{next_round.title}' create ho gaya; players ko dobara register karna hoga.")
     else:
-        messages.success(request, "Tournament complete ho gaya. LIVE slot ab free hai; agla tournament verified capacity par start hoga.")
+        messages.success(request, "Tournament COMPLETED. Existing next round ko duplicate nahi kiya; previous result History mein safe hai.")
     return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
 
 
@@ -1187,9 +1190,16 @@ def results(request):
         .order_by("-updated_at", "-pk")
     )
     for tournament in completed_tournaments:
-        winner_registration = Registration.objects.filter(
+        winner_uids = []
+        if str(tournament.winner_uid or "").strip():
+            winner_uids.append(str(tournament.winner_uid).strip())
+        for raw_uid in (tournament.winner_team_uids or "").replace(",", "\\n").splitlines():
+            uid = raw_uid.strip()
+            if uid and uid not in winner_uids:
+                winner_uids.append(uid)
+        winner_registrations = list(Registration.objects.filter(
             tournament=tournament,
-            free_fire_uid=str(tournament.winner_uid or "").strip(),
+            free_fire_uid__in=winner_uids,
             payment_verified=True,
             refund_processed=False,
             status__in=[
@@ -1197,10 +1207,9 @@ def results(request):
                 Registration.Status.WAITING_READY,
                 Registration.Status.READY,
             ],
-        ).select_related("player").first() if tournament.winner_uid else None
-        tournament.first_place_player = (
-            winner_registration.player.username if winner_registration else ""
-        )
+        ).select_related("player").order_by("registered_at")) if winner_uids else []
+        tournament.first_place_players = [row.player.username for row in winner_registrations]
+        tournament.first_place_player = tournament.first_place_players[0] if tournament.first_place_players else ""
         tournament.result_player_count = tournament.paid_players_count
     return render(
         request,
@@ -1239,7 +1248,14 @@ def leaderboard(request, tournament_id):
             "registration": registration,
             "submission": submission,
             "kills": submission.approved_kills if submission and submission.approved_kills is not None else -1,
-            "is_winner": bool(tournament.winner_uid and registration.free_fire_uid == tournament.winner_uid),
+            "is_winner": bool(
+                (tournament.winner_uid and registration.free_fire_uid == tournament.winner_uid)
+                or registration.free_fire_uid in {
+                    uid.strip()
+                    for uid in (tournament.winner_team_uids or "").replace(",", "\\n").splitlines()
+                    if uid.strip()
+                }
+            ),
         })
 
     # Admin-confirmed winner stays first; remaining verified entrants sort by approved kills,

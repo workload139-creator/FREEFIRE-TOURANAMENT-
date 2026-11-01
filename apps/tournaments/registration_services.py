@@ -180,6 +180,48 @@ def maybe_start_unlimited_tournament(tournament_id):
     return True
 
 @transaction.atomic
+def create_next_tournament_round(completed_tournament_id):
+    """Create one fresh registration round from a completed event, without copying players or money."""
+    list(Tournament.objects.select_for_update().order_by("pk").values_list("pk", flat=True))
+    completed = Tournament.objects.select_for_update().get(pk=completed_tournament_id)
+    if completed.status != Tournament.Status.COMPLETED:
+        return None
+
+    root_id = completed.series_root_id or completed.pk
+    root = Tournament.objects.select_for_update().get(pk=root_id)
+    # Only the newest round in a series may spawn its successor. This also
+    # makes retries/manual admin actions against an older completed round safe.
+    if root.series_rounds.filter(pk__gt=completed.pk).exists():
+        return None
+    if root.series_rounds.filter(
+        status__in=[Tournament.Status.UPCOMING, Tournament.Status.LIVE]
+    ).exists():
+        return None
+
+    round_number = root.series_rounds.count() + 2
+    return Tournament.objects.create(
+        title=f"{root.title} - Round {round_number}"[:120],
+        mode=completed.mode,
+        br_format=completed.br_format,
+        vs_format=completed.vs_format,
+        gender_category=completed.gender_category,
+        description=completed.description,
+        entry_fee=completed.entry_fee,
+        prize_pool=completed.prize_pool,
+        max_players=completed.max_players,
+        start_time=timezone.now(),
+        status=Tournament.Status.UPCOMING,
+        is_unlimited_br=completed.is_unlimited_br,
+        is_diwali_offer=completed.is_diwali_offer,
+        is_free_fan_tournament=completed.is_free_fan_tournament,
+        winner_coins_prize=completed.winner_coins_prize,
+        auto_start_at_capacity=completed.auto_start_at_capacity,
+        auto_reopen=completed.auto_reopen,
+        series_root=root,
+    )
+
+
+@transaction.atomic
 def maybe_start_next_full_tournament():
     """Start the oldest full, verified waiting round after the current LIVE round ends."""
     if Tournament.objects.filter(status=Tournament.Status.LIVE).exists():
@@ -197,7 +239,7 @@ def create_pending_registration(*, tournament_id, player, free_fire_uid, payment
 
     if tournament.status != Tournament.Status.UPCOMING:
         raise RegistrationError("Yeh tournament abhi registration ke liye available nahi hai.")
-    if tournament.start_time <= timezone.now() and not tournament.is_unlimited_br:
+    if tournament.start_time <= timezone.now() and not tournament.is_unlimited_br and not tournament.series_root_id:
         raise RegistrationError("Tournament ka start time nikal chuka hai.")
     if tournament.is_full:
         raise RegistrationError("Tournament ki seats full ho chuki hain.")

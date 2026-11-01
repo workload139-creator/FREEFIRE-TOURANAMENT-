@@ -51,7 +51,18 @@ def validate_match_dates(reviewer_reports, tournament):
         dates.append(parsed)
     if len(set(dates)) != 1:
         return False, "AI reviewers did not agree on the match-history date."
-    tournament_date = timezone.localtime(tournament.start_time).date()
+    # Date-free rounds can remain open for registration for many days. Validate
+    # evidence against the actual LIVE session where possible, not the round's
+    # creation timestamp; fall back to the status-change timestamp for older events.
+    live_started_at = tournament.live_sessions.order_by("started_at").values_list(
+        "started_at", flat=True
+    ).first()
+    reference_time = live_started_at or (
+        tournament.updated_at
+        if tournament.status in ("live", "completed")
+        else tournament.start_time
+    )
+    tournament_date = timezone.localtime(reference_time).date()
     observed = dates[0]
     # Match history may roll over after midnight, so allow tournament day and
     # the following calendar day, but never a pre-tournament screenshot.

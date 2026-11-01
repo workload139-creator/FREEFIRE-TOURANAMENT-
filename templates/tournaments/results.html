@@ -20,9 +20,16 @@
           </div>
           <div class="result-winner" style="margin:16px 0;padding:14px;border:1px solid #f4c76b66;border-radius:14px;background:#f4c76b12">
             <small style="display:block;color:#f4c76b;font-weight:900;letter-spacing:1px">🥇 FIRST PLACE</small>
-            {% if tournament.winner_uid %}
-              <strong style="display:block;font-size:18px;margin-top:5px">{{ tournament.first_place_player|default:"Verified winner" }}</strong>
-              <span>Free Fire UID: {{ tournament.winner_uid }}</span>
+            {% if tournament.winner_uid or tournament.winner_team_uids %}
+              {% if tournament.first_place_players %}
+                {% for winner_name in tournament.first_place_players %}
+                  <strong style="display:block;font-size:18px;margin-top:5px">{{ winner_name }}</strong>
+                {% endfor %}
+              {% else %}
+                <strong>Verified winner / team</strong>
+              {% endif %}
+              {% if tournament.winner_uid %}<span>Free Fire UID: {{ tournament.winner_uid }}</span>{% endif %}
+              {% if tournament.winner_team_uids %}<span style="display:block;margin-top:5px">Winning team UIDs: {{ tournament.winner_team_uids|linebreaksbr }}</span>{% endif %}
             {% else %}
               <strong>Winner details pending admin verification</strong>
             {% endif %}
