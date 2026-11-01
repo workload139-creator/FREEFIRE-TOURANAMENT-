@@ -169,7 +169,7 @@
     var syncBusy = false;
     var intervalMs = 30000;
     var path = window.location.pathname || "";
-    var excludedPath = /\\/(admin|.*room|.*live)(\\/|$)/i.test(path);
+    var excludedPath = /\/(admin|.*room|.*live)(\/|$)/i.test(path);
     window.addEventListener("ffarena-live-status", function (event) {
         liveSharing = !!(event.detail && event.detail.active);
     });
@@ -200,7 +200,7 @@
                 cache: "no-store",
                 headers: { "X-FFArena-App-Sync": "1" }
             });
-            if (!response.ok || response.redirected || !/text\\/html/i.test(response.headers.get("content-type") || "")) return;
+            if (!response.ok || response.redirected || !/text\/html/i.test(response.headers.get("content-type") || "")) return;
             var html = await response.text();
             var parsed = new DOMParser().parseFromString(html, "text/html");
             var freshMain = parsed.getElementById("main-content");
