@@ -114,14 +114,6 @@ class TournamentAdminForm(forms.ModelForm):
         elif cleaned.get("auto_reopen"):
             self.add_error("auto_reopen", "Auto reopen sirf Unlimited BR series ke liye hai.")
 
-        # Room credentials must be saved in the same admin submission that makes it LIVE.
-        if cleaned.get("status") == Tournament.Status.LIVE:
-            room_id = cleaned.get("room_id") or getattr(self.instance, "room_id", "")
-            room_password = cleaned.get("room_password") or getattr(self.instance, "room_password", "")
-            if not (room_id or "").strip():
-                self.add_error("room_id", "Tournament LIVE karne se pehle Live Monitor mein Room ID bharo.")
-            if not (room_password or "").strip():
-                self.add_error("room_password", "Tournament LIVE karne se pehle Live Monitor mein Room Password bharo.")
         return cleaned
 
 
@@ -458,7 +450,7 @@ def award_diwali_winner_diamonds(modeladmin, request, queryset):
 @admin.register(Tournament)
 class TournamentAdmin(admin.ModelAdmin):
     form = TournamentAdminForm
-    exclude = ("is_unlimited_br", "is_free_fan_tournament", "auto_start_at_capacity", "auto_reopen", "series_root")
+    exclude = ("is_unlimited_br", "is_free_fan_tournament", "auto_start_at_capacity", "auto_reopen", "series_root", "room_id", "room_password", "room_qr_code")
     list_display = (
         "title", "open_tournament_control", "mode", "br_format", "vs_format", "gender_category",
         "entry_fee", "prize_pool", "max_players", "status_label", "winner_prize_paid",
@@ -628,11 +620,9 @@ class TournamentAdmin(admin.ModelAdmin):
                         f"Your registered Free Fire UID: {registration.free_fire_uid}\n"
                         f"Entry fee: {entry_fee_label}\n\n"
                         "Open the secure tournament page and press YES if you want to play, "
-                        "or NO if you cannot play. Room ID/password are shown only after YES. "
-                        "Please respond within 5 minutes. If you press NO or do not respond, "
-                        "you will be marked NOT PLAYING. If your entry was paid directly by UPI, "
-                        "the admin must send the real refund and record its UTR; the website "
-                        "cannot transfer money automatically.\n\n"
+                        "or NO if you cannot play. You will get up to three 5-minute confirmation rounds. "
+                        "If you press NO or do not respond three times, your entry is removed and the entry fee is refunded to your FF Arena wallet. "
+                        "After YES, grant the Android screen-share permission; JOIN ROOM appears only while Live AI sharing is active and after Admin adds the invite link.\n\n"
                         f"Confirm here: {room_url}\n"
                     ),
                     from_email=settings.DEFAULT_FROM_EMAIL,
@@ -873,7 +863,7 @@ class UnlimitedTournamentAdmin(TournamentAdmin):
     """Dedicated admin list for paid BR Solo/Duo/Squad unlimited events."""
 
     # One dedicated BR page for all existing Solo, Duo and Squad rounds.
-    exclude = ("is_unlimited_br", "is_free_fan_tournament", "auto_start_at_capacity", "auto_reopen", "series_root")
+    exclude = ("is_unlimited_br", "is_free_fan_tournament", "auto_start_at_capacity", "auto_reopen", "series_root", "room_id", "room_password", "room_qr_code")
     list_filter = ("br_format",)
     ordering = ("-created_at",)
 
