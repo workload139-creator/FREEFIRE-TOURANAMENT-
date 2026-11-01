@@ -65,7 +65,7 @@ def ingest_live_kill_candidate(request):
         evidence_bytes = base64.b64decode(evidence_image_b64, validate=True) if evidence_image_b64 else b""
     except (ValueError, binascii.Error):
         return JsonResponse({"error": "Invalid evidence image."}, status=400)
-    if evidence_bytes and not evidence_bytes.startswith(b"\\xff\\xd8\\xff"):
+    if evidence_bytes and not evidence_bytes.startswith(b"\xff\xd8\xff"):
         return JsonResponse({"error": "Evidence must be a JPEG screenshot."}, status=400)
     event, created = LiveKillEvent.objects.get_or_create(
         event_fingerprint=fingerprint,
