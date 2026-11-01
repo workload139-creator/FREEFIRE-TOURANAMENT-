@@ -22,7 +22,7 @@ from .models import KillSubmission, Registration, Tournament, TournamentLedgerEn
 
 from .services import cancel_tournament_and_refund
 from .kill_services import reward_for_tournament
-from .registration_services import assign_teams_for_tournament, tournament_team_size, maybe_start_next_full_tournament
+from .registration_services import assign_teams_for_tournament, tournament_team_size, maybe_start_next_full_tournament, create_next_tournament_round
 
 
 class TournamentAdminForm(forms.ModelForm):
@@ -382,38 +382,20 @@ def award_br_winner_team(modeladmin, request, queryset):
         modeladmin.message_user(request, f"{skipped} tournament(s) skipped: check BR mode, Completed status, every UID's verified paid registration, and duplicate payout records.", messages.WARNING)
 
 
-@admin.action(description="Create a fresh next round; keep this completed round and its history unchanged")
+@admin.action(description="Create the next round for a completed tournament")
 def create_next_round_preserving_history(modeladmin, request, queryset):
     created = 0
     skipped = 0
     for selected in queryset:
-        with transaction.atomic():
-            old = Tournament.objects.select_for_update().get(pk=selected.pk)
-            if old.status != Tournament.Status.COMPLETED:
-                skipped += 1
-                continue
-            root = old.series_root or old
-            if root.series_rounds.filter(status=Tournament.Status.UPCOMING).exists():
-                skipped += 1
-                continue
-            round_number = root.series_rounds.count() + 2
-            new_round = Tournament.objects.create(
-                title=f"{root.title} - Round {round_number}"[:120],
-                mode=old.mode, br_format=old.br_format, vs_format=old.vs_format,
-                gender_category=old.gender_category, description=old.description,
-                entry_fee=old.entry_fee, prize_pool=old.prize_pool,
-                max_players=old.max_players, start_time=timezone.now() + timedelta(minutes=10),
-                status=Tournament.Status.UPCOMING, is_unlimited_br=old.is_unlimited_br,
-                is_free_fan_tournament=old.is_free_fan_tournament,
-                winner_coins_prize=old.winner_coins_prize,
-                auto_start_at_capacity=old.auto_start_at_capacity,
-                auto_reopen=old.auto_reopen, series_root=root,
-            )
+        next_round = create_next_tournament_round(selected.pk)
+        if next_round:
             created += 1
+        else:
+            skipped += 1
     if created:
-        modeladmin.message_user(request, f"{created} new round(s) created. Previous round records and leaderboards remain unchanged.", messages.SUCCESS)
+        modeladmin.message_user(request, f"{created} next round(s) created. Existing history and registrations were not copied.", messages.SUCCESS)
     if skipped:
-        modeladmin.message_user(request, f"{skipped} skipped: select only Completed tournaments and ensure no Upcoming round already exists in that series.", messages.WARNING)
+        modeladmin.message_user(request, f"{skipped} skipped: tournament is not completed or an active next round already exists.", messages.WARNING)
 
 
 @admin.action(description="Award 20 Diwali Diamonds to the verified winner")
@@ -586,7 +568,10 @@ class TournamentAdmin(admin.ModelAdmin):
             cancel_tournament_and_refund(obj.pk)
             maybe_start_next_full_tournament()
 
-        # Completing an event never creates another tournament; only existing records are managed.
+        if obj.status == Tournament.Status.COMPLETED and previous_status != Tournament.Status.COMPLETED:
+            next_round = create_next_tournament_round(obj.pk)
+            if next_round:
+                messages.success(request, f"Next round created: {next_round.title}. Previous result remains in Tournament History.")
 
         # Publish room access only when admin moves the tournament into LIVE.
         if obj.status != Tournament.Status.LIVE or was_live:
