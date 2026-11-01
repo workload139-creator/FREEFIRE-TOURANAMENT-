@@ -11,10 +11,12 @@ import json
 import urllib.request
 from dataclasses import dataclass, field
 from datetime import timedelta
+from decimal import Decimal
 
 from asgiref.sync import sync_to_async
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
+from django.db.models import F
 from livekit import api, rtc
 from PIL import Image
 import pytesseract
