@@ -52,3 +52,32 @@ class SocialFlowTests(TestCase):
         UserBlock.objects.create(blocker=self.alice, blocked=self.bob)
         response = self.client.get(reverse("social:home"), {"q": "bob"})
         self.assertEqual(response.context["search_results"], [])
+
+
+class WalletRewardLedgerTests(TestCase):
+    def setUp(self):
+        self.player = User.objects.create_user(username="reward_player", password="test-password-12345")
+        from .models import PlayerShopWallet
+        self.wallet = PlayerShopWallet.objects.create(user=self.player)
+
+    def test_fan_token_milestone_creates_matching_credit_ledger(self):
+        from .models import Follow, PlayerShopWalletTransaction
+        from django.urls import reverse
+        followers = [
+            User.objects.create_user(username=f"follower_{index}", password="test-password-12345")
+            for index in range(10)
+        ]
+        for follower in followers[:9]:
+            Follow.objects.create(follower=follower, following=self.player)
+        self.client.force_login(followers[9])
+        response = self.client.post(reverse("social:toggle_follow", args=[self.player.pk]))
+        self.assertEqual(response.status_code, 302)
+        self.wallet.refresh_from_db()
+        self.assertEqual(self.wallet.fan_tokens, 1)
+        ledger = PlayerShopWalletTransaction.objects.get(
+            idempotency_key=f"fan-token-award:{self.player.pk}:10"
+        )
+        self.assertEqual(ledger.currency, PlayerShopWalletTransaction.Currency.FAN_TOKENS)
+        self.assertEqual(ledger.direction, PlayerShopWalletTransaction.Direction.CREDIT)
+        self.assertEqual(ledger.quantity, 1)
+        self.assertEqual(ledger.balance_after, 1)

@@ -8,7 +8,10 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
-from apps.social.models import Follow, UserBlock, PlayerShopWallet, CurrencyGift
+from apps.social.models import (
+    Follow, UserBlock, PlayerShopWallet, CurrencyGift,
+    PlayerShopWalletTransaction,
+)
 from .models import Conversation, Message
 
 User = get_user_model()
@@ -101,8 +104,17 @@ def conversation_detail(request, conversation_id):
                 with transaction.atomic():
                     sender_wallet, _ = PlayerShopWallet.objects.get_or_create(user=request.user)
                     recipient_wallet, _ = PlayerShopWallet.objects.get_or_create(user=other)
-                    sender_wallet = PlayerShopWallet.objects.select_for_update().get(pk=sender_wallet.pk)
-                    recipient_wallet = PlayerShopWallet.objects.select_for_update().get(pk=recipient_wallet.pk)
+                    # Lock both wallets in a stable order so opposite-direction gifts
+                    # cannot deadlock by acquiring the same rows in reverse order.
+                    wallet_ids = sorted((sender_wallet.pk, recipient_wallet.pk))
+                    locked_wallets = {
+                        wallet.pk: wallet
+                        for wallet in PlayerShopWallet.objects.select_for_update().filter(
+                            pk__in=wallet_ids
+                        ).order_by("pk")
+                    }
+                    sender_wallet = locked_wallets[sender_wallet.pk]
+                    recipient_wallet = locked_wallets[recipient_wallet.pk]
                     field = {"diamonds": "diamonds", "coins": "coins", "fan_tokens": "fan_tokens"}[currency]
                     if getattr(sender_wallet, field) < quantity:
                         messages.error(request, f"{gift['emoji']} {gift['name']} ke liye {quantity} {currency.replace('_', ' ')} chahiye. Aapka balance kaafi nahi hai.")
@@ -111,7 +123,30 @@ def conversation_detail(request, conversation_id):
                         setattr(recipient_wallet, field, getattr(recipient_wallet, field) + quantity)
                         sender_wallet.save(update_fields=[field, "updated_at"])
                         recipient_wallet.save(update_fields=[field, "updated_at"])
-                        CurrencyGift.objects.create(sender=request.user, recipient=other, currency=currency, quantity=quantity, conversation_id=conversation.pk)
+                        gift_record = CurrencyGift.objects.create(
+                            sender=request.user, recipient=other, currency=currency,
+                            quantity=quantity, conversation_id=conversation.pk,
+                        )
+                        sender_balance = getattr(sender_wallet, field)
+                        recipient_balance = getattr(recipient_wallet, field)
+                        # Both immutable ledger rows are committed atomically with
+                        # the wallet mutation and the CurrencyGift record.
+                        PlayerShopWalletTransaction.objects.create(
+                            user=request.user, wallet=sender_wallet, currency=currency,
+                            direction=PlayerShopWalletTransaction.Direction.DEBIT,
+                            quantity=quantity, balance_after=sender_balance,
+                            source="currency_gift", reference=str(gift_record.pk),
+                            idempotency_key=f"currency-gift:{gift_record.pk}:sender-debit",
+                            description=f"Gift #{gift_record.pk} sent to player #{other.pk}",
+                        )
+                        PlayerShopWalletTransaction.objects.create(
+                            user=other, wallet=recipient_wallet, currency=currency,
+                            direction=PlayerShopWalletTransaction.Direction.CREDIT,
+                            quantity=quantity, balance_after=recipient_balance,
+                            source="currency_gift", reference=str(gift_record.pk),
+                            idempotency_key=f"currency-gift:{gift_record.pk}:receiver-credit",
+                            description=f"Gift #{gift_record.pk} received from player #{request.user.pk}",
+                        )
                         currency_label = {"diamonds": "💎 Diamonds", "coins": "🪙 Coins", "fan_tokens": "✨ Fan Tokens"}[currency]
                         Message.objects.create(conversation=conversation, sender=request.user, body=f"{gift['emoji']} {request.user.username} ne {other.username} ko {gift['name']} gift kiya — {quantity} {currency_label} transfer hue.")
                         Conversation.objects.filter(pk=conversation.pk).update(updated_at=timezone.now())
