@@ -32,14 +32,59 @@
 .ff-admin-dashboard .btn-primary{background:linear-gradient(110deg,#087dbe,#0754a8);border:0;font-weight:800}
 .ff-admin-dashboard .btn-outline-secondary{border-color:#68839f;color:#c5d7ea}
 @media(max-width:700px){.ff-admin-dashboard .ff-admin-hero{padding:20px 17px;align-items:flex-start;flex-direction:column}.ff-admin-dashboard>.card{padding:14px!important}.ff-admin-dashboard .table{min-width:780px}.ff-admin-dashboard .ff-ai-heading{align-items:flex-start;flex-direction:column}}
+
+/* Command-centre layout polish */
+.ff-admin-dashboard{max-width:1600px;padding-left:clamp(12px,2vw,28px);padding-right:clamp(12px,2vw,28px)}
+.ff-admin-dashboard .ff-section-nav{position:sticky;top:8px;z-index:20;display:flex;gap:8px;flex-wrap:wrap;padding:10px;margin:14px 0 20px;border:1px solid #38d9ff55;border-radius:15px;background:#071321ed;backdrop-filter:blur(14px);box-shadow:0 10px 30px #0006}
+.ff-admin-dashboard .ff-section-nav a{display:inline-flex;align-items:center;gap:6px;padding:9px 12px;border:1px solid #ffffff20;border-radius:10px;background:#14243a;color:#dceeff;text-decoration:none;font-size:11px;font-weight:850}
+.ff-admin-dashboard .ff-section-nav a:hover{border-color:#35dfff;background:#173c55;color:#fff}
+.ff-admin-dashboard [id^="ff-section-"]{scroll-margin-top:90px}
+.ff-admin-dashboard .ff-section-card{position:relative;overflow:hidden}
+.ff-admin-dashboard .ff-section-card:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,#21d9ff,#ffb638,transparent)}
+.ff-admin-dashboard .ff-section-number{display:inline-grid;place-items:center;min-width:30px;height:30px;margin-right:6px;border-radius:9px;background:#123a50;border:1px solid #38dfff66;color:#80eaff;font-size:12px;font-weight:950}
+.ff-admin-dashboard .ff-stat-grid{row-gap:12px}
+.ff-admin-dashboard .ff-stat-grid .card{position:relative;overflow:hidden}
+.ff-admin-dashboard .table-responsive{border:1px solid #ffffff18;border-radius:12px;scrollbar-color:#315c79 #0a1422}
+.ff-admin-dashboard .table thead th{z-index:2;padding:12px 10px}
+.ff-admin-dashboard .table td{padding:11px 10px}
+.ff-admin-dashboard .table tbody tr:hover td{background:#19324b;color:#fff}
+.ff-admin-dashboard #ff-live-grid{margin-left:0;margin-right:0}
+.ff-admin-dashboard #ff-live-grid>[class*="col-"]{width:50%;max-width:none}
+.ff-admin-dashboard .ff-live-video{border:1px solid #3c7895;box-shadow:inset 0 0 30px #0008}
+.ff-admin-dashboard .ff-admin-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px solid #ffffff20}
+.ff-admin-dashboard .ff-admin-actions .btn{min-height:42px}
+@media(max-width:760px){
+ .ff-admin-dashboard .ff-section-nav{position:relative;top:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .ff-admin-dashboard .ff-section-nav a{justify-content:center;text-align:center;padding:10px 6px}
+ .ff-admin-dashboard .ff-admin-hero{border-radius:16px}
+ .ff-admin-dashboard .ff-admin-hero h2{font-size:23px}
+ .ff-admin-dashboard .ff-stat-grid>.col-md-4{width:50%}
+ .ff-admin-dashboard .ff-stat-grid .card h3{font-size:25px}
+ .ff-admin-dashboard .table{min-width:820px}
+ .ff-admin-dashboard #ff-live-grid>[class*="col-"]{width:100%}
+ .ff-admin-dashboard .ff-admin-actions .btn{width:100%}
+}
+@media(max-width:420px){.ff-admin-dashboard .ff-stat-grid>.col-md-4{width:100%}}
+
 </style>
 <div class="container py-4 ff-admin-dashboard">
     <div class="ff-admin-hero"><div><span class="ff-admin-eyebrow">FF ARENA · CONTROL CENTER</span><h2>🔥 Tournament Command Center</h2><p>Live match operations, player verification, AI evidence review and secure rewards — all in one place.</p></div><span class="ff-admin-live-pill"><i></i> ADMIN CONSOLE</span></div>
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2"><h4 class="mb-0">{{ tournament.title }}</h4><a class="btn btn-info fw-bold" href="{% url 'tournaments:admin_live_monitor' %}">← All Tournaments · Central Live Monitor</a></div>
     <p class="ff-admin-subtitle">Tournament-scoped operations · Payment verification · Live player monitoring · AI-assisted evidence review · Admin-controlled payouts</p>
+    <nav class="ff-section-nav" aria-label="Tournament admin sections">
+        <a href="#ff-section-controls">🎛️ Controls</a>
+        <a href="#ff-section-payments">💳 Payments</a>
+        <a href="#ff-section-players">👥 Players</a>
+        <a href="#ff-section-live">📡 Live Monitor</a>
+        <a href="#ff-section-evidence">🤖 Evidence & AI</a>
+        <a href="#ff-section-refunds">↩️ Refund Queue</a>
+        <a href="#ff-section-refund-history">🧾 Refund History</a>
+        <a href="#ff-section-history">📚 Wallet Ledger</a>
+    </nav>
 
-    <div class="card p-3 my-3">
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+
+    <div id="ff-section-controls" class="card p-3 my-3 ff-section-card">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3>
             <div>
                 <h4 class="mb-1">Live Monitor Controls</h4>
                 <p class="mb-0">Status changes, match finish and first-place winner selection stay inside this control panel.</p>
@@ -74,7 +119,7 @@
 
     <div class="ff-admin-rule"><strong>⚖️ Reward & safety rule</strong><span>{% if tournament.is_diwali_offer %}1 Diamond entry · 20 Diamonds first prize · 5 Coins per approved kill · minimum 2 verified kills.{% else %}Minimum 2 verified kills. Solo: 5 Diamonds per approved kill. Duo/Squad: 5 Diamonds + 2 Coins per approved kill.{% endif %}</span><small>AI assessment is advisory only. Admin verifies match ID, kill time and in-game name before any wallet credit. Duplicate reward protection remains enabled.</small></div>
 
-    <div class="row g-3 my-3">
+    <div class="row g-3 my-3 ff-stat-grid">
         <div class="col-md-4"><div class="card p-3"><h6>Total Registrations</h6><h3>{{ total_players }}</h3></div></div>
         <div class="col-md-4"><div class="card p-3"><h6>Verified Payments</h6><h3>{{ verified_payments }}</h3></div></div>
         <div class="col-md-4"><div class="card p-3"><h6>Waiting for YES</h6><h3>{{ waiting_players }}</h3></div></div>
@@ -83,8 +128,8 @@
         <div class="col-md-4"><div class="card p-3"><h6>Refunds Recorded</h6><h3>{{ refunded_players }}</h3></div></div>
     </div>
 
-    <div class="card p-3 my-3">
-        <h4>1. Entry Payment Verification — UTR check karke entry confirm karein</h4>
+    <div id="ff-section-payments" class="card p-3 my-3 ff-section-card">
+        <h4><span class="ff-section-number">01</span> Entry Payment Verification — UTR check karke entry confirm karein</h4>
         <p>UTR ko apne UPI/bank record se match karne ke baad Django Admin → Registrations mein usi registration ko select karke “Verify UTR against actual UPI/bank receipt and confirm entry” action use karein.</p>
         <div class="table-responsive"><table class="table table-striped table-bordered">
             <thead><tr><th>Player / Profile ID</th><th>Free Fire UID</th><th>Entry Fee</th><th>Submitted UTR</th><th>Submitted At</th><th>Status</th></tr></thead>
@@ -103,8 +148,8 @@
         </table></div>
     </div>
 
-    <div class="card p-3 my-3">
-        <h4>2. All Registered Players — player status, payment aur refund dekhein</h4>
+    <div id="ff-section-players" class="card p-3 my-3 ff-section-card">
+        <h4><span class="ff-section-number">02</span> All Registered Players — player status, payment aur refund dekhein</h4>
         <p>Waiting for Confirmation ka matlab player YES/NO ka wait kar raha hai; Ready to Play ka matlab YES confirm ho gaya; Not Playing ka matlab player ne NO kiya ya deadline expire hui.</p>
         <div class="table-responsive"><table class="table table-striped table-bordered">
             <thead><tr><th>Player / Profile ID</th><th>Contact / UPI / QR</th><th>Free Fire UID</th><th>Entry Fee</th><th>Payment UTR</th><th>Payment</th><th>Player Status</th><th>Refund</th></tr></thead>
@@ -125,8 +170,8 @@
         </table></div>
     </div>
 
-    <div class="card p-3 my-3">
-        <h4>3. Shared Live Monitor — all players in this tournament</h4>
+    <div id="ff-section-live" class="card p-3 my-3 ff-section-card">
+        <h4><span class="ff-section-number">03</span> Shared Live Monitor — all players in this tournament</h4>
         <p>Ek shared monitor sabhi eligible player sessions ko process karta hai. Har player ka session alag aur tournament-scoped hai. Do analysis agents identity/eligibility aur kill evidence/attribution report dete hain. AI sirf suggestion deta hai; final kill approval aur wallet credit Admin karega.</p>
         <div id="ff-live-grid" class="row g-3 mb-3" data-tournament-id="{{ tournament.id }}">
             <div class="col-12"><div class="alert alert-info mb-0">Connecting to this tournament's private player streams…</div></div>
@@ -161,7 +206,7 @@
             {% empty %}<tr><td colspan="10">Is tournament mein abhi koi Live session nahi hai.</td></tr>{% endfor %}
             </tbody>
         </table></div>
-        <div class="ff-ai-heading"><div><span class="ff-admin-eyebrow">EVIDENCE INTELLIGENCE</span><h5 class="mt-1">🤖 Kill Evidence & AI Assessment Queue</h5></div><span class="ff-ai-tag">ONE AI ASSESSMENT</span></div><p class="ff-ai-note">One advisory assessment checks player UID, tournament eligibility, kill signal, evidence frame, match ID, kill time and in-game name. All check results and reasons remain visible. AI never approves kills or pays a player; Admin makes the final decision.</p>
+        <div id="ff-section-evidence" class="ff-ai-heading"><div><span class="ff-admin-eyebrow">EVIDENCE INTELLIGENCE</span><h5 class="mt-1">🤖 Kill Evidence & AI Assessment Queue</h5></div><span class="ff-ai-tag">ONE AI ASSESSMENT</span></div><p class="ff-ai-note">One advisory assessment checks player UID, tournament eligibility, kill signal, evidence frame, match ID, kill time and in-game name. All check results and reasons remain visible. AI never approves kills or pays a player; Admin makes the final decision.</p>
         <div class="table-responsive"><table class="table table-striped table-bordered align-middle">
             <thead><tr><th>Evidence</th><th>Detected At</th><th>Player / UID</th><th>Mode</th><th>Confidence</th><th>AI Assessment · Checks & Reasons</th><th>Suggested Kills / Reward</th><th>Admin Status</th></tr></thead>
             <tbody>
@@ -192,8 +237,8 @@
         </table></div>
     </div>
 
-    <div class="card p-3 my-3">
-        <h4>4. Refund Queue — pending real UPI refunds</h4>
+    <div id="ff-section-refunds" class="card p-3 my-3 ff-section-card">
+        <h4><span class="ff-section-number">04</span> Refund Queue — pending real UPI refunds</h4>
         <p>Refund eligible hone par target hai admin ke check ke baad 10 ghante ke andar actual UPI refund bhejna. Website transfer khud nahi karti. Player ka saved QR/UPI profile mein dekhein; real refund bhejne ke baad registration ke Refund Reference field mein UTR enter karke Django Admin → Registrations se “Mark UPI refunds paid” action chalayein.</p>
         <div class="table-responsive"><table class="table table-striped table-bordered">
             <thead><tr><th>Player / Profile ID</th><th>UID</th><th>Refund Amount</th><th>Player UPI ID</th><th>Player QR</th><th>Status / UTR</th></tr></thead>
@@ -212,16 +257,16 @@
         </table></div>
     </div>
 
-    <div class="card p-3 my-3">
-        <h4>4A. Refund / Cancel History — all player records</h4>
+    <div id="ff-section-refund-history" class="card p-3 my-3 ff-section-card">
+        <h4><span class="ff-section-number">04A</span> Refund / Cancel History — all player records</h4>
         <div class="table-responsive"><table class="table table-striped table-bordered">
             <thead><tr><th>Player</th><th>UID</th><th>Entry Amount</th><th>Payment</th><th>UPI ID</th><th>UPI QR</th><th>Status</th><th>Refund Status</th><th>Refund Reference</th><th>Refund Time</th></tr></thead>
             <tbody>{% for registration in refund_history %}<tr><td>{{ registration.player.username }} / #{{ registration.player_id }}</td><td>{{ registration.free_fire_uid }}</td><td>{% if tournament.is_diwali_offer %}1 Diamond{% else %}₹{{ registration.entry_fee_paid }}{% endif %}</td><td>{{ registration.get_payment_method_display }} · {% if registration.payment_verified %}Verified{% else %}Unverified{% endif %}</td><td>{{ registration.player.upi_id|default:"—" }}</td><td>{% if registration.player.upi_qr_code %}<a href="{{ registration.player.upi_qr_code.url }}" target="_blank" rel="noopener">View QR</a>{% else %}—{% endif %}</td><td>{{ registration.get_status_display }}</td><td>{% if registration.refund_processed %}Refund recorded{% else %}Not refunded / no verified payment{% endif %}</td><td>{{ registration.refund_reference|default:"—" }}</td><td>{{ registration.refund_processed_at|date:"d M Y, h:i A"|default:"—" }}</td></tr>{% empty %}<tr><td colspan="10">No refund or cancellation records yet.</td></tr>{% endfor %}</tbody>
         </table></div>
     </div>
 
-    <div class="card p-3 my-3">
-        <h4>5. Tournament History — entry, rewards, refunds aur wallet credits</h4>
+    <div id="ff-section-history" class="card p-3 my-3 ff-section-card">
+        <h4><span class="ff-section-number">05</span> Tournament History — entry, rewards, refunds aur wallet credits</h4>
         <p>Yahan is tournament ke ledger mein saved har payment, reward aur refund ka record timestamp aur reference ke saath dikhega. Player ke naam par click karke uska account/wallet admin record khol sakte hain.</p>
         <div class="table-responsive"><table class="table table-striped table-bordered">
             <thead><tr><th>Date / Time</th><th>Player</th><th>Action</th><th>Currency</th><th>Quantity</th><th>INR Value</th><th>Status</th><th>Reference / Details</th></tr></thead>
@@ -465,7 +510,10 @@
 })();
 </script>
 
-    <a href="{% url 'tournaments:admin_room_page' tournament.id %}" class="btn btn-primary mt-3">Manage Room Details</a>
-    <a href="/admin/tournaments/registration/?tournament__id__exact={{ tournament.id }}" class="btn btn-outline-secondary mt-3">Open Registration Admin</a>
+    <div class="ff-admin-actions">
+        <a href="{% url 'tournaments:admin_room_page' tournament.id %}" class="btn btn-primary">🎮 Manage Room Details</a>
+        <a href="/admin/tournaments/registration/?tournament__id__exact={{ tournament.id }}" class="btn btn-outline-secondary">📋 Open Registration Admin</a>
+        <a href="#ff-section-controls" class="btn btn-outline-info">↑ Back to top</a>
+    </div>
 </div>
 {% endblock %}
