@@ -14,7 +14,6 @@ from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
-from apps.social.models import PlayerShopWallet, PlayerShopWalletTransaction
 from apps.tournaments.kill_services import rewards_for_tournament
 from apps.tournaments.live_ai_models import LiveAIAgentSlot, LiveAIPaymentAssessment, LiveKillEvent
 from apps.tournaments.models import TournamentLiveSession
@@ -31,9 +30,12 @@ def build_payment_assessment(event, live_slot, prior_count=0):
         "supported_mode": event.tournament.mode in ("BR", "VS"),
         "registration_ready": event.registration.status == "ready",
         "payment_verified": bool(event.registration.payment_verified),
-        "not_refunded": not bool(event.registration.refund_processed),
+        "not_refunded": not bool(event.registration.refund_processed) and event.registration.status != "refunded",
         "live_ai_uid_verified": bool(live_slot and live_slot.identity_verified_at),
-        "ocr_confidence_pass": Decimal(str(event.confidence)) >= Decimal("0.60"),
+                "player_uid_matches": str(event.registration.free_fire_uid or "").strip() == str(getattr(event.registration.player, "free_fire_uid", "") or "").strip(),
+                "account_uid_verified": bool(getattr(event.registration.player, "uid_verified", False)),
+                "session_active": event.session.status == TournamentLiveSession.Status.ACTIVE,
+        "ocr_confidence_pass": Decimal(str(event.confidence)) >= Decimal("0.75"),
         "candidate_text_present": bool((event.detected_text or "").strip()),
         "event_session_matches": event.session.registration_id == event.registration_id,
     }
@@ -65,7 +67,7 @@ def assess_pending_events(batch_size=100):
     with transaction.atomic():
         events = list(
             LiveKillEvent.objects.select_for_update(skip_locked=True)
-            .select_related("tournament", "registration", "session")
+            .select_related("tournament", "registration__player", "session")
             .filter(status=LiveKillEvent.Status.REVIEW, payment_assessment__isnull=True)
             .order_by("detected_at")[:batch_size]
         )
@@ -121,7 +123,7 @@ class PaymentAIWorker:
     def __init__(self, poll_seconds=POLL_SECONDS):
         self.poll_seconds = max(2, int(poll_seconds))
 
-    async def run(self):
+    async def run(self, once=False):
         logger.info("Payment AI worker started; wallet credit is disabled pending Admin approval.")
         while True:
             try:
@@ -133,20 +135,20 @@ class PaymentAIWorker:
                 raise
             except Exception:
                 logger.exception("Payment AI worker cycle failed.")
-            await asyncio.sleep(self.poll_seconds)
+            if once:\n                return\n            await asyncio.sleep(self.poll_seconds)
 
 
 class Command(BaseCommand):
     help = "Run the independent Payment & Reward AI assessment worker."
 
     def add_arguments(self, parser):
-        parser.add_argument("--poll-seconds", type=int, default=POLL_SECONDS)
+        parser.add_argument("--poll-seconds", type=int, default=POLL_SECONDS)\n        parser.add_argument("--once", action="store_true")
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.SUCCESS(
             "Starting Payment AI: eligibility checks and reward proposals only; no automatic wallet credit."
         ))
         try:
-            asyncio.run(PaymentAIWorker(options["poll_seconds"]).run())
+            asyncio.run(PaymentAIWorker(options["poll_seconds"]).run(once=options["once"]))
         except KeyboardInterrupt:
             self.stdout.write("Payment AI worker stopped.")
