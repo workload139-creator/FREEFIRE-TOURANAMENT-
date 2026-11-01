@@ -134,7 +134,7 @@ def tournament_live_token(request, registration_id):
 @login_required
 @require_GET
 def admin_tournament_live_tokens(request, tournament_id):
-    """Issue subscribe-only tokens for active sessions in one staff-selected tournament."""
+    """Issue per-player monitor tokens for audio/video subscribe and staff audio talkback."""
     if not request.user.is_staff:
         return JsonResponse({"error": "Staff access required."}, status=403)
     url, key, secret = _livekit_config()
