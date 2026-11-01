@@ -64,7 +64,7 @@
      <article class="event">
       <span class="pill waiting">REGISTRATION OPEN · WAITING</span>
       <h3>{{ tournament.title }}</h3>
-      <div class="meta">{{ tournament.get_mode_display }} · {% if tournament.mode == "BR" %}{{ tournament.get_br_format_display }}{% else %}{{ tournament.get_vs_format_display }}{% endif %}<br>{{ tournament.get_gender_category_display }} · {{ tournament.paid_players_count }} verified / {{ tournament.max_players }} capacity<br>Room: {% if tournament.room_id %}Set{% else %}Not set{% endif %} · Password: {% if tournament.room_password %}Set{% else %}Not set{% endif %}</div>
+      <div class="meta">{{ tournament.get_mode_display }} · {% if tournament.mode == "BR" %}{{ tournament.get_br_format_display }}{% else %}{{ tournament.get_vs_format_display }}{% endif %}<br>{{ tournament.get_gender_category_display }} · {{ tournament.paid_players_count }} verified / {{ tournament.max_players }} capacity<br>Invite Link: {% if tournament.room_invite_link %}Set{% else %}Missing{% endif %}</div>
       <div class="actions"><a class="action" href="{{ tournament.admin_edit_url }}">Set Room Invite Link &amp; LIVE</a><a class="action secondary" href="{{ tournament.control_url }}">Open Tournament Control</a></div>
       {% if live_count %}<small class="muted d-block mt-2">Current LIVE event finish/cancel hone ke baad hi start karein.</small>{% endif %}
      </article>
