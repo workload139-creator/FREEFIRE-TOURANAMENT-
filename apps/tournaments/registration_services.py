@@ -88,7 +88,7 @@ def send_unlimited_live_notifications(tournament_id):
             f"Players: {len(registrations)}/{tournament.max_players}\n\n"
             f"Open tournament page: {tournament_url}\n\n"
             f"Confirm YES/NO within 5 minutes: {settings.SITE_URL}{reverse('tournaments:player_room', args=[registration.pk])}\n\n"
-            "Room ID/password are shown only after you confirm YES. If you select NO or do not respond, the entry is marked not playing and refund rules apply.\n"
+            "After YES, allow Android screen sharing; JOIN ROOM appears only while Live AI sharing is active and after Admin adds the Garena invite link. Three NO responses or time-outs remove the entry and trigger a one-time wallet refund.\n"
         )
         try:
             success_count += send_mail(
