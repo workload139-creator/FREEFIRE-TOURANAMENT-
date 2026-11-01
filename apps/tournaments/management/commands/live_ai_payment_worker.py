@@ -76,7 +76,7 @@ def build_payment_assessment(event, prior_count=0):
 
 
 @sync_to_async
-def assess_pending_events(batch_size=100):
+def assess_pending_events(batch_size=25):
     """Lock and assess new events once, leaving their review and payout state untouched."""
     assessed = 0
     with transaction.atomic():
