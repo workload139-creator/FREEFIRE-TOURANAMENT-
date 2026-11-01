@@ -19,10 +19,7 @@ def send_unlimited_live_notifications(tournament_id):
     """Email the admin and verified entrants when a date-free BR/CS event starts."""
     tournament = Tournament.objects.filter(
         pk=tournament_id, status=Tournament.Status.LIVE
-    ).filter(
-        Q(is_unlimited_br=True)
-        | Q(mode=Tournament.Mode.VS, auto_start_at_capacity=True)
-    ).first()
+    ).filter(auto_start_at_capacity=True).first()
     if not tournament:
         return
 
@@ -90,7 +87,8 @@ def send_unlimited_live_notifications(tournament_id):
             f"Entry fee paid by: {registration.get_payment_method_display()}\n"
             f"Players: {len(registrations)}/{tournament.max_players}\n\n"
             f"Open tournament page: {tournament_url}\n\n"
-            "Room ID/password will be shared only through the website when the admin enables access.\n"
+            f"Confirm YES/NO within 5 minutes: {settings.SITE_URL}{reverse('tournaments:player_room', args=[registration.pk])}\n\n"
+            "Room ID/password are shown only after you confirm YES. If you select NO or do not respond, the entry is marked not playing and refund rules apply.\n"
         )
         try:
             success_count += send_mail(
