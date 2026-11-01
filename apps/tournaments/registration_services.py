@@ -189,6 +189,10 @@ def create_next_tournament_round(completed_tournament_id):
 
     root_id = completed.series_root_id or completed.pk
     root = Tournament.objects.select_for_update().get(pk=root_id)
+    # Only the newest round in a series may spawn its successor. This also
+    # makes retries/manual admin actions against an older completed round safe.
+    if root.series_rounds.filter(pk__gt=completed.pk).exists():
+        return None
     if root.series_rounds.filter(
         status__in=[Tournament.Status.UPCOMING, Tournament.Status.LIVE]
     ).exists():
