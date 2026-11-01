@@ -2,7 +2,7 @@
 from django.utils import timezone
 
 from .models import Registration
-from .services import mark_not_playing_and_refund
+from .services import record_ready_no
 
 
 def process_expired_confirmations():
@@ -28,7 +28,7 @@ def process_expired_confirmations():
             results.append(
                 (
                     registration_id,
-                    mark_not_playing_and_refund(registration_id),
+                    record_ready_no(registration_id),
                 )
             )
         except Registration.DoesNotExist:
