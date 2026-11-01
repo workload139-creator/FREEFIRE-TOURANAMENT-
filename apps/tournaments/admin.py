@@ -129,7 +129,7 @@ class RegistrationInline(admin.TabularInline):
         "player", "player_contact", "player_payout_qr", "free_fire_uid",
         "payment_method", "currency_amount", "entry_fee_paid",
         "payment_reference", "payment_verified", "status", "verification_photo",
-        "team_number", "team_position", "room_details_sent", "ready_deadline", "ready_confirmed_at",
+        "team_number", "team_position", "room_details_sent", "ready_deadline", "ready_confirmed_at", "no_response_count",
         "refund_processed", "refund_reference", "registered_at",
     )
     readonly_fields = (
@@ -720,8 +720,8 @@ class TournamentAdmin(admin.ModelAdmin):
     fieldsets = (
         ("1. Existing Tournament Details", {"description": "Yahan sirf pehle se website par maujood tournament edit karein. BR page par Solo, Duo aur Squad rounds manage hote hain; CS/VS page par 1v1, 2v2, 3v3 aur 4v4. Naya tournament create nahi hota.", "fields": ("tournament_control_panel", "title", "description", "mode", "br_format", "vs_format", "gender_category")}),
         ("2. Fees & Players — entry aur capacity", {"description": "Entry Fee player se li jane wali registration fee hai. Prize Pool tournament ka first-place prize hai; ise admin ke funds aur payout process ke mutabik set karein. Max Players room capacity hai (maximum 49). BR format Solo/Duo/Squad chunein. Normal BR mein har approved kill par 5 Diamonds; minimum 2 verified kills. Free Fan event ka alag Fan Token rule rahega. Evidence verification zaroori hai.", "fields": ("entry_fee", "prize_pool", "max_players")}),
-        ("4. Status — LIVE / COMPLETED / CANCELLED", {"description": "Tournament ki public listing date/time par depend nahi karti. Room ID aur Password set karke LIVE karein; eligible players ka existing 5-minute YES/NO confirmation flow wahi rahega. Match khatam hone par Live Monitor se COMPLETED karein. Cancel karne par existing refund workflow chalega.", "fields": ("status",)}),
-        ("5. Room Details — private until YES", {"description": "Room ID aur Password game room ke credentials hain. Tournament LIVE karte waqt dono bharein. Player ko room tabhi dikhega jab woh deadline ke andar YES kare. Credentials public description/website post mein na likhein.", "fields": ("room_id", "room_password")}),
+        ("4. Status — LIVE / COMPLETED / CANCELLED", {"description": "Tournament ki public listing date/time par depend nahi karti. Room Invite Link set karke LIVE karein; eligible players ko 3 attempts wala 5-minute YES/NO confirmation flow milega. Match khatam hone par Live Monitor se COMPLETED karein. Cancel karne par existing refund workflow chalega.", "fields": ("status",)}),
+        ("5. Free Fire Room Invite Link", {"description": "Official Garena ffshare.garena.com invite link yahan set karein. Player ko JOIN ROOM sirf Live AI screen-share permission active hone ke baad dikhega.", "fields": ("room_invite_link",)}),
         ("6. BR Winning Team Rewards", {"description": "Tournament Completed hone ke baad winning BR team ke har player ka registered Free Fire UID yahan alag line ya comma se likhein. Admin action se har verified winner ko 10 Fan Tokens + 50 Coins ek hi baar milenge; har reward ledger mein save hoga.", "fields": ("winner_team_uids",)}),
         ("7. First Place Winner & payout tracking", {"description": "Tournament complete/review ke baad winner ki registered Free Fire UID enter karein. Neeche player ki saved UPI/QR details dekh sakte hain. Winner Prize Reference mein actual transfer ka real UTR enter karne ke baad hi payout action use karein. Is field ko bharna apne-aap paise transfer nahi karta.", "fields": ("winner_uid", "winner_payout_destination", "winner_payout_qr", "winner_prize_reference", "winner_prize_paid")}),
     )
