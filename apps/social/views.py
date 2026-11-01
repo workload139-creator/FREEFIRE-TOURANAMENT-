@@ -268,6 +268,16 @@ def toggle_follow(request, user_id):
                     wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
                     wallet.fan_tokens += 1
                     wallet.save(update_fields=["fan_tokens", "updated_at"])
+                    wallet.refresh_from_db()
+                    PlayerShopWalletTransaction.objects.create(
+                        user=target, wallet=wallet,
+                        currency=PlayerShopWalletTransaction.Currency.FAN_TOKENS,
+                        direction=PlayerShopWalletTransaction.Direction.CREDIT,
+                        quantity=1, balance_after=wallet.fan_tokens,
+                        source="fan_follow_milestone", reference=str(milestone),
+                        idempotency_key=f"fan-token-award:{target.pk}:{milestone}",
+                        description=f"Fan Token reward for reaching {milestone} followers",
+                    )
                     awarded += 1
             if awarded:
                 messages.success(request, f"Aap ab {target.username} ko follow kar rahe hain. Unhe {awarded} Fan Token mila — har 10 followers par 1 token!")
@@ -512,17 +522,21 @@ def daily_spin(request):
             wallet.coins += quantity
         wallet.save(update_fields=("diamonds", "coins", "fan_tokens", "updated_at"))
         spin_record = DailySpin.objects.create(user=request.user, currency=currency, quantity=quantity)
-        if currency in (DailySpin.Currency.DIAMONDS, DailySpin.Currency.COINS):
-            wallet.refresh_from_db()
-            balance_after = wallet.diamonds if currency == DailySpin.Currency.DIAMONDS else wallet.coins
-            PlayerShopWalletTransaction.objects.create(
-                user=request.user, wallet=wallet, currency=currency,
-                direction=PlayerShopWalletTransaction.Direction.CREDIT,
-                quantity=quantity, balance_after=balance_after,
-                source="daily_spin", reference=str(spin_record.pk),
-                idempotency_key=f"daily-spin:{spin_record.pk}",
-                description="Daily Spin reward",
-            )
+        wallet.refresh_from_db()
+        balance_field = {
+            DailySpin.Currency.DIAMONDS: "diamonds",
+            DailySpin.Currency.COINS: "coins",
+            DailySpin.Currency.FAN_TOKENS: "fan_tokens",
+        }[currency]
+        PlayerShopWalletTransaction.objects.create(
+            user=request.user, wallet=wallet,
+            currency=currency,
+            direction=PlayerShopWalletTransaction.Direction.CREDIT,
+            quantity=quantity, balance_after=getattr(wallet, balance_field),
+            source="daily_spin", reference=str(spin_record.pk),
+            idempotency_key=f"daily-spin:{spin_record.pk}",
+            description="Daily Spin reward",
+        )
 
     messages.success(request, f"🎉 Daily Spin reward: +{quantity} {dict(DailySpin.Currency.choices)[currency]}! Come back after 24 hours for another spin.")
     return redirect("accounts:wallet")
