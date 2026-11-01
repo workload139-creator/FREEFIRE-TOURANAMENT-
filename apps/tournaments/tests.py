@@ -108,9 +108,13 @@ class TournamentSpecificRewardTests(SimpleTestCase):
         tournament = SimpleNamespace(mode="BR", is_diwali_offer=False, is_free_fan_tournament=False, br_format="solo")
         self.assertEqual(rewards_for_tournament(tournament, 4), [("diamonds", 20, "Diamonds")])
 
-    def test_br_duo_rewards_diamonds_and_coins(self):
+    def test_br_duo_rewards_diamonds_only(self):
         tournament = SimpleNamespace(mode="BR", is_diwali_offer=False, is_free_fan_tournament=False, br_format="duo")
-        self.assertEqual(rewards_for_tournament(tournament, 4), [("diamonds", 20, "Diamonds"), ("coins", 8, "Coins")])
+        self.assertEqual(rewards_for_tournament(tournament, 4), [("diamonds", 20, "Diamonds")])
+
+    def test_br_squad_rewards_diamonds_only(self):
+        tournament = SimpleNamespace(mode="BR", is_diwali_offer=False, is_free_fan_tournament=False, br_format="squad")
+        self.assertEqual(rewards_for_tournament(tournament, 4), [("diamonds", 20, "Diamonds")])
 
     def test_vs_rewards_coins(self):
         tournament = SimpleNamespace(mode="VS", is_diwali_offer=False, is_free_fan_tournament=False, br_format="")
