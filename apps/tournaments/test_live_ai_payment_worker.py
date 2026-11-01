@@ -17,6 +17,7 @@ class PaymentAIAssessmentRulesTests(TestCase):
         player = SimpleNamespace(free_fire_uid="9876543210", uid_verified=True)
         registration = SimpleNamespace(
             player=player,
+            pk=7,
             free_fire_uid="9876543210",
             status=status,
             payment_verified=True,
