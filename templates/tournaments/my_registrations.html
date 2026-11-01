@@ -55,6 +55,7 @@
           <p><strong>Current status:</strong> Live stream frame-reading base bana hai, lekin lobby/profile OCR, killfeed recognition aur automatic reward abhi testing/development mein hain. Feature activate hone se pehle reward wallet mein automatic credit hone ka daava nahi hai. Screenshot/video upload nahi karna hai.</p>
         </section>
       <p><a href="{% url 'tournaments:detail' registration.tournament.id %}">Tournament details</a> · <a href="{% url 'tournaments:leaderboard' registration.tournament.id %}">Leaderboard</a></p>
+      {% endif %}
     </article>
   {% empty %}
     <div class="tournament-card" style="padding:22px">
