@@ -59,13 +59,16 @@ class RegisteredProfileUidOCRTests(SimpleTestCase):
         self.assertEqual(confidence, 0.0)
 
     @patch("apps.tournaments.live_ai_ocr.pytesseract.image_to_data")
-    def test_extracts_only_repeated_profile_nickname_after_exact_uid(self, ocr):
+    def test_extracts_profile_name_row_and_ignores_separate_clan_header(self, ocr):
         ocr.return_value = {
             "text": [
-                "UID:", "1234567890", "ravibhiop", "ravibhiop",
-                "zdfdkkoooof", "FREE", "FIRE", "INDIA", "PROFILE",
+                "UID:", "1234567890", "zdfdkkoooof", "ravibhiop",
+                "English", "FREE", "FIRE", "INDIA", "PROFILE",
             ],
-            "conf": ["96", "94", "93", "91", "95", "99", "99", "99", "99"],
+            "conf": ["96", "94", "95", "93", "92", "99", "99", "99", "99"],
+            "block_num": [1, 1, 2, 3, 3, 4, 4, 4, 4],
+            "par_num":   [1, 1, 1, 1, 1, 1, 1, 1, 1],
+            "line_num":  [1, 1, 1, 2, 3, 1, 1, 1, 1],
         }
 
         uid_ok, uid_confidence, nickname, nickname_confidence = (
@@ -78,13 +81,13 @@ class RegisteredProfileUidOCRTests(SimpleTestCase):
         self.assertEqual(nickname_confidence, 0.91)
 
     @patch("apps.tournaments.live_ai_ocr.pytesseract.image_to_data")
-    def test_ambiguous_repeated_profile_names_fail_closed(self, ocr):
+    def test_multiple_names_on_profile_name_row_fail_closed(self, ocr):
         ocr.return_value = {
-            "text": [
-                "UID:", "1234567890", "ravibhiop", "ravibhiop",
-                "anothername", "anothername",
-            ],
-            "conf": ["96", "94", "93", "91", "90", "89"],
+            "text": ["UID:", "1234567890", "ravibhiop", "anothername", "English"],
+            "conf": ["96", "94", "93", "90", "89"],
+            "block_num": [1, 1, 3, 3, 3],
+            "par_num":   [1, 1, 1, 1, 1],
+            "line_num":  [1, 1, 2, 2, 3],
         }
 
         uid_ok, _uid_confidence, nickname, nickname_confidence = (
