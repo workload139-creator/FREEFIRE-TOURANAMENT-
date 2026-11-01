@@ -619,7 +619,10 @@ class TournamentAdmin(admin.ModelAdmin):
         from django.urls import reverse
         from django.utils import timezone
 
-        if not obj.is_free_fan_tournament:
+        if not obj.is_free_fan_tournament and Registration.objects.filter(
+            tournament=obj, payment_verified=True, refund_processed=False,
+            status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
+        ).exists():
             try:
                 assign_teams_for_tournament(obj.pk)
             except ValueError as exc:
