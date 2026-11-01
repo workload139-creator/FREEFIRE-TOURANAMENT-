@@ -140,8 +140,6 @@ def assign_teams_for_tournament(tournament_id):
 
 
 @transaction.atomic
-@transaction.atomic
-@transaction.atomic
 def maybe_start_unlimited_tournament(tournament_id):
     """Start a full verified tournament only when the global arena is free."""
     # Lock every tournament row in a stable order to serialize competing starts.
