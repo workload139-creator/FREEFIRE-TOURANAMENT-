@@ -20,6 +20,7 @@ from apps.tournaments.live_ai_models import (
     LiveKillEvent,
 )
 from apps.tournaments.models import TournamentLiveSession
+from apps.tournaments.live_ai_review import run_four_stage_review
 
 logger = logging.getLogger(__name__)
 POLL_SECONDS = 5
@@ -47,7 +48,10 @@ def build_payment_assessment(event, live_slot, prior_count=0):
         "session_registration_matches": event.session.registration_id == registration.pk,
         "no_reward_already_issued": not bool(event.reward_reference),
     }
-    eligible = all(checks.values())
+    reviewer_reports = run_four_stage_review(event, live_slot)
+    checks["four_ai_review"] = reviewer_reports
+    checks["four_ai_passed"] = all(report["passed"] for report in reviewer_reports.values())
+    eligible = all(value for key, value in checks.items() if key != "four_ai_review")
     proposed_kills = int(prior_count) + (1 if eligible else 0)
     rewards = []
     failed = [name for name, passed in checks.items() if not passed]
