@@ -96,6 +96,11 @@
         const response = await fetch(messagesUrl + "?after=" + lastMessageId, {
           credentials: "same-origin", headers: {"Accept":"application/json"}
         });
+        if (response.redirected || /\/login\/?$/.test(new URL(response.url).pathname)) {
+          status.textContent = "Aapka login session expire ho gaya hai. FF Arena mein dobara login karke Tournament Room kholein; Live start nahi ho sakta jab tak login active na ho.";
+          startButton.disabled = true;
+          return;
+        }
         if (!response.ok) return;
         const data = await response.json();
         (data.messages || []).forEach(function (item) {
@@ -124,6 +129,13 @@
         headers: {"Content-Type":"application/json","X-CSRFToken":csrf,"X-Requested-With":"XMLHttpRequest"},
         body: JSON.stringify(payload || {})
       });
+      const contentType = response.headers.get("content-type") || "";
+      if (response.redirected || /\/login\/?$/.test(new URL(response.url).pathname)) {
+        throw new Error("Aapka login session expire ho gaya hai. Dobara login karein, phir Tournament Room se Live AI start karein.");
+      }
+      if (!contentType.includes("application/json")) {
+        throw new Error("Server ne Live session ka JSON token nahi diya. Page refresh karke login check karein, phir dobara try karein.");
+      }
       const data = await response.json().catch(function () { return {}; });
       if (!response.ok) throw new Error(data.error || "Live request failed.");
       return data;
@@ -248,7 +260,9 @@
       } catch (error) {
         if (displayStream) displayStream.getTracks().forEach(track => { try { track.stop(); } catch (ignored) {} });
         awaitingStart = false;
-        try { await post(endUrl, {}); } catch (ignored) {}
+        if (!/login session expire|dobara login/i.test(error.message || "")) {
+          try { await post(endUrl, {}); } catch (ignored) {}
+        }
         status.textContent = error.message || "Live session start nahi ho saka.";
         startButton.disabled = false;
       }
