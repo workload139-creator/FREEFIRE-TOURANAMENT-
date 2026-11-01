@@ -8,10 +8,10 @@ from .live_ai_models import LiveAIPaymentAssessment, LiveKillEvent
 
 @admin.register(LiveKillEvent)
 class LiveKillEventAdmin(admin.ModelAdmin):
-    list_display = ("detected_at", "tournament", "registration", "match_id", "confidence", "status", "payment_ai_result", "reward_reference")
+    list_display = ("detected_at", "tournament", "registration", "match_id", "confidence", "status", "assessment_result", "reward_reference")
     list_filter = ("status", "tournament__mode", "tournament__br_format", "tournament__vs_format")
     search_fields = ("registration__free_fire_uid", "registration__player__username", "match_id", "event_fingerprint")
-    readonly_fields = ("event_uuid", "event_fingerprint", "tournament", "registration", "session", "detected_text", "confidence", "evidence_image", "detected_at", "reward_reference", "reward_payload", "payment_ai_details")
+    readonly_fields = ("event_uuid", "event_fingerprint", "tournament", "registration", "session", "detected_text", "confidence", "evidence_image", "detected_at", "reward_reference", "reward_payload", "assessment_details")
     actions = ("approve_selected_live_kills", "reject_selected_live_kills")
 
     @admin.action(description="Admin approve selected live kill candidates")
@@ -36,15 +36,15 @@ class LiveKillEventAdmin(admin.ModelAdmin):
         )
         self.message_user(request, f"Rejected: {updated}", level=messages.WARNING)
 
-    @admin.display(description="Payment AI assessment")
-    def payment_ai_result(self, obj):
+    @admin.display(description="AI Assessment result")
+    def assessment_result(self, obj):
         assessment = getattr(obj, "payment_assessment", None)
         if not assessment:
-            return "Waiting for Payment AI"
+            return "Waiting for AI Assessment"
         return assessment.decision_reason
 
-    @admin.display(description="Payment AI details")
-    def payment_ai_details(self, obj):
+    @admin.display(description="AI Assessment details")
+    def assessment_details(self, obj):
         assessment = getattr(obj, "payment_assessment", None)
         if not assessment:
             return "Not assessed yet"

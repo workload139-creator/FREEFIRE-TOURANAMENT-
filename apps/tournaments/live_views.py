@@ -9,6 +9,7 @@ import uuid
 from datetime import timedelta
 
 from django.contrib.auth.decorators import login_required
+from asgiref.sync import async_to_sync
 from django.db import IntegrityError, transaction
 from django.db.models import Count, F
 from django.http import JsonResponse
@@ -299,10 +300,32 @@ def tournament_live_end(request, registration_id):
             return JsonResponse({"error": "Not allowed."}, status=403)
         if session.status == TournamentLiveSession.Status.ENDED:
             return JsonResponse({"success": True, "message": "Live session was already ended."})
+        # Staff can mark a BR player eliminated only after the required two kills
+        # have been independently approved. A player may still end their own stream.
+        if request.user.is_staff and session.tournament.mode == "BR":
+            approved_kills = LiveKillEvent.objects.filter(
+                tournament=session.tournament,
+                registration=session.registration,
+                status=LiveKillEvent.Status.VERIFIED,
+            ).count()
+            if approved_kills < 2:
+                return JsonResponse({
+                    "error": f"BR elimination cannot be finalized yet: {approved_kills}/2 Admin-confirmed kills. Review and approve at least 2 kills first."
+                }, status=409)
         session.status = TournamentLiveSession.Status.ENDED
         session.ended_at = timezone.now()
         session.save(update_fields=("status", "ended_at", "updated_at"))
-    return JsonResponse({"success": True, "message": "Live session ended."})
+        room_name = session.room_name
+        player_identity = session.participant_identity
+
+    url, key, secret = _livekit_config()
+    if url:
+        try:
+            room_service = api.RoomServiceClient(url, key, secret)
+            async_to_sync(room_service.remove_participant)(room_name, player_identity)
+        except Exception:
+            logger.exception("Could not disconnect eliminated player from LiveKit room %s", room_name)
+    return JsonResponse({"success": True, "message": "Live session ended; player stream disconnect requested."})
 
 @login_required
 @require_POST

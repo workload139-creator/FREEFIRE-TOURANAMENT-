@@ -1,11 +1,11 @@
-"""Regression tests for independent Payment AI validation."""
+"""Regression tests for the single advisory Live AI Assessment."""
 from types import SimpleNamespace
 from unittest import TestCase
 
 from apps.tournaments.management.commands.live_ai_payment_worker import build_payment_assessment
 
 
-class PaymentAIAssessmentRulesTests(TestCase):
+class SingleAIAssessmentRulesTests(TestCase):
     def make_event(self, *, mode="BR", confidence="0.90", refunded=False, status="ready"):
         tournament = SimpleNamespace(
             status="live",
@@ -54,8 +54,9 @@ class PaymentAIAssessmentRulesTests(TestCase):
             {"currency": "diamonds", "quantity": 10, "label": "Diamonds"}
         ])
         self.assertNotIn("wallet", result)
-        self.assertTrue(result["checks"]["two_analysis_agents_passed"])
-        self.assertEqual(len(result["checks"]["two_analysis_agents"]), 2)
+        self.assertTrue(result["checks"]["kill_signal_present"])
+        self.assertTrue(result["checks"]["evidence_image_present"])
+        self.assertNotIn("two_analysis_agents", result["checks"])
 
     def test_training_ground_or_unsupported_mode_is_held(self):
         event = self.make_event(mode="TRAINING")
@@ -64,13 +65,12 @@ class PaymentAIAssessmentRulesTests(TestCase):
         self.assertFalse(result["checks"]["supported_mode"])
         self.assertEqual(result["proposed_rewards"], [])
 
-    def test_second_agent_requires_saved_kill_screenshot(self):
+    def test_assessment_requires_saved_kill_screenshot(self):
         event = self.make_event()
         event.evidence_image = None
         result = build_payment_assessment(event)
         self.assertFalse(result["eligible"])
-        self.assertFalse(result["checks"]["two_analysis_agents_passed"])
-        self.assertFalse(result["checks"]["two_analysis_agents"]["ff_arena_agent_local_2"]["passed"])
+        self.assertFalse(result["checks"]["evidence_image_present"])
 
     def test_uid_verification_is_required(self):
         event = self.make_event()
