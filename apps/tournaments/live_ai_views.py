@@ -47,7 +47,7 @@ def ingest_live_kill_candidate(request):
     try:
         session = TournamentLiveSession.objects.select_related("tournament", "registration").get(
             session_uuid=session_uuid,
-            status=TournamentLiveSession.Status.ACTIVE,
+            status__in=(TournamentLiveSession.Status.ACTIVE, TournamentLiveSession.Status.ENDED),
             tournament__status="live",
             registration__status="ready",
             registration__payment_verified=True,
