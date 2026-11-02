@@ -173,6 +173,7 @@
                         element.autoplay = true;
                         element.playsInline = true;
                         videoBox.appendChild(element);
+                        videoBox.appendChild(expandButton);
                     } else if (track.kind === window.LivekitClient.Track.Kind.Audio) {
                         const element = track.attach();
                         element.autoplay = true;
