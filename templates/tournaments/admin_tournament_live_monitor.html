@@ -354,6 +354,7 @@
                         videoBox.innerHTML = '<span class="text-danger">' + esc(error.message || "Could not connect to player Live") + '</span>';
                     } finally {
                         connectingRooms.delete(stream.session_id);
+                        window.setTimeout(connectWaitingVisibleCards, 100);
                     }
                 };
                 const disconnectPlayerRoom = async () => {
