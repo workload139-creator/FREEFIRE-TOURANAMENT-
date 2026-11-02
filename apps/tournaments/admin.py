@@ -73,8 +73,7 @@ class TournamentAdminForm(forms.ModelForm):
         if "winner_uid" in self.fields:
             self.fields["winner_uid"].label = "First Place Winner — Free Fire UID"
             self.fields["winner_uid"].help_text = (
-                "Tournament ka first-place player choose karne ke liye us verified registration ki Free Fire UID enter karein. "
-                "Leaderboard par us player ko first place dikhaya jayega; prize payout alag se manually verify karna hoga."
+                "First-place player ki verified Free Fire UID. Team formats mein winner_team_uids mein har winning member ki UID alag line/comma se enter karein."
             )
 
     def clean(self):
@@ -804,7 +803,7 @@ class TournamentAdmin(admin.ModelAdmin):
         ("2. Fees & Players — entry aur capacity", {"description": "Entry Fee player se li jane wali registration fee hai. Prize Pool tournament ka first-place prize hai; ise admin ke funds aur payout process ke mutabik set karein. Max Players room capacity hai (maximum 49). BR format Solo/Duo/Squad chunein. Normal BR mein har approved kill par 5 Diamonds; minimum 2 verified kills. Free Fan event ka alag Fan Token rule rahega. Evidence verification zaroori hai.", "fields": ("entry_fee", "prize_pool", "max_players")}),
         ("4. Status — LIVE / COMPLETED / CANCELLED", {"description": "Tournament ki public listing date/time par depend nahi karti. Room Invite Link set karke LIVE karein; eligible players ko 3 attempts wala 5-minute YES/NO confirmation flow milega. Match khatam hone par Live Monitor se COMPLETED karein. Cancel karne par existing refund workflow chalega.", "fields": ("status",)}),
         ("5. Free Fire Room Invite Link", {"description": "Official Garena ffshare.garena.com invite link yahan set karein. Player ko JOIN ROOM sirf Live AI screen-share permission active hone ke baad dikhega.", "fields": ("room_invite_link",)}),
-        ("6. BR Winning Team Rewards", {"description": "Tournament Completed hone ke baad winning BR team ke har player ka registered Free Fire UID yahan alag line ya comma se likhein. Admin action se har verified winner ko 10 Fan Tokens + 50 Coins ek hi baar milenge; har reward ledger mein save hoga.", "fields": ("winner_team_uids",)}),
+                ("6. Winning Team UIDs", {"description": "BR Duo/Squad aur VS 2v2/3v3/4v4 ke sabhi verified winning Free Fire UIDs alag line ya comma se enter karein. Team UPI payout mein har member ko prize_pool ka equal share bhejein aur Winner Prize Reference mein same order ke comma-separated unique UTRs enter karein. BR Duo/Squad ke existing 10 Fan Tokens + 50 Coins per-player reward ka action alag hai.", "fields": ("winner_team_uids",)}),
         ("7. First Place Winner & payout tracking", {"description": "Tournament complete/review ke baad winner ki registered Free Fire UID enter karein. Neeche player ki saved UPI/QR details dekh sakte hain. Winner Prize Reference mein actual transfer ka real UTR enter karne ke baad hi payout action use karein. Is field ko bharna apne-aap paise transfer nahi karta.", "fields": ("winner_uid", "winner_payout_destination", "winner_payout_qr", "winner_prize_reference", "winner_prize_paid")}),
     )
 
