@@ -1518,6 +1518,97 @@ def admin_kill_batch_review(request):
     })
 
 
+
+@login_required
+def my_history(request):
+    """Private, read-only history of completed tournaments the signed-in player entered."""
+    registrations = list(
+        Registration.objects.filter(
+            player=request.user,
+            tournament__status=Tournament.Status.COMPLETED,
+            payment_verified=True,
+            refund_processed=False,
+            status__in=[
+                Registration.Status.CONFIRMED,
+                Registration.Status.WAITING_READY,
+                Registration.Status.READY,
+                Registration.Status.NOT_PLAYING,
+            ],
+        ).select_related("tournament").order_by("-tournament__updated_at", "-registered_at")
+    )
+    registration_ids = [item.pk for item in registrations]
+    live_counts = dict(
+        LiveKillEvent.objects.filter(
+            registration_id__in=registration_ids,
+            status=LiveKillEvent.Status.VERIFIED,
+        ).values("registration_id").annotate(total=Count("id"))
+        .values_list("registration_id", "total")
+    )
+    submissions = {
+        item.registration_id: item
+        for item in KillSubmission.objects.filter(
+            registration_id__in=registration_ids,
+            status=KillSubmission.Status.APPROVED,
+        ).order_by("-reviewed_at", "-submitted_at")
+    }
+    for registration in registrations:
+        registration.history_live_kills = live_counts.get(registration.pk, 0)
+        registration.history_submission = submissions.get(registration.pk)
+    return render(request, "tournaments/my_history.html", {"history_registrations": registrations})
+
+
+def tournament_history(request, tournament_id):
+    """Public read-only result archive for one completed tournament."""
+    tournament = get_object_or_404(
+        Tournament, pk=tournament_id, status=Tournament.Status.COMPLETED
+    )
+    registrations = list(
+        Registration.objects.filter(
+            tournament=tournament,
+            payment_verified=True,
+            refund_processed=False,
+            status__in=[
+                Registration.Status.CONFIRMED,
+                Registration.Status.WAITING_READY,
+                Registration.Status.READY,
+                Registration.Status.NOT_PLAYING,
+            ],
+        ).select_related("player").order_by("team_number", "team_position", "registered_at")
+    )
+    registration_ids = [item.pk for item in registrations]
+    live_counts = dict(
+        LiveKillEvent.objects.filter(
+            tournament=tournament,
+            registration_id__in=registration_ids,
+            status=LiveKillEvent.Status.VERIFIED,
+        ).values("registration_id").annotate(total=Count("id"))
+        .values_list("registration_id", "total")
+    )
+    submissions = {
+        item.registration_id: item
+        for item in KillSubmission.objects.filter(
+            tournament=tournament,
+            registration_id__in=registration_ids,
+            status=KillSubmission.Status.APPROVED,
+        ).order_by("-reviewed_at", "-submitted_at")
+    }
+    winning_uids = {
+        uid.strip()
+        for uid in (tournament.winner_team_uids or "").replace(",", "\\n").splitlines()
+        if uid.strip()
+    }
+    if tournament.winner_uid:
+        winning_uids.add(tournament.winner_uid.strip())
+    for registration in registrations:
+        registration.history_live_kills = live_counts.get(registration.pk, 0)
+        registration.history_submission = submissions.get(registration.pk)
+        registration.history_is_winner = registration.free_fire_uid in winning_uids
+    return render(request, "tournaments/tournament_history.html", {
+        "tournament": tournament,
+        "history_registrations": registrations,
+    })
+
+
 def results(request):
     completed_tournaments = list(
         Tournament.objects.filter(status=Tournament.Status.COMPLETED)
