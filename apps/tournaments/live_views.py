@@ -195,6 +195,8 @@ def leaderboard_live_tokens(request, tournament_id):
             "registration_id": session.registration_id,
             "player": session.registration.player.get_username(),
             "uid": session.registration.free_fire_uid,
+            "team_number": session.registration.team_number,
+            "team_position": session.registration.team_position,
             "url": url,
             "token": token,
         })

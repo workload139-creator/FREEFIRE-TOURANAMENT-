@@ -7,6 +7,22 @@
     const tournamentId = grid.dataset.tournamentId;
     const aiEnabled = String(grid.dataset.tournamentMode || "").toUpperCase() === "BR";
     const rooms = [];
+    const teamRows = new Map();
+    function getPlayerRow(stream) {
+        const hasTeam = stream.team_number !== null && stream.team_number !== undefined && String(stream.team_number) !== "";
+        const key = hasTeam ? "team:" + stream.team_number : "solo:" + stream.registration_id;
+        if (teamRows.has(key)) return teamRows.get(key);
+        const row = document.createElement("section");
+        row.className = "ff-live-team-row" + (hasTeam ? "" : " ff-live-solo-row");
+        row.dataset.teamKey = key;
+        const heading = document.createElement("div");
+        heading.className = "ff-team-heading";
+        heading.textContent = hasTeam ? "TEAM " + stream.team_number : "SOLO PLAYER";
+        row.appendChild(heading);
+        grid.appendChild(row);
+        teamRows.set(key, row);
+        return row;
+    }
     let talkingRoom = null;
     let refreshInProgress = false;
     const csrfToken = document.querySelector("#ff-live-csrf-form [name=csrfmiddlewaretoken]")?.value || "";
@@ -86,6 +102,8 @@
                 const col = document.createElement("div");
                 col.className = "col-12 col-md-6 col-xl-4 ff-live-player-card";
                 col.dataset.sessionId = stream.session_id;
+                col.dataset.teamPosition = stream.team_position == null ? "999" : String(stream.team_position).padStart(3, "0");
+                col.dataset.playerName = stream.player || "";
                 col.innerHTML = '<div class="card h-100 p-3">' +
                     '<div class="d-flex justify-content-between gap-2"><strong>' +
                     esc(stream.player) + ' · UID ' + esc(stream.uid) +
@@ -111,7 +129,12 @@
                     '<button type="button" class="btn btn-sm btn-outline-secondary ff-request-mic">Request player mic</button></div>' +
                     '<div class="small text-muted ff-audio-status mt-2">Player mic status: waiting for audio</div>' +
                     '<form class="ff-player-message-form mt-3"><textarea class="form-control ff-player-message" rows="2" maxlength="500" placeholder="Private message to this player…"></textarea><button type="submit" class="btn btn-sm btn-primary mt-2">Send private message</button><small class="d-block mt-1 ff-message-status" role="status"></small></form></div>';
-                grid.appendChild(col);
+                const playerRow = getPlayerRow(stream);
+                playerRow.appendChild(col);
+                // Keep the squad slots in their registered A/B/C/D (team_position) order.
+                Array.from(playerRow.querySelectorAll(".ff-live-player-card"))
+                    .sort((a, b) => a.dataset.teamPosition.localeCompare(b.dataset.teamPosition))
+                    .forEach(card => playerRow.appendChild(card));
                 const videoBox = col.querySelector(".ff-live-video");
                 const expandButton = col.querySelector(".ff-live-expand");
                 expandButton.addEventListener("click", async () => {
@@ -304,6 +327,10 @@
 @media(min-width:1200px){.ff-monitor-page #ff-live-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(min-width:1600px){.ff-monitor-page #ff-live-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .ff-monitor-page #ff-live-grid>.ff-live-player-card{width:100%;max-width:none}
+.ff-monitor-page .ff-live-team-row{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(230px,1fr));gap:12px;padding:12px;border:1px solid #36cfff55;border-radius:16px;background:linear-gradient(135deg,#10233a,#091321);overflow-x:auto}
+.ff-monitor-page .ff-live-team-row .ff-team-heading{grid-column:1/-1;color:#8ceaff;font-weight:900;letter-spacing:.08em;font-size:12px;text-transform:uppercase}
+.ff-monitor-page .ff-live-team-row .ff-live-player-card{width:100%;max-width:none;min-width:0}
+.ff-monitor-page .ff-live-solo-row{grid-template-columns:minmax(260px,1fr)}
 .ff-monitor-page .ff-live-video{position:relative;min-height:210px!important;background:#02060d!important;border:1px solid #2b8ec966}
 .ff-monitor-page .ff-live-video:fullscreen{width:100vw;height:100vh;min-height:100vh!important;display:flex;align-items:center;justify-content:center;background:#000!important}
 .ff-monitor-page .ff-live-video:fullscreen video{width:100%!important;height:100%!important;max-height:100vh!important;object-fit:contain}
