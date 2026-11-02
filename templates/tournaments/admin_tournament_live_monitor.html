@@ -48,7 +48,7 @@
                     <strong>{{ session.registration.player.username }} / {{ session.registration.free_fire_uid }}</strong>
                     <div class="mt-2 d-flex flex-wrap gap-2 align-items-center">
                         <label class="small" for="admin-kills-{{ session.registration_id }}">Admin kill count</label>
-                        <input id="admin-kills-{{ session.registration_id }}" class="form-control form-control-sm ff-admin-kills" type="number" min="2" max="49" step="1" value="{{ session.approved_live_kills|default:2 }}" style="width:105px" data-wallet-diamonds="{{ session.wallet_balance.diamonds|default:0 }}" data-wallet-coins="{{ session.wallet_balance.coins|default:0 }}" data-wallet-fan_tokens="{{ session.wallet_balance.fan_tokens|default:0 }}">
+                        <input id="admin-kills-{{ session.registration_id }}" class="form-control form-control-sm ff-admin-kills" type="number" min="2" max="49" step="1" value="" placeholder="Kills" style="width:105px" data-wallet-diamonds="{{ session.wallet_balance.diamonds|default:0 }}" data-wallet-coins="{{ session.wallet_balance.coins|default:0 }}" data-wallet-fan_tokens="{{ session.wallet_balance.fan_tokens|default:0 }}">
                         <button type="button" class="btn btn-sm btn-warning ff-preview-kill">Calculate</button>
                         <button type="button" class="btn btn-sm btn-success ff-confirm-kill" data-url="{% url 'tournaments:admin_confirm_live_kill_reward' tournament.id session.registration_id %}">Confirm reward</button>
                     </div>
