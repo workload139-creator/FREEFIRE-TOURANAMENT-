@@ -90,7 +90,7 @@
       return false;
     }
     preview.textContent = rewards.map(([currency, quantity]) => {
-      const before = Number(input.dataset["wallet" + currency] || 0);
+      const before = Number(input.getAttribute("data-wallet-" + currency) || 0);
       return currencyNames[currency] + ": " + before + " + " + quantity + " = " + (before + Number(quantity));
     }).join(" · ") + " (preview only — Confirm abhi nahi hua)";
     return true;
@@ -99,7 +99,9 @@
     const row = input.closest("tr");
     const preview = row.querySelector(".ff-kill-reward-preview");
     const status = row.querySelector(".ff-kill-reward-status");
+    input.addEventListener("input", () => calculate(input, preview));
     row.querySelector(".ff-preview-kill").addEventListener("click", () => calculate(input, preview));
+    calculate(input, preview);
     row.querySelector(".ff-confirm-kill").addEventListener("click", async event => {
       if (!calculate(input, preview)) return;
       const button = event.currentTarget;
