@@ -279,6 +279,7 @@ class LiveAIWorker:
 
     async def _disconnect(self, session_uuid, error=""):
         worker = self.workers.pop(session_uuid, None)
+        was_eliminated = bool(worker and worker.elimination_detected)
         if worker:
             for task in tuple(worker.frame_tasks):
                 task.cancel()
@@ -290,7 +291,7 @@ class LiveAIWorker:
                 logger.exception("Room disconnect failed for session %s", session_uuid)
         await update_monitor(
             session_uuid,
-            "degraded" if error else "stopped",
+            "eliminated" if was_eliminated else ("degraded" if error else "stopped"),
             error=error,
         )
 
@@ -321,7 +322,7 @@ class LiveAIWorker:
                     worker.frames_pending = 0
                     await update_monitor(
                         session_uuid,
-                        "processing" if worker.identity_verified else "connected",
+                        "eliminated" if worker.elimination_detected else ("processing" if worker.identity_verified else "connected"),
                         frames_delta=delta,
                     )
 
