@@ -448,11 +448,11 @@ public class MainActivity extends Activity {
                     updateProgressBar.setIndeterminate(false);
                     updateProgressBar.setProgress(percent);
                 }
+                String downloadedText = android.text.format.Formatter.formatFileSize(this, downloaded);
+                String totalText = total > 0L
+                        ? android.text.format.Formatter.formatFileSize(this, total)
+                        : "size checking";
                 if (updateProgressLabel != null) {
-                    String downloadedText = android.text.format.Formatter.formatFileSize(this, downloaded);
-                    String totalText = total > 0L
-                            ? android.text.format.Formatter.formatFileSize(this, total)
-                            : "size checking";
                     updateProgressLabel.setText(percent + "% downloaded  (" + downloadedText
                             + " / " + totalText + ")");
                 }
