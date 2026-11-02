@@ -10,7 +10,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db import IntegrityError, transaction
 from django.db.models import Count
-from django.http import FileResponse, Http404, HttpResponseForbidden
+from django.http import FileResponse, Http404, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -671,6 +671,82 @@ def admin_live_monitor(request):
 
 @login_required
 @user_passes_test(lambda user: user.is_staff)
+@require_POST
+def admin_confirm_live_kill_reward(request, tournament_id, registration_id):
+    """One-time Admin kill-count settlement; never overlaps evidence-based AI rewards."""
+    import json
+    from django.db import IntegrityError
+    from apps.social.models import PlayerShopWallet, PlayerShopWalletTransaction
+
+    try:
+        payload = json.loads(request.body or "{}")
+        kills = int(payload.get("kills"))
+        if kills < 2 or kills > 49:
+            raise ValueError("Kam se kam 2 aur adhiktam 49 kills enter karein.")
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return JsonResponse({"error": "Valid kill count (2–49) enter karein."}, status=400)
+
+    with transaction.atomic():
+        tournament = get_object_or_404(Tournament.objects.select_for_update(), pk=tournament_id)
+        registration = get_object_or_404(
+            Registration.objects.select_for_update().select_related("player"),
+            pk=registration_id, tournament=tournament,
+        )
+        if tournament.status not in (Tournament.Status.LIVE, Tournament.Status.COMPLETED):
+            return JsonResponse({"error": "Reward sirf LIVE ya COMPLETED tournament mein confirm ho sakta hai."}, status=400)
+        if registration.status != Registration.Status.READY or not registration.payment_verified or registration.refund_processed:
+            return JsonResponse({"error": "Player ki payment/registration eligibility verify nahi hai."}, status=400)
+        if LiveKillEvent.objects.filter(tournament=tournament, registration=registration, status=LiveKillEvent.Status.VERIFIED).exists():
+            return JsonResponse({"error": "Is player ke AI-verified kills maujood hain. Duplicate reward se bachne ke liye manual payout roka gaya."}, status=409)
+        if KillSubmission.objects.filter(tournament=tournament, registration=registration, status=KillSubmission.Status.APPROVED).exists():
+            return JsonResponse({"error": "Is player ka pehle se approved kill reward hai. Manual payout roka gaya."}, status=409)
+
+        reference = f"ADMIN-LIVE-KILL-{tournament.pk}-{registration.pk}"
+        if TournamentLedgerEntry.objects.filter(reference__startswith=reference).exists():
+            return JsonResponse({"error": "Is player ka manual kill reward pehle hi confirm ho chuka hai."}, status=409)
+
+        rewards = rewards_for_tournament(tournament, kills)
+        if not rewards:
+            return JsonResponse({"error": "Is kill count ke liye reward configured nahi hai."}, status=400)
+
+        wallet, _ = PlayerShopWallet.objects.get_or_create(user=registration.player)
+        wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
+        balances = {}
+        for currency, quantity, label in rewards:
+            quantity = int(quantity)
+            if quantity <= 0:
+                continue
+            key = f"admin-live-kill:{tournament.pk}:{registration.pk}:{currency}"
+            if PlayerShopWalletTransaction.objects.filter(idempotency_key=key).exists():
+                return JsonResponse({"error": "Duplicate wallet transaction detected; payout blocked."}, status=409)
+            before = int(getattr(wallet, currency))
+            after = before + quantity
+            setattr(wallet, currency, after)
+            balances[currency] = {"before": before, "reward": quantity, "after": after, "label": label}
+            PlayerShopWalletTransaction.objects.create(
+                user=registration.player, wallet=wallet, currency=currency,
+                direction=PlayerShopWalletTransaction.Direction.CREDIT,
+                quantity=quantity, balance_after=after, source="admin_live_kill",
+                reference=reference, idempotency_key=key,
+                description=f"Admin-confirmed {kills} kills · {tournament.title}",
+            )
+            TournamentLedgerEntry.objects.create(
+                tournament=tournament, player=registration.player, registration=registration,
+                entry_type=TournamentLedgerEntry.EntryType.REWARD, currency=currency,
+                quantity=quantity, status=TournamentLedgerEntry.Status.COMPLETED,
+                reference=f"{reference}-{currency}",
+                description=f"Admin-confirmed {kills} live kills · {label}",
+            )
+        wallet.save(update_fields=("diamonds", "coins", "fan_tokens", "updated_at"))
+        wallet.refresh_from_db()
+        return JsonResponse({
+            "message": "Reward confirmed and wallet balance updated.",
+            "kills": kills, "balances": balances,
+        })
+
+
+@login_required
+@user_passes_test(lambda user: user.is_staff)
 def admin_tournament_live_monitor(request, tournament_id):
     """Dedicated tournament-scoped page for viewing all eligible player streams."""
     process_expired_ready_registrations()
@@ -699,6 +775,10 @@ def admin_tournament_live_monitor(request, tournament_id):
         "tournament": tournament,
         "live_sessions": sessions,
         "live_leaderboard": sorted(sessions, key=lambda item: item.approved_live_kills, reverse=True),
+        "reward_calculation_map": {
+            str(kills): rewards_for_tournament(tournament, kills)
+            for kills in range(0, 50)
+        },
     })
 
 
