@@ -329,12 +329,18 @@
                                 if (listenEnabled) element.play().catch(() => { audioStatus.textContent = "Browser audio playback allow karein."; });
                             }
                         });
+                        room.on(window.LivekitClient.RoomEvent.TrackUnsubscribed, (track) => {
+                            track.detach().forEach(element => element.remove());
+                        });
                         room.on(window.LivekitClient.RoomEvent.Disconnected, () => {
                             if (talkingRoom === room) talkingRoom = null;
                             talkButton.textContent = "🎙️ Talk to player";
                             if (!pausingRoom) {
-                                videoBox.innerHTML = '<span class="text-warning">Player Live disconnected</span>';
+                                rooms.delete(stream.session_id);
+                                room = null;
+                                videoBox.innerHTML = '<span class="text-warning">Player Live disconnected — reconnecting when visible</span>';
                                 audioStatus.textContent = "Player Live disconnected.";
+                                window.setTimeout(connectWaitingVisibleCards, 1000);
                             }
                         });
                         await room.connect(credentials.url, credentials.token, {autoSubscribe: true});
