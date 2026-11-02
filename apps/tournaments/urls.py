@@ -111,6 +111,8 @@ urlpatterns = [
         views.admin_set_first_place_winner,
         name="admin_set_first_place_winner",
     ),
+    path("my-history/", views.my_history, name="my_history"),
+    path("history/<int:tournament_id>/", views.tournament_history, name="tournament_history"),
     path("my-registrations/", views.my_registrations, name="my_registrations"),
     path("leaderboard/<int:tournament_id>/", views.leaderboard, name="leaderboard"),
 ]
