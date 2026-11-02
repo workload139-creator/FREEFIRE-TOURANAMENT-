@@ -74,6 +74,7 @@ public class MainActivity extends Activity {
     private long pendingApkDownloadId = -1L;
     private int pendingApkVersionCode = -1;
     private String pendingApkFileName = "";
+    private volatile boolean updateCheckInFlight = false;
     private Uri pendingInstallUri;
     private DownloadManager apkDownloadManager;
     private BroadcastReceiver apkDownloadReceiver;
@@ -112,13 +113,24 @@ public class MainActivity extends Activity {
         openFeature(routeFromIntent(intent));
     }
 
+    private int getInstalledAppVersionCode() {
+        try {
+            android.content.pm.PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0);
+            if (Build.VERSION.SDK_INT >= 28) return (int) info.getLongVersionCode();
+            return info.versionCode;
+        } catch (Exception ignored) {
+            return BuildConfig.VERSION_CODE;
+        }
+    }
+
     private void checkForAppUpdate() {
-        if (pendingApkDownloadId > 0L) return;
+        if (pendingApkDownloadId > 0L || updateCheckInFlight || isFinishing() || isDestroyed()) return;
         SharedPreferences updatePrefs = getSharedPreferences("ffarena_updates", MODE_PRIVATE);
         long now = System.currentTimeMillis();
         long lastCheck = updatePrefs.getLong("last_update_check_at", 0L);
         if (now - lastCheck < 5L * 60L * 1000L) return;
         updatePrefs.edit().putLong("last_update_check_at", now).apply();
+        updateCheckInFlight = true;
         new Thread(() -> {
             HttpURLConnection connection = null;
             try {
@@ -144,7 +156,10 @@ public class MainActivity extends Activity {
                         .matcher(releaseNotes);
                 if (!matcher.find()) return;
                 int latestVersion = Integer.parseInt(matcher.group(1));
-                if (latestVersion <= BuildConfig.VERSION_CODE) return;
+                int installedVersion = getInstalledAppVersionCode();
+                int lastOfferedVersion = updatePrefs.getInt("last_offered_version_code", 0);
+                // Do not offer the installed build again, or repeat the same dismissed offer on every launch.
+                if (latestVersion <= installedVersion || latestVersion <= lastOfferedVersion) return;
                 String apkUrl = "";
                 JSONArray assets = release.optJSONArray("assets");
                 if (assets != null) {
@@ -159,11 +174,13 @@ public class MainActivity extends Activity {
                 if (apkUrl.isEmpty()) return;
                 final String downloadUrl = apkUrl;
                 runOnUiThread(() -> {
-                    if (isFinishing() || isDestroyed()) return;
+                    if (isFinishing() || isDestroyed() || pendingApkDownloadId > 0L) return;
+                    // Persist before displaying so a fast Activity resume cannot open duplicate dialogs.
+                    updatePrefs.edit().putInt("last_offered_version_code", latestVersion).apply();
                     new AlertDialog.Builder(MainActivity.this)
                             .setTitle("FF Arena update available")
                             .setMessage("A new app version is available ("
-                                    + BuildConfig.VERSION_NAME + " → 1.0." + latestVersion
+                                    + "1.0." + installedVersion + " → 1.0." + latestVersion
                                     + "). Update the app to get the latest features.")
                             .setCancelable(true)
                             .setNegativeButton("Later", (dialog, which) -> dialog.dismiss())
@@ -173,9 +190,10 @@ public class MainActivity extends Activity {
                             .show();
                 });
             } catch (Exception ignored) {
-                // Update checks are optional; offline users can continue using the app.
+                // Update checks are optional; offline users can continue using FF Arena.
             } finally {
                 if (connection != null) connection.disconnect();
+                updateCheckInFlight = false;
             }
         }).start();
     }
