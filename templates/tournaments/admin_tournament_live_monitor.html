@@ -343,7 +343,7 @@
             </table></div>
         </div>
         <div class="table-responsive"><table class="table table-striped table-bordered align-middle">
-            <thead><tr><th>Player / UID · Admin Kill Entry</th><th>Live State</th><th>UID Check</th><th>Approved Kills</th><th>Reward Preview</th><th>Wallet Balance</th><th>Frames</th><th>Kill Events</th><th>Last Monitor Heartbeat</th><th>Issue</th></tr></thead>
+            <thead><tr><th>Player / UID · Admin Kill Entry</th><th>Live State</th>{% if tournament.mode == "BR" %}<th>UID Check</th>{% endif %}<th>Approved Kills</th><th>Reward Preview</th><th>Wallet Balance</th>{% if tournament.mode == "BR" %}<th>Frames</th><th>Temporary Captures</th><th>Last AI Heartbeat</th><th>AI Issue</th>{% endif %}</tr></thead>
             <tbody>
             {% for session in live_sessions %}
             <tr>
@@ -359,16 +359,13 @@
                     <div class="small text-warning mt-1 ff-kill-reward-status"></div>
                 </td>
                 <td>{% if session.status == "active" %}<span class="text-success">Session Active</span>{% else %}<span class="text-secondary">Ended</span>{% endif %}<br><small>{{ session.monitor_state }}</small></td>
-                <td>{% if session.identity_verified_at %}<span class="text-success">Verified</span><br><small>{{ session.identity_ocr_confidence }}</small>{% else %}<span class="text-warning">Pending</span>{% endif %}</td>
+                {% if tournament.mode == "BR" %}<td>{% if session.identity_verified_at %}<span class="text-success">Verified</span><br><small>{{ session.identity_ocr_confidence }}</small>{% else %}<span class="text-warning">Pending</span>{% endif %}</td>{% endif %}
                 <td><strong>{{ session.approved_live_kills }}</strong></td>
                 <td>{% if session.approved_live_kills >= 2 %}{{ session.reward_preview }}{% else %}2 verified kills required{% endif %}</td>
                 <td>{% if session.wallet_balance %}💎 {{ session.wallet_balance.diamonds }} · 🪙 {{ session.wallet_balance.coins }} · 🎟️ {{ session.wallet_balance.fan_tokens }}{% else %}Wallet not created{% endif %}</td>
-                <td>{{ session.monitor_frames_seen }}</td>
-                <td>{{ session.monitor_detections_seen }}</td>
-                <td>{{ session.monitor_last_heartbeat_at|date:"d M Y, h:i:s A"|default:"—" }}</td>
-                <td>{{ session.monitor_last_error|default:"—" }}</td>
+                {% if tournament.mode == "BR" %}<td>{{ session.monitor_frames_seen }}</td><td>{{ session.monitor_detections_seen }}</td><td>{{ session.monitor_last_heartbeat_at|date:"d M Y, h:i:s A"|default:"—" }}</td><td>{{ session.monitor_last_error|default:"—" }}</td>{% endif %}
             </tr>
-            {% empty %}<tr><td colspan="10">Is tournament mein abhi koi Live session nahi hai.</td></tr>{% endfor %}
+            {% empty %}<tr><td colspan="{% if tournament.mode == 'BR' %}10{% else %}6{% endif %}">Is tournament mein abhi koi Live session nahi hai.</td></tr>{% endfor %}
             </tbody>
         </table></div>
         
