@@ -845,6 +845,10 @@ def admin_tournament_live_monitor(request, tournament_id):
 def admin_tournament_live_history(request, tournament_id):
     """Read-only archive of every LiveKit session after a tournament ends."""
     tournament = get_object_or_404(Tournament, pk=tournament_id)
+    if tournament.status == Tournament.Status.COMPLETED:
+        TournamentLiveSession.objects.filter(
+            tournament=tournament, status=TournamentLiveSession.Status.ACTIVE
+        ).update(status=TournamentLiveSession.Status.ENDED, ended_at=timezone.now(), updated_at=timezone.now())
     sessions = list(
         TournamentLiveSession.objects.filter(tournament=tournament)
         .select_related("registration", "registration__player")
