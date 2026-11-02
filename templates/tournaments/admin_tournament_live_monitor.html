@@ -1,5 +1,7 @@
 {% extends "base.html" %}
-{% block title %}{{ tournament.title }} · Live Monitor | FF Arena<script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+{% block title %}{{ tournament.title }} · Live Monitor | FF Arena{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
 <script>
 (function () {
     const grid = document.getElementById("ff-live-grid");
