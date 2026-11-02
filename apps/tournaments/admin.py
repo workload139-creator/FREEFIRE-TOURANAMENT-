@@ -580,7 +580,7 @@ class TournamentAdmin(admin.ModelAdmin):
     # Keep tournament setup separate from registrations and kill evidence.
     # Those have their own admin sections so adding/editing a tournament stays manageable.
     inlines = ()
-    actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid, award_arena_currency_winner,)
+    actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid, award_arena_currency_winner, award_br_winner_team,)
     readonly_fields = (
         "tournament_control_panel", "winner_prize_paid",
         "kill_prize_distributed", "kill_prize_pool", "kill_prize_reference",
@@ -838,7 +838,7 @@ class TournamentAdmin(admin.ModelAdmin):
         ("4. Status — LIVE / COMPLETED / CANCELLED", {"description": "Tournament ki public listing date/time par depend nahi karti. Room Invite Link set karke LIVE karein; eligible players ko 3 attempts wala 5-minute YES/NO confirmation flow milega. Match khatam hone par Live Monitor se COMPLETED karein. Cancel karne par existing refund workflow chalega.", "fields": ("status",)}),
         ("5. Free Fire Room Invite Link", {"description": "Official Garena ffshare.garena.com invite link yahan set karein. Player ko JOIN ROOM sirf Live AI screen-share permission active hone ke baad dikhega.", "fields": ("room_invite_link",)}),
                 ("6. Winning Team UIDs", {"description": "BR Duo/Squad aur VS 2v2/3v3/4v4 ke sabhi verified winning Free Fire UIDs alag line ya comma se enter karein. Team UPI payout mein har member ko prize_pool ka equal share bhejein aur Winner Prize Reference mein same order ke comma-separated unique UTRs enter karein. BR Duo/Squad ke existing 10 Fan Tokens + 50 Coins per-player reward ka action alag hai.", "fields": ("winner_team_uids",)}),
-        ("7. First Place Winner & payout tracking", {"description": "Tournament complete/review ke baad winner ki registered Free Fire UID enter karein. Neeche player ki saved UPI/QR details dekh sakte hain. Winner Prize Reference mein actual transfer ka real UTR enter karne ke baad hi payout action use karein. Is field ko bharna apne-aap paise transfer nahi karta.", "fields": ("winner_uid", "winner_payout_destination", "winner_payout_qr", "winner_prize_reference", "winner_prize_paid")}),
+        ("7. First Place Winner & payout tracking", {"description": "Tournament complete/review ke baad winner UID aur team formats mein sabhi winning UIDs enter karein. Team payout ke liye har player ko equal share manually UPI karein; Winner Prize Reference mein UID list ke same order mein comma-separated unique real UTRs enter karein. Is field ko bharna apne-aap paise transfer nahi karta.", "fields": ("winner_uid", "winner_payout_destination", "winner_payout_qr", "winner_prize_reference", "winner_prize_paid")}),
     )
 
 
