@@ -37,6 +37,7 @@ import android.widget.LinearLayout;
 import android.widget.ImageView;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -78,6 +79,15 @@ public class MainActivity extends Activity {
     private Uri pendingInstallUri;
     private DownloadManager apkDownloadManager;
     private BroadcastReceiver apkDownloadReceiver;
+    private AlertDialog updateProgressDialog;
+    private ProgressBar updateProgressBar;
+    private TextView updateProgressLabel;
+    private final android.os.Handler updateProgressHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable updateProgressRunnable = new Runnable() {
+        @Override public void run() {
+            refreshUpdateDownloadProgress();
+        }
+    };
 
     @Override
     public void onCreate(Bundle state) {
@@ -223,10 +233,12 @@ public class MainActivity extends Activity {
                     int statusColumn = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
                     int status = statusColumn >= 0 ? cursor.getInt(statusColumn) : -1;
                     if (status != DownloadManager.STATUS_SUCCESSFUL) {
+                        dismissUpdateProgress();
                         clearPendingApkDownload();
                         showUpdateError("The update download failed. Check your internet connection and try again.");
                         return;
                     }
+                    dismissUpdateProgress();
                     final int expectedVersionCode = pendingApkVersionCode;
                     final String expectedFileName = pendingApkFileName;
                     Uri apkUri = apkDownloadManager.getUriForDownloadedFile(completedId);
@@ -311,6 +323,9 @@ public class MainActivity extends Activity {
             }
             request.setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, pendingApkFileName);
             pendingApkDownloadId = apkDownloadManager.enqueue(request);
+            showUpdateProgress();
+            updateProgressHandler.removeCallbacks(updateProgressRunnable);
+            updateProgressHandler.post(updateProgressRunnable);
             getSharedPreferences("ffarena_updates", MODE_PRIVATE).edit()
                     .putLong("pending_download_id", pendingApkDownloadId)
                     .putInt("pending_version_code", pendingApkVersionCode)
@@ -349,7 +364,78 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void showUpdateProgress() {
+        if (isFinishing() || isDestroyed()) return;
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(22), dp(18), dp(22), dp(12));
+        TextView heading = text("Downloading FF Arena update", 16, Color.WHITE, true);
+        panel.addView(heading);
+        updateProgressLabel = text("0% downloaded", 14, MUTED, false);
+        updateProgressLabel.setPadding(0, dp(12), 0, dp(10));
+        panel.addView(updateProgressLabel);
+        updateProgressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        updateProgressBar.setMax(100);
+        updateProgressBar.setProgress(0);
+        panel.addView(updateProgressBar, new LinearLayout.LayoutParams(-1, dp(12)));
+        TextView hint = text("Please keep FF Arena open while the APK downloads.", 12, MUTED, false);
+        hint.setPadding(0, dp(12), 0, 0);
+        panel.addView(hint);
+        updateProgressDialog = new AlertDialog.Builder(this)
+                .setView(panel)
+                .setCancelable(false)
+                .setNegativeButton("Run in background", (dialog, which) -> {
+                    updateProgressHandler.removeCallbacks(updateProgressRunnable);
+                    updateProgressDialog = null;
+                    updateProgressBar = null;
+                    updateProgressLabel = null;
+                })
+                .create();
+        updateProgressDialog.show();
+        updateProgressDialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(ORANGE);
+    }
+
+    private void refreshUpdateDownloadProgress() {
+        if (pendingApkDownloadId <= 0L || apkDownloadManager == null) return;
+        DownloadManager.Query query = new DownloadManager.Query().setFilterById(pendingApkDownloadId);
+        try (Cursor cursor = apkDownloadManager.query(query)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int downloadedColumn = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR);
+                int totalColumn = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES);
+                long downloaded = downloadedColumn >= 0 ? cursor.getLong(downloadedColumn) : 0L;
+                long total = totalColumn >= 0 ? cursor.getLong(totalColumn) : -1L;
+                if (total > 0L) {
+                    int percent = (int) Math.min(100L, (downloaded * 100L) / total);
+                    if (updateProgressBar != null) updateProgressBar.setProgress(percent);
+                    if (updateProgressLabel != null) {
+                        updateProgressLabel.setText(percent + "% downloaded  (" + android.text.format.Formatter.formatFileSize(this, downloaded)
+                                + " / " + android.text.format.Formatter.formatFileSize(this, total) + ")");
+                    }
+                } else if (updateProgressLabel != null) {
+                    updateProgressLabel.setText("Downloading… calculating file size");
+                }
+                int statusColumn = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
+                int status = statusColumn >= 0 ? cursor.getInt(statusColumn) : -1;
+                if (status == DownloadManager.STATUS_SUCCESSFUL || status == DownloadManager.STATUS_FAILED) return;
+            }
+        } catch (Exception ignored) {}
+        if (updateProgressDialog != null && updateProgressDialog.isShowing()) {
+            updateProgressHandler.postDelayed(updateProgressRunnable, 500L);
+        }
+    }
+
+    private void dismissUpdateProgress() {
+        updateProgressHandler.removeCallbacks(updateProgressRunnable);
+        if (updateProgressDialog != null) {
+            try { updateProgressDialog.dismiss(); } catch (Exception ignored) {}
+        }
+        updateProgressDialog = null;
+        updateProgressBar = null;
+        updateProgressLabel = null;
+    }
+
     private void clearPendingApkDownload() {
+        dismissUpdateProgress();
         pendingApkDownloadId = -1L;
         pendingApkVersionCode = -1;
         pendingApkFileName = "";
@@ -1315,6 +1401,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        dismissUpdateProgress();
         if (liveShareController != null) {
             liveShareController.release();
             liveShareController = null;
