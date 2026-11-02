@@ -89,7 +89,7 @@
                 col.innerHTML = '<div class="card h-100 p-3">' +
                     '<div class="d-flex justify-content-between gap-2"><strong>' +
                     esc(stream.player) + ' · UID ' + esc(stream.uid) +
-                    '</strong><small class="text-muted">' + esc(stream.state) +
+                    '</strong><small class="text-muted">' + esc(aiEnabled ? stream.state : "Live screen connected") +
                     '</small></div>' +
                     (aiEnabled ?
                     '<div class="row g-2 mt-2 ff-player-metrics">' +
@@ -322,7 +322,7 @@
  </div>
  <div id="ff-section-live" class="card p-3 my-3 ff-section-card">
         <h4><span class="ff-section-number">03</span> Tournament Live Monitor — all player streams</h4>
-        <p>{% if tournament.mode == "BR" %}BR mein ek AI worker UID verify karta hai aur kill screenshots ko temporary memory mein rakhta hai. Player ke apne elimination screen detect hone ke baad hi screenshots permanent evidence mein save hongi. Admin har player ki live screen aur saved evidence check karega; AI reward approve ya pay nahi karegi.{% else %}Clash Squad mein sirf player Live Screen Sharing chalegi. AI kill detection, OCR aur screenshot evidence capture poori tarah OFF hai. Admin kill count dalega aur reward preview apne-aap calculate hoga.{% endif %} AI guess nahi karega. Admin live screen aur saved evidence khud dekh sakta hai.</p>
+        <p>{% if tournament.mode == "BR" %}BR mein ek AI worker UID verify karta hai aur har detected kill ka screenshot temporary memory mein rakhta hai (maximum 49 per player). Player ke apne elimination screen detect hone ke baad hi screenshots permanent evidence mein save hongi. Admin har player ki live screen aur saved evidence check karega; AI reward approve ya pay nahi karegi.{% else %}Clash Squad mein sirf player Live Screen Sharing chalegi. AI kill detection, OCR aur screenshot evidence capture poori tarah OFF hai. Admin kill count dalega aur reward preview apne-aap calculate hoga.{% endif %} AI guess nahi karega. Admin live screen aur saved evidence khud dekh sakta hai.</p>
         <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
             <label class="small fw-bold" for="ff-live-player-search">Find player / UID</label>
             <input id="ff-live-player-search" class="form-control" style="max-width:360px" type="search" placeholder="Player name ya Free Fire UID…">
@@ -358,7 +358,7 @@
                     <div class="small mt-2 ff-kill-reward-preview" role="status">Kill count type karte hi reward preview automatic update hoga. Confirm se pehle wallet credit nahi hoga.</div>
                     <div class="small text-warning mt-1 ff-kill-reward-status"></div>
                 </td>
-                <td>{% if session.status == "active" %}<span class="text-success">Session Active</span>{% else %}<span class="text-secondary">Ended</span>{% endif %}<br><small>{{ session.monitor_state }}</small></td>
+                <td>{% if session.status == "active" %}<span class="text-success">Session Active</span>{% else %}<span class="text-secondary">Ended</span>{% endif %}<br><small>{% if tournament.mode == "BR" %}{{ session.monitor_state }}{% else %}Live screen connected{% endif %}</small></td>
                 {% if tournament.mode == "BR" %}<td>{% if session.identity_verified_at %}<span class="text-success">Verified</span><br><small>{{ session.identity_ocr_confidence }}</small>{% else %}<span class="text-warning">Pending</span>{% endif %}</td>{% endif %}
                 <td><strong>{{ session.approved_live_kills }}</strong></td>
                 <td>{% if session.approved_live_kills >= 2 %}{{ session.reward_preview }}{% else %}2 verified kills required{% endif %}</td>
