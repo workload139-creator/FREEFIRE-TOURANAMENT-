@@ -71,6 +71,15 @@ def tournament_live_token(request, registration_id):
                 status=403,
             )
 
+        TournamentLiveSession.objects.filter(
+            tournament=tournament,
+            registration__free_fire_uid=registration.free_fire_uid,
+            status=TournamentLiveSession.Status.ACTIVE,
+        ).exclude(registration=registration).update(
+            status=TournamentLiveSession.Status.ENDED,
+            ended_at=timezone.now(),
+            updated_at=timezone.now(),
+        )
         session = TournamentLiveSession.objects.filter(
             registration=registration, status=TournamentLiveSession.Status.ACTIVE
         ).first()
@@ -202,14 +211,29 @@ def admin_tournament_live_tokens(request, tournament_id):
     if not url:
         return JsonResponse({"error": "LiveKit configuration is unavailable."}, status=503)
     tournament = get_object_or_404(Tournament, pk=tournament_id)
-    sessions = TournamentLiveSession.objects.filter(
+    if tournament.status != Tournament.Status.LIVE:
+        return JsonResponse({"tournament_id": tournament.pk, "streams": [], "completed": tournament.status == Tournament.Status.COMPLETED})
+    sessions = list(TournamentLiveSession.objects.filter(
         tournament=tournament,
         status=TournamentLiveSession.Status.ACTIVE,
         registration__status=Registration.Status.READY,
         registration__payment_verified=True,
         registration__refund_processed=False,
-    ).select_related("registration", "registration__player").order_by("started_at")
-    sessions = list(sessions)
+    ).select_related("registration", "registration__player").order_by("-started_at", "-pk"))
+    # Never publish two monitor feeds for the same in-game UID. Close older duplicates;
+    # their session metadata remains available from the separate history page.
+    unique_sessions = []
+    seen_uids = set()
+    for session in sessions:
+        uid = str(session.registration.free_fire_uid or "").strip()
+        if uid in seen_uids:
+            TournamentLiveSession.objects.filter(
+                pk=session.pk, status=TournamentLiveSession.Status.ACTIVE
+            ).update(status=TournamentLiveSession.Status.ENDED, ended_at=timezone.now(), updated_at=timezone.now())
+            continue
+        seen_uids.add(uid)
+        unique_sessions.append(session)
+    sessions = unique_sessions
     registration_ids = [session.registration_id for session in sessions]
     verified_counts = dict(
         LiveKillEvent.objects.filter(
