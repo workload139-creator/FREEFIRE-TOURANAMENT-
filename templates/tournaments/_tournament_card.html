@@ -21,8 +21,12 @@
     {% else %}
       <a class="button button-primary" href="{% url 'tournaments:detail' tournament.id %}">View / Register</a>
     {% endif %}
-    <a class="button button-outline" href="{% url 'tournaments:leaderboard' tournament.id %}">Leaderboard</a>
-    {% if tournament.status == "live" %}<a class="button button-primary" style="background:#d90032;border-color:#ff536f;color:#fff" href="https://www.youtube.com/@freefire_tour/live" target="_blank" rel="noopener noreferrer">▶ Watch Live</a>{% endif %}
+    {% if tournament.status == "live" %}
+      <a class="button button-primary" style="background:linear-gradient(110deg,#0b7cff,#12b8c9);border-color:#50dfff;color:#fff" href="{% url 'tournaments:leaderboard' tournament.id %}">👁 Watch Player Live · Leaderboard</a>
+      <a class="button button-outline" style="display:block;margin-top:8px" href="https://www.youtube.com/@freefire_tour/live" target="_blank" rel="noopener noreferrer">▶ Watch FF Arena on YouTube</a>
+    {% else %}
+      <a class="button button-outline" href="{% url 'tournaments:leaderboard' tournament.id %}">Leaderboard</a>
+    {% endif %}
   </div>
 </article>
 
