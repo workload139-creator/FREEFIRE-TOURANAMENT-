@@ -97,7 +97,7 @@
                     '<div class="col-6"><small>Frames / detections</small><div>' + esc(stream.frames_seen) + ' / ' + esc(stream.detections_seen) + '</div></div>' +
                     '<div class="col-6"><small>Background warnings</small><div>' + esc(stream.background_warnings) + '</div></div>' +
                     '<div class="col-12"><small class="ff-monitor-error">' + esc(stream.monitor_error || 'No monitor error reported') + '</small></div></div>' +
-                    '<div class="ff-live-video mt-2 bg-dark rounded d-flex align-items-center justify-content-center" style="min-height:190px;overflow:hidden"><span class="text-white-50">Waiting for player screen…</span></div>' +
+                    '<div class="ff-live-video mt-2 bg-dark rounded d-flex align-items-center justify-content-center" style="min-height:190px;overflow:hidden"><span class="text-white-50">Waiting for player screen…</span><button type="button" class="btn btn-sm btn-dark ff-live-expand" aria-label="Expand player screen">⛶ Expand</button></div>' +
                     '<div class="mt-3"><strong>AI kill screenshots & OCR details</strong><div class="ff-kill-evidence mt-2">' + renderEvidence(stream.recent_kill_events) + '</div></div>' +
                     '<div class="d-flex flex-wrap gap-2 mt-3">' +
                     '<button type="button" class="btn btn-sm btn-outline-danger ff-eliminated">☠️ Mark eliminated & end Live</button>' +
@@ -108,6 +108,32 @@
                     '<form class="ff-player-message-form mt-3"><textarea class="form-control ff-player-message" rows="2" maxlength="500" placeholder="Private message to this player…"></textarea><button type="submit" class="btn btn-sm btn-primary mt-2">Send private message</button><small class="d-block mt-1 ff-message-status" role="status"></small></form></div>';
                 grid.appendChild(col);
                 const videoBox = col.querySelector(".ff-live-video");
+                const expandButton = col.querySelector(".ff-live-expand");
+                expandButton.addEventListener("click", async () => {
+                    try {
+                        if (document.fullscreenElement === videoBox) await document.exitFullscreen();
+                        else if (videoBox.requestFullscreen) await videoBox.requestFullscreen();
+                    } catch (error) {
+                        expandButton.textContent = "Fullscreen unavailable";
+                    }
+                });
+                const searchInput = document.getElementById("ff-live-player-search");
+                const applyPlayerFilter = () => {
+                    const query = (searchInput?.value || "").trim().toLowerCase();
+                    let visible = 0;
+                    grid.querySelectorAll(".ff-live-player-card").forEach(card => {
+                        const matches = !query || card.textContent.toLowerCase().includes(query);
+                        card.hidden = !matches;
+                        if (matches) visible++;
+                    });
+                    const count = document.getElementById("ff-live-player-count");
+                    if (count) count.textContent = visible + " / " + grid.querySelectorAll(".ff-live-player-card").length + " player streams";
+                };
+                if (searchInput && !searchInput.dataset.bound) {
+                    searchInput.dataset.bound = "1";
+                    searchInput.addEventListener("input", applyPlayerFilter);
+                }
+                applyPlayerFilter();
                 const audioStatus = col.querySelector(".ff-audio-status");
                 const eliminatedButton = col.querySelector(".ff-eliminated");
                 eliminatedButton.addEventListener("click", async () => {
@@ -270,8 +296,12 @@
 .ff-monitor-page #ff-live-grid{display:grid;grid-template-columns:1fr;gap:14px}
 @media(min-width:700px){.ff-monitor-page #ff-live-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(min-width:1200px){.ff-monitor-page #ff-live-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(min-width:1600px){.ff-monitor-page #ff-live-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .ff-monitor-page #ff-live-grid>.ff-live-player-card{width:100%;max-width:none}
-.ff-monitor-page .ff-live-video{min-height:210px!important;background:#02060d!important;border:1px solid #2b8ec966}
+.ff-monitor-page .ff-live-video{position:relative;min-height:210px!important;background:#02060d!important;border:1px solid #2b8ec966}
+.ff-monitor-page .ff-live-video:fullscreen{width:100vw;height:100vh;min-height:100vh!important;display:flex;align-items:center;justify-content:center;background:#000!important}
+.ff-monitor-page .ff-live-video:fullscreen video{width:100%!important;height:100%!important;max-height:100vh!important;object-fit:contain}
+.ff-monitor-page .ff-live-expand{position:absolute;right:8px;top:8px;z-index:5}
 .ff-monitor-page .card{background:linear-gradient(145deg,#14243a,#0b1321)!important;color:#eaf2ff;border:1px solid #4381ad66!important;border-radius:15px}
 .ff-monitor-page .ff-player-metrics small,.ff-monitor-page .text-muted{color:#adc0d6!important}
 .ff-monitor-page .table{color:#eaf2ff}.ff-monitor-page .table td,.ff-monitor-page .table th{background:#0d1928;color:#dbeaff;border-color:#ffffff20}
@@ -287,6 +317,11 @@
  <div id="ff-section-live" class="card p-3 my-3 ff-section-card">
         <h4><span class="ff-section-number">03</span> Tournament Live Monitor — all player streams</h4>
         <p>Ek shared Live Monitor sabhi eligible player sessions ko dikhata hai. Ek hi AI worker in streams ko scan karta hai; Admin har player ki live screen aur saved kill evidence dekh sakta hai. Ek hi Live AI sabhi connected player streams scan karke killfeed text aur screenshots record karta hai. Killer/eliminated naam OCR se clear na ho to Admin ko 'not identified' dikhaya jayega; AI guess nahi karega. Admin live screen aur saved evidence khud dekh sakta hai.</p>
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+            <label class="small fw-bold" for="ff-live-player-search">Find player / UID</label>
+            <input id="ff-live-player-search" class="form-control" style="max-width:360px" type="search" placeholder="Player name ya Free Fire UID…">
+            <span class="small text-muted" id="ff-live-player-count">0 player streams</span>
+        </div>
         <div id="ff-live-grid" class="row g-3 mb-3" data-tournament-id="{{ tournament.id }}">
             <div class="col-12"><div class="alert alert-info mb-0">Connecting to this tournament's private player streams…</div></div>
         </div>
