@@ -373,6 +373,7 @@ public class MainActivity extends Activity {
 
     private void showUpdateProgress() {
         if (isFinishing() || isDestroyed()) return;
+        if (updateProgressDialog != null && updateProgressDialog.isShowing()) return;
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(dp(22), dp(18), dp(22), dp(12));
@@ -384,6 +385,7 @@ public class MainActivity extends Activity {
         updateProgressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         updateProgressBar.setMax(100);
         updateProgressBar.setProgress(0);
+        updateProgressBar.setIndeterminate(true);
         panel.addView(updateProgressBar, new LinearLayout.LayoutParams(-1, dp(12)));
         TextView hint = text("Please keep FF Arena open while the APK downloads.", 12, MUTED, false);
         hint.setPadding(0, dp(12), 0, 0);
