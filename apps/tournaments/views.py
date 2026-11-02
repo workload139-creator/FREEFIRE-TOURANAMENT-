@@ -214,6 +214,8 @@ def tournament_list(request):
             "unlimited_tournaments": tournaments.filter(is_unlimited_br=True, is_diwali_offer=False),
             "diwali_tournaments": tournaments.filter(is_diwali_offer=True, mode=Tournament.Mode.BR, br_format=Tournament.BRFormat.SOLO),
             "girls_vs_boys_tournaments": tournaments.filter(gender_category=Tournament.GenderCategory.GIRLS_VS_BOYS),
+            "br_live": tournaments.filter(mode=Tournament.Mode.BR, is_free_fan_tournament=False, status=Tournament.Status.LIVE).exists(),
+            "cs_live": tournaments.filter(mode=Tournament.Mode.VS, status=Tournament.Status.LIVE).exists(),
         },
     )
 
@@ -1594,7 +1596,7 @@ def tournament_history(request, tournament_id):
     }
     winning_uids = {
         uid.strip()
-        for uid in (tournament.winner_team_uids or "").replace(",", "\\n").splitlines()
+        for uid in (tournament.winner_team_uids or "").replace(",", "\n").splitlines()
         if uid.strip()
     }
     if tournament.winner_uid:
