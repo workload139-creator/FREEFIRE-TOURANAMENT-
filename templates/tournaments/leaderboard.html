@@ -37,11 +37,36 @@
   const widgets = Array.from(document.querySelectorAll(".ff-live-watch"));
   if (!widgets.length) return;
   const endpoint = "{% url 'tournaments:leaderboard_live_tokens' tournament.id %}";
-  const activeRooms = new Map();
   let sdk = null;
+  let activeRoom = null;
+  let activeRegistrationId = null;
+  let activeButton = null;
+  let statusRequest = null;
+
+  function resetActiveButton() {
+    if (activeButton) {
+      activeButton.disabled = false;
+      activeButton.textContent = "▶ Watch";
+    }
+    activeButton = null;
+    activeRegistrationId = null;
+  }
+  async function stopActiveRoom() {
+    const room = activeRoom;
+    activeRoom = null;
+    if (room) {
+      try { await room.disconnect(); } catch (_) {}
+    }
+    resetActiveButton();
+  }
   async function loadStreams() {
+    if (statusRequest) return;
+    statusRequest = true;
     try {
-      const response = await fetch(endpoint, {credentials: "same-origin", headers: {"Accept": "application/json"}});
+      const response = await fetch(endpoint + "?status_only=1", {
+        credentials: "same-origin",
+        headers: {"Accept": "application/json"}
+      });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         widgets.forEach(el => { el.textContent = data.error || "Live dekhne ke liye verified player login karein."; });
@@ -52,62 +77,91 @@
         const id = el.dataset.registrationId;
         const stream = byId.get(id);
         if (!stream) {
-          if (!activeRooms.has(id)) el.innerHTML = '<span style="color:#94a3b8">● Offline</span>';
+          if (activeRegistrationId !== id) el.innerHTML = '<span style="color:#94a3b8">● Offline</span>';
           return;
         }
-        if (activeRooms.has(id)) return;
-        el.innerHTML = '<span style="color:#22c55e;font-weight:800">● LIVE</span> <button type="button" class="btn-primary ff-watch-button" style="padding:6px 10px;margin-left:6px">▶ Watch</button><div class="ff-live-video" style="display:none;margin-top:8px;min-width:220px;max-width:100%;background:#050505;border-radius:10px;overflow:hidden"></div>';
+        if (el.querySelector(".ff-watch-button")) return;
+        el.innerHTML = '<span style="color:#22c55e;font-weight:800">● LIVE</span> <button type="button" class="btn-primary ff-watch-button" style="padding:6px 10px;margin-left:6px">▶ Watch</button><div class="ff-live-video" style="display:none;margin-top:8px;width:min(100%,560px);aspect-ratio:16/9;background:#050505;border-radius:10px;overflow:hidden"></div><small class="ff-watch-status" style="display:block;margin-top:5px;color:#94a3b8"></small>';
         const button = el.querySelector(".ff-watch-button");
+        const videoBox = el.querySelector(".ff-live-video");
+        const watchStatus = el.querySelector(".ff-watch-status");
         button.addEventListener("click", async () => {
+          if (activeRegistrationId === id) {
+            await stopActiveRoom();
+            videoBox.innerHTML = "";
+            videoBox.style.display = "none";
+            watchStatus.textContent = "Stopped.";
+            return;
+          }
           button.disabled = true;
           button.textContent = "Connecting…";
+          watchStatus.textContent = "Connecting to player stream…";
           try {
+            await stopActiveRoom();
+            const tokenResponse = await fetch(endpoint + "?registration_id=" + encodeURIComponent(id), {
+              credentials: "same-origin",
+              headers: {"Accept": "application/json"}
+            });
+            const tokenData = await tokenResponse.json().catch(() => ({}));
+            if (!tokenResponse.ok || !tokenData.streams || !tokenData.streams.length) {
+              throw new Error(tokenData.error || "Player Live session is no longer active.");
+            }
+            const stream = tokenData.streams[0];
             if (!sdk) sdk = await import("https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.esm.mjs");
-            const room = new sdk.Room({adaptiveStream: true, dynacast: true});
-            const videoBox = el.querySelector(".ff-live-video");
+            const room = new sdk.Room({
+              adaptiveStream: true,
+              dynacast: true,
+              videoCaptureDefaults: {resolution: sdk.VideoPresets?.h720?.resolution}
+            });
             room.on(sdk.RoomEvent.TrackSubscribed, track => {
-              if (track.kind === "video") {
-                const media = track.attach();
-                media.autoplay = true;
-                media.playsInline = true;
-                media.style.width = "100%";
-                media.style.height = "auto";
-                videoBox.appendChild(media);
-                videoBox.style.display = "block";
-              }
+              if (track.kind !== "video") return;
+              const media = track.attach();
+              media.autoplay = true;
+              media.playsInline = true;
+              media.muted = true;
+              media.controls = false;
+              media.style.width = "100%";
+              media.style.height = "100%";
+              media.style.objectFit = "contain";
+              videoBox.replaceChildren(media);
+              videoBox.style.display = "block";
+              media.play().catch(() => { watchStatus.textContent = "Video playback ke liye page par tap karein."; });
+              watchStatus.textContent = "● LIVE · Smooth adaptive playback";
             });
             room.on(sdk.RoomEvent.Disconnected, () => {
-              videoBox.innerHTML = "";
-              videoBox.style.display = "none";
-              activeRooms.delete(id);
-              button.disabled = false;
-              button.textContent = "▶ Watch";
+              if (activeRoom === room) {
+                activeRoom = null;
+                resetActiveButton();
+                watchStatus.textContent = "Live disconnected. Dobara Watch dabayein.";
+              }
             });
-            await room.connect(stream.url, stream.token);
-            activeRooms.set(id, room);
+            await room.connect(stream.url, stream.token, {autoSubscribe: true});
+            activeRoom = room;
+            activeRegistrationId = id;
+            activeButton = button;
             button.textContent = "■ Stop watching";
             button.disabled = false;
-            button.onclick = async () => {
-              button.disabled = true;
-              await room.disconnect();
-            };
           } catch (error) {
             button.disabled = false;
             button.textContent = "Retry Watch";
-            const message = document.createElement("p");
-            message.className = "help-text";
-            message.textContent = error.message || "Live stream connect nahi hui.";
-            el.appendChild(message);
+            watchStatus.textContent = error.message || "Live stream connect nahi hui.";
           }
         });
       });
     } catch (error) {
       widgets.forEach(el => { if (!el.querySelector("button")) el.textContent = "Live status load nahi hua. Refresh karein."; });
+    } finally {
+      statusRequest = false;
     }
   }
   await loadStreams();
-  window.setInterval(loadStreams, 15000);
-  window.addEventListener("beforeunload", () => activeRooms.forEach(room => room.disconnect()));
+  window.setInterval(() => {
+    if (document.visibilityState !== "hidden") loadStreams();
+  }, 12000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") stopActiveRoom();
+  });
+  window.addEventListener("beforeunload", () => { if (activeRoom) activeRoom.disconnect(); });
 })();
 </script>
     <a href="{% url 'tournaments:list' %}">← All tournaments</a>
