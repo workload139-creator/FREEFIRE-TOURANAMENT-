@@ -388,14 +388,17 @@ public class MainActivity extends Activity {
         panel.setPadding(dp(22), dp(18), dp(22), dp(12));
         TextView heading = text("Downloading FF Arena update", 16, Color.WHITE, true);
         panel.addView(heading);
-        updateProgressLabel = text("0% downloaded", 14, MUTED, false);
+        String expectedSizeText = pendingApkExpectedBytes > 0L
+                ? " / " + android.text.format.Formatter.formatFileSize(this, pendingApkExpectedBytes) : "";
+        updateProgressLabel = text("0% downloaded  (0 B" + expectedSizeText + ")", 14, MUTED, false);
         updateProgressLabel.setPadding(0, dp(12), 0, dp(10));
         panel.addView(updateProgressLabel);
         updateProgressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         updateProgressBar.setMax(100);
         updateProgressBar.setProgress(0);
-        updateProgressBar.setIndeterminate(true);
-        panel.addView(updateProgressBar, new LinearLayout.LayoutParams(-1, dp(12)));
+        // Keep a determinate bar visible from the first frame; never show an endless spinner.
+        updateProgressBar.setIndeterminate(false);
+        panel.addView(updateProgressBar, new LinearLayout.LayoutParams(-1, dp(14)));
         TextView hint = text("Please keep FF Arena open while the APK downloads.", 12, MUTED, false);
         hint.setPadding(0, dp(12), 0, 0);
         panel.addView(hint);
@@ -420,29 +423,32 @@ public class MainActivity extends Activity {
             if (cursor != null && cursor.moveToFirst()) {
                 int downloadedColumn = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR);
                 int totalColumn = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES);
-                long downloaded = downloadedColumn >= 0 ? cursor.getLong(downloadedColumn) : 0L;
+                long downloaded = downloadedColumn >= 0 ? Math.max(0L, cursor.getLong(downloadedColumn)) : 0L;
                 long total = totalColumn >= 0 ? cursor.getLong(totalColumn) : -1L;
-                // GitHub release metadata provides the exact APK size even when Android's
-                // DownloadManager reports COLUMN_TOTAL_SIZE_BYTES as -1 (chunked transfer).
+                // Some Android DownloadManager versions report zero bytes while the file is
+                // already being written. Use the actual destination file length as a fallback.
+                File downloadDirectory = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                File partialApk = downloadDirectory == null || pendingApkFileName.isEmpty()
+                        ? null : new File(downloadDirectory, pendingApkFileName);
+                if (partialApk != null && partialApk.isFile()) {
+                    downloaded = Math.max(downloaded, partialApk.length());
+                }
+                // GitHub release metadata is the authoritative total when Android reports -1.
                 if (total <= 0L && pendingApkExpectedBytes > 0L) total = pendingApkExpectedBytes;
-                if (total > 0L) {
-                    int percent = (int) Math.min(100L, (downloaded * 100L) / total);
-                    if (updateProgressBar != null) {
-                        updateProgressBar.setIndeterminate(false);
-                        updateProgressBar.setProgress(percent);
-                    }
-                    if (updateProgressLabel != null) {
-                        updateProgressLabel.setText(percent + "% downloaded  (" + android.text.format.Formatter.formatFileSize(this, downloaded)
-                                + " / " + android.text.format.Formatter.formatFileSize(this, total) + ")");
-                    }
-                } else {
-                    if (updateProgressBar != null) updateProgressBar.setIndeterminate(true);
-                    if (updateProgressLabel != null) {
-                        String downloadedText = android.text.format.Formatter.formatFileSize(this, downloaded);
-                        updateProgressLabel.setText(downloaded > 0L
-                                ? "Downloading… " + downloadedText + " received · calculating percentage"
-                                : "Connecting to download server… percentage will appear shortly");
-                    }
+                int percent = total > 0L
+                        ? (int) Math.min(99L, (downloaded * 100L) / total)
+                        : 0;
+                if (updateProgressBar != null) {
+                    updateProgressBar.setIndeterminate(false);
+                    updateProgressBar.setProgress(percent);
+                }
+                if (updateProgressLabel != null) {
+                    String downloadedText = android.text.format.Formatter.formatFileSize(this, downloaded);
+                    String totalText = total > 0L
+                            ? android.text.format.Formatter.formatFileSize(this, total)
+                            : "size checking";
+                    updateProgressLabel.setText(percent + "% downloaded  (" + downloadedText
+                            + " / " + totalText + ")");
                 }
                 int statusColumn = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
                 int status = statusColumn >= 0 ? cursor.getInt(statusColumn) : -1;
