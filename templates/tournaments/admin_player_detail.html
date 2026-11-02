@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Player {{ registration.free_fire_uid }} · {{ tournament.title }}{% endblock %}
+{% block content %}
+<div class="container py-4" style="max-width:1100px;color:#eaf2ff">
+ <div class="p-4 rounded-4 mb-3" style="background:linear-gradient(135deg,#10243c,#080e1b);border:1px solid #35d7ff66">
+  <div class="small text-info fw-bold">FF ARENA · PRIVATE PLAYER MONITOR</div><h1 class="text-white">{{ registration.player.username }}</h1>
+  <p>Free Fire UID: <strong>{{ registration.free_fire_uid }}</strong> · Tournament: {{ tournament.title }}</p>
+  <a class="btn btn-outline-info btn-sm" href="{% url 'tournaments:admin_tournament_section' tournament.pk 'players' %}">← All players</a>
+  <a class="btn btn-info btn-sm" href="{% url 'tournaments:admin_tournament_live_monitor' tournament.pk %}">Open Live Monitor</a>
+ </div>
+ <div class="row g-3">
+  <div class="col-md-6"><div class="card p-3 h-100"><h5>Registration & payment</h5><p>Profile: {{ registration.player.username }} (#{{ registration.player_id }})</p><p>UID: {{ registration.free_fire_uid }}</p><p>Registration: {{ registration.get_status_display }}</p><p>Payment verified: {{ registration.payment_verified|yesno:"Yes,No" }}</p><p>Entry fee: ₹{{ registration.entry_fee_paid }}</p><p>Payment reference: {{ registration.payment_reference|default:"—" }}</p><p>Registered: {{ registration.registered_at|date:"d M Y H:i" }}</p></div></div>
+  <div class="col-md-6"><div class="card p-3 h-100"><h5>Contact & payout details</h5><p>Email: {{ registration.player.email|default:"—" }}</p><p>Phone: {{ registration.player.phone_number|default:"—" }}</p><p>UPI ID: {{ registration.player.upi_id|default:"—" }}</p>{% if registration.player.upi_qr_code %}<a href="{{ registration.player.upi_qr_code.url }}" target="_blank" rel="noopener">Open UPI QR</a>{% endif %}</div></div>
+ </div>
+ <div class="card p-3 my-3"><h5>Live sessions</h5>{% for s in sessions %}<p>{{ s.status }} · Started {{ s.started_at|date:"d M Y H:i" }} · Ended {{ s.ended_at|date:"d M Y H:i"|default:"—" }}</p>{% empty %}<p>No live session records.</p>{% endfor %}</div>
+ <div class="card p-3 my-3"><h5>Kill evidence & AI review</h5>{% for e in evidence %}<div class="border-bottom py-2"><p>{{ e.get_status_display }} · AI kills {{ e.ai_proposed_kills|default:"—" }} · Confidence {{ e.ai_confidence|default:"—" }} · UID match {{ e.ai_uid_matches|yesno:"Yes,No,Pending" }}</p><p>{{ e.ai_review_notes|default:"No AI notes" }}</p><a href="{% url 'admin:tournaments_killsubmission_change' e.pk %}" target="_blank" rel="noopener">Open full evidence review</a></div>{% empty %}<p>No kill evidence submitted.</p>{% endfor %}</div>
+ <div class="card p-3 my-3"><h5>Wallet ledger for this tournament</h5><div class="table-responsive"><table class="table table-sm"><thead><tr><th>Date</th><th>Type</th><th>Currency</th><th>Quantity</th><th>Status</th><th>Reference</th></tr></thead><tbody>{% for e in ledger %}<tr><td>{{ e.created_at|date:"d M H:i" }}</td><td>{{ e.get_entry_type_display }}</td><td>{{ e.currency }}</td><td>{{ e.quantity }}</td><td>{{ e.get_status_display }}</td><td>{{ e.reference }}</td></tr>{% empty %}<tr><td colspan="6">No wallet ledger entries.</td></tr>{% endfor %}</tbody></table></div></div>
+</div>
+{% endblock %}
