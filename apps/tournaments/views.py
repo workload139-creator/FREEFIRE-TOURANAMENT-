@@ -773,6 +773,10 @@ def admin_tournament_live_monitor(request, tournament_id):
         "tournament": tournament,
         "live_sessions": sessions,
         "live_leaderboard": sorted(sessions, key=lambda item: item.approved_live_kills, reverse=True),
+        "reward_calculation_map": {
+            str(kills): rewards_for_tournament(tournament, kills)
+            for kills in range(0, 50)
+        },
     })
 
 
