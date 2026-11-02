@@ -8,7 +8,10 @@
     if (!grid) return;
     const tournamentId = grid.dataset.tournamentId;
     const aiEnabled = String(grid.dataset.tournamentMode || "").toUpperCase() === "BR";
-    const rooms = [];
+    const rooms = new Map();
+    const connectingRooms = new Set();
+    const MAX_ACTIVE_STREAMS = 4;
+    let streamObserver = null;
     const teamRows = new Map();
     function getPlayerRow(stream) {
         const hasTeam = stream.team_number !== null && stream.team_number !== undefined && String(stream.team_number) !== "";
@@ -60,11 +63,21 @@
     const esc = (value) => String(value || "").replace(/[&<>"']/g, ch => ({
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     }[ch]));
+    streamObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            const card = entry.target;
+            if (entry.isIntersecting && !card.hidden) {
+                if (card._ffConnectLive) card._ffConnectLive();
+            } else if (card._ffDisconnectLive) {
+                card._ffDisconnectLive();
+            }
+        });
+    }, {rootMargin: "0px", threshold: 0.15});
     async function startTournamentStreams() {
         if (refreshInProgress) return;
         refreshInProgress = true;
         try {
-            const response = await fetch("/tournaments/live/admin/tournament/" + tournamentId + "/tokens/", {
+            const response = await fetch("/tournaments/live/admin/tournament/" + tournamentId + "/tokens/?status_only=1", {
                 credentials: "same-origin",
                 headers: {"Accept": "application/json"}
             });
@@ -91,16 +104,7 @@
             };
             for (const stream of data.streams) {
                 const existingCard = Array.from(grid.querySelectorAll("[data-session-id]")).find(card => card.dataset.sessionId === stream.session_id);
-                if (existingCard) {
-                    if (aiEnabled) {
-                        existingCard.querySelector(".ff-uid-state").textContent = stream.identity_verified ? "✓ Verified" : "Waiting";
-                        existingCard.querySelector(".ff-kill-count").textContent = stream.approved_kills;
-                        existingCard.querySelector(".ff-pending-kills").textContent = stream.pending_kills;
-                        existingCard.querySelector(".ff-monitor-state").textContent = stream.state || "waiting";
-                        existingCard.querySelector(".ff-kill-evidence").innerHTML = renderEvidence(stream.recent_kill_events);
-                    }
-                    continue;
-                }
+                if (existingCard) continue;
                 const col = document.createElement("div");
                 col.className = "col-12 col-md-6 col-xl-4 ff-live-player-card";
                 col.dataset.sessionId = stream.session_id;
@@ -191,30 +195,8 @@
                 const messageStatus = col.querySelector(".ff-message-status");
                 const audioElements = [];
                 let listenEnabled = false;
-                const room = new window.LivekitClient.Room({adaptiveStream: true, dynacast: true});
-                rooms.push(room);
-                room.on(window.LivekitClient.RoomEvent.TrackSubscribed, (track) => {
-                    if (track.kind === window.LivekitClient.Track.Kind.Video) {
-                        videoBox.innerHTML = "";
-                        const element = track.attach();
-                        element.style.width = "100%";
-                        element.style.height = "auto";
-                        element.style.maxHeight = "360px";
-                        element.autoplay = true;
-                        element.playsInline = true;
-                        videoBox.appendChild(element);
-                        videoBox.appendChild(expandButton);
-                    } else if (track.kind === window.LivekitClient.Track.Kind.Audio) {
-                        const element = track.attach();
-                        element.autoplay = true;
-                        element.muted = !listenEnabled;
-                        element.style.display = "none";
-                        col.appendChild(element);
-                        audioElements.push(element);
-                        audioStatus.textContent = listenEnabled ? "Player mic ON — audio connected." : "Player mic ON — Listen ON dabakar awaaz sunein.";
-                        if (listenEnabled) element.play().catch(() => { audioStatus.textContent = "Browser audio playback allow karein."; });
-                    }
-                });
+                let room = null;
+                let pausingRoom = false;
                 listenButton.addEventListener("click", async () => {
                     listenEnabled = !listenEnabled;
                     audioElements.forEach(element => { element.muted = !listenEnabled; });
@@ -229,6 +211,10 @@
                 });
                 talkButton.addEventListener("click", async () => {
                     try {
+                        if (!room) {
+                            audioStatus.textContent = "Player stream load hone ka wait karein; screen par card visible hona chahiye.";
+                            return;
+                        }
                         if (talkingRoom === room) {
                             await room.localParticipant.setMicrophoneEnabled(false);
                             talkingRoom = null;
@@ -288,17 +274,91 @@
                         button.disabled = false;
                     }
                 });
-                room.on(window.LivekitClient.RoomEvent.Disconnected, () => {
-                    videoBox.innerHTML = '<span class="text-warning">Player Live disconnected</span>';
-                    audioStatus.textContent = "Player Live disconnected.";
-                    if (talkingRoom === room) talkingRoom = null;
-                    talkButton.textContent = "🎙️ Talk to player";
-                });
-                try {
-                    await room.connect(stream.url, stream.token, {autoSubscribe: true});
-                } catch (error) {
-                    videoBox.innerHTML = '<span class="text-danger">Could not connect to player Live</span>';
-                }
+                const connectPlayerRoom = async () => {
+                    if (room || connectingRooms.has(stream.session_id)) return;
+                    if (rooms.size >= MAX_ACTIVE_STREAMS) {
+                        audioStatus.textContent = "Performance mode: 4 visible player feeds at a time. Scroll to view this player.";
+                        return;
+                    }
+                    connectingRooms.add(stream.session_id);
+                    videoBox.innerHTML = '<span class="text-info">Connecting live video…</span>';
+                    try {
+                        const tokenResponse = await fetch("/tournaments/live/admin/tournament/" + tournamentId + "/tokens/?registration_id=" + encodeURIComponent(stream.registration_id), {
+                            credentials: "same-origin",
+                            headers: {"Accept": "application/json"}
+                        });
+                        const tokenData = await tokenResponse.json().catch(() => ({}));
+                        if (!tokenResponse.ok || !tokenData.streams || !tokenData.streams.length) {
+                            throw new Error(tokenData.error || "Player Live session is no longer active.");
+                        }
+                        const credentials = tokenData.streams[0];
+                        room = new window.LivekitClient.Room({adaptiveStream: true, dynacast: true});
+                        rooms.set(stream.session_id, room);
+                        room.on(window.LivekitClient.RoomEvent.TrackSubscribed, (track) => {
+                            if (track.kind === window.LivekitClient.Track.Kind.Video) {
+                                videoBox.innerHTML = "";
+                                const element = track.attach();
+                                element.style.width = "100%";
+                                element.style.height = "100%";
+                                element.style.maxHeight = "360px";
+                                element.style.objectFit = "contain";
+                                element.autoplay = true;
+                                element.playsInline = true;
+                                element.muted = true;
+                                videoBox.appendChild(element);
+                                videoBox.appendChild(expandButton);
+                                element.play().catch(() => { audioStatus.textContent = "Video play karne ke liye browser mein tap karein."; });
+                            } else if (track.kind === window.LivekitClient.Track.Kind.Audio) {
+                                const element = track.attach();
+                                element.autoplay = true;
+                                element.muted = !listenEnabled;
+                                element.style.display = "none";
+                                col.appendChild(element);
+                                audioElements.push(element);
+                                audioStatus.textContent = listenEnabled ? "Player mic ON — audio connected." : "Player mic ON — Listen ON dabakar awaaz sunein.";
+                                if (listenEnabled) element.play().catch(() => { audioStatus.textContent = "Browser audio playback allow karein."; });
+                            }
+                        });
+                        room.on(window.LivekitClient.RoomEvent.Disconnected, () => {
+                            if (talkingRoom === room) talkingRoom = null;
+                            talkButton.textContent = "🎙️ Talk to player";
+                            if (!pausingRoom) {
+                                videoBox.innerHTML = '<span class="text-warning">Player Live disconnected</span>';
+                                audioStatus.textContent = "Player Live disconnected.";
+                            }
+                        });
+                        await room.connect(credentials.url, credentials.token, {autoSubscribe: true});
+                        audioStatus.textContent = "● Live connected · adaptive playback ON";
+                    } catch (error) {
+                        if (room) {
+                            rooms.delete(stream.session_id);
+                            try { await room.disconnect(); } catch (_) {}
+                            room = null;
+                        }
+                        videoBox.innerHTML = '<span class="text-danger">' + esc(error.message || "Could not connect to player Live") + '</span>';
+                    } finally {
+                        connectingRooms.delete(stream.session_id);
+                    }
+                };
+                const disconnectPlayerRoom = async () => {
+                    if (!room) return;
+                    pausingRoom = true;
+                    const oldRoom = room;
+                    room = null;
+                    rooms.delete(stream.session_id);
+                    if (talkingRoom === oldRoom) {
+                        try { await oldRoom.localParticipant.setMicrophoneEnabled(false); } catch (_) {}
+                        talkingRoom = null;
+                        talkButton.textContent = "🎙️ Talk to player";
+                    }
+                    try { await oldRoom.disconnect(); } catch (_) {}
+                    audioElements.splice(0, audioElements.length);
+                    videoBox.innerHTML = '<span class="text-white-50">Player screen ready — visible feeds connect automatically</span>';
+                    pausingRoom = false;
+                };
+                col._ffConnectLive = connectPlayerRoom;
+                col._ffDisconnectLive = disconnectPlayerRoom;
+                streamObserver.observe(col);
             }
         } catch (error) {
             if (!grid.querySelector(".ff-live-player-card")) {
@@ -315,7 +375,13 @@
     // clearing already-connected player cards.
     window.setInterval(() => {
         if (document.visibilityState !== "hidden") startTournamentStreams();
-    }, 8000);
+    }, 12000);
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") {
+            rooms.forEach(room => room.disconnect());
+            rooms.clear();
+        }
+    });
 })();
 </script>
 {% endblock %}
