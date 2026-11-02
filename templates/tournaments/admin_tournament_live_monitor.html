@@ -60,9 +60,26 @@
             const emptyState = grid.querySelector(".ff-no-live-streams");
             if (emptyState) emptyState.remove();
             if (!window.LivekitClient) throw new Error("LiveKit browser player could not be loaded.");
+            const renderEvidence = (events) => {
+                if (!events || !events.length) return '<p class="small text-muted mb-0">Abhi koi kill screenshot save nahi hui.</p>';
+                return events.map(item => '<div class="border rounded p-2 mb-2" style="border-color:#4381ad66!important">' +
+                    '<div class="d-flex justify-content-between gap-2"><strong>' + esc(item.killer_name || 'Killer name not identified') +
+                    '</strong><small>' + esc(item.status) + ' · ' + esc(item.confidence) + '</small></div>' +
+                    '<div class="small text-muted">' + esc(item.detected_at) + '</div>' +
+                    '<div class="small">' + esc(item.detected_text || 'OCR text unavailable') + '</div>' +
+                    (item.image_url ? '<a href="' + esc(item.image_url) + '" target="_blank" rel="noopener"><img src="' + esc(item.image_url) + '" alt="Saved kill evidence" loading="lazy" style="width:100%;max-height:180px;object-fit:contain;background:#02060d;border-radius:8px;margin-top:6px"></a>' : '<div class="small text-warning">Screenshot URL unavailable</div>') +
+                    '</div>').join('');
+            };
             for (const stream of data.streams) {
-                const alreadyShown = Array.from(grid.querySelectorAll("[data-session-id]")).some(card => card.dataset.sessionId === stream.session_id);
-                if (alreadyShown) continue;
+                const existingCard = Array.from(grid.querySelectorAll("[data-session-id]")).find(card => card.dataset.sessionId === stream.session_id);
+                if (existingCard) {
+                    existingCard.querySelector(".ff-uid-state").textContent = stream.identity_verified ? "✓ Verified" : "Waiting";
+                    existingCard.querySelector(".ff-kill-count").textContent = stream.approved_kills;
+                    existingCard.querySelector(".ff-pending-kills").textContent = stream.pending_kills;
+                    existingCard.querySelector(".ff-monitor-state").textContent = stream.state || "waiting";
+                    existingCard.querySelector(".ff-kill-evidence").innerHTML = renderEvidence(stream.recent_kill_events);
+                    continue;
+                }
                 const col = document.createElement("div");
                 col.className = "col-12 col-md-6 col-xl-4 ff-live-player-card";
                 col.dataset.sessionId = stream.session_id;
@@ -74,12 +91,14 @@
                     '<div class="row g-2 mt-2 ff-player-metrics">' +
                     '<div class="col-6"><small>UID verification</small><div class="fw-bold ff-uid-state">' + (stream.identity_verified ? '✓ Verified' : 'Waiting') + '</div></div>' +
                     '<div class="col-6"><small>Verified kills</small><div class="fw-bold ff-kill-count">' + esc(stream.approved_kills) + '</div></div>' +
-                    '<div class="col-6"><small>Pending kill evidence</small><div class="fw-bold">' + esc(stream.pending_kills) + '</div></div>' +
+                    '<div class="col-6"><small>Pending kill evidence</small><div class="fw-bold ff-pending-kills">' + esc(stream.pending_kills) + '</div></div>' +
+                    '<div class="col-6"><small>AI monitor state</small><div class="fw-bold ff-monitor-state">' + esc(stream.state || "waiting") + '</div></div>' +
                     '<div class="col-6"><small>Reward preview</small><div class="fw-bold">' + esc(JSON.stringify(stream.reward_preview || [])) + '</div></div>' +
                     '<div class="col-6"><small>Frames / detections</small><div>' + esc(stream.frames_seen) + ' / ' + esc(stream.detections_seen) + '</div></div>' +
                     '<div class="col-6"><small>Background warnings</small><div>' + esc(stream.background_warnings) + '</div></div>' +
                     '<div class="col-12"><small class="ff-monitor-error">' + esc(stream.monitor_error || 'No monitor error reported') + '</small></div></div>' +
                     '<div class="ff-live-video mt-2 bg-dark rounded d-flex align-items-center justify-content-center" style="min-height:190px;overflow:hidden"><span class="text-white-50">Waiting for player screen…</span></div>' +
+                    '<div class="mt-3"><strong>AI kill screenshots & OCR details</strong><div class="ff-kill-evidence mt-2">' + renderEvidence(stream.recent_kill_events) + '</div></div>' +
                     '<div class="d-flex flex-wrap gap-2 mt-3">' +
                     '<button type="button" class="btn btn-sm btn-outline-danger ff-eliminated">☠️ Mark eliminated & end Live</button>' +
                     '<button type="button" class="btn btn-sm btn-outline-info ff-listen-toggle">🔇 Listen OFF</button>' +
@@ -267,7 +286,7 @@
  </div>
  <div id="ff-section-live" class="card p-3 my-3 ff-section-card">
         <h4><span class="ff-section-number">03</span> Tournament Live Monitor — all player streams</h4>
-        <p>Ek shared monitor sabhi eligible player sessions ko process karta hai. Har player ka session alag aur tournament-scoped hai. Do analysis agents identity/eligibility aur kill evidence/attribution report dete hain. AI sirf suggestion deta hai; final kill approval aur wallet credit Admin karega.</p>
+        <p>Ek shared Live Monitor sabhi eligible player sessions ko dikhata hai. Ek hi AI worker in streams ko scan karta hai; Admin har player ki live screen aur saved kill evidence dekh sakta hai. Ek hi Live AI sabhi connected player streams scan karke killfeed text aur screenshots record karta hai. Killer/eliminated naam OCR se clear na ho to Admin ko 'not identified' dikhaya jayega; AI guess nahi karega. Admin live screen aur saved evidence khud dekh sakta hai.</p>
         <div id="ff-live-grid" class="row g-3 mb-3" data-tournament-id="{{ tournament.id }}">
             <div class="col-12"><div class="alert alert-info mb-0">Connecting to this tournament's private player streams…</div></div>
         </div>
