@@ -19,7 +19,12 @@
   {% if tournament.is_diwali_offer %}<p><strong>Diwali Offer:</strong> Date/time is not displayed. The Solo round automatically goes LIVE at 49 verified players.</p>{% elif tournament.is_unlimited_br %}<p><strong>Start:</strong> Automatically LIVE at full verified capacity; admin can also start manually with complete teams. No date/time is scheduled.</p>{% else %}<p><strong>Schedule:</strong> No public date/time displayed.</p>{% endif %}
   <p><strong>Status:</strong> {{ tournament.get_status_display }}</p>
   {% if tournament.status == "live" %}
-    <p><a class="button button-primary" style="display:inline-flex;background:#d90032;border-color:#ff536f;color:#fff;margin:8px 0" href="https://www.youtube.com/@freefire_tour/live" target="_blank" rel="noopener noreferrer">▶ Watch Tournament Live on YouTube</a></p>
+    <section class="tournament-card" style="margin:16px 0;padding:18px;border:1px solid #28bfff88;border-radius:16px;background:linear-gradient(135deg,#0b1d35,#101326);color:#fff">
+      <h2 style="margin:0 0 8px">🔴 Tournament LIVE</h2>
+      <p style="margin:0 0 14px;color:#c6d9ee">Leaderboard kholo aur har registered player ka live gameplay dekho. Player stream available na ho to Offline dikhega.</p>
+      <a class="button button-primary" style="display:flex;justify-content:center;background:linear-gradient(110deg,#086cff,#10a9c5);border-color:#50dfff;color:#fff" href="{% url 'tournaments:leaderboard' tournament.id %}">👁 Watch Player Live · Open Leaderboard</a>
+      <a class="button button-outline" style="display:flex;justify-content:center;margin-top:9px" href="https://www.youtube.com/@freefire_tour/live" target="_blank" rel="noopener noreferrer">▶ Watch FF Arena YouTube Live</a>
+    </section>
   {% endif %}
   {% if tournament.mode == "VS" %}
   <section class="tournament-card" style="margin:20px 0;padding:18px;border:1px solid #45d6ff;border-radius:14px;background:linear-gradient(135deg,#102331,#171923);color:#fff">
