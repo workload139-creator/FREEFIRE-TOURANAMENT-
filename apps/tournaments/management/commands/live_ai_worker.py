@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 OCR_SAMPLE_INTERVAL = 2.0
 KILL_SCAN_INTERVAL = 1.5
 KILL_TERMS = {"eliminated", "knocked", "headshot", "kill", "killed", "assist"}
-MAX_PENDING_KILL_SCREENSHOTS = 12
+MAX_PENDING_KILL_SCREENSHOTS = 49
 
 
 @dataclass
@@ -122,9 +122,9 @@ def _scan_live_frame(frame):
             return None, eliminated
         # Keep the temporary in-memory screenshot bounded; the original screen
         # share remains available to Admin in the Live Monitor.
-        image.thumbnail((960, 540))
+        image.thumbnail((640, 360))
         buffer = io.BytesIO()
-        image.save(buffer, format="JPEG", quality=62, optimize=True)
+        image.save(buffer, format="JPEG", quality=52, optimize=True)
         evidence_b64 = base64.b64encode(buffer.getvalue()).decode("ascii")
         return (text, min(item["confidence"] for item in relevant), evidence_b64), False
     finally:
