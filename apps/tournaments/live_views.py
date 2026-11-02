@@ -251,6 +251,33 @@ def admin_tournament_live_tokens(request, tournament_id):
             total=Count("id")
         ).values_list("registration_id", "total")
     )
+    recent_events = list(
+        LiveKillEvent.objects.filter(
+            tournament=tournament,
+            registration_id__in=[session.registration_id for session in sessions],
+        ).select_related("registration").order_by("-detected_at")[:150]
+    )
+    events_by_registration = {}
+    for event in recent_events:
+        bucket = events_by_registration.setdefault(event.registration_id, [])
+        if len(bucket) >= 5:
+            continue
+        image_url = ""
+        if event.evidence_image and event.evidence_image.name:
+            try:
+                image_url = event.evidence_image.url
+            except (OSError, ValueError):
+                image_url = ""
+        bucket.append({
+            "id": event.pk,
+            "status": event.status,
+            "killer_name": event.attributed_player_name or "",
+            "detected_text": event.detected_text[:700],
+            "confidence": str(event.confidence),
+            "detected_at": event.detected_at.isoformat(),
+            "image_url": image_url,
+        })
+
     streams = []
     for session in sessions:
         identity = f"ffarena-admin-{request.user.pk}-{session.session_uuid.hex[:12]}"
@@ -281,6 +308,7 @@ def admin_tournament_live_tokens(request, tournament_id):
             "identity_confidence": str(session.identity_ocr_confidence),
             "approved_kills": verified_counts.get(session.registration_id, 0),
             "pending_kills": pending_counts.get(session.registration_id, 0),
+            "recent_kill_events": events_by_registration.get(session.registration_id, []),
             "reward_preview": rewards_for_tournament(
                 tournament, verified_counts.get(session.registration_id, 0)
             ) if verified_counts.get(session.registration_id, 0) >= 2 else [],
