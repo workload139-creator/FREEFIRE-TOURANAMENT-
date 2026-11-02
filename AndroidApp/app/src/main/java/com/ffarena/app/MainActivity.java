@@ -93,6 +93,7 @@ public class MainActivity extends Activity {
         openFeature(routeFromIntent(getIntent()));
         registerApkDownloadReceiver();
         restorePendingApkDownload();
+        verifyPendingInstall();
         checkForAppUpdate();
     }
 
@@ -126,6 +127,7 @@ public class MainActivity extends Activity {
     private void checkForAppUpdate() {
         if (pendingApkDownloadId > 0L || updateCheckInFlight || isFinishing() || isDestroyed()) return;
         SharedPreferences updatePrefs = getSharedPreferences("ffarena_updates", MODE_PRIVATE);
+        if (updatePrefs.getInt("pending_install_version_code", -1) > getInstalledAppVersionCode()) return;
         long now = System.currentTimeMillis();
         long lastCheck = updatePrefs.getLong("last_update_check_at", 0L);
         if (now - lastCheck < 5L * 60L * 1000L) return;
@@ -222,7 +224,6 @@ public class MainActivity extends Activity {
                     }
                     final int expectedVersionCode = pendingApkVersionCode;
                     final String expectedFileName = pendingApkFileName;
-                    clearPendingApkDownload();
                     Uri apkUri = apkDownloadManager.getUriForDownloadedFile(completedId);
                     if (apkUri == null) {
                         showUpdateError("The downloaded update file could not be opened. Please download it again.");
@@ -254,6 +255,10 @@ public class MainActivity extends Activity {
                     } catch (Exception signatureCheckError) {
                         // Android's installer performs the final signature validation.
                     }
+                    getSharedPreferences("ffarena_updates", MODE_PRIVATE).edit()
+                            .putInt("pending_install_version_code", expectedVersionCode)
+                            .putBoolean("installer_launch_requested", false)
+                            .apply();
                     installDownloadedApk(apkUri);
                 } catch (Exception exception) {
                     clearPendingApkDownload();
@@ -314,6 +319,10 @@ public class MainActivity extends Activity {
         pendingApkVersionCode = prefs.getInt("pending_version_code", -1);
         pendingApkFileName = prefs.getString("pending_file_name", "");
         if (pendingApkDownloadId <= 0L || apkDownloadManager == null || apkDownloadReceiver == null) return;
+        SharedPreferences prefs = getSharedPreferences("ffarena_updates", MODE_PRIVATE);
+        // A completed APK awaiting the player's explicit retry must not reopen the installer
+        // automatically on every app launch/resume.
+        if (prefs.getInt("pending_install_version_code", -1) > getInstalledAppVersionCode()) return;
         DownloadManager.Query query = new DownloadManager.Query().setFilterById(pendingApkDownloadId);
         try (Cursor cursor = apkDownloadManager.query(query)) {
             if (cursor != null && cursor.moveToFirst()) {
@@ -346,6 +355,8 @@ public class MainActivity extends Activity {
     private void installDownloadedApk(Uri apkUri) {
         if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
             pendingInstallUri = apkUri;
+            getSharedPreferences("ffarena_updates", MODE_PRIVATE).edit()
+                    .putBoolean("installer_launch_requested", false).apply();
             try {
                 Intent settingsIntent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                         Uri.parse("package:" + getPackageName()));
@@ -356,6 +367,8 @@ public class MainActivity extends Activity {
             return;
         }
         try {
+            getSharedPreferences("ffarena_updates", MODE_PRIVATE).edit()
+                    .putBoolean("installer_launch_requested", true).apply();
             Intent installIntent = new Intent(Intent.ACTION_INSTALL_PACKAGE);
             installIntent.setData(apkUri);
             installIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -364,6 +377,50 @@ public class MainActivity extends Activity {
         } catch (Exception exception) {
             showUpdateError("Android could not open the installer. The downloaded update is still available in FF Arena's app downloads.");
         }
+    }
+
+    private boolean verifyPendingInstall() {
+        SharedPreferences prefs = getSharedPreferences("ffarena_updates", MODE_PRIVATE);
+        int targetVersion = prefs.getInt("pending_install_version_code", -1);
+        if (targetVersion <= 0) return false;
+        int installedVersion = getInstalledAppVersionCode();
+        if (installedVersion < targetVersion) return false;
+
+        prefs.edit()
+                .remove("pending_install_version_code")
+                .remove("installer_launch_requested")
+                .putInt("last_installed_version_code", installedVersion)
+                .apply();
+        clearPendingApkDownload();
+        pendingInstallUri = null;
+        Toast.makeText(this, "Update Complete! FF Arena is now up to date.", Toast.LENGTH_LONG).show();
+        return true;
+    }
+
+    private void showInstallRetryDialog() {
+        if (isFinishing() || isDestroyed()) return;
+        SharedPreferences prefs = getSharedPreferences("ffarena_updates", MODE_PRIVATE);
+        int targetVersion = prefs.getInt("pending_install_version_code", -1);
+        if (targetVersion <= getInstalledAppVersionCode()) {
+            verifyPendingInstall();
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Update not completed")
+                .setMessage("FF Arena abhi update nahi hua. Android installer mein Update/Install confirm karein. App data hatane ki zaroorat nahi hai.")
+                .setCancelable(true)
+                .setNegativeButton("Later", (dialog, which) -> dialog.dismiss())
+                .setPositiveButton("Retry update", (dialog, which) -> {
+                    long downloadId = prefs.getLong("pending_download_id", -1L);
+                    Uri uri = apkDownloadManager == null || downloadId <= 0L
+                            ? null : apkDownloadManager.getUriForDownloadedFile(downloadId);
+                    if (uri == null) {
+                        showUpdateError("Downloaded APK nahi mila. Internet connect karke update dobara download karein.");
+                        return;
+                    }
+                    installDownloadedApk(uri);
+                })
+                .show();
     }
 
     private void showUpdateError(String message) {
@@ -383,6 +440,7 @@ public class MainActivity extends Activity {
         if (featureWebView != null) featureWebView.onResume();
         CookieManager.getInstance().flush();
         restorePendingApkDownload();
+        verifyPendingInstall();
         if (pendingInstallUri != null
                 && (Build.VERSION.SDK_INT < 26 || getPackageManager().canRequestPackageInstalls())) {
             Uri uri = pendingInstallUri;
@@ -1204,11 +1262,11 @@ public class MainActivity extends Activity {
                 emitLiveStatus(false, "Screen sharing permission was not granted.");
             }
         } else if (requestCode == 7023) {
-            if (resultCode == RESULT_OK) {
-                Toast.makeText(this, "FF Arena update installed. Reopen the app.", Toast.LENGTH_LONG).show();
-            } else {
-                Toast.makeText(this, "Installer closed. If the app did not update, approve Android's install prompt and try again.", Toast.LENGTH_LONG).show();
-            }
+            getSharedPreferences("ffarena_updates", MODE_PRIVATE).edit()
+                    .putBoolean("installer_launch_requested", false).apply();
+            new android.os.Handler(getMainLooper()).postDelayed(() -> {
+                if (!verifyPendingInstall()) showInstallRetryDialog();
+            }, 1200L);
         }
     }
 
