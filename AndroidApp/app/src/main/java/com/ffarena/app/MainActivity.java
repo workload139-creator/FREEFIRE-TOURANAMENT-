@@ -216,6 +216,7 @@ public class MainActivity extends Activity {
                 DownloadManager.Query query = new DownloadManager.Query().setFilterById(completedId);
                 try (Cursor cursor = apkDownloadManager.query(query)) {
                     if (cursor == null || !cursor.moveToFirst()) {
+                        clearPendingApkDownload();
                         showUpdateError("The update download could not be checked. Please try again.");
                         return;
                     }
@@ -230,12 +231,14 @@ public class MainActivity extends Activity {
                     final String expectedFileName = pendingApkFileName;
                     Uri apkUri = apkDownloadManager.getUriForDownloadedFile(completedId);
                     if (apkUri == null) {
+                        clearPendingApkDownload();
                         showUpdateError("The downloaded update file could not be opened. Please download it again.");
                         return;
                     }
                     File downloadDirectory = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
                     File apkFile = downloadDirectory == null ? null : new File(downloadDirectory, expectedFileName);
                     if (apkFile == null || !apkFile.isFile() || apkFile.length() < 1024) {
+                        clearPendingApkDownload();
                         showUpdateError("The update file is incomplete. Please download it again.");
                         return;
                     }
@@ -244,6 +247,7 @@ public class MainActivity extends Activity {
                     if (archive == null || !getPackageName().equals(archive.packageName)
                             || archive.versionCode < expectedVersionCode
                             || archive.versionCode <= BuildConfig.VERSION_CODE) {
+                        clearPendingApkDownload();
                         showUpdateError("The downloaded APK is not a valid newer FF Arena update. Please try again later.");
                         return;
                     }
@@ -253,7 +257,8 @@ public class MainActivity extends Activity {
                         if (archive.signatures != null && installed.signatures != null
                                 && archive.signatures.length > 0 && installed.signatures.length > 0
                                 && !archive.signatures[0].equals(installed.signatures[0])) {
-                            showUpdateError("This phone has an older test-signed FF Arena APK. Uninstall that test version once, then install the official release APK. Your online FF Arena account and tournament data will remain safe; you may need to log in again.");
+                            clearPendingApkDownload();
+                            showUpdateError("Android found a different signing key on this installed APK. Android does not allow an in-place update with a different key. Keep your account details safe; a one-time clean install of the official APK is required only for this signing-key mismatch.");
                             return;
                         }
                     } catch (Exception signatureCheckError) {
