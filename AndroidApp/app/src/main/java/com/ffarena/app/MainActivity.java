@@ -355,6 +355,13 @@ public class MainActivity extends Activity {
                     Intent completed = new Intent(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
                     completed.putExtra(DownloadManager.EXTRA_DOWNLOAD_ID, pendingApkDownloadId);
                     apkDownloadReceiver.onReceive(this, completed);
+                } else if (status == DownloadManager.STATUS_PENDING
+                        || status == DownloadManager.STATUS_RUNNING
+                        || status == DownloadManager.STATUS_PAUSED) {
+                    // Reopen the real progress panel when the player returns to the app.
+                    showUpdateProgress();
+                    updateProgressHandler.removeCallbacks(updateProgressRunnable);
+                    updateProgressHandler.post(updateProgressRunnable);
                 }
             } else {
                 clearPendingApkDownload();
@@ -406,13 +413,22 @@ public class MainActivity extends Activity {
                 long total = totalColumn >= 0 ? cursor.getLong(totalColumn) : -1L;
                 if (total > 0L) {
                     int percent = (int) Math.min(100L, (downloaded * 100L) / total);
-                    if (updateProgressBar != null) updateProgressBar.setProgress(percent);
+                    if (updateProgressBar != null) {
+                        updateProgressBar.setIndeterminate(false);
+                        updateProgressBar.setProgress(percent);
+                    }
                     if (updateProgressLabel != null) {
                         updateProgressLabel.setText(percent + "% downloaded  (" + android.text.format.Formatter.formatFileSize(this, downloaded)
                                 + " / " + android.text.format.Formatter.formatFileSize(this, total) + ")");
                     }
-                } else if (updateProgressLabel != null) {
-                    updateProgressLabel.setText("Downloading… calculating file size");
+                } else {
+                    if (updateProgressBar != null) updateProgressBar.setIndeterminate(true);
+                    if (updateProgressLabel != null) {
+                        String downloadedText = android.text.format.Formatter.formatFileSize(this, downloaded);
+                        updateProgressLabel.setText(downloaded > 0L
+                                ? "Downloading… " + downloadedText + " received · calculating percentage"
+                                : "Connecting to download server… percentage will appear shortly");
+                    }
                 }
                 int statusColumn = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
                 int status = statusColumn >= 0 ? cursor.getInt(statusColumn) : -1;
