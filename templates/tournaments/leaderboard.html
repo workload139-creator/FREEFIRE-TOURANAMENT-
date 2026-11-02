@@ -41,6 +41,8 @@
   let activeRoom = null;
   let activeRegistrationId = null;
   let activeButton = null;
+  let activeVideoBox = null;
+  let activeWatchStatus = null;
   let statusRequest = null;
 
   function resetActiveButton() {
@@ -57,6 +59,13 @@
     if (room) {
       try { await room.disconnect(); } catch (_) {}
     }
+    if (activeVideoBox) {
+      activeVideoBox.innerHTML = "";
+      activeVideoBox.style.display = "none";
+    }
+    if (activeWatchStatus) activeWatchStatus.textContent = "";
+    activeVideoBox = null;
+    activeWatchStatus = null;
     resetActiveButton();
   }
   async function loadStreams() {
@@ -130,6 +139,12 @@
             room.on(sdk.RoomEvent.Disconnected, () => {
               if (activeRoom === room) {
                 activeRoom = null;
+                if (activeVideoBox) {
+                  activeVideoBox.innerHTML = "";
+                  activeVideoBox.style.display = "none";
+                }
+                activeVideoBox = null;
+                activeWatchStatus = null;
                 resetActiveButton();
                 watchStatus.textContent = "Live disconnected. Dobara Watch dabayein.";
               }
@@ -138,6 +153,8 @@
             activeRoom = room;
             activeRegistrationId = id;
             activeButton = button;
+            activeVideoBox = videoBox;
+            activeWatchStatus = watchStatus;
             button.textContent = "■ Stop watching";
             button.disabled = false;
           } catch (error) {
