@@ -210,72 +210,108 @@ def cancel_and_refund_tournaments(modeladmin, request, queryset):
     )
 
 
-@admin.action(description="Mark winner prize PAID after manual UPI transfer and real UTR entry")
+@admin.action(description="Mark winner prize PAID after each team member's manual UPI transfer and UTR")
 def mark_winner_prizes_paid(modeladmin, request, queryset):
+    """Validate every recipient/UTR before recording an equal team payout."""
     paid = 0
     skipped = 0
+    team_formats = {
+        (Tournament.Mode.BR, Tournament.BRFormat.DUO): 2,
+        (Tournament.Mode.BR, Tournament.BRFormat.SQUAD): 4,
+        (Tournament.Mode.VS, Tournament.VSFormat.TWO_V_TWO): 2,
+        (Tournament.Mode.VS, Tournament.VSFormat.THREE_V_THREE): 3,
+        (Tournament.Mode.VS, Tournament.VSFormat.FOUR_V_FOUR): 4,
+    }
     for selected in queryset:
         with transaction.atomic():
             tournament = Tournament.objects.select_for_update().get(pk=selected.pk)
-            if tournament.winner_prize_paid or not tournament.winner_uid or tournament.prize_pool <= 0 or (tournament.mode == Tournament.Mode.BR and tournament.br_format != "solo"):
+            team_size = team_formats.get((tournament.mode, tournament.br_format if tournament.mode == Tournament.Mode.BR else tournament.vs_format))
+            if tournament.winner_prize_paid or tournament.prize_pool <= 0:
                 skipped += 1
                 continue
-            utr = (tournament.winner_prize_reference or "").strip()
-            if len(utr) < 6 or utr.startswith("WIN-PRIZE-"):
+
+            if team_size:
+                uids = []
+                for raw in (tournament.winner_team_uids or "").replace(",", "\n").splitlines():
+                    uid = raw.strip()
+                    if uid and uid not in uids:
+                        uids.append(uid)
+                if len(uids) != team_size:
+                    skipped += 1
+                    continue
+            else:
+                uid = str(tournament.winner_uid or "").strip()
+                uids = [uid] if uid else []
+                if len(uids) != 1:
+                    skipped += 1
+                    continue
+
+            utrs = [part.strip() for part in (tournament.winner_prize_reference or "").replace("\n", ",").split(",") if part.strip()]
+            if len(utrs) != len(uids) or any(len(utr) < 6 or utr.startswith("WIN-PRIZE-") for utr in utrs):
+                skipped += 1
+                continue
+            if len(set(utrs)) != len(utrs):
+                skipped += 1
+                continue
+            if any(
+                Tournament.objects.filter(winner_prize_reference__icontains=utr).exclude(pk=tournament.pk).exists()
+                or KillSubmission.objects.filter(payout_reference__iexact=utr).exists()
+                or Registration.objects.filter(payment_reference__iexact=utr).exists()
+                or Registration.objects.filter(refund_reference__iexact=utr).exists()
+                or WithdrawalRequest.objects.filter(payout_reference__iexact=utr).exists()
+                for utr in utrs
+            ):
+                skipped += 1
+                continue
+
+            winners = list(Registration.objects.select_for_update().filter(
+                tournament=tournament, free_fire_uid__in=uids, payment_verified=True,
+                refund_processed=False,
+                status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
+            ).select_related("player").order_by("registered_at", "pk"))
+            by_uid = {winner.free_fire_uid: winner for winner in winners}
+            if len(by_uid) != len(uids) or any(uid not in by_uid for uid in uids):
+                skipped += 1
+                continue
+            ordered_winners = [by_uid[uid] for uid in uids]
+            if any(not ((winner.player.upi_id or "").strip() or winner.player.upi_qr_code) for winner in ordered_winners):
+                skipped += 1
+                continue
+
+            prize = Decimal(tournament.prize_pool).quantize(Decimal("0.01"))
+            share = (prize / Decimal(len(ordered_winners))).quantize(Decimal("0.01"))
+            if share * len(ordered_winners) != prize:
                 skipped += 1
                 continue
             admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
             admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
-            duplicate_utr = (
-                Tournament.objects.filter(winner_prize_reference__iexact=utr).exclude(pk=tournament.pk).exists()
-                or KillSubmission.objects.filter(payout_reference__iexact=utr).exists()
-                or Registration.objects.filter(payment_reference__iexact=utr).exists()
-                or Registration.objects.filter(refund_reference__iexact=utr).exists()
-                or Registration.objects.filter(payment_reference__iexact=utr).exists()
-                or WithdrawalRequest.objects.filter(payout_reference__iexact=utr).exists()
-            )
-            if duplicate_utr:
-                skipped += 1
-                continue
-            eligible = Registration.objects.select_for_update().filter(
-                tournament=tournament,
-                free_fire_uid=str(tournament.winner_uid).strip(),
-                payment_verified=True,
-                refund_processed=False,                status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
-            ).select_related("player")
-            if eligible.count() != 1:
-                skipped += 1
-                continue
-            winner = eligible.first()
-            if not (winner.player.upi_id or "").strip() and not winner.player.upi_qr_code:
-                skipped += 1
-                continue
-            prize = tournament.prize_pool
             if admin_wallet.balance < prize:
                 skipped += 1
                 continue
-            ledger_reference = f"ADMIN-WIN-UPI-{tournament.pk}"
-            if AdminWalletTransaction.objects.filter(reference=ledger_reference).exists():
+            refs = [f"ADMIN-WIN-UPI-{tournament.pk}-{winner.player_id}" for winner in ordered_winners]
+            if any(AdminWalletTransaction.objects.filter(reference=ref).exists() for ref in refs):
                 skipped += 1
                 continue
-            # Real transfer must already be sent externally to the winner's saved UPI ID/QR.
+
+            # External UPI transfers must already have been sent in the same UID/UTR order.
             admin_wallet.balance -= prize
             admin_wallet.save(update_fields=["balance", "updated_at"])
-            AdminWalletTransaction.objects.create(
-                admin_wallet=admin_wallet,
-                transaction_type=AdminWalletTransaction.TransactionType.PRIZE,
-                amount=prize,
-                status=AdminWalletTransaction.Status.COMPLETED,
-                reference=ledger_reference,
-                description=f"Manual UPI winner prize for tournament {tournament.pk}; external UTR {utr}; player profile {winner.player_id}.",
-            )
+            for winner, utr, ref in zip(ordered_winners, utrs, refs):
+                AdminWalletTransaction.objects.create(
+                    admin_wallet=admin_wallet,
+                    transaction_type=AdminWalletTransaction.TransactionType.PRIZE,
+                    amount=share,
+                    status=AdminWalletTransaction.Status.COMPLETED,
+                    reference=ref,
+                    description=f"Equal-share manual UPI winner prize for tournament {tournament.pk}; UID {winner.free_fire_uid}; external UTR {utr}; share {share}.",
+                )
             tournament.winner_prize_paid = True
             tournament.save(update_fields=["winner_prize_paid", "updated_at"])
             paid += 1
     if paid:
-        modeladmin.message_user(request, f"{paid} winner prize(s) marked paid after manual UPI transfer.", messages.SUCCESS)
+        modeladmin.message_user(request, f"{paid} tournament winner/team prize payout(s) recorded with equal per-player shares.", messages.SUCCESS)
     if skipped:
-        modeladmin.message_user(request, f"{skipped} winner prize(s) skipped: check winner UID, saved UPI/QR, real unique UTR and Admin Wallet ledger balance.", messages.WARNING)
+        modeladmin.message_user(request, f"{skipped} skipped: verify all winner UIDs, each player's saved UPI/QR, one unique real UTR per player in the same order, exact paise split, and Admin Wallet balance.", messages.WARNING)
 
 
 @admin.action(description="Award BR Diamonds / VS Fan Tokens to selected tournament winner")
@@ -478,7 +514,7 @@ class TournamentAdmin(admin.ModelAdmin):
     # Keep tournament setup separate from registrations and kill evidence.
     # Those have their own admin sections so adding/editing a tournament stays manageable.
     inlines = ()
-    actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid,)
+    actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid, award_arena_currency_winner,)
     readonly_fields = (
         "tournament_control_panel", "winner_prize_paid",
         "kill_prize_distributed", "kill_prize_pool", "kill_prize_reference",
