@@ -1,5 +1,248 @@
 {% extends "base.html" %}
-{% block title %}{{ tournament.title }} · Live Monitor | FF Arena{% endblock %}
+{% block title %}{{ tournament.title }} · Live Monitor | FF Arena<script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+<script>
+(function () {
+    const grid = document.getElementById("ff-live-grid");
+    if (!grid) return;
+    const tournamentId = grid.dataset.tournamentId;
+    const rooms = [];
+    let talkingRoom = null;
+    let refreshInProgress = false;
+    const csrfToken = document.querySelector("#ff-live-csrf-form [name=csrfmiddlewaretoken]")?.value || "";
+    document.querySelectorAll(".ff-kill-approve-form").forEach(form => {
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const button = form.querySelector("button[type=submit]");
+            const status = form.querySelector(".ff-kill-approve-status");
+            const fields = new FormData(form);
+            button.disabled = true;
+            status.textContent = "Checking evidence and reward rules…";
+            try {
+                const response = await fetch(form.dataset.url, {
+                    method: "POST", credentials: "same-origin",
+                    headers: {"Content-Type":"application/json","X-CSRFToken":csrfToken,"X-Requested-With":"XMLHttpRequest"},
+                    body: JSON.stringify({
+                        match_id: fields.get("match_id"),
+                        kill_at: fields.get("kill_at"),
+                        attributed_player_name: fields.get("attributed_player_name")
+                    })
+                });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(result.error || "Kill confirmation failed.");
+                status.textContent = result.message || "Kill confirmed.";
+                button.textContent = "✓ Confirmed";
+                form.querySelectorAll("input").forEach(input => input.disabled = true);
+            } catch (error) {
+                status.textContent = error.message;
+                button.disabled = false;
+            }
+        });
+    });
+    const esc = (value) => String(value || "").replace(/[&<>"']/g, ch => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[ch]));
+    async function startTournamentStreams() {
+        if (refreshInProgress) return;
+        refreshInProgress = true;
+        try {
+            const response = await fetch("/tournaments/live/admin/tournament/" + tournamentId + "/tokens/", {
+                credentials: "same-origin",
+                headers: {"Accept": "application/json"}
+            });
+            if (!response.ok) throw new Error(response.status === 403 ? "Staff permission required." : "Live stream token request failed.");
+            const data = await response.json();
+            if (!data.streams.length) {
+                if (!grid.querySelector(".ff-live-player-card")) {
+                    grid.innerHTML = '<div class="col-12 ff-no-live-streams"><div class="alert alert-secondary mb-0">Waiting for players to press YES and start screen sharing… This monitor checks for new streams automatically.</div></div>';
+                }
+                return;
+            }
+            const emptyState = grid.querySelector(".ff-no-live-streams");
+            if (emptyState) emptyState.remove();
+            if (!window.LivekitClient) throw new Error("LiveKit browser player could not be loaded.");
+            for (const stream of data.streams) {
+                const alreadyShown = Array.from(grid.querySelectorAll("[data-session-id]")).some(card => card.dataset.sessionId === stream.session_id);
+                if (alreadyShown) continue;
+                const col = document.createElement("div");
+                col.className = "col-12 col-md-6 col-xl-4 ff-live-player-card";
+                col.dataset.sessionId = stream.session_id;
+                col.innerHTML = '<div class="card h-100 p-3">' +
+                    '<div class="d-flex justify-content-between gap-2"><strong>' +
+                    esc(stream.player) + ' · UID ' + esc(stream.uid) +
+                    '</strong><small class="text-muted">' + esc(stream.state) +
+                    '</small></div>' +
+                    '<div class="row g-2 mt-2 ff-player-metrics">' +
+                    '<div class="col-6"><small>UID verification</small><div class="fw-bold ff-uid-state">' + (stream.identity_verified ? '✓ Verified' : 'Waiting') + '</div></div>' +
+                    '<div class="col-6"><small>Verified kills</small><div class="fw-bold ff-kill-count">' + esc(stream.approved_kills) + '</div></div>' +
+                    '<div class="col-6"><small>Pending kill evidence</small><div class="fw-bold">' + esc(stream.pending_kills) + '</div></div>' +
+                    '<div class="col-6"><small>Reward preview</small><div class="fw-bold">' + esc(JSON.stringify(stream.reward_preview || [])) + '</div></div>' +
+                    '<div class="col-6"><small>Frames / detections</small><div>' + esc(stream.frames_seen) + ' / ' + esc(stream.detections_seen) + '</div></div>' +
+                    '<div class="col-6"><small>Background warnings</small><div>' + esc(stream.background_warnings) + '</div></div>' +
+                    '<div class="col-12"><small class="ff-monitor-error">' + esc(stream.monitor_error || 'No monitor error reported') + '</small></div></div>' +
+                    '<div class="ff-live-video mt-2 bg-dark rounded d-flex align-items-center justify-content-center" style="min-height:190px;overflow:hidden"><span class="text-white-50">Waiting for player screen…</span></div>' +
+                    '<div class="d-flex flex-wrap gap-2 mt-3">' +
+                    '<button type="button" class="btn btn-sm btn-outline-danger ff-eliminated">☠️ Mark eliminated & end Live</button>' +
+                    '<button type="button" class="btn btn-sm btn-outline-info ff-listen-toggle">🔇 Listen OFF</button>' +
+                    '<button type="button" class="btn btn-sm btn-outline-warning ff-talk-toggle">🎙️ Talk to player</button>' +
+                    '<button type="button" class="btn btn-sm btn-outline-secondary ff-request-mic">Request player mic</button></div>' +
+                    '<div class="small text-muted ff-audio-status mt-2">Player mic status: waiting for audio</div>' +
+                    '<form class="ff-player-message-form mt-3"><textarea class="form-control ff-player-message" rows="2" maxlength="500" placeholder="Private message to this player…"></textarea><button type="submit" class="btn btn-sm btn-primary mt-2">Send private message</button><small class="d-block mt-1 ff-message-status" role="status"></small></form></div>';
+                grid.appendChild(col);
+                const videoBox = col.querySelector(".ff-live-video");
+                const audioStatus = col.querySelector(".ff-audio-status");
+                const eliminatedButton = col.querySelector(".ff-eliminated");
+                eliminatedButton.addEventListener("click", async () => {
+                    if (!confirm("Player elimination confirm hai? BR mein minimum 2 Admin-verified kills required hain. Session end karna hai?")) return;
+                    eliminatedButton.disabled = true;
+                    try {
+                        const response = await fetch("/tournaments/live/registration/" + stream.registration_id + "/end/", {
+                            method: "POST", credentials: "same-origin",
+                            headers: {"X-CSRFToken": csrfToken, "X-Requested-With": "XMLHttpRequest"}
+                        });
+                        const result = await response.json().catch(() => ({}));
+                        if (!response.ok) throw new Error(result.error || result.message || "Live session end nahi hua.");
+                        videoBox.innerHTML = '<span class="text-warning">Player eliminated · Live ended</span>';
+                        audioStatus.textContent = "Elimination marked by Admin. Player Live session ended.";
+                        eliminatedButton.textContent = "✓ Live ended";
+                    } catch (error) {
+                        messageStatus.textContent = error.message;
+                        eliminatedButton.disabled = false;
+                    }
+                });
+                const listenButton = col.querySelector(".ff-listen-toggle");
+                const talkButton = col.querySelector(".ff-talk-toggle");
+                const messageForm = col.querySelector(".ff-player-message-form");
+                const messageInput = col.querySelector(".ff-player-message");
+                const messageStatus = col.querySelector(".ff-message-status");
+                const audioElements = [];
+                let listenEnabled = false;
+                const room = new window.LivekitClient.Room({adaptiveStream: true, dynacast: true});
+                rooms.push(room);
+                room.on(window.LivekitClient.RoomEvent.TrackSubscribed, (track) => {
+                    if (track.kind === window.LivekitClient.Track.Kind.Video) {
+                        videoBox.innerHTML = "";
+                        const element = track.attach();
+                        element.style.width = "100%";
+                        element.style.height = "auto";
+                        element.style.maxHeight = "360px";
+                        element.autoplay = true;
+                        element.playsInline = true;
+                        videoBox.appendChild(element);
+                    } else if (track.kind === window.LivekitClient.Track.Kind.Audio) {
+                        const element = track.attach();
+                        element.autoplay = true;
+                        element.muted = !listenEnabled;
+                        element.style.display = "none";
+                        col.appendChild(element);
+                        audioElements.push(element);
+                        audioStatus.textContent = listenEnabled ? "Player mic ON — audio connected." : "Player mic ON — Listen ON dabakar awaaz sunein.";
+                        if (listenEnabled) element.play().catch(() => { audioStatus.textContent = "Browser audio playback allow karein."; });
+                    }
+                });
+                listenButton.addEventListener("click", async () => {
+                    listenEnabled = !listenEnabled;
+                    audioElements.forEach(element => { element.muted = !listenEnabled; });
+                    listenButton.textContent = listenEnabled ? "🔊 Listen ON" : "🔇 Listen OFF";
+                    if (!audioElements.length) {
+                        audioStatus.textContent = listenEnabled ? "Listen ON — player ke mic publish karte hi audio chalega." : "Player mic audio ke liye Listen ON karein.";
+                    }
+                    if (listenEnabled && audioElements.length) {
+                        try { await Promise.all(audioElements.map(element => element.play())); }
+                        catch (error) { audioStatus.textContent = "Browser audio playback allow karein."; }
+                    }
+                });
+                talkButton.addEventListener("click", async () => {
+                    try {
+                        if (talkingRoom === room) {
+                            await room.localParticipant.setMicrophoneEnabled(false);
+                            talkingRoom = null;
+                            talkButton.textContent = "🎙️ Talk to player";
+                            return;
+                        }
+                        if (talkingRoom) {
+                            await talkingRoom.localParticipant.setMicrophoneEnabled(false);
+                            document.querySelectorAll(".ff-talk-toggle").forEach(button => { button.textContent = "🎙️ Talk to player"; });
+                        }
+                        await room.localParticipant.setMicrophoneEnabled(true);
+                        talkingRoom = room;
+                        talkButton.textContent = "🔴 Stop talking";
+                    } catch (error) {
+                        messageStatus.textContent = "Admin mic start nahi hua: " + esc(error.message);
+                    }
+                });
+                col.querySelector(".ff-request-mic").addEventListener("click", async () => {
+                    const button = col.querySelector(".ff-request-mic");
+                    button.disabled = true;
+                    try {
+                        const response = await fetch("/tournaments/live/admin/registration/" + stream.registration_id + "/message/", {
+                            method: "POST",
+                            credentials: "same-origin",
+                            headers: {"Content-Type":"application/json","X-CSRFToken":csrfToken,"X-Requested-With":"XMLHttpRequest"},
+                            body: JSON.stringify({message:"Admin requests your microphone. Please turn your mic ON only if you agree."})
+                        });
+                        const result = await response.json().catch(() => ({}));
+                        if (!response.ok) throw new Error(result.error || "Mic request failed.");
+                        messageStatus.textContent = "Mic request sent. Player must approve by turning their mic ON.";
+                    } catch (error) {
+                        messageStatus.textContent = error.message;
+                    } finally {
+                        button.disabled = false;
+                    }
+                });
+                messageForm.addEventListener("submit", async (event) => {
+                    event.preventDefault();
+                    const message = messageInput.value.trim();
+                    if (!message) return;
+                    const button = messageForm.querySelector("button[type=submit]");
+                    button.disabled = true;
+                    try {
+                        const response = await fetch("/tournaments/live/admin/registration/" + stream.registration_id + "/message/", {
+                            method: "POST",
+                            credentials: "same-origin",
+                            headers: {"Content-Type":"application/json","X-CSRFToken":csrfToken,"X-Requested-With":"XMLHttpRequest"},
+                            body: JSON.stringify({message})
+                        });
+                        const result = await response.json().catch(() => ({}));
+                        if (!response.ok) throw new Error(result.error || "Message send failed.");
+                        messageInput.value = "";
+                        messageStatus.textContent = "Message sent to " + esc(stream.player) + ".";
+                    } catch (error) {
+                        messageStatus.textContent = error.message;
+                    } finally {
+                        button.disabled = false;
+                    }
+                });
+                room.on(window.LivekitClient.RoomEvent.Disconnected, () => {
+                    videoBox.innerHTML = '<span class="text-warning">Player Live disconnected</span>';
+                    audioStatus.textContent = "Player Live disconnected.";
+                    if (talkingRoom === room) talkingRoom = null;
+                    talkButton.textContent = "🎙️ Talk to player";
+                });
+                try {
+                    await room.connect(stream.url, stream.token, {autoSubscribe: true});
+                } catch (error) {
+                    videoBox.innerHTML = '<span class="text-danger">Could not connect to player Live</span>';
+                }
+            }
+        } catch (error) {
+            if (!grid.querySelector(".ff-live-player-card")) {
+                grid.innerHTML = '<div class="col-12"><div class="alert alert-warning mb-0">' + esc(error.message) + '</div></div>';
+            }
+        } finally {
+            refreshInProgress = false;
+        }
+    }
+    window.addEventListener("beforeunload", () => rooms.forEach(room => room.disconnect()));
+    startTournamentStreams();
+    // Admin may open this page before any player presses YES. Keep discovering
+    // newly-started player sessions and add their LiveKit subscriptions without
+    // clearing already-connected player cards.
+    window.setInterval(() => {
+        if (document.visibilityState !== "hidden") startTournamentStreams();
+    }, 8000);
+})();
+</script>
+{% endblock %}
 {% block content %}
 <style>
 .ff-monitor-page{max-width:1600px;margin:0 auto;padding:20px 12px 48px;color:#eaf2ff}
