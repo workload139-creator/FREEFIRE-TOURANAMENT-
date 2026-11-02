@@ -13,6 +13,12 @@ on:
 permissions:
   contents: write
 
+# Only the newest source revision should publish the moving ff-arena-latest release.
+# Prevent an older, slower build from overwriting a newer APK release.
+concurrency:
+  group: ff-arena-android-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   android-pr-build:
     if: github.event_name == 'pull_request'
