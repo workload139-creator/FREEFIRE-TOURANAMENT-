@@ -1,4 +1,4 @@
-"""Full-frame OCR helpers for BR and Clash Squad live-screen analysis.
+"""Full-frame OCR helpers for Battle Royale live-screen analysis.
 
 The OCR pass scans the complete frame rather than assuming a fixed killfeed
 corner. It only surfaces text candidates for later independent validation;
@@ -10,12 +10,37 @@ import pytesseract
 from pytesseract import Output
 
 
-SUPPORTED_TOURNAMENT_MODES = {"BR", "VS"}  # VS is FF Arena's Clash Squad format.
+SUPPORTED_TOURNAMENT_MODES = {"BR"}  # Clash Squad uses live viewing only; no AI scan.
 
 
 def live_kill_detection_enabled(tournament_mode):
-    """Training Ground/free-play has no eligible tournament mode and is excluded."""
+    """Only Battle Royale is eligible for AI killfeed scanning."""
     return str(tournament_mode or "").strip().upper() in SUPPORTED_TOURNAMENT_MODES
+
+
+
+
+def player_eliminated_from_text(text):
+    """Require a player-facing elimination/spectator phrase, not a killfeed event.
+
+    A killfeed line such as "Enemy eliminated Player" is not sufficient because
+    it describes someone else being eliminated. The player's own overlay must
+    explicitly say "you are eliminated" or show both elimination and spectator
+    wording.
+    """
+    normalized = re.sub(r"[^a-z0-9 ]+", " ", str(text or "").lower())
+    normalized = " ".join(normalized.split())
+    explicit_phrases = (
+        "you are eliminated",
+        "you have been eliminated",
+        "you got eliminated",
+        "you were eliminated",
+    )
+    if any(phrase in normalized for phrase in explicit_phrases):
+        return True
+    has_eliminated = "eliminated" in normalized
+    has_spectator = any(word in normalized for word in ("spectating", "spectator", "spectate"))
+    return has_eliminated and has_spectator
 
 
 def scan_full_frame_for_kill_text(image, min_confidence=55.0):
