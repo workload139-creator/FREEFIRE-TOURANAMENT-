@@ -63,6 +63,16 @@
     const esc = (value) => String(value || "").replace(/[&<>"']/g, ch => ({
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     }[ch]));
+    function connectWaitingVisibleCards() {
+        if (document.visibilityState === "hidden") return;
+        grid.querySelectorAll(".ff-live-player-card").forEach(card => {
+            const rect = card.getBoundingClientRect();
+            const visible = !card.hidden && rect.bottom > 0 && rect.top < window.innerHeight;
+            if (visible && rooms.size + connectingRooms.size < MAX_ACTIVE_STREAMS && card._ffConnectLive) {
+                card._ffConnectLive();
+            }
+        });
+    }
     streamObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             const card = entry.target;
@@ -276,7 +286,7 @@
                 });
                 const connectPlayerRoom = async () => {
                     if (room || connectingRooms.has(stream.session_id)) return;
-                    if (rooms.size >= MAX_ACTIVE_STREAMS) {
+                    if (rooms.size + connectingRooms.size >= MAX_ACTIVE_STREAMS) {
                         audioStatus.textContent = "Performance mode: 4 visible player feeds at a time. Scroll to view this player.";
                         return;
                     }
@@ -355,6 +365,7 @@
                     audioElements.splice(0, audioElements.length);
                     videoBox.innerHTML = '<span class="text-white-50">Player screen ready — visible feeds connect automatically</span>';
                     pausingRoom = false;
+                    window.setTimeout(connectWaitingVisibleCards, 80);
                 };
                 col._ffConnectLive = connectPlayerRoom;
                 col._ffDisconnectLive = disconnectPlayerRoom;
@@ -378,8 +389,11 @@
     }, 12000);
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "hidden") {
-            rooms.forEach(room => room.disconnect());
-            rooms.clear();
+            grid.querySelectorAll(".ff-live-player-card").forEach(card => {
+                if (card._ffDisconnectLive) card._ffDisconnectLive();
+            });
+        } else {
+            connectWaitingVisibleCards();
         }
     });
 })();
@@ -399,7 +413,7 @@
 .ff-monitor-page .ff-live-team-row .ff-team-heading{grid-column:1/-1;color:#8ceaff;font-weight:900;letter-spacing:.08em;font-size:12px;text-transform:uppercase}
 .ff-monitor-page .ff-live-team-row .ff-live-player-card{width:100%;max-width:none;min-width:0}
 .ff-monitor-page .ff-live-solo-row{grid-template-columns:minmax(260px,1fr)}
-.ff-monitor-page .ff-live-video{position:relative;min-height:210px!important;background:#02060d!important;border:1px solid #2b8ec966}
+.ff-monitor-page .ff-live-video{position:relative;min-height:210px!important;aspect-ratio:16/9;background:#02060d!important;border:1px solid #2b8ec966}
 .ff-monitor-page .ff-live-video:fullscreen{width:100vw;height:100vh;min-height:100vh!important;display:flex;align-items:center;justify-content:center;background:#000!important}
 .ff-monitor-page .ff-live-video:fullscreen video{width:100%!important;height:100%!important;max-height:100vh!important;object-fit:contain}
 .ff-monitor-page .ff-live-expand{position:absolute;right:8px;top:8px;z-index:5}
