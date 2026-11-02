@@ -1692,6 +1692,17 @@ def results(request):
 def leaderboard(request, tournament_id):
     """Show every paid, verified entrant; kills/rewards appear only after admin approval."""
     tournament = get_object_or_404(Tournament, pk=tournament_id)
+    # Price data is polled by the leaderboard and must always reflect the latest Admin edit.
+    if request.GET.get("live_data") == "1":
+        response = JsonResponse({
+            "entry_fee": str(tournament.entry_fee),
+            "prize_pool": str(tournament.prize_pool),
+            "prize_currency": "Diamonds" if tournament.mode == Tournament.Mode.VS else "INR",
+            "updated_at": tournament.updated_at.isoformat(),
+        })
+        response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response["Pragma"] = "no-cache"
+        return response
     eligible_statuses = [
         Registration.Status.CONFIRMED,
         Registration.Status.WAITING_READY,
@@ -1736,7 +1747,7 @@ def leaderboard(request, tournament_id):
         -row["kills"],
         row["registration"].registered_at,
     ))
-    return render(request, "tournaments/leaderboard.html", {
+    response = render(request, "tournaments/leaderboard.html", {
         "tournament": tournament,
         "leaderboard_rows": rows,
         "verified_player_count": len(rows),
@@ -1746,3 +1757,6 @@ def leaderboard(request, tournament_id):
             status=TournamentLedgerEntry.Status.COMPLETED,
         ).exists() if tournament.is_diwali_offer else False,
     })
+    response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response["Pragma"] = "no-cache"
+    return response
