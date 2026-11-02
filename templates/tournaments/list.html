@@ -8,8 +8,8 @@
     <p>Har tournament apne alag page par. Apna mode chuno aur usi category ke matches, registration aur leaderboard dekho.</p>
   </header>
   <div class="hub-grid">
-    <a class="hub-card br" href="{% url 'tournaments:battle_royale_list' %}"><span>🔥 SURVIVAL MODE</span><strong>Battle Royale</strong><small>Solo · Duo · Squad</small><b>Open BR Arena →</b></a>
-    <a class="hub-card vs" href="{% url 'tournaments:clash_squad_list' %}"><span>⚔️ SQUAD COMBAT</span><strong>VS Arena</strong><small>1v1 · 2v2 · 3v3 · 4v4</small><b>Open VS Arena →</b></a>
+    <a class="hub-card br" href="{% url 'tournaments:battle_royale_list' %}"><span>🔥 SURVIVAL MODE</span><strong>Battle Royale</strong><small>Solo · Duo · Squad</small>{% if br_live %}<span class="mode-live-flag">● LIVE NOW</span>{% endif %}<b>Open BR Arena →</b></a>
+    <a class="hub-card vs" href="{% url 'tournaments:clash_squad_list' %}"><span>⚔️ SQUAD COMBAT</span><strong>VS Arena</strong><small>1v1 · 2v2 · 3v3 · 4v4</small>{% if cs_live %}<span class="mode-live-flag">● LIVE NOW</span>{% endif %}<b>Open VS Arena →</b></a>
     <a class="hub-card free" href="{% url 'tournaments:free_fan_list' %}"><span>🎁 ZERO ENTRY</span><strong>Free Tournament</strong><small>Free entry · Separate leaderboard</small><b>Open Free Arena →</b></a>
     <a class="hub-card diwali" href="{% url 'tournaments:diwali_offer_list' %}"><span>🪔 FESTIVAL SPECIAL</span><strong>Diwali · 1 Diamond</strong><small>Solo BR · 49 players · 20 Diamonds prize</small><b>Open Diwali Arena →</b></a>
     <a class="hub-card" href="{% url 'tournaments:results' %}"><span>🏆 MATCH HISTORY</span><strong>Tournament Results</strong><small>Completed matches · First-place winners · Public leaderboards</small><b>View Results →</b></a>
@@ -35,5 +35,7 @@
 .hub-card.diwali{background:radial-gradient(circle at 90% 5%,#ffbd4b30,transparent 42%),linear-gradient(145deg,#351408,#160d1d);border-color:#ffc45b77}.hub-card.diwali span,.hub-card.diwali b{color:#ffd27a}
 .hub-card.unlimited{background:linear-gradient(145deg,#102d25,#091410);border-color:#55ffc055}.hub-card.unlimited span,.hub-card.unlimited b{color:#72ffc1}
 .hub-card.girls{background:radial-gradient(circle at 90% 5%,#ff83c52b,transparent 42%),linear-gradient(145deg,#30152c,#111225);border-color:#ff9bd866}.hub-card.girls span,.hub-card.girls b{color:#ffb5dc}
+.mode-live-flag{display:inline-flex;align-self:flex-start;padding:5px 9px;border-radius:999px;background:#d90032;color:#fff!important;font-size:11px!important;font-weight:950;letter-spacing:.6px;box-shadow:0 0 16px #ff174455;animation:ff-live-pulse 1.4s infinite alternate}
+@keyframes ff-live-pulse{from{box-shadow:0 0 5px #ff174433}to{box-shadow:0 0 18px #ff1744aa}}
 </style>
 {% endblock %}
