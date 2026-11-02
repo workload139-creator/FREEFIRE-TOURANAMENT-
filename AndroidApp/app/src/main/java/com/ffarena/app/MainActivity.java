@@ -92,8 +92,12 @@ public class MainActivity extends Activity {
         setContentView(root);
         openFeature(routeFromIntent(getIntent()));
         registerApkDownloadReceiver();
+        boolean updateInstalled = verifyPendingInstall();
         restorePendingApkDownload();
-        verifyPendingInstall();
+        if (!updateInstalled && getSharedPreferences("ffarena_updates", MODE_PRIVATE)
+                .getInt("pending_install_version_code", -1) > getInstalledAppVersionCode()) {
+            showInstallRetryDialog();
+        }
         checkForAppUpdate();
     }
 
@@ -319,7 +323,6 @@ public class MainActivity extends Activity {
         pendingApkVersionCode = prefs.getInt("pending_version_code", -1);
         pendingApkFileName = prefs.getString("pending_file_name", "");
         if (pendingApkDownloadId <= 0L || apkDownloadManager == null || apkDownloadReceiver == null) return;
-        SharedPreferences prefs = getSharedPreferences("ffarena_updates", MODE_PRIVATE);
         // A completed APK awaiting the player's explicit retry must not reopen the installer
         // automatically on every app launch/resume.
         if (prefs.getInt("pending_install_version_code", -1) > getInstalledAppVersionCode()) return;
@@ -439,8 +442,8 @@ public class MainActivity extends Activity {
         super.onResume();
         if (featureWebView != null) featureWebView.onResume();
         CookieManager.getInstance().flush();
-        restorePendingApkDownload();
         verifyPendingInstall();
+        restorePendingApkDownload();
         if (pendingInstallUri != null
                 && (Build.VERSION.SDK_INT < 26 || getPackageManager().canRequestPackageInstalls())) {
             Uri uri = pendingInstallUri;
