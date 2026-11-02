@@ -180,6 +180,8 @@ public class MainActivity extends Activity {
                         showUpdateError("The update download failed. Check your internet connection and try again.");
                         return;
                     }
+                    final int expectedVersionCode = pendingApkVersionCode;
+                    final String expectedFileName = pendingApkFileName;
                     clearPendingApkDownload();
                     Uri apkUri = apkDownloadManager.getUriForDownloadedFile(completedId);
                     if (apkUri == null) {
@@ -187,7 +189,7 @@ public class MainActivity extends Activity {
                         return;
                     }
                     File downloadDirectory = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
-                    File apkFile = downloadDirectory == null ? null : new File(downloadDirectory, pendingApkFileName);
+                    File apkFile = downloadDirectory == null ? null : new File(downloadDirectory, expectedFileName);
                     if (apkFile == null || !apkFile.isFile() || apkFile.length() < 1024) {
                         showUpdateError("The update file is incomplete. Please download it again.");
                         return;
@@ -195,7 +197,7 @@ public class MainActivity extends Activity {
                     android.content.pm.PackageInfo archive = getPackageManager().getPackageArchiveInfo(
                             apkFile.getAbsolutePath(), PackageManager.GET_SIGNATURES);
                     if (archive == null || !getPackageName().equals(archive.packageName)
-                            || archive.versionCode < pendingApkVersionCode
+                            || archive.versionCode < expectedVersionCode
                             || archive.versionCode <= BuildConfig.VERSION_CODE) {
                         showUpdateError("The downloaded APK is not a valid newer FF Arena update. Please try again later.");
                         return;
@@ -214,7 +216,7 @@ public class MainActivity extends Activity {
                     }
                     installDownloadedApk(apkUri);
                 } catch (Exception exception) {
-                    pendingApkDownloadId = -1L;
+                    clearPendingApkDownload();
                     showUpdateError("Could not prepare the update installer. Please try again.");
                 }
             }
