@@ -49,7 +49,7 @@ def native_wallet_api(request):
     from apps.tournaments.models import Registration, TournamentLedgerEntry
     from apps.social.models import (
         PlayerShopWalletTransaction, ShopPaymentRequest,
-        CurrencyWithdrawalRequest, DailySpin, CurrencyGift, FanTokenAward,
+        CurrencyWithdrawalRequest, DailySpin, CurrencyGift,
     )
 
     # Combine wallet transactions with tournament entries/refunds/rewards so the
@@ -156,22 +156,6 @@ def native_wallet_api(request):
             "_sort": item.spun_at.timestamp(),
         }
         for item in DailySpin.objects.filter(user=request.user).order_by("-spun_at")[:100]
-    ]
-    gift_history = [
-        {
-            "type": "Gift Sent" if item.sender_id == request.user.pk else "Gift Received",
-            "status": "Completed",
-            "amount": "",
-            "currency": item.get_currency_display(),
-            "quantity": item.quantity if item.recipient_id == request.user.pk else -item.quantity,
-            "description": ("Sent to " + item.recipient.username) if item.sender_id == request.user.pk else ("Received from " + item.sender.username),
-            "reference": "GIFT-" + str(item.pk),
-            "created_at": item.created_at.isoformat(),
-            "_sort": item.created_at.timestamp(),
-        }
-        for item in CurrencyGift.objects.filter(
-            user=request.user
-        )[:0]
     ]
     # CurrencyGift has sender/recipient fields, so explicitly scope either side.
     from django.db.models import Q
