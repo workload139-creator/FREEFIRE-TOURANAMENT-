@@ -89,14 +89,36 @@ public class MainActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(BG);
         setContentView(root);
-        openFeature("/");
+        openFeature(routeFromIntent(getIntent()));
         registerApkDownloadReceiver();
         restorePendingApkDownload();
         checkForAppUpdate();
     }
 
+    private String routeFromIntent(Intent intent) {
+        Uri data = intent == null ? null : intent.getData();
+        if (data == null || !"ffarena".equalsIgnoreCase(data.getScheme())
+                || !"open".equalsIgnoreCase(data.getHost())) return "/";
+        String path = data.getQueryParameter("path");
+        if (path == null || !path.startsWith("/") || path.startsWith("//")
+                || path.indexOf('\\') >= 0) return "/";
+        return path;
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        openFeature(routeFromIntent(intent));
+    }
+
     private void checkForAppUpdate() {
         if (pendingApkDownloadId > 0L) return;
+        SharedPreferences updatePrefs = getSharedPreferences("ffarena_updates", MODE_PRIVATE);
+        long now = System.currentTimeMillis();
+        long lastCheck = updatePrefs.getLong("last_update_check_at", 0L);
+        if (now - lastCheck < 5L * 60L * 1000L) return;
+        updatePrefs.edit().putLong("last_update_check_at", now).apply();
         new Thread(() -> {
             HttpURLConnection connection = null;
             try {
@@ -349,6 +371,8 @@ public class MainActivity extends Activity {
             pendingInstallUri = null;
             installDownloadedApk(uri);
         }
+        // Recheck when the player returns to FF Arena, but throttle network checks.
+        checkForAppUpdate();
     }
 
     @Override
