@@ -660,6 +660,88 @@ def admin_set_first_place_winner(request, tournament_id):
             messages.success(request, "First-place winner save ho gaya. Prize amount tournament ke First Prize pool se hi liya jayega.")
     return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
 
+
+@login_required
+@user_passes_test(lambda user: user.is_staff)
+@require_POST
+@transaction.atomic
+def admin_award_first_place_prize(request, tournament_id):
+    """Award a completed VS first-prize pool as Fan Currency and write immutable history."""
+    from apps.social.models import PlayerShopWallet
+
+    tournament = get_object_or_404(Tournament.objects.select_for_update(), pk=tournament_id)
+    if tournament.status != Tournament.Status.COMPLETED or tournament.mode != Tournament.Mode.VS or tournament.is_free_fan_tournament:
+        messages.error(request, "Ye award option sirf completed paid Clash Squad VS tournament ke liye hai.")
+        return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
+
+    team_sizes = {
+        Tournament.VSFormat.ONE_V_ONE: 1,
+        Tournament.VSFormat.TWO_V_TWO: 2,
+        Tournament.VSFormat.THREE_V_THREE: 3,
+        Tournament.VSFormat.FOUR_V_FOUR: 4,
+    }
+    team_size = team_sizes.get(tournament.vs_format)
+    if not team_size:
+        messages.error(request, "VS format valid nahi hai.")
+        return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
+    if team_size == 1:
+        uids = [str(tournament.winner_uid or "").strip()]
+    else:
+        uids = []
+        for raw in (tournament.winner_team_uids or "").replace(",", "\\n").splitlines():
+            member_uid = raw.strip()
+            if member_uid and member_uid not in uids:
+                uids.append(member_uid)
+    if len(uids) != team_size or any(not uid for uid in uids):
+        messages.error(request, "Pehle First Place Winner mein sabhi winning UIDs save karein.")
+        return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
+
+    registrations = list(Registration.objects.select_for_update().filter(
+        tournament=tournament, free_fire_uid__in=uids, payment_verified=True,
+        refund_processed=False,
+        status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
+    ).select_related("player"))
+    by_uid = {row.free_fire_uid: row for row in registrations}
+    if len(by_uid) != team_size or any(uid not in by_uid for uid in uids):
+        messages.error(request, "Har winner UID ka exactly one verified, paid aur non-refunded registration hona zaroori hai.")
+        return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
+
+    prize = Decimal(tournament.prize_pool or 0)
+    if prize <= 0 or prize != prize.to_integral_value():
+        messages.error(request, "First Prize pool positive whole Fan Currency amount hona chahiye.")
+        return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
+    share = int(prize) // team_size
+    remainder = int(prize) - share * team_size
+    if share <= 0:
+        messages.error(request, "Prize pool winning team mein split karne ke liye kaafi nahi hai.")
+        return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
+
+    references = [f"FIRST-PLACE-VS-{tournament.pk}-{uid}" for uid in uids]
+    if TournamentLedgerEntry.objects.filter(reference__in=references).exists():
+        messages.error(request, "First-place prize pehle award ho chuka hai; duplicate credit block kar diya.")
+        return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
+
+    for uid, reference in zip(uids, references):
+        registration = by_uid[uid]
+        wallet, _ = PlayerShopWallet.objects.get_or_create(user=registration.player)
+        wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
+        wallet.fan_tokens += share
+        wallet.save(update_fields=["fan_tokens", "updated_at"])
+        TournamentLedgerEntry.objects.create(
+            tournament=tournament, player=registration.player, registration=registration,
+            entry_type=TournamentLedgerEntry.EntryType.REWARD,
+            currency=TournamentLedgerEntry.Currency.FAN_TOKENS, quantity=share,
+            amount_inr=Decimal("0.00"), status=TournamentLedgerEntry.Status.COMPLETED,
+            reference=reference,
+            description=f"First-place VS {tournament.vs_format} prize pool award: {share} Fan Currency share.",
+        )
+    if remainder:
+        messages.warning(request, f"{share} Fan Currency per winner credited. {remainder} remainder split nahi ho saka.")
+    else:
+        messages.success(request, f"First-place prize credited: {share} Fan Currency to each of {team_size} winner(s). Tournament History aur Wallet Ledger updated.")
+    return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
+
+
 @login_required
 @user_passes_test(lambda user: user.is_staff)
 def admin_live_monitor(request):
