@@ -76,6 +76,7 @@ public class MainActivity extends Activity {
     private int pendingApkVersionCode = -1;
     private String pendingApkFileName = "";
     private volatile boolean updateCheckInFlight = false;
+    private boolean updateOfferDialogShowing = false;
     private Uri pendingInstallUri;
     private DownloadManager apkDownloadManager;
     private BroadcastReceiver apkDownloadReceiver;
@@ -173,9 +174,9 @@ public class MainActivity extends Activity {
                 if (!matcher.find()) return;
                 int latestVersion = Integer.parseInt(matcher.group(1));
                 int installedVersion = getInstalledAppVersionCode();
-                int lastOfferedVersion = updatePrefs.getInt("last_offered_version_code", 0);
-                // Do not offer the installed build again, or repeat the same dismissed offer on every launch.
-                if (latestVersion <= installedVersion || latestVersion <= lastOfferedVersion) return;
+                // Only installed version decides whether an update is available. A dismissed offer
+                // must not permanently hide that same update from the player.
+                if (latestVersion <= installedVersion) return;
                 String apkUrl = "";
                 JSONArray assets = release.optJSONArray("assets");
                 if (assets != null) {
@@ -190,10 +191,9 @@ public class MainActivity extends Activity {
                 if (apkUrl.isEmpty()) return;
                 final String downloadUrl = apkUrl;
                 runOnUiThread(() -> {
-                    if (isFinishing() || isDestroyed() || pendingApkDownloadId > 0L) return;
-                    // Persist before displaying so a fast Activity resume cannot open duplicate dialogs.
-                    updatePrefs.edit().putInt("last_offered_version_code", latestVersion).apply();
-                    new AlertDialog.Builder(MainActivity.this)
+                    if (isFinishing() || isDestroyed() || pendingApkDownloadId > 0L || updateOfferDialogShowing) return;
+                    updateOfferDialogShowing = true;
+                    AlertDialog offerDialog = new AlertDialog.Builder(MainActivity.this)
                             .setTitle("FF Arena update available")
                             .setMessage("A new app version is available ("
                                     + "1.0." + installedVersion + " → 1.0." + latestVersion
@@ -203,7 +203,9 @@ public class MainActivity extends Activity {
                             .setPositiveButton("Download & install", (dialog, which) -> {
                                 enqueueApkDownload(downloadUrl, latestVersion);
                             })
-                            .show();
+                            .create();
+                    offerDialog.setOnDismissListener(dialog -> updateOfferDialogShowing = false);
+                    offerDialog.show();
                 });
             } catch (Exception ignored) {
                 // Update checks are optional; offline users can continue using FF Arena.
@@ -258,7 +260,7 @@ public class MainActivity extends Activity {
                             apkFile.getAbsolutePath(), PackageManager.GET_SIGNATURES);
                     if (archive == null || !getPackageName().equals(archive.packageName)
                             || archive.versionCode < expectedVersionCode
-                            || archive.versionCode <= BuildConfig.VERSION_CODE) {
+                            || archive.versionCode <= getInstalledAppVersionCode()) {
                         clearPendingApkDownload();
                         showUpdateError("The downloaded APK is not a valid newer FF Arena update. Please try again later.");
                         return;
