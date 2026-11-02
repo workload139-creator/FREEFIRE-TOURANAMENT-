@@ -692,6 +692,8 @@ def admin_confirm_live_kill_reward(request, tournament_id, registration_id):
             Registration.objects.select_for_update().select_related("player"),
             pk=registration_id, tournament=tournament,
         )
+        if tournament.status not in (Tournament.Status.LIVE, Tournament.Status.COMPLETED):
+            return JsonResponse({"error": "Reward sirf LIVE ya COMPLETED tournament mein confirm ho sakta hai."}, status=400)
         if registration.status != Registration.Status.READY or not registration.payment_verified or registration.refund_processed:
             return JsonResponse({"error": "Player ki payment/registration eligibility verify nahi hai."}, status=400)
         if LiveKillEvent.objects.filter(tournament=tournament, registration=registration, status=LiveKillEvent.Status.VERIFIED).exists():
