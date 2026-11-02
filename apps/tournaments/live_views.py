@@ -175,6 +175,28 @@ def leaderboard_live_tokens(request, tournament_id):
         "registration", "registration__player"
     ).order_by("started_at")
 
+    requested_registration_id = request.GET.get("registration_id", "").strip()
+    if requested_registration_id:
+        try:
+            requested_registration_id = int(requested_registration_id)
+        except (TypeError, ValueError):
+            return JsonResponse({"error": "Invalid registration ID."}, status=400)
+        sessions = sessions.filter(registration_id=requested_registration_id)
+        if not sessions.exists():
+            return JsonResponse({"error": "Player Live session is no longer active."}, status=404)
+    if request.GET.get("status_only") == "1":
+        return JsonResponse({
+            "tournament_id": tournament.pk,
+            "streams": [{
+                "registration_id": session.registration_id,
+                "player": session.registration.player.get_username(),
+                "uid": session.registration.free_fire_uid,
+                "session_id": str(session.session_uuid),
+                "team_number": session.registration.team_number,
+                "team_position": session.registration.team_position,
+            } for session in sessions],
+        })
+
     streams = []
     for session in sessions:
         identity = f"ffarena-viewer-{request.user.pk}-{session.session_uuid.hex[:12]}"
@@ -236,6 +258,36 @@ def admin_tournament_live_tokens(request, tournament_id):
         seen_uids.add(uid)
         unique_sessions.append(session)
     sessions = unique_sessions
+    requested_registration_id = request.GET.get("registration_id", "").strip()
+    if requested_registration_id:
+        try:
+            requested_registration_id = int(requested_registration_id)
+        except (TypeError, ValueError):
+            return JsonResponse({"error": "Invalid registration ID."}, status=400)
+        sessions = [session for session in sessions if session.registration_id == requested_registration_id]
+        if not sessions:
+            return JsonResponse({"error": "Player Live session is no longer active."}, status=404)
+    if request.GET.get("status_only") == "1":
+        return JsonResponse({
+            "tournament_id": tournament.pk,
+            "streams": [{
+                "registration_id": session.registration_id,
+                "player": session.registration.player.get_username(),
+                "uid": session.registration.free_fire_uid,
+                "session_id": str(session.session_uuid),
+                "team_number": session.registration.team_number,
+                "team_position": session.registration.team_position,
+                "state": session.monitor_state,
+                "identity_verified": bool(session.identity_verified_at),
+                "approved_kills": 0,
+                "pending_kills": 0,
+                "detections_seen": session.monitor_detections_seen,
+                "frames_seen": session.monitor_frames_seen,
+                "background_warnings": session.background_warning_count,
+                "monitor_error": session.monitor_last_error,
+                "recent_kill_events": [],
+            } for session in sessions],
+        })
     registration_ids = [session.registration_id for session in sessions]
     verified_counts = dict(
         LiveKillEvent.objects.filter(
