@@ -44,6 +44,7 @@
   let activeVideoBox = null;
   let activeWatchStatus = null;
   let statusRequest = null;
+  let connectingRoom = false;
 
   function resetActiveButton() {
     if (activeButton) {
@@ -102,6 +103,8 @@
             watchStatus.textContent = "Stopped.";
             return;
           }
+          if (connectingRoom) return;
+          connectingRoom = true;
           button.disabled = true;
           button.textContent = "Connecting…";
           watchStatus.textContent = "Connecting to player stream…";
@@ -161,6 +164,8 @@
             button.disabled = false;
             button.textContent = "Retry Watch";
             watchStatus.textContent = error.message || "Live stream connect nahi hui.";
+          } finally {
+            connectingRoom = false;
           }
         });
       });
