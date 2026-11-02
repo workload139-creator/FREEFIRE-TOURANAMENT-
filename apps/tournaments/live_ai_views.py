@@ -162,4 +162,24 @@ def admin_approve_live_kill(request, event_id):
         ok, message = approve_live_kill_event(event.pk, request.user)
         if not ok:
             return JsonResponse({"error": message}, status=409)
-    return JsonResponse({"success": True, "message": message, "event_id": event_id})
+
+    # Keep the screenshot available throughout Admin review. Only after the
+    # approval transaction commits do we delete the evidence through storage.
+    # The kill record, attribution, review metadata and reward ledger remain.
+    evidence_cleanup_error = ""
+    event.refresh_from_db()
+    if event.evidence_image:
+        try:
+            event.evidence_image.delete(save=True)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception(
+                "Could not delete approved live-kill evidence for event %s", event.pk
+            )
+            evidence_cleanup_error = " Kill was confirmed, but evidence cleanup failed and needs retry."
+    return JsonResponse({
+        "success": True,
+        "message": message + evidence_cleanup_error,
+        "event_id": event_id,
+        "evidence_deleted": not bool(evidence_cleanup_error),
+    })
