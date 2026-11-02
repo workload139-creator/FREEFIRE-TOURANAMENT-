@@ -7,6 +7,7 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.IntentFilter;
 import android.graphics.Color;
 import android.graphics.Bitmap;
@@ -90,10 +91,12 @@ public class MainActivity extends Activity {
         setContentView(root);
         openFeature("/");
         registerApkDownloadReceiver();
+        restorePendingApkDownload();
         checkForAppUpdate();
     }
 
     private void checkForAppUpdate() {
+        if (pendingApkDownloadId > 0L) return;
         new Thread(() -> {
             HttpURLConnection connection = null;
             try {
@@ -172,11 +175,12 @@ public class MainActivity extends Activity {
                     }
                     int statusColumn = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
                     int status = statusColumn >= 0 ? cursor.getInt(statusColumn) : -1;
-                    pendingApkDownloadId = -1L;
                     if (status != DownloadManager.STATUS_SUCCESSFUL) {
+                        clearPendingApkDownload();
                         showUpdateError("The update download failed. Check your internet connection and try again.");
                         return;
                     }
+                    clearPendingApkDownload();
                     Uri apkUri = apkDownloadManager.getUriForDownloadedFile(completedId);
                     if (apkUri == null) {
                         showUpdateError("The downloaded update file could not be opened. Please download it again.");
@@ -251,10 +255,50 @@ public class MainActivity extends Activity {
             }
             request.setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, pendingApkFileName);
             pendingApkDownloadId = apkDownloadManager.enqueue(request);
+            getSharedPreferences("ffarena_updates", MODE_PRIVATE).edit()
+                    .putLong("pending_download_id", pendingApkDownloadId)
+                    .putInt("pending_version_code", pendingApkVersionCode)
+                    .putString("pending_file_name", pendingApkFileName)
+                    .apply();
             Toast.makeText(this, "Update download started. You can continue using FF Arena.", Toast.LENGTH_LONG).show();
         } catch (Exception exception) {
             showUpdateError("Could not start the update download. Please try again.");
         }
+    }
+
+    private void restorePendingApkDownload() {
+        SharedPreferences prefs = getSharedPreferences("ffarena_updates", MODE_PRIVATE);
+        pendingApkDownloadId = prefs.getLong("pending_download_id", -1L);
+        pendingApkVersionCode = prefs.getInt("pending_version_code", -1);
+        pendingApkFileName = prefs.getString("pending_file_name", "");
+        if (pendingApkDownloadId <= 0L || apkDownloadManager == null || apkDownloadReceiver == null) return;
+        DownloadManager.Query query = new DownloadManager.Query().setFilterById(pendingApkDownloadId);
+        try (Cursor cursor = apkDownloadManager.query(query)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int column = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
+                int status = column >= 0 ? cursor.getInt(column) : -1;
+                if (status == DownloadManager.STATUS_SUCCESSFUL || status == DownloadManager.STATUS_FAILED) {
+                    Intent completed = new Intent(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
+                    completed.putExtra(DownloadManager.EXTRA_DOWNLOAD_ID, pendingApkDownloadId);
+                    apkDownloadReceiver.onReceive(this, completed);
+                }
+            } else {
+                clearPendingApkDownload();
+            }
+        } catch (Exception ignored) {
+            // Keep state so the next resume can retry checking the system download.
+        }
+    }
+
+    private void clearPendingApkDownload() {
+        pendingApkDownloadId = -1L;
+        pendingApkVersionCode = -1;
+        pendingApkFileName = "";
+        getSharedPreferences("ffarena_updates", MODE_PRIVATE).edit()
+                .remove("pending_download_id")
+                .remove("pending_version_code")
+                .remove("pending_file_name")
+                .apply();
     }
 
     private void installDownloadedApk(Uri apkUri) {
@@ -296,6 +340,7 @@ public class MainActivity extends Activity {
         super.onResume();
         if (featureWebView != null) featureWebView.onResume();
         CookieManager.getInstance().flush();
+        restorePendingApkDownload();
         if (pendingInstallUri != null
                 && (Build.VERSION.SDK_INT < 26 || getPackageManager().canRequestPackageInstalls())) {
             Uri uri = pendingInstallUri;
@@ -849,9 +894,6 @@ public class MainActivity extends Activity {
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setDatabaseEnabled(true);
         settings.setLoadsImagesAutomatically(true);
-        if (Build.VERSION.SDK_INT >= 23) {
-            settings.setOffscreenPreRaster(true);
-        }
         if (Build.VERSION.SDK_INT >= 26) {
             webView.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, true);
         }
