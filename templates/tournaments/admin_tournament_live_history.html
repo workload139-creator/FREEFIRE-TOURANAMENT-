@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}{{ tournament.title }} · Live History | FF Arena{% endblock %}
+{% block content %}
+<style>
+.ff-history{max-width:1400px;margin:0 auto;padding:22px 12px 48px;color:#eaf2ff}
+.ff-history-hero{padding:22px;border:1px solid #35d7ff66;border-radius:18px;background:linear-gradient(135deg,#12243a,#080f1c);margin-bottom:18px}
+.ff-history .card{background:#101d30;color:#eaf2ff;border:1px solid #4381ad66}
+.ff-history .table{color:#eaf2ff}.ff-history .table th,.ff-history .table td{background:#0d1928;color:#dbeaff;border-color:#ffffff20;vertical-align:middle}
+</style>
+<div class="container-fluid ff-history">
+ <div class="ff-history-hero">
+  <div class="small text-info fw-bold">FF ARENA · PRIVATE LIVE HISTORY</div>
+  <h1 class="text-white">📚 {{ tournament.title }} — Session History</h1>
+  <p class="mb-3">Tournament {{ tournament.get_status_display }} · {{ history_sessions|length }} saved player session(s)</p>
+  <a class="btn btn-outline-info btn-sm" href="{% url 'tournaments:admin_tournament_dashboard' tournament.pk %}">← Tournament Control</a>
+  {% if tournament.status == "live" %}<a class="btn btn-outline-light btn-sm" href="{% url 'tournaments:admin_tournament_live_monitor' tournament.pk %}">Open Live Monitor</a>{% endif %}
+ </div>
+ <div class="card p-3">
+  <h4>All player sessions</h4>
+  <p class="text-muted">Completed tournament ke sessions yahan read-only record ke roop mein rahenge. Is page se stream connect ya reward credit nahi hota.</p>
+  <div class="table-responsive">
+   <table class="table table-bordered table-striped">
+    <thead><tr><th>#</th><th>Player</th><th>Free Fire UID</th><th>Session</th><th>Verified Kills</th><th>Frames</th><th>Detections</th><th>Started</th><th>Ended</th><th>Monitor State</th><th>Issue</th></tr></thead>
+    <tbody>
+     {% for session in history_sessions %}
+     <tr>
+      <td>{{ forloop.counter }}</td>
+      <td>{{ session.registration.player.username }}</td>
+      <td>{{ session.registration.free_fire_uid }}</td>
+      <td>{{ session.get_status_display }}</td>
+      <td>{{ session.approved_live_kills }}</td>
+      <td>{{ session.monitor_frames_seen }}</td>
+      <td>{{ session.monitor_detections_seen }}</td>
+      <td>{{ session.started_at|date:"d M Y, h:i:s A" }}</td>
+      <td>{{ session.ended_at|date:"d M Y, h:i:s A"|default:"—" }}</td>
+      <td>{{ session.monitor_state }}</td>
+      <td>{{ session.monitor_last_error|default:"—" }}</td>
+     </tr>
+     {% empty %}
+     <tr><td colspan="11" class="text-center">Is tournament ka koi saved Live session nahi hai.</td></tr>
+     {% endfor %}
+    </tbody>
+   </table>
+  </div>
+ </div>
+</div>
+{% endblock %}
