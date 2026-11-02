@@ -194,7 +194,8 @@ def wallet_view(request):
 def wallet_history_view(request):
     wallet, _created = Wallet.objects.get_or_create(user=request.user)
     from apps.social.models import (
-        PlayerShopWalletTransaction, ShopPaymentRequest, FanTokenAward, CurrencyGift
+        PlayerShopWalletTransaction, ShopPaymentRequest, FanTokenAward, CurrencyGift,
+        CurrencyWithdrawalRequest, DailySpin
     )
     from apps.tournaments.models import Registration, TournamentLedgerEntry
     from django.db.models import Q
@@ -217,6 +218,12 @@ def wallet_history_view(request):
         "fan_token_gifts": CurrencyGift.objects.filter(
             Q(sender=request.user) | Q(recipient=request.user)
         ).select_related("sender", "recipient").order_by("-created_at")[:100],
+        "currency_withdrawals": CurrencyWithdrawalRequest.objects.filter(
+            user=request.user
+        ).order_by("-created_at")[:50],
+        "daily_spins": DailySpin.objects.filter(
+            user=request.user
+        ).order_by("-spun_at")[:100],
         "tournament_ledger_entries": TournamentLedgerEntry.objects.filter(
             player=request.user
         ).select_related("tournament", "registration").order_by("-created_at")[:100],
