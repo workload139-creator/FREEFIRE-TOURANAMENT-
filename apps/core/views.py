@@ -23,12 +23,15 @@ def home(request):
 
 
 def health_check(request):
-    """Lightweight Render health endpoint; never expose internal error details."""
-    try:
-        connection.ensure_connection()
-    except DatabaseError:
-        return JsonResponse({"status": "unhealthy", "database": "unavailable"}, status=503)
-    return JsonResponse({"status": "ok", "database": "ok"})
+    """Fast process-liveness endpoint for Render; do not block on database I/O.
+
+    Database availability is checked by normal application requests and monitoring.
+    A slow/temporarily unavailable database must not make Render recycle a healthy
+    web process because its liveness probe has a short timeout.
+    """
+    response = JsonResponse({"status": "ok"})
+    response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return response
 
 
 
