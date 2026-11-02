@@ -586,6 +586,10 @@ def admin_finish_tournament(request, tournament_id):
 
     tournament.status = Tournament.Status.COMPLETED
     tournament.save(update_fields=["status", "updated_at"])
+    # Close every remaining stream, but retain all session rows for the audit history.
+    TournamentLiveSession.objects.filter(
+        tournament=tournament, status=TournamentLiveSession.Status.ACTIVE
+    ).update(status=TournamentLiveSession.Status.ENDED, ended_at=timezone.now(), updated_at=timezone.now())
     next_round = create_next_tournament_round(tournament.pk)
     if next_round:
         messages.success(request, f"Tournament COMPLETED. History mein save hai aur naya round '{next_round.title}' registration ke liye ready hai. Admin ise Live Monitor se manually LIVE kare.")
@@ -777,14 +781,39 @@ def admin_confirm_live_kill_reward(request, tournament_id, registration_id):
 @login_required
 @user_passes_test(lambda user: user.is_staff)
 def admin_tournament_live_monitor(request, tournament_id):
-    """Dedicated tournament-scoped page for viewing all eligible player streams."""
+    """Show only one current stream per Free Fire UID during a LIVE tournament."""
     process_expired_ready_registrations()
     tournament = get_object_or_404(Tournament, pk=tournament_id)
+    if tournament.status == Tournament.Status.COMPLETED:
+        return redirect("tournaments:admin_tournament_live_history", tournament_id=tournament.pk)
+    if tournament.status != Tournament.Status.LIVE:
+        messages.info(request, "Live Monitor sirf LIVE tournament ke liye hai. Purane sessions History mein milenge.")
+        return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
+
     sessions = list(
-        TournamentLiveSession.objects.filter(tournament=tournament)
-        .select_related("registration", "registration__player")
-        .order_by("-started_at")
+        TournamentLiveSession.objects.filter(
+            tournament=tournament,
+            status=TournamentLiveSession.Status.ACTIVE,
+            registration__status=Registration.Status.READY,
+            registration__payment_verified=True,
+            registration__refund_processed=False,
+        ).select_related("registration", "registration__player").order_by("-started_at", "-pk")
     )
+    # A Free Fire UID represents one player in this tournament. Keep the newest
+    # active session only; duplicate/older sessions are closed but preserved in history.
+    unique_sessions = []
+    seen_uids = set()
+    for session in sessions:
+        uid = str(session.registration.free_fire_uid or "").strip()
+        if uid in seen_uids:
+            TournamentLiveSession.objects.filter(
+                pk=session.pk, status=TournamentLiveSession.Status.ACTIVE
+            ).update(status=TournamentLiveSession.Status.ENDED, ended_at=timezone.now(), updated_at=timezone.now())
+            continue
+        seen_uids.add(uid)
+        unique_sessions.append(session)
+    sessions = unique_sessions
+
     from apps.social.models import PlayerShopWallet
     player_ids = {session.registration.player_id for session in sessions}
     wallets = {wallet.user_id: wallet for wallet in PlayerShopWallet.objects.filter(user_id__in=player_ids)}
@@ -808,6 +837,29 @@ def admin_tournament_live_monitor(request, tournament_id):
             str(kills): rewards_for_tournament(tournament, kills)
             for kills in range(0, 50)
         },
+    })
+
+
+@login_required
+@user_passes_test(lambda user: user.is_staff)
+def admin_tournament_live_history(request, tournament_id):
+    """Read-only archive of every LiveKit session after a tournament ends."""
+    tournament = get_object_or_404(Tournament, pk=tournament_id)
+    sessions = list(
+        TournamentLiveSession.objects.filter(tournament=tournament)
+        .select_related("registration", "registration__player")
+        .order_by("-started_at", "-pk")
+    )
+    kill_counts = dict(
+        LiveKillEvent.objects.filter(tournament=tournament, status=LiveKillEvent.Status.VERIFIED)
+        .values("registration_id").annotate(total=Count("id"))
+        .values_list("registration_id", "total")
+    )
+    for session in sessions:
+        session.approved_live_kills = kill_counts.get(session.registration_id, 0)
+    return render(request, "tournaments/admin_tournament_live_history.html", {
+        "tournament": tournament,
+        "history_sessions": sessions,
     })
 
 
