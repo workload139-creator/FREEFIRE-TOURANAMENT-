@@ -16,7 +16,10 @@
       {% if registration.payment_reference %}<p>Submitted UTR: <strong>{{ registration.payment_reference }}</strong></p>{% endif %}
       {% if registration.status == "pending_payment" %}<div class="profile-notice">Seat abhi confirm nahi hai. Admin ko UTR ko actual received payment se match karna hoga.</div>{% endif %}
       <p>Registration status: <strong>{{ registration.get_status_display }}</strong></p>
-      {% if registration.tournament.status == "live" %}<p><a class="button button-primary" style="background:#d90032;border-color:#ff536f;color:#fff" href="https://www.youtube.com/@freefire_tour/live" target="_blank" rel="noopener noreferrer">▶ Watch Tournament Live</a></p>{% endif %}
+      {% if registration.tournament.status == "live" %}
+        <p><a class="button button-primary" style="background:linear-gradient(110deg,#086cff,#10a9c5);border-color:#50dfff;color:#fff" href="{% url 'tournaments:leaderboard' registration.tournament.id %}">👁 Watch Player Live · Leaderboard</a></p>
+        <p><a class="button button-outline" href="https://www.youtube.com/@freefire_tour/live" target="_blank" rel="noopener noreferrer">▶ Watch FF Arena on YouTube</a></p>
+      {% endif %}
       <p>Match time: {{ registration.tournament.start_time|date:"d M Y, h:i A" }}</p>
       <section class="registration-refund-panel" aria-label="Refund options" style="margin:14px 0;padding:14px;border:1px solid #ffc66a66;border-radius:12px;background:#151722">
         <h3 style="margin:0 0 6px">💸 Refund & payment status</h3>
