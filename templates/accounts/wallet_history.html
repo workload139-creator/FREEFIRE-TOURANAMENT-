@@ -59,6 +59,14 @@
     {% empty %}<p class="empty">No INR wallet transactions.</p>{% endfor %}
   </section>
 
+  <section class="history-section"><h2>💸 Diamonds / Coins Withdrawal Requests</h2>
+    {% for withdrawal in currency_withdrawals %}<article class="history-card"><header><strong>{{ withdrawal.quantity }} {{ withdrawal.get_currency_display }} · ₹{{ withdrawal.amount_inr }}</strong><span>{{ withdrawal.get_status_display }}</span></header><p>UPI: {{ withdrawal.upi_id }}</p>{% if withdrawal.payout_reference %}<p>Payout reference: {{ withdrawal.payout_reference }}</p>{% endif %}<small>{{ withdrawal.created_at|date:"d M Y, h:i A" }}{% if withdrawal.processed_at %} · Processed: {{ withdrawal.processed_at|date:"d M Y, h:i A" }}{% endif %}</small></article>{% empty %}<p class="empty">No currency withdrawal requests.</p>{% endfor %}
+  </section>
+
+  <section class="history-section"><h2>🎡 Daily Spin Rewards</h2>
+    {% for spin in daily_spins %}<article class="history-card"><header><strong>+{{ spin.quantity }} {{ spin.get_currency_display }}</strong><span>Reward received</span></header><small>{{ spin.spun_at|date:"d M Y, h:i A" }}</small></article>{% empty %}<p class="empty">No spin rewards yet.</p>{% endfor %}
+  </section>
+
   <section class="history-section"><h2>🎁 Player Gifts & Fan Token Rewards</h2>
     {% for gift in fan_token_gifts %}<article class="history-card"><header><strong>{{ gift.quantity }} {{ gift.get_currency_display }} {% if gift.sender_id == user.pk %}sent to {{ gift.recipient.username }}{% else %}received from {{ gift.sender.username }}{% endif %}</strong><span>Gift</span></header><small>{{ gift.created_at|date:"d M Y, h:i A" }}</small></article>{% empty %}<p class="empty">No player gifts yet.</p>{% endfor %}
     {% for award in fan_token_awards %}<article class="history-card"><header><strong>+{{ award.quantity }} Fan Token(s) earned</strong><span>Milestone {{ award.follower_milestone }}</span></header><small>{{ award.created_at|date:"d M Y, h:i A" }}</small></article>{% endfor %}
