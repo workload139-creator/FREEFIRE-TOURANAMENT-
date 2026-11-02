@@ -89,6 +89,8 @@ urlpatterns = [
     # Central admin Live Monitor — all formats, one global LIVE slot
     path("admin/live-monitor/", views.admin_live_monitor, name="admin_live_monitor"),
 
+    path("admin/tournament/<int:tournament_id>/live-monitor/", views.admin_tournament_live_monitor, name="admin_tournament_live_monitor"),
+
     # Admin dashboard and kill evidence review
     path(
         "admin/tournament/<int:tournament_id>/dashboard/",

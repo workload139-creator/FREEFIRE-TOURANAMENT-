@@ -668,6 +668,42 @@ def admin_live_monitor(request):
 
 
 
+
+@login_required
+@user_passes_test(lambda user: user.is_staff)
+def admin_tournament_live_monitor(request, tournament_id):
+    """Dedicated tournament-scoped page for viewing all eligible player streams."""
+    process_expired_ready_registrations()
+    tournament = get_object_or_404(Tournament, pk=tournament_id)
+    sessions = list(
+        TournamentLiveSession.objects.filter(tournament=tournament)
+        .select_related("registration", "registration__player")
+        .order_by("-started_at")
+    )
+    from apps.social.models import PlayerShopWallet
+    player_ids = {session.registration.player_id for session in sessions}
+    wallets = {wallet.user_id: wallet for wallet in PlayerShopWallet.objects.filter(user_id__in=player_ids)}
+    kill_counts = dict(
+        LiveKillEvent.objects.filter(tournament=tournament, status=LiveKillEvent.Status.VERIFIED)
+        .values("registration_id").annotate(total=Count("id"))
+        .values_list("registration_id", "total")
+    )
+    for session in sessions:
+        session.approved_live_kills = kill_counts.get(session.registration_id, 0)
+        session.wallet_balance = wallets.get(session.registration.player_id)
+        session.reward_preview = (
+            rewards_for_tournament(tournament, session.approved_live_kills)
+            if session.approved_live_kills >= 2 else []
+        )
+    return render(request, "tournaments/admin_tournament_live_monitor.html", {
+        "tournament": tournament,
+        "live_sessions": sessions,
+        "live_leaderboard": sorted(sessions, key=lambda item: item.approved_live_kills, reverse=True),
+    })
+
+
+
+
 @login_required
 @user_passes_test(lambda user: user.is_staff)
 def admin_tournament_dashboard(request, tournament_id):
