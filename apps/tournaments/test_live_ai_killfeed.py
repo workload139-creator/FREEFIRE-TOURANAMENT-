@@ -9,9 +9,10 @@ from apps.tournaments.live_ai_killfeed import (
 
 
 class LiveKillfeedOCRTests(SimpleTestCase):
-    def test_only_br_and_clash_squad_tournament_modes_are_enabled(self):
+    def test_only_battle_royale_mode_is_enabled(self):
         self.assertTrue(live_kill_detection_enabled("BR"))
-        self.assertTrue(live_kill_detection_enabled("VS"))
+        self.assertFalse(live_kill_detection_enabled("VS"))
+        self.assertFalse(live_kill_detection_enabled("CS"))
         self.assertFalse(live_kill_detection_enabled(""))
         self.assertFalse(live_kill_detection_enabled("TRAINING_GROUND"))
         self.assertFalse(live_kill_detection_enabled("CUSTOM"))
