@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }} · {{ tournament.title }} | FF Arena{% endblock %}
+{% block content %}
+<style>
+.ff-admin-pages{max-width:1500px;margin:auto;padding:18px;color:#eaf2ff}.ff-admin-pages .hero{padding:22px;border:1px solid #35d7ff55;border-radius:18px;background:linear-gradient(135deg,#10243c,#080e1b)}.ff-admin-pages h1,.ff-admin-pages h2{color:#fff}.ff-admin-pages .nav{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.ff-admin-pages .nav a{padding:9px 12px;border:1px solid #ffffff25;border-radius:10px;background:#14243a;color:#dceeff;text-decoration:none;font-weight:800;font-size:12px}.ff-admin-pages .panel{padding:18px;margin:14px 0;border:1px solid #3d6a9655;border-radius:16px;background:#0c1929}.ff-admin-pages .table{color:#dceaff;font-size:13px}.ff-admin-pages .table td,.ff-admin-pages .table th{background:#102137;border-color:#ffffff18;vertical-align:middle}.ff-admin-pages .table th{color:#78dfff}.ff-admin-pages a{color:#67ddff}.ff-admin-pages .muted{color:#a9bbd1}
+</style>
+<div class="ff-admin-pages">
+ <div class="hero">
+  <div class="small text-info fw-bold">FF ARENA · TOURNAMENT ADMIN</div>
+  <h1>{{ page_title }}</h1><p class="muted mb-2">{{ tournament.title }} · {{ tournament.get_status_display }}</p>
+  <a class="btn btn-outline-info btn-sm" href="{% url 'tournaments:admin_tournament_dashboard' tournament.pk %}">← Main control dashboard</a>
+ </div>
+ <nav class="nav" aria-label="Tournament admin pages">
+  <a href="{% url 'tournaments:admin_tournament_section' tournament.pk 'controls' %}">🎛️ Controls</a>
+  <a href="{% url 'tournaments:admin_tournament_section' tournament.pk 'payments' %}">💳 Payments</a>
+  <a href="{% url 'tournaments:admin_tournament_section' tournament.pk 'players' %}">👥 Players</a>
+  <a href="{% url 'tournaments:admin_tournament_live_monitor' tournament.pk %}">📡 Live Monitor</a>
+  <a href="{% url 'tournaments:admin_tournament_section' tournament.pk 'evidence' %}">🤖 Evidence & AI</a>
+  <a href="{% url 'tournaments:admin_tournament_section' tournament.pk 'refunds' %}">↩️ Refund Queue</a>
+  <a href="{% url 'tournaments:admin_tournament_section' tournament.pk 'refund-history' %}">🧾 Refund History</a>
+  <a href="{% url 'tournaments:admin_tournament_section' tournament.pk 'ledger' %}">📚 Wallet Ledger</a>
+ </nav>
+ {% if page == "controls" %}
+ <div class="panel"><h2>Tournament controls</h2><p class="muted">Status, room setup, winner UID aur prize controls ke liye full control dashboard use karein.</p><a class="btn btn-warning" href="{% url 'tournaments:admin_tournament_dashboard' tournament.pk %}">Open full Controls Dashboard</a> <a class="btn btn-outline-info" href="{{ status_change_url }}">Edit tournament in Admin</a></div>
+ {% elif page == "payments" %}
+ <div class="panel"><h2>Pending payment verification</h2><p class="muted">{{ rows|length }} pending payment(s)</p><div class="table-responsive"><table class="table table-bordered"><thead><tr><th>Player</th><th>Free Fire UID</th><th>Fee</th><th>UTR / Reference</th><th>Status</th><th>Player page</th></tr></thead><tbody>{% for r in rows %}<tr><td>{{ r.player.username }} (#{{ r.player_id }})</td><td>{{ r.free_fire_uid }}</td><td>₹{{ r.entry_fee_paid }}</td><td>{{ r.payment_reference|default:"—" }}</td><td>{% if r.payment_verified %}Verified{% else %}Pending{% endif %}</td><td><a href="{% url 'tournaments:admin_tournament_player' tournament.pk r.pk %}">Open</a></td></tr>{% empty %}<tr><td colspan="6">No pending payments.</td></tr>{% endfor %}</tbody></table></div></div>
+ {% elif page == "players" %}
+ <div class="panel"><h2>All registered players</h2><div class="table-responsive"><table class="table table-bordered"><thead><tr><th>Player</th><th>Free Fire UID</th><th>Payment</th><th>Player status</th><th>Team</th><th>Details</th></tr></thead><tbody>{% for r in rows %}<tr><td>{{ r.player.username }} (#{{ r.player_id }})</td><td>{{ r.free_fire_uid }}</td><td>{% if r.payment_verified %}Verified{% else %}Pending{% endif %}</td><td>{{ r.get_status_display }}</td><td>{{ r.team_number|default:"—" }} / {{ r.team_position|default:"—" }}</td><td><a class="btn btn-sm btn-outline-info" href="{% url 'tournaments:admin_tournament_player' tournament.pk r.pk %}">Open player page →</a></td></tr>{% empty %}<tr><td colspan="6">No registrations.</td></tr>{% endfor %}</tbody></table></div></div>
+ {% elif page == "evidence" %}
+ <div class="panel"><h2>Kill evidence & AI review</h2><div class="table-responsive"><table class="table table-bordered"><thead><tr><th>Player</th><th>UID</th><th>AI kills</th><th>Confidence</th><th>UID match</th><th>Review status</th><th>Evidence</th></tr></thead><tbody>{% for e in rows %}<tr><td>{{ e.player.username }}</td><td>{{ e.free_fire_uid }}</td><td>{{ e.ai_proposed_kills|default:"—" }}</td><td>{{ e.ai_confidence|default:"—" }}</td><td>{{ e.ai_uid_matches|yesno:"Yes,No,Pending" }}</td><td>{{ e.get_status_display }}</td><td><a href="{% url 'admin:tournaments_killsubmission_change' e.pk %}" target="_blank" rel="noopener">Review evidence in Admin →</a></td></tr>{% empty %}<tr><td colspan="7">No evidence submissions.</td></tr>{% endfor %}</tbody></table></div><p class="muted mt-2">AI result sirf review assistance hai. Final approval aur reward Admin control mein rahega.</p></div>
+ {% elif page == "refunds" or page == "refund-history" %}
+ <div class="panel"><h2>{% if page == "refunds" %}Pending refund queue{% else %}Refund history{% endif %}</h2><div class="table-responsive"><table class="table table-bordered"><thead><tr><th>Player</th><th>UID</th><th>Amount</th><th>Status</th><th>Refund reference</th><th>Details</th></tr></thead><tbody>{% for r in rows %}<tr><td>{{ r.player.username }}</td><td>{{ r.free_fire_uid }}</td><td>₹{{ r.entry_fee_paid }}</td><td>{{ r.get_status_display }}</td><td>{{ r.refund_reference|default:"—" }}</td><td><a href="{% url 'tournaments:admin_tournament_player' tournament.pk r.pk %}">Open player</a></td></tr>{% empty %}<tr><td colspan="6">No refund records.</td></tr>{% endfor %}</tbody></table></div></div>
+ {% elif page == "ledger" %}
+ <div class="panel"><h2>Tournament wallet ledger</h2><div class="table-responsive"><table class="table table-bordered"><thead><tr><th>Created</th><th>Player</th><th>UID</th><th>Type</th><th>Currency</th><th>Quantity</th><th>Status</th><th>Reference</th></tr></thead><tbody>{% for entry in rows %}<tr><td>{{ entry.created_at|date:"d M Y H:i" }}</td><td>{{ entry.player.username }}</td><td>{{ entry.registration.free_fire_uid|default:"—" }}</td><td>{{ entry.get_entry_type_display }}</td><td>{{ entry.currency }}</td><td>{{ entry.quantity }}</td><td>{{ entry.get_status_display }}</td><td>{{ entry.reference }}</td></tr>{% empty %}<tr><td colspan="8">No ledger entries.</td></tr>{% endfor %}</tbody></table></div></div>
+ {% endif %}
+</div>
+{% endblock %}

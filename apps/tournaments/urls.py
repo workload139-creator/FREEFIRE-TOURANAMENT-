@@ -93,6 +93,8 @@ urlpatterns = [
     path("admin/tournament/<int:tournament_id>/live-monitor/registration/<int:registration_id>/reward/", views.admin_confirm_live_kill_reward, name="admin_confirm_live_kill_reward"),
 
     # Admin dashboard and kill evidence review
+    path("admin/tournament/<int:tournament_id>/section/<slug:section>/", views.admin_tournament_section, name="admin_tournament_section"),
+    path("admin/tournament/<int:tournament_id>/player/<int:registration_id>/", views.admin_tournament_player, name="admin_tournament_player"),
     path(
         "admin/tournament/<int:tournament_id>/dashboard/",
         views.admin_tournament_dashboard,

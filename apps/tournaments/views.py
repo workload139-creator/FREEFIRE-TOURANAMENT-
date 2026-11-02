@@ -813,6 +813,76 @@ def admin_tournament_live_monitor(request, tournament_id):
 
 
 
+
+@login_required
+@user_passes_test(lambda user: user.is_staff)
+def admin_tournament_section(request, tournament_id, section):
+    """Render a dedicated, tournament-scoped admin page for each operational area."""
+    process_expired_ready_registrations()
+    tournament = get_object_or_404(Tournament, pk=tournament_id)
+    registrations = Registration.objects.filter(tournament=tournament).select_related("player").order_by("-registered_at")
+    allowed = {"controls", "payments", "players", "evidence", "refunds", "refund-history", "ledger"}
+    if section not in allowed:
+        raise Http404("Admin section not found.")
+    if section == "payments":
+        rows = registrations.filter(payment_verified=False, entry_fee_paid__gt=0)
+        title = "Payment Verification"
+    elif section == "players":
+        rows = registrations
+        title = "Registered Players"
+    elif section == "evidence":
+        rows = KillSubmission.objects.filter(tournament=tournament).select_related("player", "registration").order_by("-submitted_at")
+        title = "Evidence & AI Review"
+    elif section == "refunds":
+        rows = registrations.filter(payment_verified=True, entry_fee_paid__gt=0, refund_processed=False, status__in=[Registration.Status.CANCELLED, Registration.Status.NOT_PLAYING]).select_related("player")
+        title = "Refund Queue"
+    elif section == "refund-history":
+        rows = registrations.filter(refund_processed=True).select_related("player").order_by("-refund_processed_at", "-registered_at")
+        title = "Refund History"
+    elif section == "ledger":
+        rows = TournamentLedgerEntry.objects.filter(tournament=tournament).select_related("player", "registration").order_by("-created_at")
+        title = "Wallet Ledger"
+    else:
+        rows = []
+        title = "Tournament Controls"
+    if tournament.is_free_fan_tournament:
+        status_change_url = reverse("admin:tournaments_freefantournament_change", args=[tournament.pk])
+    elif tournament.is_diwali_offer:
+        status_change_url = reverse("admin:tournaments_diwalioffertournament_change", args=[tournament.pk])
+    elif tournament.is_unlimited_br:
+        status_change_url = reverse("admin:tournaments_unlimitedtournament_change", args=[tournament.pk])
+    else:
+        status_change_url = reverse("admin:tournaments_tournament_change", args=[tournament.pk])
+    return render(request, "tournaments/admin_section.html", {
+        "tournament": tournament, "page": section, "page_title": title,
+        "rows": rows, "status_change_url": status_change_url,
+    })
+
+
+@login_required
+@user_passes_test(lambda user: user.is_staff)
+def admin_tournament_player(request, tournament_id, registration_id):
+    """Private player-specific operations and audit view within one tournament."""
+    tournament = get_object_or_404(Tournament, pk=tournament_id)
+    registration = get_object_or_404(
+        Registration.objects.select_related("player", "tournament"),
+        pk=registration_id, tournament=tournament,
+    )
+    return render(request, "tournaments/admin_player_detail.html", {
+        "tournament": tournament,
+        "registration": registration,
+        "sessions": TournamentLiveSession.objects.filter(
+            tournament=tournament, registration=registration
+        ).order_by("-started_at"),
+        "evidence": KillSubmission.objects.filter(
+            tournament=tournament, registration=registration
+        ).order_by("-submitted_at"),
+        "ledger": TournamentLedgerEntry.objects.filter(
+            tournament=tournament, registration=registration
+        ).order_by("-created_at"),
+    })
+
+
 @login_required
 @user_passes_test(lambda user: user.is_staff)
 def admin_tournament_dashboard(request, tournament_id):
