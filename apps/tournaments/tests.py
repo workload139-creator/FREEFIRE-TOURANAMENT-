@@ -128,3 +128,23 @@ class TournamentSpecificRewardTests(SimpleTestCase):
         tournament = SimpleNamespace(mode="BR", is_diwali_offer=False, is_free_fan_tournament=False, br_format="solo")
         with self.assertRaises(ValueError):
             rewards_for_tournament(tournament, -1)
+
+class LiveKillfeedModeTests(SimpleTestCase):
+    def test_ai_kill_detection_is_br_only(self):
+        from .live_ai_killfeed import live_kill_detection_enabled
+
+        self.assertTrue(live_kill_detection_enabled("BR"))
+        self.assertFalse(live_kill_detection_enabled("VS"))
+        self.assertFalse(live_kill_detection_enabled("CS"))
+        self.assertFalse(live_kill_detection_enabled(""))
+
+    def test_elimination_requires_player_facing_overlay(self):
+        from .live_ai_killfeed import player_eliminated_from_text
+
+        self.assertTrue(player_eliminated_from_text("YOU ARE ELIMINATED"))
+        self.assertTrue(player_eliminated_from_text("You have been eliminated"))
+        self.assertTrue(player_eliminated_from_text("ELIMINATED SPECTATING"))
+        self.assertFalse(player_eliminated_from_text("Enemy eliminated Player"))
+        self.assertFalse(player_eliminated_from_text("Player eliminated"))
+        self.assertFalse(player_eliminated_from_text("Headshot kill"))
+

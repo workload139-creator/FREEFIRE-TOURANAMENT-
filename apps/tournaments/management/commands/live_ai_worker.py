@@ -1,6 +1,8 @@
-"""Subscribe to BR/VS LiveKit streams, verify UID and submit kill candidates for Admin review.
+"""Subscribe to BR LiveKit streams and hold kill screenshots until player elimination.
 
-OCR is a candidate signal only. This worker never approves kills or issues wallet credits.
+OCR is a candidate signal only. Screenshots stay in worker memory until an
+elimination overlay is detected, then are submitted for Admin review. This
+worker never approves kills or issues wallet credits. Clash Squad is excluded.
 """
 import asyncio
 import base64
@@ -24,13 +26,14 @@ from PIL import Image
 import pytesseract
 
 from apps.tournaments.live_ai_ocr import verify_profile_uid
-from apps.tournaments.live_ai_killfeed import live_kill_detection_enabled, scan_full_frame_for_kill_text
+from apps.tournaments.live_ai_killfeed import live_kill_detection_enabled, player_eliminated_from_text, scan_full_frame_for_kill_text
 from apps.tournaments.models import TournamentLiveSession
 
 logger = logging.getLogger(__name__)
 OCR_SAMPLE_INTERVAL = 2.0
 KILL_SCAN_INTERVAL = 1.5
 KILL_TERMS = {"eliminated", "knocked", "headshot", "kill", "killed", "assist"}
+MAX_PENDING_KILL_SCREENSHOTS = 49
 
 
 @dataclass
@@ -48,6 +51,9 @@ class SessionWorker:
     last_ocr_at: float = 0.0
     last_kill_scan_at: float = 0.0
     last_kill_fingerprint: str = ""
+    seen_kill_signatures: set = field(default_factory=set)
+    pending_kill_evidence: list = field(default_factory=list)
+    elimination_detected: bool = False
 
 
 @sync_to_async
@@ -56,7 +62,7 @@ def active_sessions():
         TournamentLiveSession.objects.filter(
             status=TournamentLiveSession.Status.ACTIVE,
             tournament__status="live",
-            tournament__mode__in=("BR", "VS"),
+            tournament__mode="BR",
             registration__status="ready",
             registration__payment_verified=True,
             registration__refund_processed=False,
@@ -103,19 +109,24 @@ def _ocr_frame_for_uid(frame, registered_uid):
         image.close()
 
 
-def _scan_kill_candidate(frame):
+def _scan_live_frame(frame):
+    """Return one kill screenshot candidate plus whether the player's own death is visible."""
     rgb = frame.convert(rtc.VideoBufferType.RGB24)
     image = Image.frombytes("RGB", (rgb.width, rgb.height), bytes(rgb.data))
     try:
         words = scan_full_frame_for_kill_text(image)
-        relevant = [item for item in words if item["text"].lower() in KILL_TERMS]
-        if not relevant:
-            return None
         text = " ".join(item["text"] for item in words)[:5000]
+        eliminated = player_eliminated_from_text(text)
+        relevant = [item for item in words if item["text"].lower() in KILL_TERMS]
+        if eliminated or not relevant:
+            return None, eliminated
+        # Keep the temporary in-memory screenshot bounded; the original screen
+        # share remains available to Admin in the Live Monitor.
+        image.thumbnail((640, 360))
         buffer = io.BytesIO()
-        image.save(buffer, format="JPEG", quality=82, optimize=True)
+        image.save(buffer, format="JPEG", quality=52, optimize=True)
         evidence_b64 = base64.b64encode(buffer.getvalue()).decode("ascii")
-        return text, min(item["confidence"] for item in relevant), evidence_b64
+        return (text, min(item["confidence"] for item in relevant), evidence_b64), False
     finally:
         image.close()
 
@@ -191,27 +202,44 @@ class LiveAIWorker:
                             worker.identity_verified = True
                             await mark_identity_verified(worker.session_uuid, confidence)
                             logger.info("Registered UID verified for session=%s registration=%s", worker.session_uuid, worker.registration_id)
-                    if live_kill_detection_enabled(worker.tournament_mode) and worker.identity_verified and now - worker.last_kill_scan_at >= KILL_SCAN_INTERVAL:
+                    if live_kill_detection_enabled(worker.tournament_mode) and worker.identity_verified and not worker.elimination_detected and now - worker.last_kill_scan_at >= KILL_SCAN_INTERVAL:
                         worker.last_kill_scan_at = now
-                        candidate = await asyncio.to_thread(_scan_kill_candidate, frame)
+                        candidate, player_eliminated = await asyncio.to_thread(_scan_live_frame, frame)
                         if candidate:
                             detected_text, confidence, evidence_image_b64 = candidate
-                            # Stable fingerprint: do not include a time bucket. A persistent
-                            # killfeed notification can remain on screen across many OCR scans;
-                            # time-bucket fingerprints would turn that one notification into
-                            # repeated reward candidates every few seconds. The DB unique
-                            # constraint then deduplicates this event across worker restarts.
                             normalized_text = " ".join(detected_text.casefold().split())
-                            fingerprint = hashlib.sha256(
-                                f"{worker.session_uuid}|{normalized_text}".encode("utf-8")
-                            ).hexdigest()
-                            if fingerprint != worker.last_kill_fingerprint:
+                            signature = hashlib.sha256(normalized_text.encode("utf-8")).hexdigest()
+                            if signature not in worker.seen_kill_signatures:
+                                worker.seen_kill_signatures.add(signature)
+                                worker.last_kill_fingerprint = signature
+                                worker.pending_kill_evidence.append({
+                                    "text": detected_text,
+                                    "confidence": confidence,
+                                    "image": evidence_image_b64,
+                                    "signature": signature,
+                                })
+                                if len(worker.pending_kill_evidence) > MAX_PENDING_KILL_SCREENSHOTS:
+                                    worker.pending_kill_evidence.pop(0)
+                                await update_monitor(worker.session_uuid, "processing", detections_delta=1)
+
+                        if player_eliminated:
+                            # Only now send the temporarily buffered kill screenshots
+                            # to the private ingestion endpoint for permanent evidence storage.
+                            while worker.pending_kill_evidence:
+                                item = worker.pending_kill_evidence[0]
+                                fingerprint = hashlib.sha256(
+                                    f"{worker.session_uuid}|{item['signature']}".encode("utf-8")
+                                ).hexdigest()
                                 accepted = await asyncio.to_thread(
-                                    _post_kill_candidate, worker.session_uuid, detected_text, confidence, fingerprint, evidence_image_b64
+                                    _post_kill_candidate, worker.session_uuid, item["text"],
+                                    item["confidence"], fingerprint, item["image"]
                                 )
-                                if accepted:
-                                    worker.last_kill_fingerprint = fingerprint
-                                    await update_monitor(worker.session_uuid, "processing", detections_delta=1)
+                                if not accepted:
+                                    break
+                                worker.pending_kill_evidence.pop(0)
+                            if not worker.pending_kill_evidence:
+                                worker.elimination_detected = True
+                                await update_monitor(worker.session_uuid, "eliminated")
                 except Exception:
                     logger.exception("Live AI frame analysis failed for session %s", worker.session_uuid)
         except asyncio.CancelledError:
@@ -251,6 +279,7 @@ class LiveAIWorker:
 
     async def _disconnect(self, session_uuid, error=""):
         worker = self.workers.pop(session_uuid, None)
+        was_eliminated = bool(worker and worker.elimination_detected)
         if worker:
             for task in tuple(worker.frame_tasks):
                 task.cancel()
@@ -262,7 +291,7 @@ class LiveAIWorker:
                 logger.exception("Room disconnect failed for session %s", session_uuid)
         await update_monitor(
             session_uuid,
-            "degraded" if error else "stopped",
+            "eliminated" if was_eliminated else ("degraded" if error else "stopped"),
             error=error,
         )
 
@@ -293,7 +322,7 @@ class LiveAIWorker:
                     worker.frames_pending = 0
                     await update_monitor(
                         session_uuid,
-                        "processing" if worker.identity_verified else "connected",
+                        "eliminated" if worker.elimination_detected else ("processing" if worker.identity_verified else "connected"),
                         frames_delta=delta,
                     )
 
@@ -304,7 +333,7 @@ class LiveAIWorker:
 
 
 class Command(BaseCommand):
-    help = "Subscribe to active FF Arena LiveKit rooms, verify UID, and submit BR/VS kill candidates for Admin review."
+    help = "Subscribe to BR LiveKit rooms, temporarily capture kill screenshots, and save them as evidence after player elimination."
 
     def add_arguments(self, parser):
         parser.add_argument("--poll-seconds", type=int, default=5)
@@ -322,7 +351,7 @@ class Command(BaseCommand):
                 "Tesseract OCR binary is missing. Run this command in the dedicated OCR worker image."
             ) from exc
         self.stdout.write(self.style.SUCCESS(
-            "Starting LiveKit worker: UID verification plus BR/VS full-frame kill candidates; rewards require Admin review."
+            "Starting BR-only LiveKit worker: UID verification and temporary kill screenshots; evidence is saved only after elimination and requires Admin review."
         ))
         try:
             asyncio.run(LiveAIWorker(options["poll_seconds"]).run())
