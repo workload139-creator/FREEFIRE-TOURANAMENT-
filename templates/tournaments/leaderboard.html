@@ -4,12 +4,18 @@
 <section class="container" style="max-width:1000px;margin:35px auto;padding:20px">
     <h1>🏆 {{ tournament.title }} — Leaderboard</h1>
     <p>Payment verified players: <strong>{{ verified_player_count }}</strong>. Har tournament ka leaderboard alag hai.</p>
+    <div class="tournament-card" style="padding:14px 18px;margin:14px 0;border:1px solid #eab308;border-radius:12px">
+        <strong>💰 Current Tournament Price</strong>
+        <p style="margin:7px 0 0">Entry: <strong>₹<span id="ff-live-entry-price">{{ tournament.entry_fee|floatformat:2 }}</span></strong>
+        · First Prize: <strong><span id="ff-live-prize-price">{{ tournament.prize_pool|floatformat:0 }}</span> <span id="ff-live-prize-currency" data-currency="{% if tournament.mode == 'VS' %}Diamonds{% else %}INR{% endif %}">{% if tournament.mode == "VS" %}Diamonds{% else %}INR{% endif %}</span></strong></p>
+        <small id="ff-live-price-updated" style="color:#94a3b8">Admin price changes sync automatically.</small>
+    </div>
     <p>🔴 LIVE players ka gameplay isi leaderboard par dekhein. Jo player stream share kar raha hai uske saamne Watch button aayega; baaki Offline dikhenge. Live stream dekhne ke liye isi tournament ka verified player login zaroori hai.</p>
     {% if tournament.is_diwali_offer %}<div style="padding:14px;margin:14px 0;border:1px solid #ffc04d;border-radius:10px;background:linear-gradient(135deg,#351408,#171020);color:#fff"><strong>🪔 Diwali Offer — Solo BR</strong><p style="margin:6px 0 0">Entry: 1 Diamond · First prize: 20 Diamonds · 5 Coins per approved kill · Minimum 2 verified kills. UID, video + 2 screenshots, AI assessment and admin final review apply.</p></div>{% elif tournament.mode == "BR" %}<div style="padding:14px;margin:14px 0;border:1px solid #ff8a24;border-radius:10px;background:#241712;color:#fff"><strong>🔥 BR Kill Reward Rule</strong><p style="margin:6px 0 0">Minimum 2 verified kills. Solo: 5 Diamonds per approved kill. Duo/Squad: 5 Diamonds + 2 Coins per approved kill. UID match, video + 2 screenshots, and final admin approval are required.</p></div>{% endif %}
     {% if tournament.winner_uid %}
         <div class="tournament-card" style="padding:16px;margin:16px 0;border:2px solid #eab308">
             <strong>🏆 Admin-confirmed First Place</strong>
-            <p>Free Fire UID: {{ tournament.winner_uid }} — Prize: {% if tournament.is_diwali_offer %}20 Diamonds{% else %}₹{{ tournament.prize_pool }}{% endif %}</p>
+            <p>Free Fire UID: {{ tournament.winner_uid }} — Prize: {% if tournament.is_diwali_offer %}20 Diamonds{% elif tournament.mode == "VS" %}<span id="ff-live-winner-prize">{{ tournament.prize_pool|floatformat:0 }} Diamonds</span>{% else %}₹{{ tournament.prize_pool }}{% endif %}</p>
             <p>Status: {% if tournament.is_diwali_offer %}{% if diwali_winner_reward_awarded %}20 Diamonds credited to wallet{% else %}20 Diamonds pending admin award{% endif %}{% elif tournament.winner_prize_paid %}Prize marked paid{% else %}Prize pending admin payout{% endif %}</p>
         </div>
     {% endif %}
@@ -32,6 +38,43 @@
             </tbody>
         </table>
     </div>
+<script>
+(function () {
+  const entry = document.getElementById("ff-live-entry-price");
+  const prize = document.getElementById("ff-live-prize-price");
+  const currency = document.getElementById("ff-live-prize-currency");
+  const winnerPrize = document.getElementById("ff-live-winner-prize");
+  const status = document.getElementById("ff-live-price-updated");
+  if (!entry || !prize || !currency) return;
+  const endpoint = window.location.pathname + "?live_data=1";
+  let running = false;
+  async function refreshPrices() {
+    if (running || document.visibilityState === "hidden") return;
+    running = true;
+    try {
+      const response = await fetch(endpoint, {
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: {"Accept": "application/json", "Cache-Control": "no-cache"}
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      entry.textContent = Number(data.entry_fee).toFixed(2);
+      prize.textContent = Number(data.prize_pool).toLocaleString("en-IN", {maximumFractionDigits: 0});
+      currency.textContent = data.prize_currency;
+      if (winnerPrize) winnerPrize.textContent =
+        Number(data.prize_pool).toLocaleString("en-IN", {maximumFractionDigits: 0}) + " " + data.prize_currency;
+      if (status) status.textContent = "Prices synced with Admin · " + new Date(data.updated_at).toLocaleTimeString();
+    } catch (_) {
+      if (status) status.textContent = "Price sync will retry automatically.";
+    } finally {
+      running = false;
+    }
+  }
+  window.setInterval(refreshPrices, 10000);
+  document.addEventListener("visibilitychange", refreshPrices);
+})();
+</script>
 <script type="module">
 (async function () {
   const widgets = Array.from(document.querySelectorAll(".ff-live-watch"));
