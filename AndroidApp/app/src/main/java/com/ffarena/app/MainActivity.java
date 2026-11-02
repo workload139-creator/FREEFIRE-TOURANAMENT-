@@ -75,6 +75,7 @@ public class MainActivity extends Activity {
     private long pendingApkDownloadId = -1L;
     private int pendingApkVersionCode = -1;
     private String pendingApkFileName = "";
+    private long pendingApkExpectedBytes = -1L;
     private volatile boolean updateCheckInFlight = false;
     private boolean updateOfferDialogShowing = false;
     private Uri pendingInstallUri;
@@ -178,18 +179,21 @@ public class MainActivity extends Activity {
                 // must not permanently hide that same update from the player.
                 if (latestVersion <= installedVersion) return;
                 String apkUrl = "";
+                long apkExpectedBytes = -1L;
                 JSONArray assets = release.optJSONArray("assets");
                 if (assets != null) {
                     for (int i = 0; i < assets.length(); i++) {
                         JSONObject asset = assets.optJSONObject(i);
                         if (asset != null && "app-release.apk".equals(asset.optString("name"))) {
                             apkUrl = asset.optString("browser_download_url", "");
+                            apkExpectedBytes = asset.optLong("size", -1L);
                             break;
                         }
                     }
                 }
                 if (apkUrl.isEmpty()) return;
                 final String downloadUrl = apkUrl;
+                final long expectedDownloadBytes = apkExpectedBytes;
                 runOnUiThread(() -> {
                     if (isFinishing() || isDestroyed() || pendingApkDownloadId > 0L || updateOfferDialogShowing) return;
                     updateOfferDialogShowing = true;
@@ -201,7 +205,7 @@ public class MainActivity extends Activity {
                             .setCancelable(true)
                             .setNegativeButton("Later", (dialog, which) -> dialog.dismiss())
                             .setPositiveButton("Download & install", (dialog, which) -> {
-                                enqueueApkDownload(downloadUrl, latestVersion);
+                                enqueueApkDownload(downloadUrl, latestVersion, expectedDownloadBytes);
                             })
                             .create();
                     offerDialog.setOnDismissListener(dialog -> updateOfferDialogShowing = false);
@@ -297,7 +301,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void enqueueApkDownload(String downloadUrl, int versionCode) {
+    private void enqueueApkDownload(String downloadUrl, int versionCode, long expectedBytes) {
         try {
             if (apkDownloadManager == null) {
                 apkDownloadManager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
@@ -314,6 +318,7 @@ public class MainActivity extends Activity {
             request.setAllowedOverMetered(true);
             request.setAllowedOverRoaming(false);
             pendingApkVersionCode = versionCode;
+            pendingApkExpectedBytes = expectedBytes;
             pendingApkFileName = "ff-arena-update-" + versionCode + ".apk";
             File downloadDirectory = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
             if (downloadDirectory != null) {
@@ -332,6 +337,7 @@ public class MainActivity extends Activity {
                     .putLong("pending_download_id", pendingApkDownloadId)
                     .putInt("pending_version_code", pendingApkVersionCode)
                     .putString("pending_file_name", pendingApkFileName)
+                    .putLong("pending_expected_bytes", pendingApkExpectedBytes)
                     .apply();
             Toast.makeText(this, "Update download started. You can continue using FF Arena.", Toast.LENGTH_LONG).show();
         } catch (Exception exception) {
@@ -344,6 +350,7 @@ public class MainActivity extends Activity {
         pendingApkDownloadId = prefs.getLong("pending_download_id", -1L);
         pendingApkVersionCode = prefs.getInt("pending_version_code", -1);
         pendingApkFileName = prefs.getString("pending_file_name", "");
+        pendingApkExpectedBytes = prefs.getLong("pending_expected_bytes", -1L);
         if (pendingApkDownloadId <= 0L || apkDownloadManager == null || apkDownloadReceiver == null) return;
         // A completed APK awaiting the player's explicit retry must not reopen the installer
         // automatically on every app launch/resume.
@@ -415,6 +422,9 @@ public class MainActivity extends Activity {
                 int totalColumn = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES);
                 long downloaded = downloadedColumn >= 0 ? cursor.getLong(downloadedColumn) : 0L;
                 long total = totalColumn >= 0 ? cursor.getLong(totalColumn) : -1L;
+                // GitHub release metadata provides the exact APK size even when Android's
+                // DownloadManager reports COLUMN_TOTAL_SIZE_BYTES as -1 (chunked transfer).
+                if (total <= 0L && pendingApkExpectedBytes > 0L) total = pendingApkExpectedBytes;
                 if (total > 0L) {
                     int percent = (int) Math.min(100L, (downloaded * 100L) / total);
                     if (updateProgressBar != null) {
@@ -459,10 +469,12 @@ public class MainActivity extends Activity {
         pendingApkDownloadId = -1L;
         pendingApkVersionCode = -1;
         pendingApkFileName = "";
+        pendingApkExpectedBytes = -1L;
         getSharedPreferences("ffarena_updates", MODE_PRIVATE).edit()
                 .remove("pending_download_id")
                 .remove("pending_version_code")
                 .remove("pending_file_name")
+                .remove("pending_expected_bytes")
                 .apply();
     }
 
