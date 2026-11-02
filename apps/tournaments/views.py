@@ -688,7 +688,7 @@ def admin_award_first_place_prize(request, tournament_id):
         uids = [str(tournament.winner_uid or "").strip()]
     else:
         uids = []
-        for raw in (tournament.winner_team_uids or "").replace(",", "\\n").splitlines():
+        for raw in (tournament.winner_team_uids or "").replace(",", "\n").splitlines():
             member_uid = raw.strip()
             if member_uid and member_uid not in uids:
                 uids.append(member_uid)
