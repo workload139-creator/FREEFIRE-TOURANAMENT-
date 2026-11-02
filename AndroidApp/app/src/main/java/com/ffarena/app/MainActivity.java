@@ -396,9 +396,15 @@ public class MainActivity extends Activity {
         updateProgressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         updateProgressBar.setMax(100);
         updateProgressBar.setProgress(0);
-        // Keep a determinate bar visible from the first frame; never show an endless spinner.
+        updateProgressBar.setVisibility(View.VISIBLE);
+        updateProgressBar.setMinimumHeight(dp(14));
+        // Explicit Android tint keeps the real determinate bar visible across device themes.
         updateProgressBar.setIndeterminate(false);
-        panel.addView(updateProgressBar, new LinearLayout.LayoutParams(-1, dp(14)));
+        if (Build.VERSION.SDK_INT >= 21) {
+            updateProgressBar.setProgressTintList(android.content.res.ColorStateList.valueOf(ORANGE));
+            updateProgressBar.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.rgb(58, 66, 82)));
+        }
+        panel.addView(updateProgressBar, new LinearLayout.LayoutParams(-1, dp(18)));
         TextView hint = text("Please keep FF Arena open while the APK downloads.", 12, MUTED, false);
         hint.setPadding(0, dp(12), 0, 0);
         panel.addView(hint);
@@ -452,6 +458,20 @@ public class MainActivity extends Activity {
                 }
                 int statusColumn = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
                 int status = statusColumn >= 0 ? cursor.getInt(statusColumn) : -1;
+                if (status == DownloadManager.STATUS_PAUSED && updateProgressLabel != null) {
+                    int reasonColumn = cursor.getColumnIndex(DownloadManager.COLUMN_REASON);
+                    int reason = reasonColumn >= 0 ? cursor.getInt(reasonColumn) : 0;
+                    String pauseMessage = reason == DownloadManager.PAUSED_WAITING_FOR_NETWORK
+                            ? "Waiting for internet connection"
+                            : reason == DownloadManager.PAUSED_QUEUED_FOR_WIFI
+                                    ? "Waiting for Wi-Fi"
+                                    : reason == DownloadManager.PAUSED_WAITING_TO_RETRY
+                                            ? "Connection interrupted — retrying"
+                                            : "Download paused — checking connection";
+                    updateProgressLabel.setText(percent + "% downloaded  (" + downloadedText
+                            + " / " + (total > 0L ? android.text.format.Formatter.formatFileSize(this, total) : "size checking")
+                            + ")\\n" + pauseMessage);
+                }
                 if (status == DownloadManager.STATUS_SUCCESSFUL || status == DownloadManager.STATUS_FAILED) return;
             }
         } catch (Exception ignored) {}
