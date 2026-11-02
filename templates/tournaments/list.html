@@ -7,6 +7,7 @@
     <h1>Choose Your <em>Arena</em></h1>
     <p>Har tournament apne alag page par. Apna mode chuno aur usi category ke matches, registration aur leaderboard dekho.</p>
   </header>
+  {% if user.is_authenticated %}<p style="text-align:center;margin:16px 0"><a class="button button-outline" href="{% url 'tournaments:my_history' %}">🏆 Open My Tournament History</a></p>{% endif %}
   <div class="hub-grid">
     <a class="hub-card br" href="{% url 'tournaments:battle_royale_list' %}"><span>🔥 SURVIVAL MODE</span><strong>Battle Royale</strong><small>Solo · Duo · Squad</small>{% if br_live %}<span class="mode-live-flag">● LIVE NOW</span>{% endif %}<b>Open BR Arena →</b></a>
     <a class="hub-card vs" href="{% url 'tournaments:clash_squad_list' %}"><span>⚔️ SQUAD COMBAT</span><strong>VS Arena</strong><small>1v1 · 2v2 · 3v3 · 4v4</small>{% if cs_live %}<span class="mode-live-flag">● LIVE NOW</span>{% endif %}<b>Open VS Arena →</b></a>
@@ -35,6 +36,8 @@
 .hub-card.diwali{background:radial-gradient(circle at 90% 5%,#ffbd4b30,transparent 42%),linear-gradient(145deg,#351408,#160d1d);border-color:#ffc45b77}.hub-card.diwali span,.hub-card.diwali b{color:#ffd27a}
 .hub-card.unlimited{background:linear-gradient(145deg,#102d25,#091410);border-color:#55ffc055}.hub-card.unlimited span,.hub-card.unlimited b{color:#72ffc1}
 .hub-card.girls{background:radial-gradient(circle at 90% 5%,#ff83c52b,transparent 42%),linear-gradient(145deg,#30152c,#111225);border-color:#ff9bd866}.hub-card.girls span,.hub-card.girls b{color:#ffb5dc}
+.mode-live-flag{display:inline-flex;align-self:flex-start;padding:5px 9px;border-radius:999px;background:#d90032;color:#fff!important;font-size:11px!important;font-weight:950;letter-spacing:.6px;box-shadow:0 0 16px #ff174455;animation:ff-live-pulse 1.4s infinite alternate}
+@keyframes ff-live-pulse{from{box-shadow:0 0 5px #ff174433}to{box-shadow:0 0 18px #ff1744aa}}
 .mode-live-flag{display:inline-flex;align-self:flex-start;padding:5px 9px;border-radius:999px;background:#d90032;color:#fff!important;font-size:11px!important;font-weight:950;letter-spacing:.6px;box-shadow:0 0 16px #ff174455;animation:ff-live-pulse 1.4s infinite alternate}
 @keyframes ff-live-pulse{from{box-shadow:0 0 5px #ff174433}to{box-shadow:0 0 18px #ff1744aa}}
 </style>
