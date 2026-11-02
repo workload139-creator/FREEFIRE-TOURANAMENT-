@@ -40,11 +40,21 @@
             </table></div>
         </div>
         <div class="table-responsive"><table class="table table-striped table-bordered align-middle">
-            <thead><tr><th>Player / UID</th><th>Live State</th><th>UID Check</th><th>Approved Kills</th><th>Reward Preview</th><th>Wallet Balance</th><th>Frames</th><th>Kill Events</th><th>Last Monitor Heartbeat</th><th>Issue</th></tr></thead>
+            <thead><tr><th>Player / UID · Admin Kill Entry</th><th>Live State</th><th>UID Check</th><th>Approved Kills</th><th>Reward Preview</th><th>Wallet Balance</th><th>Frames</th><th>Kill Events</th><th>Last Monitor Heartbeat</th><th>Issue</th></tr></thead>
             <tbody>
             {% for session in live_sessions %}
             <tr>
-                <td>{{ session.registration.player.username }} / {{ session.registration.free_fire_uid }}</td>
+                <td>
+                    <strong>{{ session.registration.player.username }} / {{ session.registration.free_fire_uid }}</strong>
+                    <div class="mt-2 d-flex flex-wrap gap-2 align-items-center">
+                        <label class="small" for="admin-kills-{{ session.registration_id }}">Admin kill count</label>
+                        <input id="admin-kills-{{ session.registration_id }}" class="form-control form-control-sm ff-admin-kills" type="number" min="2" max="49" step="1" value="{{ session.approved_live_kills|default:2 }}" style="width:105px" data-wallet-diamonds="{{ session.wallet_balance.diamonds|default:0 }}" data-wallet-coins="{{ session.wallet_balance.coins|default:0 }}" data-wallet-fan_tokens="{{ session.wallet_balance.fan_tokens|default:0 }}">
+                        <button type="button" class="btn btn-sm btn-warning ff-preview-kill">Calculate</button>
+                        <button type="button" class="btn btn-sm btn-success ff-confirm-kill" data-url="{% url 'tournaments:admin_confirm_live_kill_reward' tournament.id session.registration_id %}">Confirm reward</button>
+                    </div>
+                    <div class="small mt-2 ff-kill-reward-preview" role="status">Kill count enter karke Calculate dabayein. Confirm se pehle wallet credit nahi hoga.</div>
+                    <div class="small text-warning mt-1 ff-kill-reward-status"></div>
+                </td>
                 <td>{% if session.status == "active" %}<span class="text-success">Session Active</span>{% else %}<span class="text-secondary">Ended</span>{% endif %}<br><small>{{ session.monitor_state }}</small></td>
                 <td>{% if session.identity_verified_at %}<span class="text-success">Verified</span><br><small>{{ session.identity_ocr_confidence }}</small>{% else %}<span class="text-warning">Pending</span>{% endif %}</td>
                 <td><strong>{{ session.approved_live_kills }}</strong></td>
@@ -60,7 +70,65 @@
         </table></div>
         
  </div>
+ {{ reward_calculation_map|json_script:"ff-reward-calculation-map" }}
  <form id="ff-live-csrf-form" hidden>{% csrf_token %}</form>
-<script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+<script>
+(function () {
+  const mapNode = document.getElementById("ff-reward-calculation-map");
+  const rewardMap = mapNode ? JSON.parse(mapNode.textContent) : {};
+  const csrf = document.querySelector("#ff-live-csrf-form [name=csrfmiddlewaretoken]")?.value || "";
+  const currencyNames = {diamonds:"Diamonds", coins:"Coins", fan_tokens:"Fan Currency"};
+  function calculate(input, preview) {
+    const kills = Number(input.value);
+    if (!Number.isInteger(kills) || kills < 2 || kills > 49) {
+      preview.textContent = "2 se 49 ke beech poora kill count enter karein.";
+      return false;
+    }
+    const rewards = rewardMap[String(kills)] || [];
+    if (!rewards.length) {
+      preview.textContent = "Is kill count ke liye reward configured nahi hai.";
+      return false;
+    }
+    preview.textContent = rewards.map(([currency, quantity]) => {
+      const before = Number(input.dataset["wallet" + currency] || 0);
+      return currencyNames[currency] + ": " + before + " + " + quantity + " = " + (before + Number(quantity));
+    }).join(" · ") + " (preview only — Confirm abhi nahi hua)";
+    return true;
+  }
+  document.querySelectorAll(".ff-admin-kills").forEach(input => {
+    const row = input.closest("tr");
+    const preview = row.querySelector(".ff-kill-reward-preview");
+    const status = row.querySelector(".ff-kill-reward-status");
+    row.querySelector(".ff-preview-kill").addEventListener("click", () => calculate(input, preview));
+    row.querySelector(".ff-confirm-kill").addEventListener("click", async event => {
+      if (!calculate(input, preview)) return;
+      const button = event.currentTarget;
+      if (!window.confirm("Kya aap " + input.value + " kills ka reward confirm karke wallet mein add karna chahte hain? Is registration ka manual reward sirf ek baar diya ja sakta hai.")) return;
+      button.disabled = true;
+      status.textContent = "Reward verify aur credit ho raha hai…";
+      try {
+        const response = await fetch(button.dataset.url, {
+          method:"POST", credentials:"same-origin",
+          headers:{"Content-Type":"application/json","X-CSRFToken":csrf,"X-Requested-With":"XMLHttpRequest"},
+          body:JSON.stringify({kills:Number(input.value)})
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || "Reward confirmation failed.");
+        const lines = Object.entries(result.balances || {}).map(([currency, data]) =>
+          currencyNames[currency] + ": " + data.before + " + " + data.reward + " = " + data.after
+        );
+        preview.textContent = "✓ " + lines.join(" · ");
+        status.textContent = "Confirmed once. Wallet balance refreshed: page reload karein.";
+        input.disabled = true;
+        row.querySelector(".ff-preview-kill").disabled = true;
+        button.textContent = "✓ Paid";
+      } catch (error) {
+        status.textContent = error.message;
+        button.disabled = false;
+      }
+    });
+  });
+})();
+</script>
 </div>
 {% endblock %}
