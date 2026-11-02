@@ -113,6 +113,7 @@ urlpatterns = [
     ),
     path("my-history/", views.my_history, name="my_history"),
     path("history/<int:tournament_id>/", views.tournament_history, name="tournament_history"),
+    path("player/<int:user_id>/history/", views.player_history, name="player_history"),
     path("my-registrations/", views.my_registrations, name="my_registrations"),
     path("leaderboard/<int:tournament_id>/", views.leaderboard, name="leaderboard"),
 ]
