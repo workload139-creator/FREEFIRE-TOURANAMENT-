@@ -324,7 +324,41 @@ def award_arena_currency_winner(modeladmin, request, queryset):
     for selected in queryset:
         with transaction.atomic():
             tournament = Tournament.objects.select_for_update().get(pk=selected.pk)
-            if tournament.status != Tournament.Status.COMPLETED or tournament.is_free_fan_tournament or tournament.mode != Tournament.Mode.VS:
+            if tournament.status != Tournament.Status.COMPLETED or tournament.is_free_fan_tournament:
+                skipped += 1
+                continue
+            if tournament.mode == Tournament.Mode.BR:
+                if tournament.br_format != Tournament.BRFormat.SOLO or not str(tournament.winner_uid or "").strip():
+                    skipped += 1
+                    continue
+                winners = Registration.objects.select_for_update().filter(
+                    tournament=tournament, free_fire_uid=str(tournament.winner_uid).strip(),
+                    payment_verified=True, refund_processed=False,
+                    status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
+                ).select_related("player")
+                if winners.count() != 1:
+                    skipped += 1
+                    continue
+                registration = winners.first()
+                reference = f"ARENA-CURRENCY-WIN-{tournament.pk}"
+                if TournamentLedgerEntry.objects.filter(reference=reference).exists():
+                    skipped += 1
+                    continue
+                wallet, _ = PlayerShopWallet.objects.get_or_create(user=registration.player)
+                wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
+                before = wallet.diamonds
+                wallet.diamonds += 50
+                wallet.save(update_fields=["diamonds", "updated_at"])
+                TournamentLedgerEntry.objects.create(
+                    tournament=tournament, player=registration.player, registration=registration,
+                    entry_type=TournamentLedgerEntry.EntryType.REWARD,
+                    currency=TournamentLedgerEntry.Currency.DIAMONDS, quantity=50,
+                    amount_inr=Decimal("0.00"), status=TournamentLedgerEntry.Status.COMPLETED,
+                    reference=reference, description=f"Admin-approved BR Solo winner prize: 50 Diamonds (old balance {before}).",
+                )
+                awarded_players += 1
+                continue
+            if tournament.mode != Tournament.Mode.VS:
                 skipped += 1
                 continue
 
