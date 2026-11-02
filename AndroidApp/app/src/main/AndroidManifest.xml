@@ -12,8 +12,8 @@
     <application
         android:hardwareAccelerated="true"
         android:allowBackup="false"
-        android:icon="@drawable/ff_arena_icon"
-        android:roundIcon="@drawable/ff_arena_icon"
+        android:icon="@drawable/ff_arena_launcher"
+        android:roundIcon="@drawable/ff_arena_launcher"
         android:label="FF Arena"
         android:usesCleartextTraffic="false"
         android:supportsRtl="true"
