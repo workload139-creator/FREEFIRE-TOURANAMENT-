@@ -604,25 +604,54 @@ def admin_set_first_place_winner(request, tournament_id):
         messages.error(request, "First-place winner set karne se pehle Live Monitor se tournament finish karein.")
         return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
     if tournament.winner_prize_paid:
-        messages.error(request, "First-place prize already paid hai; winner UID change nahi ho sakti.")
+        messages.error(request, "First-place prize already paid hai; winner UID/team change nahi ho sakti.")
         return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
 
+    team_sizes = {
+        (Tournament.Mode.BR, Tournament.BRFormat.DUO): 2,
+        (Tournament.Mode.BR, Tournament.BRFormat.SQUAD): 4,
+        (Tournament.Mode.VS, Tournament.VSFormat.TWO_V_TWO): 2,
+        (Tournament.Mode.VS, Tournament.VSFormat.THREE_V_THREE): 3,
+        (Tournament.Mode.VS, Tournament.VSFormat.FOUR_V_FOUR): 4,
+    }
+    team_size = team_sizes.get((tournament.mode, tournament.br_format if tournament.mode == Tournament.Mode.BR else tournament.vs_format))
     uid = (request.POST.get("winner_uid") or "").strip()
-    matches = Registration.objects.select_for_update().filter(
-        tournament=tournament,
-        free_fire_uid=uid,
-        payment_verified=True,
-        refund_processed=False,
-        status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
-    )
-    if not uid or matches.count() != 1:
-        messages.error(request, "Winner UID ka exactly one verified, non-refunded registration se match hona zaroori hai.")
-    else:
+    if team_size:
+        team_uids = []
+        for raw in (request.POST.get("winner_team_uids") or "").replace(",", "\n").splitlines():
+            member_uid = raw.strip()
+            if member_uid and member_uid not in team_uids:
+                team_uids.append(member_uid)
+        if len(team_uids) != team_size or uid not in team_uids:
+            messages.error(request, f"Winning team ke exactly {team_size} alag registered UIDs enter karein; First Place UID unmein se ek hona chahiye.")
+            return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
+        matches = Registration.objects.select_for_update().filter(
+            tournament=tournament, free_fire_uid__in=team_uids, payment_verified=True,
+            refund_processed=False,
+            status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
+        )
+        found = {row.free_fire_uid for row in matches}
+        if len(found) != team_size or any(member_uid not in found for member_uid in team_uids):
+            messages.error(request, "Winning team ke har UID ka verified, non-refunded registration hona zaroori hai.")
+            return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
         tournament.winner_uid = uid
-        tournament.save(update_fields=["winner_uid", "updated_at"])
-        messages.success(request, "First-place winner save ho gaya. Prize amount tournament ke First Prize pool se hi liya jayega.")
+        tournament.winner_team_uids = "\n".join(team_uids)
+        tournament.save(update_fields=["winner_uid", "winner_team_uids", "updated_at"])
+        messages.success(request, f"Winning team save ho gayi ({team_size} players). UPI prize ke liye har member ka alag UTR enter karein; VS Fan Currency action equal share credit karega.")
+    else:
+        matches = Registration.objects.select_for_update().filter(
+            tournament=tournament, free_fire_uid=uid, payment_verified=True,
+            refund_processed=False,
+            status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
+        )
+        if not uid or matches.count() != 1:
+            messages.error(request, "Winner UID ka exactly one verified, non-refunded registration se match hona zaroori hai.")
+        else:
+            tournament.winner_uid = uid
+            tournament.winner_team_uids = ""
+            tournament.save(update_fields=["winner_uid", "winner_team_uids", "updated_at"])
+            messages.success(request, "First-place winner save ho gaya. Prize amount tournament ke First Prize pool se hi liya jayega.")
     return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
-
 
 @login_required
 @user_passes_test(lambda user: user.is_staff)
