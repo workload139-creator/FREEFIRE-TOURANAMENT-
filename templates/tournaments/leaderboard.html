@@ -110,8 +110,7 @@
             if (!sdk) sdk = await import("https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.esm.mjs");
             const room = new sdk.Room({
               adaptiveStream: true,
-              dynacast: true,
-              videoCaptureDefaults: {resolution: sdk.VideoPresets?.h720?.resolution}
+              dynacast: true
             });
             room.on(sdk.RoomEvent.TrackSubscribed, track => {
               if (track.kind !== "video") return;
