@@ -73,8 +73,7 @@ class TournamentAdminForm(forms.ModelForm):
         if "winner_uid" in self.fields:
             self.fields["winner_uid"].label = "First Place Winner — Free Fire UID"
             self.fields["winner_uid"].help_text = (
-                "Tournament ka first-place player choose karne ke liye us verified registration ki Free Fire UID enter karein. "
-                "Leaderboard par us player ko first place dikhaya jayega; prize payout alag se manually verify karna hoga."
+                "First-place player ki verified Free Fire UID. Team formats mein winner_team_uids mein har winning member ki UID alag line/comma se enter karein."
             )
 
     def clean(self):
@@ -210,106 +209,144 @@ def cancel_and_refund_tournaments(modeladmin, request, queryset):
     )
 
 
-@admin.action(description="Mark winner prize PAID after manual UPI transfer and real UTR entry")
+@admin.action(description="Mark winner prize PAID after each team member's manual UPI transfer and UTR")
 def mark_winner_prizes_paid(modeladmin, request, queryset):
+    """Validate every recipient/UTR before recording an equal team payout."""
     paid = 0
     skipped = 0
+    team_formats = {
+        (Tournament.Mode.BR, Tournament.BRFormat.DUO): 2,
+        (Tournament.Mode.BR, Tournament.BRFormat.SQUAD): 4,
+        (Tournament.Mode.VS, Tournament.VSFormat.TWO_V_TWO): 2,
+        (Tournament.Mode.VS, Tournament.VSFormat.THREE_V_THREE): 3,
+        (Tournament.Mode.VS, Tournament.VSFormat.FOUR_V_FOUR): 4,
+    }
     for selected in queryset:
         with transaction.atomic():
             tournament = Tournament.objects.select_for_update().get(pk=selected.pk)
-            if tournament.winner_prize_paid or not tournament.winner_uid or tournament.prize_pool <= 0 or (tournament.mode == Tournament.Mode.BR and tournament.br_format != "solo"):
+            team_size = team_formats.get((tournament.mode, tournament.br_format if tournament.mode == Tournament.Mode.BR else tournament.vs_format))
+            if tournament.winner_prize_paid or tournament.prize_pool <= 0:
                 skipped += 1
                 continue
-            utr = (tournament.winner_prize_reference or "").strip()
-            if len(utr) < 6 or utr.startswith("WIN-PRIZE-"):
+
+            if team_size:
+                uids = []
+                for raw in (tournament.winner_team_uids or "").replace(",", "\n").splitlines():
+                    uid = raw.strip()
+                    if uid and uid not in uids:
+                        uids.append(uid)
+                if len(uids) != team_size:
+                    skipped += 1
+                    continue
+            else:
+                uid = str(tournament.winner_uid or "").strip()
+                uids = [uid] if uid else []
+                if len(uids) != 1:
+                    skipped += 1
+                    continue
+
+            utrs = [part.strip() for part in (tournament.winner_prize_reference or "").replace("\n", ",").split(",") if part.strip()]
+            if len(utrs) != len(uids) or any(len(utr) < 6 or utr.startswith("WIN-PRIZE-") for utr in utrs):
+                skipped += 1
+                continue
+            if len(set(utrs)) != len(utrs):
+                skipped += 1
+                continue
+            if any(
+                Tournament.objects.filter(winner_prize_reference__icontains=utr).exclude(pk=tournament.pk).exists()
+                or KillSubmission.objects.filter(payout_reference__iexact=utr).exists()
+                or Registration.objects.filter(payment_reference__iexact=utr).exists()
+                or Registration.objects.filter(refund_reference__iexact=utr).exists()
+                or WithdrawalRequest.objects.filter(payout_reference__iexact=utr).exists()
+                for utr in utrs
+            ):
+                skipped += 1
+                continue
+
+            winners = list(Registration.objects.select_for_update().filter(
+                tournament=tournament, free_fire_uid__in=uids, payment_verified=True,
+                refund_processed=False,
+                status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
+            ).select_related("player").order_by("registered_at", "pk"))
+            by_uid = {winner.free_fire_uid: winner for winner in winners}
+            if len(by_uid) != len(uids) or any(uid not in by_uid for uid in uids):
+                skipped += 1
+                continue
+            ordered_winners = [by_uid[uid] for uid in uids]
+            if any(not ((winner.player.upi_id or "").strip() or winner.player.upi_qr_code) for winner in ordered_winners):
+                skipped += 1
+                continue
+
+            prize = Decimal(tournament.prize_pool).quantize(Decimal("0.01"))
+            share = (prize / Decimal(len(ordered_winners))).quantize(Decimal("0.01"))
+            if share * len(ordered_winners) != prize:
                 skipped += 1
                 continue
             admin_wallet, _ = AdminWallet.objects.get_or_create(name="Main Admin Wallet")
             admin_wallet = AdminWallet.objects.select_for_update().get(pk=admin_wallet.pk)
-            duplicate_utr = (
-                Tournament.objects.filter(winner_prize_reference__iexact=utr).exclude(pk=tournament.pk).exists()
-                or KillSubmission.objects.filter(payout_reference__iexact=utr).exists()
-                or Registration.objects.filter(payment_reference__iexact=utr).exists()
-                or Registration.objects.filter(refund_reference__iexact=utr).exists()
-                or Registration.objects.filter(payment_reference__iexact=utr).exists()
-                or WithdrawalRequest.objects.filter(payout_reference__iexact=utr).exists()
-            )
-            if duplicate_utr:
-                skipped += 1
-                continue
-            eligible = Registration.objects.select_for_update().filter(
-                tournament=tournament,
-                free_fire_uid=str(tournament.winner_uid).strip(),
-                payment_verified=True,
-                refund_processed=False,                status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
-            ).select_related("player")
-            if eligible.count() != 1:
-                skipped += 1
-                continue
-            winner = eligible.first()
-            if not (winner.player.upi_id or "").strip() and not winner.player.upi_qr_code:
-                skipped += 1
-                continue
-            prize = tournament.prize_pool
             if admin_wallet.balance < prize:
                 skipped += 1
                 continue
-            ledger_reference = f"ADMIN-WIN-UPI-{tournament.pk}"
-            if AdminWalletTransaction.objects.filter(reference=ledger_reference).exists():
+            refs = [f"ADMIN-WIN-UPI-{tournament.pk}-{winner.player_id}" for winner in ordered_winners]
+            if any(AdminWalletTransaction.objects.filter(reference=ref).exists() for ref in refs):
                 skipped += 1
                 continue
-            # Real transfer must already be sent externally to the winner's saved UPI ID/QR.
+
+            # External UPI transfers must already have been sent in the same UID/UTR order.
             admin_wallet.balance -= prize
             admin_wallet.save(update_fields=["balance", "updated_at"])
-            AdminWalletTransaction.objects.create(
-                admin_wallet=admin_wallet,
-                transaction_type=AdminWalletTransaction.TransactionType.PRIZE,
-                amount=prize,
-                status=AdminWalletTransaction.Status.COMPLETED,
-                reference=ledger_reference,
-                description=f"Manual UPI winner prize for tournament {tournament.pk}; external UTR {utr}; player profile {winner.player_id}.",
-            )
+            for winner, utr, ref in zip(ordered_winners, utrs, refs):
+                AdminWalletTransaction.objects.create(
+                    admin_wallet=admin_wallet,
+                    transaction_type=AdminWalletTransaction.TransactionType.PRIZE,
+                    amount=share,
+                    status=AdminWalletTransaction.Status.COMPLETED,
+                    reference=ref,
+                    description=f"Equal-share manual UPI winner prize for tournament {tournament.pk}; UID {winner.free_fire_uid}; external UTR {utr}; share {share}.",
+                )
             tournament.winner_prize_paid = True
             tournament.save(update_fields=["winner_prize_paid", "updated_at"])
             paid += 1
     if paid:
-        modeladmin.message_user(request, f"{paid} winner prize(s) marked paid after manual UPI transfer.", messages.SUCCESS)
+        modeladmin.message_user(request, f"{paid} tournament winner/team prize payout(s) recorded with equal per-player shares.", messages.SUCCESS)
     if skipped:
-        modeladmin.message_user(request, f"{skipped} winner prize(s) skipped: check winner UID, saved UPI/QR, real unique UTR and Admin Wallet ledger balance.", messages.WARNING)
+        modeladmin.message_user(request, f"{skipped} skipped: verify all winner UIDs, each player's saved UPI/QR, one unique real UTR per player in the same order, exact paise split, and Admin Wallet balance.", messages.WARNING)
 
 
-@admin.action(description="Award BR Diamonds / VS Fan Tokens to selected tournament winner")
+@admin.action(description="Award equal arena-currency shares to verified winner/team")
 def award_arena_currency_winner(modeladmin, request, queryset):
-    """Credit non-cash tournament prizes once; separate from any manual UPI prize."""
+    """Credit BR Solo Diamonds or equal VS Fan Currency shares once per verified winner."""
     from apps.social.models import PlayerShopWallet
 
-    awarded = 0
+    awarded_players = 0
     skipped = 0
+    remainders = []
     for selected in queryset:
         with transaction.atomic():
             tournament = Tournament.objects.select_for_update().get(pk=selected.pk)
-            if tournament.status != Tournament.Status.COMPLETED or tournament.is_free_fan_tournament or (tournament.mode == Tournament.Mode.BR and tournament.br_format != "solo"):
+            if tournament.status != Tournament.Status.COMPLETED or tournament.is_free_fan_tournament:
                 skipped += 1
                 continue
-            winner_uid = str(tournament.winner_uid or "").strip()
-            winners = Registration.objects.select_for_update().filter(
-                tournament=tournament,
-                free_fire_uid=winner_uid,
-                payment_verified=True,
-                refund_processed=False,
-                status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
-            ).select_related("player")
-            if not winner_uid or winners.count() != 1:
-                skipped += 1
-                continue
-            registration = winners.first()
-            reference = f"ARENA-CURRENCY-WIN-{tournament.pk}"
-            if TournamentLedgerEntry.objects.filter(reference=reference).exists() or TournamentLedgerEntry.objects.filter(reference__startswith=f"{reference}-").exists():
-                skipped += 1
-                continue
-            wallet, _ = PlayerShopWallet.objects.get_or_create(user=registration.player)
-            wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
             if tournament.mode == Tournament.Mode.BR:
+                if tournament.br_format != Tournament.BRFormat.SOLO or not str(tournament.winner_uid or "").strip():
+                    skipped += 1
+                    continue
+                winners = Registration.objects.select_for_update().filter(
+                    tournament=tournament, free_fire_uid=str(tournament.winner_uid).strip(),
+                    payment_verified=True, refund_processed=False,
+                    status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
+                ).select_related("player")
+                if winners.count() != 1:
+                    skipped += 1
+                    continue
+                registration = winners.first()
+                reference = f"ARENA-CURRENCY-WIN-{tournament.pk}"
+                if TournamentLedgerEntry.objects.filter(reference=reference).exists():
+                    skipped += 1
+                    continue
+                wallet, _ = PlayerShopWallet.objects.get_or_create(user=registration.player)
+                wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
+                before = wallet.diamonds
                 wallet.diamonds += 50
                 wallet.save(update_fields=["diamonds", "updated_at"])
                 TournamentLedgerEntry.objects.create(
@@ -317,17 +354,82 @@ def award_arena_currency_winner(modeladmin, request, queryset):
                     entry_type=TournamentLedgerEntry.EntryType.REWARD,
                     currency=TournamentLedgerEntry.Currency.DIAMONDS, quantity=50,
                     amount_inr=Decimal("0.00"), status=TournamentLedgerEntry.Status.COMPLETED,
-                    reference=reference, description="Admin-approved BR winner prize: 50 Diamonds",
+                    reference=reference, description=f"Admin-approved BR Solo winner prize: 50 Diamonds (old balance {before}).",
                 )
-            else:
-                # VS winner prizes are paid manually by the admin, never auto-credited here.
+                awarded_players += 1
+                continue
+            if tournament.mode != Tournament.Mode.VS:
                 skipped += 1
                 continue
-            awarded += 1
-    if awarded:
-        modeladmin.message_user(request, f"{awarded} winner non-cash reward(s) credited to player wallet.", messages.SUCCESS)
+
+            team_sizes = {
+                Tournament.VSFormat.ONE_V_ONE: 1,
+                Tournament.VSFormat.TWO_V_TWO: 2,
+                Tournament.VSFormat.THREE_V_THREE: 3,
+                Tournament.VSFormat.FOUR_V_FOUR: 4,
+            }
+            team_size = team_sizes.get(tournament.vs_format)
+            if not team_size:
+                skipped += 1
+                continue
+
+            if team_size == 1:
+                uids = [str(tournament.winner_uid or "").strip()]
+            else:
+                uids = []
+                for raw in (tournament.winner_team_uids or "").replace(",", "\n").splitlines():
+                    uid = raw.strip()
+                    if uid and uid not in uids:
+                        uids.append(uid)
+            if len(uids) != team_size or any(not uid for uid in uids):
+                skipped += 1
+                continue
+
+            registrations = list(Registration.objects.select_for_update().filter(
+                tournament=tournament, free_fire_uid__in=uids, payment_verified=True,
+                refund_processed=False,
+                status__in=[Registration.Status.CONFIRMED, Registration.Status.WAITING_READY, Registration.Status.READY],
+            ).select_related("player"))
+            by_uid = {row.free_fire_uid: row for row in registrations}
+            if len(by_uid) != team_size:
+                skipped += 1
+                continue
+
+            total_pool = int(Decimal(tournament.prize_pool))
+            share = total_pool // team_size
+            remainder = total_pool - share * team_size
+            if share <= 0:
+                skipped += 1
+                continue
+            refs = [f"ARENA-CURRENCY-WIN-{tournament.pk}-{uid}" for uid in uids]
+            if TournamentLedgerEntry.objects.filter(reference__in=refs).exists():
+                skipped += 1
+                continue
+
+            for uid, reference in zip(uids, refs):
+                registration = by_uid[uid]
+                wallet, _ = PlayerShopWallet.objects.get_or_create(user=registration.player)
+                wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
+                before = wallet.fan_tokens
+                wallet.fan_tokens += share
+                wallet.save(update_fields=["fan_tokens", "updated_at"])
+                TournamentLedgerEntry.objects.create(
+                    tournament=tournament, player=registration.player, registration=registration,
+                    entry_type=TournamentLedgerEntry.EntryType.REWARD,
+                    currency=TournamentLedgerEntry.Currency.FAN_TOKENS, quantity=share,
+                    amount_inr=Decimal("0.00"), status=TournamentLedgerEntry.Status.COMPLETED,
+                    reference=reference,
+                    description=f"Admin-approved VS {tournament.vs_format} winner share: {share} Fan Currency (old balance {before}).",
+                )
+                awarded_players += 1
+            if remainder:
+                remainders.append(f"{tournament.title}: {remainder} Fan Currency remains undistributed because {total_pool} cannot be split into {team_size} whole-token shares.")
+    if awarded_players:
+        modeladmin.message_user(request, f"{awarded_players} verified VS winner(s) received equal whole-token Fan Currency shares.", messages.SUCCESS)
+    if remainders:
+        modeladmin.message_user(request, " · ".join(remainders), messages.WARNING)
     if skipped:
-        modeladmin.message_user(request, f"{skipped} skipped: set the correct Winner UID, verify the player's registration/payment, mark tournament Completed, and check that no reward was already credited.", messages.WARNING)
+        modeladmin.message_user(request, f"{skipped} tournament(s) skipped: set all winner UIDs, verify every player's registration/payment, mark Completed, and check duplicate reward ledger.", messages.WARNING)
 
 
 @admin.action(description="Duo/Squad winner team: give each listed player 10 Fan Currency")
@@ -478,7 +580,7 @@ class TournamentAdmin(admin.ModelAdmin):
     # Keep tournament setup separate from registrations and kill evidence.
     # Those have their own admin sections so adding/editing a tournament stays manageable.
     inlines = ()
-    actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid,)
+    actions = (cancel_and_refund_tournaments, mark_winner_prizes_paid, award_arena_currency_winner, award_br_winner_team,)
     readonly_fields = (
         "tournament_control_panel", "winner_prize_paid",
         "kill_prize_distributed", "kill_prize_pool", "kill_prize_reference",
@@ -735,8 +837,8 @@ class TournamentAdmin(admin.ModelAdmin):
         ("2. Fees & Players — entry aur capacity", {"description": "Entry Fee player se li jane wali registration fee hai. Prize Pool tournament ka first-place prize hai; ise admin ke funds aur payout process ke mutabik set karein. Max Players room capacity hai (maximum 49). BR format Solo/Duo/Squad chunein. Normal BR mein har approved kill par 5 Diamonds; minimum 2 verified kills. Free Fan event ka alag Fan Token rule rahega. Evidence verification zaroori hai.", "fields": ("entry_fee", "prize_pool", "max_players")}),
         ("4. Status — LIVE / COMPLETED / CANCELLED", {"description": "Tournament ki public listing date/time par depend nahi karti. Room Invite Link set karke LIVE karein; eligible players ko 3 attempts wala 5-minute YES/NO confirmation flow milega. Match khatam hone par Live Monitor se COMPLETED karein. Cancel karne par existing refund workflow chalega.", "fields": ("status",)}),
         ("5. Free Fire Room Invite Link", {"description": "Official Garena ffshare.garena.com invite link yahan set karein. Player ko JOIN ROOM sirf Live AI screen-share permission active hone ke baad dikhega.", "fields": ("room_invite_link",)}),
-        ("6. BR Winning Team Rewards", {"description": "Tournament Completed hone ke baad winning BR team ke har player ka registered Free Fire UID yahan alag line ya comma se likhein. Admin action se har verified winner ko 10 Fan Tokens + 50 Coins ek hi baar milenge; har reward ledger mein save hoga.", "fields": ("winner_team_uids",)}),
-        ("7. First Place Winner & payout tracking", {"description": "Tournament complete/review ke baad winner ki registered Free Fire UID enter karein. Neeche player ki saved UPI/QR details dekh sakte hain. Winner Prize Reference mein actual transfer ka real UTR enter karne ke baad hi payout action use karein. Is field ko bharna apne-aap paise transfer nahi karta.", "fields": ("winner_uid", "winner_payout_destination", "winner_payout_qr", "winner_prize_reference", "winner_prize_paid")}),
+                ("6. Winning Team UIDs", {"description": "BR Duo/Squad aur VS 2v2/3v3/4v4 ke sabhi verified winning Free Fire UIDs alag line ya comma se enter karein. Team UPI payout mein har member ko prize_pool ka equal share bhejein aur Winner Prize Reference mein same order ke comma-separated unique UTRs enter karein. BR Duo/Squad ke existing 10 Fan Tokens + 50 Coins per-player reward ka action alag hai.", "fields": ("winner_team_uids",)}),
+        ("7. First Place Winner & payout tracking", {"description": "Tournament complete/review ke baad winner UID aur team formats mein sabhi winning UIDs enter karein. Team payout ke liye har player ko equal share manually UPI karein; Winner Prize Reference mein UID list ke same order mein comma-separated unique real UTRs enter karein. Is field ko bharna apne-aap paise transfer nahi karta.", "fields": ("winner_uid", "winner_payout_destination", "winner_payout_qr", "winner_prize_reference", "winner_prize_paid")}),
     )
 
 

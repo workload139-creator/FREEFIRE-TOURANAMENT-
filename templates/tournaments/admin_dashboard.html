@@ -104,14 +104,21 @@
             <form method="post" action="{% url 'tournaments:admin_set_first_place_winner' tournament.id %}" class="row g-2 align-items-end">
                 {% csrf_token %}
                 <div class="col-md-7">
-                    <label for="first-place-uid" class="form-label">Verified winner Free Fire UID</label>
+                    <label for="first-place-uid" class="form-label">First-place player Free Fire UID</label>
                     <input id="first-place-uid" name="winner_uid" class="form-control" value="{{ tournament.winner_uid|default:'' }}" required>
                 </div>
-                <div class="col-md-5">
-                    <button type="submit" class="btn btn-warning">Save First Place Winner</button>
+                {% if tournament.mode == "VS" and tournament.vs_format != "1v1" or tournament.mode == "BR" and tournament.br_format != "solo" %}
+                <div class="col-12">
+                    <label for="winner-team-uids" class="form-label">Winning Team — all verified Free Fire UIDs</label>
+                    <textarea id="winner-team-uids" name="winner_team_uids" class="form-control" rows="3" placeholder="Har winning player ka UID alag line mein">{{ tournament.winner_team_uids|default:'' }}</textarea>
+                    <small class="text-muted">Team format ke mutabik exactly 2 / 3 / 4 unique UIDs enter karein. First-place UID upar wali list mein hona chahiye.</small>
+                </div>
+                {% endif %}
+                <div class="col-12">
+                    <button type="submit" class="btn btn-warning">Save First Place Winner / Team</button>
                 </div>
             </form>
-            <small class="text-muted d-block mt-2">Winner UID must match exactly one paid/verified, non-refunded registration. Prize payout remains subject to the existing UTR and wallet-ledger checks.</small>
+            <small class="text-muted d-block mt-2">Har UID verified, paid aur non-refunded registration se match hona chahiye. Team UPI payout ke liye har member ko equal share alag bhejein aur Winner Prize Reference mein same UID order ke comma-separated unique UTRs enter karein. VS Fan Currency share admin action se wallet mein credit hota hai.</small>
         {% else %}
             <small class="text-muted">Finish the LIVE tournament first; then select its verified first-place winner here.</small>
         {% endif %}
