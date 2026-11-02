@@ -148,3 +148,9 @@ class LiveKillfeedModeTests(SimpleTestCase):
         self.assertFalse(player_eliminated_from_text("Player eliminated"))
         self.assertFalse(player_eliminated_from_text("Headshot kill"))
 
+class LiveMonitorTemplateCompileTests(SimpleTestCase):
+    def test_live_monitor_template_compiles(self):
+        from django.template.loader import get_template
+
+        self.assertIsNotNone(get_template("tournaments/admin_tournament_live_monitor.html"))
+
