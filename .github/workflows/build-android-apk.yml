@@ -6,15 +6,9 @@ on:
     branches:
       - main
       - feature/pwa-android-apk
-    paths:
-      - "AndroidApp/**"
-      - ".github/workflows/build-android-apk.yml"
   pull_request:
     branches:
       - main
-    paths:
-      - "AndroidApp/**"
-      - ".github/workflows/build-android-apk.yml"
 
 permissions:
   contents: write
