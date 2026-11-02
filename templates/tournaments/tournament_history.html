@@ -16,7 +16,7 @@
       <tbody>
       {% for registration in history_registrations %}
         <tr style="border-top:1px solid #ffffff22">
-          <td style="padding:12px">{{ registration.player.username }}</td>
+          <td style="padding:12px"><a href="{% url 'tournaments:player_history' registration.player_id %}">{{ registration.player.username }}</a></td>
           <td>{{ registration.free_fire_uid }}</td>
           <td>{% if registration.team_number %}Team {{ registration.team_number }} · Slot {{ registration.team_position }}{% else %}—{% endif %}</td>
           <td>{{ registration.history_live_kills }}</td>
