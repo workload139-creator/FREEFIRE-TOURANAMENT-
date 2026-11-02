@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ history_player.username }} · Player History | FF Arena{% endblock %}
+{% block content %}
+<section class="container" style="max-width:1100px;margin:34px auto 70px;padding:18px;color:#eef4ff">
+  <header style="padding:24px;border:1px solid #55ffc044;border-radius:20px;background:linear-gradient(130deg,#0b2428,#11152a)">
+    <small style="color:#75ffd3;font-weight:900;letter-spacing:2px">PUBLIC PLAYER ARCHIVE</small>
+    <h1>🎮 {{ history_player.username }} — Match History</h1>
+    <p style="color:#b9c8d9">Completed tournaments with payment-verified entries and Admin-approved kill records.</p>
+  </header>
+  <div style="display:grid;gap:14px;margin-top:20px">
+    {% for registration in history_registrations %}
+      <article class="tournament-card" style="padding:18px">
+        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <h2 style="margin:0">{{ registration.tournament.title }}</h2><strong style="color:#7affd0">COMPLETED</strong>
+        </div>
+        <p>{{ registration.tournament.get_mode_display }} · {% if registration.tournament.mode == "BR" %}{{ registration.tournament.get_br_format_display }}{% else %}{{ registration.tournament.get_vs_format_display }}{% endif %} · {{ registration.tournament.updated_at|date:"d M Y" }}</p>
+        <p>Free Fire UID: <strong>{{ registration.free_fire_uid }}</strong> · {% if registration.team_number %}Team {{ registration.team_number }} / Slot {{ registration.team_position }}{% else %}Team slot not assigned{% endif %}</p>
+        <p>Live kills verified: <strong>{{ registration.history_live_kills }}</strong> · Evidence kills approved: <strong>{% if registration.history_submission %}{{ registration.history_submission.approved_kills|default:0 }}{% else %}0{% endif %}</strong></p>
+        <a class="button button-primary" href="{% url 'tournaments:tournament_history' registration.tournament_id %}">View full tournament history →</a>
+      </article>
+    {% empty %}
+      <article class="tournament-card" style="padding:24px"><h3>No completed match history yet</h3><p>Verified tournament participation will appear here after the event is marked Completed.</p></article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

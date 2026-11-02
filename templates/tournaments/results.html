@@ -35,7 +35,7 @@
             {% endif %}
           </div>
           <p>Entry fee: ₹{{ tournament.entry_fee }} · Status: Completed</p>
-          <a class="btn-join" href="{% url 'tournaments:leaderboard' tournament.id %}">View full leaderboard & match details →</a>
+          <div style="display:flex;flex-wrap:wrap;gap:8px"><a class="btn-join" href="{% url 'tournaments:tournament_history' tournament.id %}">📚 Tournament History →</a><a class="btn-join" href="{% url 'tournaments:leaderboard' tournament.id %}">View leaderboard →</a></div>
         </div>
       </article>
     {% empty %}

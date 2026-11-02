@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}{{ tournament.title }} · Tournament History | FF Arena{% endblock %}
+{% block content %}
+<section class="container" style="max-width:1200px;margin:34px auto 70px;padding:18px;color:#eef4ff">
+  <header style="padding:24px;border:1px solid #55ffc044;border-radius:20px;background:linear-gradient(130deg,#0b2428,#11152a)">
+    <small style="color:#75ffd3;font-weight:900;letter-spacing:2px">COMPLETED MATCH ARCHIVE</small>
+    <h1>📚 {{ tournament.title }}</h1>
+    <p style="color:#b9c8d9">{{ tournament.get_mode_display }} · {% if tournament.mode == "BR" %}{{ tournament.get_br_format_display }}{% else %}{{ tournament.get_vs_format_display }}{% endif %} · Completed {{ tournament.updated_at|date:"d M Y, h:i A" }}</p>
+    <a class="button button-outline" href="{% url 'tournaments:results' %}">← All tournament results</a>
+  </header>
+  <article class="tournament-card" style="padding:18px;margin-top:18px;overflow-x:auto">
+    <h2>Players & verified match record</h2>
+    <p>Only payment-verified, non-refunded entries are shown. Kill totals are separated by source to avoid double-counting.</p>
+    <table style="width:100%;border-collapse:collapse;min-width:850px">
+      <thead><tr><th>Player</th><th>Free Fire UID</th><th>Team / Slot</th><th>Live kills verified</th><th>Evidence kills approved</th><th>Evidence reward</th><th>Result</th></tr></thead>
+      <tbody>
+      {% for registration in history_registrations %}
+        <tr style="border-top:1px solid #ffffff22">
+          <td style="padding:12px"><a href="{% url 'tournaments:player_history' registration.player_id %}">{{ registration.player.username }}</a></td>
+          <td>{{ registration.free_fire_uid }}</td>
+          <td>{% if registration.team_number %}Team {{ registration.team_number }} · Slot {{ registration.team_position }}{% else %}—{% endif %}</td>
+          <td>{{ registration.history_live_kills }}</td>
+          <td>{% if registration.history_submission %}{{ registration.history_submission.approved_kills|default:0 }}{% else %}0{% endif %}</td>
+          <td>{% if registration.history_submission %}{{ registration.history_submission.approved_reward }}{% if registration.history_submission.approved_coins_reward %} + {{ registration.history_submission.approved_coins_reward }} Coins{% endif %}{% else %}—{% endif %}</td>
+          <td>{% if registration.history_is_winner %}<strong style="color:#ffd66b">🏆 Winner</strong>{% else %}Completed{% endif %}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" style="padding:18px;text-align:center">Is tournament ka koi eligible player record available nahi hai.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </article>
+  {% if tournament.winner_uid or tournament.winner_team_uids %}
+  <article class="tournament-card" style="padding:18px;margin-top:14px;border-color:#f3c86a66">
+    <h3>🏆 Admin-confirmed winner</h3>
+    {% if tournament.winner_uid %}<p>Winner UID: {{ tournament.winner_uid }}</p>{% endif %}
+    {% if tournament.winner_team_uids %}<p>Winning team UIDs: {{ tournament.winner_team_uids|linebreaksbr }}</p>{% endif %}
+  </article>
+  {% endif %}
+</section>
+{% endblock %}

@@ -63,7 +63,7 @@ def battle_royale_list(request):
     """Show the always-available Solo, Duo and Squad BR arena slots on the main BR page."""
     process_expired_ready_registrations()
     events = _fixed_br_slots()
-    return render(request, "tournaments/battle_royale_list.html", {"tournaments": events})
+    return render(request, "tournaments/battle_royale_list.html", {"tournaments": events, "has_live": any(event.status == Tournament.Status.LIVE for event in events)})
 
 
 
@@ -97,7 +97,7 @@ def clash_squad_list(request):
         status__in=PUBLIC_STATUSES,
     )
     events = _one_event_per_format(tournaments, "vs_format", ("1v1", "2v2", "3v3", "4v4"))
-    return render(request, "tournaments/clash_squad_list.html", {"tournaments": events})
+    return render(request, "tournaments/clash_squad_list.html", {"tournaments": events, "has_live": any(event.status == Tournament.Status.LIVE for event in events)})
 
 
 def girls_vs_boys_list(request):
