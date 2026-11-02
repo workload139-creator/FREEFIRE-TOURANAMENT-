@@ -55,6 +55,8 @@ def ingest_live_kill_candidate(request):
         )
     except (TournamentLiveSession.DoesNotExist, ValueError):
         return JsonResponse({"error": "No eligible active player session found."}, status=404)
+    if session.tournament.mode != "BR":
+        return JsonResponse({"error": "AI kill evidence is enabled only for Battle Royale."}, status=403)
     kill_at = None
     if kill_at_raw:
         try:
