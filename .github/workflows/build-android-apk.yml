@@ -193,6 +193,15 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Remove stale debug APK from public release
+        if: steps.validate_signing.outputs.valid == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Old releases may still contain app-debug.apk from earlier workflows.
+          # Remove it so players can never mistake a debug build for the update APK.
+          gh release delete-asset ff-arena-latest app-debug.apk --yes || true
+
       - name: Publish APK and AAB download
         if: steps.validate_signing.outputs.valid == 'true'
         uses: softprops/action-gh-release@v2
