@@ -871,10 +871,10 @@ def admin_tournament_live_monitor(request, tournament_id):
     tournament = get_object_or_404(Tournament, pk=tournament_id)
     if tournament.status == Tournament.Status.COMPLETED:
         return redirect("tournaments:admin_tournament_live_history", tournament_id=tournament.pk)
-    if tournament.status != Tournament.Status.LIVE:
-        messages.info(request, "Live Monitor sirf LIVE tournament ke liye hai. Purane sessions History mein milenge.")
-        return redirect("tournaments:admin_tournament_dashboard", tournament_id=tournament.pk)
 
+    # Keep the dedicated monitor page accessible to staff before a match starts.
+    # Stream-token API remains LIVE-only, so no player feed or reward action is
+    # enabled until the tournament is actually LIVE.
     sessions = list(
         TournamentLiveSession.objects.filter(
             tournament=tournament,
