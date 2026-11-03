@@ -436,6 +436,9 @@
   </div>
   <p class="mt-3">Desktop par 3 live screens ek row mein, tablet par 2 aur mobile par 1. Naye player streams automatically discover honge. 49 players ke liye page scroll karke sabhi feeds dekhein.</p>
  </div>
+ {% if tournament.status != "LIVE" %}
+ <div class="alert alert-warning" role="status">Tournament abhi LIVE nahi hai. Monitor page ready hai; player streams tournament LIVE hone aur players ke YES karke sharing start karne ke baad dikhengi. Completed tournament ki purani streams Session History mein milengi.</div>
+ {% endif %}
  <div id="ff-section-live" class="card p-3 my-3 ff-section-card">
         <h4><span class="ff-section-number">03</span> Tournament Live Monitor — all player streams</h4>
         <p>{% if tournament.mode == "BR" %}BR mein ek AI worker UID verify karta hai aur har detected kill ka screenshot temporary memory mein rakhta hai (maximum 49 per player). Player ke apne elimination screen detect hone ke baad hi screenshots permanent evidence mein save hongi. Admin har player ki live screen aur saved evidence check karega; AI reward approve ya pay nahi karegi.{% else %}Clash Squad mein sirf player Live Screen Sharing chalegi. AI kill detection, OCR aur screenshot evidence capture poori tarah OFF hai. Admin kill count dalega aur reward preview apne-aap calculate hoga.{% endif %}</p>
