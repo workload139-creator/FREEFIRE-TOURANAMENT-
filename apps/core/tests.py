@@ -21,27 +21,24 @@ class SupportPageTests(TestCase):
 
 
 class HealthCheckTests(TestCase):
-    def test_health_check_reports_database_connection(self):
+    @patch("apps.core.views.connection.ensure_connection")
+    def test_health_check_is_process_liveness_and_does_not_query_database(self, ensure_connection):
         response = self.client.get(reverse("health_check"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            response.json(),
-            {"status": "ok", "database": "ok"},
-        )
+        self.assertEqual(response.json(), {"status": "ok"})
+        ensure_connection.assert_not_called()
 
     @patch("apps.core.views.connection.ensure_connection")
-    def test_health_check_hides_database_error_details(self, ensure_connection):
+    def test_health_check_remains_healthy_during_database_outage(self, ensure_connection):
         ensure_connection.side_effect = OperationalError("private database details")
 
         response = self.client.get(reverse("health_check"))
 
-        self.assertEqual(response.status_code, 503)
-        self.assertEqual(
-            response.json(),
-            {"status": "unhealthy", "database": "unavailable"},
-        )
-        self.assertNotContains(response, "private database details", status_code=503)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"status": "ok"})
+        self.assertNotContains(response, "private database details")
+        ensure_connection.assert_not_called()
 
 
 class FakeMediaCloudinaryStorage:
