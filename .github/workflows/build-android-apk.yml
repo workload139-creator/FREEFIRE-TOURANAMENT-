@@ -201,8 +201,8 @@ jobs:
           name: FF Arena Android Builds
           body: |
             FF Arena Android app builds.
-            app-release.apk: release-signed APK for updating installed Android apps.
-            app-debug.apk: debug APK for testing only.
+            app-release.apk: the only APK published here; release-signed for updating installed Android apps.
+            Debug APK is kept only as a workflow artifact for testing and is not included in this release.
             app-release.aab: release-signed Android App Bundle for Play Console upload.
             versionCode: ${{ github.run_number }}
             Publishing the AAB does not guarantee Google Play policy eligibility.
