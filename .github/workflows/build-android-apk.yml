@@ -134,6 +134,8 @@ jobs:
           else
             echo "valid=true" >> "$GITHUB_OUTPUT"
             echo "Keystore validated. Detected store type: $STORE_TYPE"
+            # Print only the public certificate fingerprint for diagnosis; never print key material or passwords.
+            keytool -list -v -keystore "$RUNNER_TEMP/ffarena-upload-key" -storetype "$STORE_TYPE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" | grep -E "^(Alias name:|SHA256:)"
             echo "ANDROID_KEYSTORE_STORE_TYPE=$STORE_TYPE" >> "$GITHUB_ENV"
           fi
 
@@ -155,6 +157,15 @@ jobs:
             exit 1
           fi
           gradle --no-daemon assembleRelease bundleRelease -PversionCode=${{ github.run_number }}
+
+      - name: Verify release APK certificate
+        if: steps.validate_signing.outputs.valid == 'true'
+        working-directory: AndroidApp
+        run: |
+          APK="app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" | grep -E "Signer #1 certificate SHA-256 digest:"
+          echo "Verified: app-release.apk is signed. Use this APK for app updates."
 
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
@@ -196,7 +207,6 @@ jobs:
             versionCode: ${{ github.run_number }}
             Publishing the AAB does not guarantee Google Play policy eligibility.
           files: |
-            AndroidApp/app/build/outputs/apk/debug/app-debug.apk
             AndroidApp/app/build/outputs/apk/release/app-release.apk
             AndroidApp/app/build/outputs/bundle/release/app-release.aab
           overwrite_files: true
