@@ -6,15 +6,21 @@ on:
     branches:
       - main
       - feature/pwa-android-apk
+    paths:
+      - "AndroidApp/**"
+      - ".github/workflows/build-android-apk.yml"
   pull_request:
     branches:
       - main
+    paths:
+      - "AndroidApp/**"
+      - ".github/workflows/build-android-apk.yml"
 
 permissions:
   contents: write
 
-# Only the newest source revision should publish the moving ff-arena-latest release.
-# Prevent an older, slower build from overwriting a newer APK release.
+# Only the newest Android source revision should publish the moving release.
+# Website/backend-only commits must not create a new APK or trigger an app update.
 concurrency:
   group: ff-arena-android-${{ github.ref }}
   cancel-in-progress: true
@@ -101,7 +107,6 @@ jobs:
             echo "Missing repository secret: ANDROID_KEYSTORE_BASE64"
             exit 1
           fi
-          # Normalize copied Base64 in case it contains wrapped lines or spaces.
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d ' \r\n\t' | base64 --decode > "$RUNNER_TEMP/ffarena-upload-key"
           test -s "$RUNNER_TEMP/ffarena-upload-key"
           echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/ffarena-upload-key" >> "$GITHUB_ENV"
@@ -117,7 +122,8 @@ jobs:
         run: |
           if [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ]; then
             echo "valid=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Release signing secrets are missing. The debug APK will still be built."
+            echo "::warning::Release signing secrets are missing. No public APK will be published."
+            exit 0
           fi
           STORE_TYPE=""
           if keytool -list -keystore "$RUNNER_TEMP/ffarena-upload-key" -storetype PKCS12 -storepass "$ANDROID_KEYSTORE_PASSWORD" >/dev/null 2>&1; then
@@ -127,24 +133,24 @@ jobs:
           fi
           if [ -z "$STORE_TYPE" ]; then
             echo "valid=false" >> "$GITHUB_OUTPUT"
-            echo "::error::The decoded file is not opening as PKCS12 or JKS with the provided password. Check the Base64 secret is copied from the same keystore file and the password matches. The workflow will not print or expose secrets."
-          elif ! keytool -list -keystore "$RUNNER_TEMP/ffarena-upload-key" -storetype "$STORE_TYPE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
-            echo "valid=false" >> "$GITHUB_OUTPUT"
-            echo "::error::Keystore password is valid but the alias was not found. Confirm ANDROID_KEY_ALIAS matches the alias inside your keystore."
-          else
-            echo "valid=true" >> "$GITHUB_OUTPUT"
-            echo "Keystore validated. Detected store type: $STORE_TYPE"
-            # Print only the public certificate fingerprint for diagnosis; never print key material or passwords.
-            keytool -list -v -keystore "$RUNNER_TEMP/ffarena-upload-key" -storetype "$STORE_TYPE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" | grep -E "^(Alias name:|SHA256:)"
-            echo "ANDROID_KEYSTORE_STORE_TYPE=$STORE_TYPE" >> "$GITHUB_ENV"
+            echo "::error::The decoded signing file or password is invalid."
+            exit 0
           fi
+          if ! keytool -list -keystore "$RUNNER_TEMP/ffarena-upload-key" -storetype "$STORE_TYPE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
+            echo "valid=false" >> "$GITHUB_OUTPUT"
+            echo "::error::The configured alias was not found in the keystore."
+            exit 0
+          fi
+          echo "valid=true" >> "$GITHUB_OUTPUT"
+          echo "Keystore validated. Detected store type: $STORE_TYPE"
+          keytool -list -v -keystore "$RUNNER_TEMP/ffarena-upload-key" -storetype "$STORE_TYPE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" | grep -E "^(Alias name:|SHA256:)"
+          echo "ANDROID_KEYSTORE_STORE_TYPE=$STORE_TYPE" >> "$GITHUB_ENV"
 
       - name: Build debug APK
         working-directory: AndroidApp
-        run: |
-          gradle --no-daemon assembleDebug -PversionCode=${{ github.run_number }}
+        run: gradle --no-daemon assembleDebug -PversionCode=${{ github.run_number }}
 
-      - name: Build signed release AAB
+      - name: Build signed release APK and AAB
         if: steps.validate_signing.outputs.valid == 'true'
         working-directory: AndroidApp
         env:
@@ -165,7 +171,7 @@ jobs:
           APK="app/build/outputs/apk/release/app-release.apk"
           test -s "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" | grep -E "Signer #1 certificate SHA-256 digest:"
-          echo "Verified: app-release.apk is signed. Use this APK for app updates."
+          echo "Verified: app-release.apk is signed."
 
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
@@ -198,8 +204,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Old releases may still contain app-debug.apk from earlier workflows.
-          # Remove it so players can never mistake a debug build for the update APK.
           gh release delete-asset ff-arena-latest app-debug.apk --yes || true
 
       - name: Publish APK and AAB download
