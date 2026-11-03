@@ -47,6 +47,12 @@ class TournamentAdminForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            # Existing tournament rounds are edited without changing their scheduled
+            # timestamp. Some focused proxy admin screens intentionally hide it.
+            self.fields["start_time"].required = False
+            if self.instance.start_time:
+                self.initial.setdefault("start_time", self.instance.start_time)
         if not self.instance.pk:
             self.initial["status"] = Tournament.Status.UPCOMING
             if self.instance._meta.proxy and self.instance._meta.model_name == "diwalioffertournament":
@@ -80,6 +86,11 @@ class TournamentAdminForm(forms.ModelForm):
         cleaned = super().clean()
         if not cleaned.get("gender_category"):
             cleaned["gender_category"] = Tournament.GenderCategory.OPEN
+        # start_time is intentionally hidden on focused existing-round admin pages;
+        # preserve the stored value instead of rejecting an otherwise valid status edit.
+        if not cleaned.get("start_time") and self.instance.pk:
+            cleaned["start_time"] = self.instance.start_time
+
         invite_link = (cleaned.get("room_invite_link") or "").strip()
         if invite_link:
             parsed = urlsplit(invite_link)
@@ -106,8 +117,10 @@ class TournamentAdminForm(forms.ModelForm):
                 "auto_start_at_capacity": True,
                 "start_time": cleaned.get("start_time") or timezone.now(),
             })
-        if cleaned.get("mode") == Tournament.Mode.BR and cleaned.get("vs_format"):
-            self.add_error("vs_format", "BR tournament ke liye CS/VS format khaali rakhein.")
+        if cleaned.get("mode") == Tournament.Mode.BR:
+            # A BR round can retain an old VS value after mode/format changes.
+            # Clear this irrelevant field automatically so LIVE/status edits save.
+            cleaned["vs_format"] = ""
         if cleaned.get("mode") == Tournament.Mode.BR and not cleaned.get("br_format"):
             # Older/simple admin submissions may omit the optional format; keep them usable as Solo.
             cleaned["br_format"] = Tournament.BRFormat.SOLO
