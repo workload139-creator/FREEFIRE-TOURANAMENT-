@@ -21,31 +21,37 @@ def json_login_required(view_func):
     return wrapped
 
 
-QUESTIONS = {
-    1: {
-        "text": "Free Fire mein sabse upar ka ranked tier kaunsa hai?",
-        "choices": {"A": "Grandmaster", "B": "Gold", "C": "Diamond", "D": "Silver"},
-        "correct": "A",
-        "explanation": "Grandmaster highest ranked tier hai.",
-    },
-    2: {
-        "text": "Gloo Wall ka main use kya hai?",
-        "choices": {"A": "HP restore karna", "B": "Temporary cover banana", "C": "Ammo reload karna", "D": "Enemy ko revive karna"},
-        "correct": "B",
-        "explanation": "Gloo Wall incoming fire se bachne ke liye cover deta hai.",
-    },
-    3: {
-        "text": "Teammate ko revive karne ke liye sabse zaroori kya hai?",
-        "choices": {"A": "Uske paas grenade ho", "B": "Safe distance se emote", "C": "Uske paas jaakar revive action", "D": "Match chhod dena"},
-        "correct": "C",
-        "explanation": "Down hue teammate ke paas jaakar revive action use hota hai.",
-    },
-}
+import random
+
+QUESTION_BANK = [
+    {"text":"Free Fire mein sabse upar ka ranked tier kaunsa hai?","choices":{"A":"Grandmaster","B":"Gold","C":"Diamond","D":"Silver"},"correct":"A","explanation":"Grandmaster highest ranked tier hai."},
+    {"text":"Gloo Wall ka main use kya hai?","choices":{"A":"HP restore karna","B":"Temporary cover banana","C":"Ammo reload karna","D":"Enemy ko revive karna"},"correct":"B","explanation":"Gloo Wall incoming fire se bachne ke liye cover deta hai."},
+    {"text":"Teammate ko revive karne ke liye kya karna hota hai?","choices":{"A":"Grenade phenko","B":"Emote karo","C":"Uske paas jaakar revive action","D":"Match chhod do"},"correct":"C","explanation":"Down teammate ke paas jaakar revive action use hota hai."},
+    {"text":"Booyah ka matlab kya hota hai?","choices":{"A":"Match jeetna","B":"Game restart","C":"Ammo khatam","D":"Drop location"},"correct":"A","explanation":"Booyah Battle Royale victory ko show karta hai."},
+    {"text":"Med Kit ka use kis liye hota hai?","choices":{"A":"Armor badhana","B":"HP recover karna","C":"Ammo lena","D":"Vehicle repair"},"correct":"B","explanation":"Med Kit se health points recover hote hain."},
+    {"text":"Free Fire mein parachute kab khulta hai?","choices":{"A":"Landing ke paas","B":"Lobby mein","C":"Victory ke baad","D":"Revive ke baad"},"correct":"A","explanation":"Drop ke dauran landing ke paas parachute deploy hota hai."},
+    {"text":"Airdrop mein aam taur par kya milta hai?","choices":{"A":"High-tier loot","B":"Profile badge only","C":"Friend request","D":"Room code"},"correct":"A","explanation":"Airdrop mein valuable weapons aur equipment mil sakte hain."},
+    {"text":"Helmet kis damage ko kam karne mein madad karta hai?","choices":{"A":"Headshot damage","B":"Fall damage","C":"Zone timer","D":"Reload time"},"correct":"A","explanation":"Helmet head damage se protection deta hai."},
+    {"text":"Battle Royale mein safe zone se bahar rehne par kya hota hai?","choices":{"A":"HP damage hota hai","B":"Extra coins milte hain","C":"Weapon upgrade hota hai","D":"Auto revive"},"correct":"A","explanation":"Safe zone ke bahar player ko zone damage hota hai."},
+    {"text":"Weapon attachment ka kaam kya hai?","choices":{"A":"Weapon performance improve karna","B":"Player rename karna","C":"Map change karna","D":"Room lock karna"},"correct":"A","explanation":"Attachments weapon ki handling ya performance improve karte hain."},
+    {"text":"Squad mode mein aam taur par kitne players hote hain?","choices":{"A":"2","B":"3","C":"4","D":"6"},"correct":"C","explanation":"Standard squad team mein 4 players hote hain."},
+    {"text":"Revive point ka use kis liye hota hai?","choices":{"A":"Teammate ko wapas match mein lana","B":"Weapon skin lena","C":"Map band karna","D":"Rank reset"},"correct":"A","explanation":"Revival system se eliminated teammate ko match mein wapas laya ja sakta hai."},
+    {"text":"Free Fire mein character skill ka use kya hai?","choices":{"A":"Special ability dena","B":"Internet speed badhana","C":"Room capacity badhana","D":"Account password badalna"},"correct":"A","explanation":"Characters ki skills gameplay mein special abilities deti hain."},
+    {"text":"Battle Royale mein match ki shuruaat kahan se hoti hai?","choices":{"A":"Plane se jump","B":"Shop screen","C":"Training result","D":"Friend list"},"correct":"A","explanation":"Players aircraft se map par drop karte hain."},
+    {"text":"Weapon reload karne ka purpose kya hai?","choices":{"A":"Magazine mein ammo bharna","B":"HP restore karna","C":"Armor repair","D":"Map unlock"},"correct":"A","explanation":"Reload se weapon mein ammunition refill hoti hai."},
+]
+QUESTIONS = {index: question for index, question in enumerate(QUESTION_BANK, start=1)}
+
+def _question_for_round(room):
+    question_id = room.game_question_ids[room.current_round - 1] if len(room.game_question_ids) >= room.current_round else room.current_round
+    return QUESTIONS.get(question_id, {})
+
 
 
 def begin_quiz(room):
     """Start a new quiz run. Caller should hold a transaction and room row lock."""
     now = timezone.now()
+    question_ids = random.sample(list(QUESTIONS.keys()), k=3)
     memberships = list(PartyRoomMembership.objects.select_for_update().filter(room=room).order_by("joined_at", "pk"))
     if not memberships:
         return False
@@ -64,12 +70,13 @@ def begin_quiz(room):
     room.game_status = "live"
     room.game_phase = "question"
     room.current_round = 1
+    room.game_question_ids = question_ids
     room.phase_deadline = now + timedelta(seconds=30)
     room.decision_index = 0
     room.winner = None
     room.game_winner_awarded = False
     room.save(update_fields=[
-        "game_status", "game_phase", "current_round", "phase_deadline",
+        "game_status", "game_phase", "current_round", "game_question_ids", "phase_deadline",
         "decision_index", "winner", "game_winner_awarded", "updated_at",
     ])
     PartyRoomMessage.objects.create(
@@ -81,7 +88,7 @@ def begin_quiz(room):
 
 def _finish_game(room):
     """Award a winner, or show a draw and automatically restart."""
-    if room.game_phase in ("draw", "completed"):
+    if room.game_phase in ("draw", "completed") or room.game_winner_awarded:
         return
     survivors = list(
         PartyRoomMembership.objects.select_for_update()
@@ -193,7 +200,10 @@ def _advance_if_due(room):
                     room=room, sender=room.host,
                     body=f"❌ PLAYER_ELIMINATED|{member.user.username}|Round {room.current_round}|Time ran out",
                 )
-        if PartyRoomMembership.objects.filter(room=room, is_eliminated=False).exists():
+        remaining_players = PartyRoomMembership.objects.filter(room=room, is_eliminated=False).count()
+        if remaining_players == 1:
+            _finish_game(room)
+        elif remaining_players > 1:
             _start_decision_phase(room)
         else:
             _finish_game(room)
@@ -249,7 +259,7 @@ def party_game_state(request, room_id):
             .order_by("joined_at", "pk")
         )
         my_member = next(member for member in members if member.user_id == request.user.pk)
-        question = QUESTIONS.get(room.current_round, {}) if room.current_round else {}
+        question = _question_for_round(room) if room.current_round else {}
         current_decision = _current_decision_member(room)
         remaining = None
         if room.phase_deadline:
@@ -305,7 +315,7 @@ def party_game_answer(request, room_id):
             return JsonResponse({"error": "Aap eliminate ho chuke hain; spectator mode mein hain."}, status=403)
         if member.current_answer:
             return JsonResponse({"error": "Aapka answer pehle hi submit ho chuka hai."}, status=409)
-        question = QUESTIONS.get(room.current_round)
+        question = _question_for_round(room)
         if not question:
             return JsonResponse({"error": "Question available nahi hai."}, status=409)
         member.current_answer = answer
@@ -321,7 +331,9 @@ def party_game_answer(request, room_id):
         member.save(update_fields=["current_answer", "answered_at", "score", "is_eliminated", "eliminated_round", "elimination_reason"])
         PartyRoomMessage.objects.create(room=room, sender=request.user, body=outcome)
         active = list(PartyRoomMembership.objects.filter(room=room, is_eliminated=False))
-        if not active:
+        if len(active) == 1:
+            _finish_game(room)
+        elif not active:
             _finish_game(room)
         elif all(player.current_answer for player in active):
             _start_decision_phase(room)
