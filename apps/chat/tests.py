@@ -158,11 +158,11 @@ class PartyQuizAutoDrawRestartTests(TestCase):
         from datetime import timedelta
         from django.utils import timezone
 
-        answer_url = reverse("chat:party_game_answer", args=[self.room.pk])
+        self.room.phase_deadline = timezone.now() - timedelta(seconds=1)
+        self.room.save(update_fields=["phase_deadline"])
         self.client.force_login(self.host)
-        self.assertEqual(self.client.post(answer_url, {"answer": "SKIP"}).status_code, 200)
-        self.client.force_login(self.player)
-        self.assertEqual(self.client.post(answer_url, {"answer": "B"}).status_code, 200)
+        state = self.client.get(reverse("chat:party_game_state", args=[self.room.pk]))
+        self.assertEqual(state.status_code, 200)
 
         self.room.refresh_from_db()
         self.assertEqual(self.room.game_phase, "draw")
