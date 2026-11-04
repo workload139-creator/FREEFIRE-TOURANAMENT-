@@ -134,7 +134,7 @@ class Tournament(models.Model):
         help_text="Internal wallet prize currency. This is separate from any manual INR/UPI prize pool.",
     )
     winner_prize_amount = models.PositiveIntegerField(
-        default=50,
+        default=0,
         help_text="Per-player winner prize. Team formats receive this exact amount per verified team member.",
     )
     winner_prize_paid = models.BooleanField(default=False)
