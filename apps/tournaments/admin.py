@@ -387,7 +387,12 @@ def award_arena_currency_winner(modeladmin, request, queryset):
                 continue
             legacy_prefix = f"ARENA-CURRENCY-WIN-{tournament.pk}"
             legacy_team_prefix = f"BR-TEAM-WIN-{tournament.pk}-"
-            if TournamentLedgerEntry.objects.filter(reference__startswith=legacy_prefix).exists() or TournamentLedgerEntry.objects.filter(reference__startswith=legacy_team_prefix).exists():
+            legacy_paid = (
+                TournamentLedgerEntry.objects.filter(reference=legacy_prefix).exists()
+                or TournamentLedgerEntry.objects.filter(reference__startswith=legacy_prefix + "-").exists()
+                or TournamentLedgerEntry.objects.filter(reference__startswith=legacy_team_prefix).exists()
+            )
+            if legacy_paid:
                 skipped += 1
                 continue
             field_name, ledger_currency, transaction_currency = config
