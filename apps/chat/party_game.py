@@ -51,7 +51,10 @@ def _question_for_round(room):
 def begin_quiz(room):
     """Start a new quiz run. Caller should hold a transaction and room row lock."""
     now = timezone.now()
-    question_ids = random.sample(list(QUESTIONS.keys()), k=3)
+    available_question_ids = [question_id for question_id in QUESTIONS if question_id not in set(room.game_question_ids or [])]
+    if len(available_question_ids) < 3:
+        available_question_ids = list(QUESTIONS.keys())
+    question_ids = random.sample(available_question_ids, k=3)
     memberships = list(PartyRoomMembership.objects.select_for_update().filter(room=room).order_by("joined_at", "pk"))
     if not memberships:
         return False
