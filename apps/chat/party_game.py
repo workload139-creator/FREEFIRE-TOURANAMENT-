@@ -1,6 +1,6 @@
 from datetime import timedelta
+from functools import wraps
 
-from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
@@ -9,6 +9,16 @@ from django.views.decorators.http import require_GET, require_POST
 
 from apps.social.models import PlayerShopWallet
 from .party_models import PartyRoom, PartyRoomMembership, PartyRoomMessage
+
+
+def json_login_required(view_func):
+    """Return JSON for expired API sessions instead of redirecting to an HTML login page."""
+    @wraps(view_func)
+    def wrapped(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return JsonResponse({"error": "Login session expire ho gayi. Dobara login karein."}, status=401)
+        return view_func(request, *args, **kwargs)
+    return wrapped
 
 
 QUESTIONS = {
@@ -209,7 +219,7 @@ def _current_decision_member(room):
     return active[room.decision_index]
 
 
-@login_required
+@json_login_required
 @require_GET
 def party_game_state(request, room_id):
     with transaction.atomic():
@@ -261,7 +271,7 @@ def party_game_state(request, room_id):
     return JsonResponse(payload)
 
 
-@login_required
+@json_login_required
 @require_POST
 def party_game_answer(request, room_id):
     answer = request.POST.get("answer", "").strip().upper()
@@ -302,7 +312,7 @@ def party_game_answer(request, room_id):
     return JsonResponse({"ok": True, "result": "correct" if answer == question["correct"] else "eliminated"})
 
 
-@login_required
+@json_login_required
 @require_POST
 def party_game_decision(request, room_id):
     action = request.POST.get("action", "").strip().lower()
@@ -329,7 +339,7 @@ def party_game_decision(request, room_id):
     return JsonResponse({"ok": True})
 
 
-@login_required
+@json_login_required
 @require_POST
 def party_game_restart_draw(request, room_id):
     with transaction.atomic():
