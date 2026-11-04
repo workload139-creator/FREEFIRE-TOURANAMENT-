@@ -181,12 +181,16 @@ from .models import Wallet, WalletTransaction, WithdrawalRequest
 @login_required
 def wallet_view(request):
     wallet, _created = Wallet.objects.get_or_create(user=request.user)
-    from apps.social.models import PlayerShopWallet
+    from apps.social.models import PlayerShopWallet, PlayerShopWalletTransaction
 
     shop_wallet, _ = PlayerShopWallet.objects.get_or_create(user=request.user)
+    recent_wallet_messages = PlayerShopWalletTransaction.objects.filter(
+        user=request.user
+    ).select_related("wallet").order_by("-created_at", "-pk")[:5]
     return render(request, "accounts/wallet.html", {
         "wallet": wallet,
         "shop_wallet": shop_wallet,
+        "recent_wallet_messages": recent_wallet_messages,
     })
 
 
