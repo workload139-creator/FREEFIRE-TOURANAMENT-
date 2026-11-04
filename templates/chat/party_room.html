@@ -2,9 +2,61 @@
 {% block title %}{{ room.title }} | FF Arena Party{% endblock %}
 {% block extra_css %}<style>
 .party-room{--room-lime:#b6ff39;--room-mint:#3cf2b0;max-width:1120px;margin:28px auto 54px;padding:0 15px;color:#f6fff8}.room-head{position:relative;overflow:hidden;padding:clamp(22px,4vw,38px);border-radius:24px;background:radial-gradient(ellipse at 90% 10%,#b6ff3922,transparent 34%),radial-gradient(ellipse at 100% 100%,#3cf2b022,transparent 40%),linear-gradient(125deg,#121d20,#0b121a 55%,#10231c);border:1px solid #b6ff3955;box-shadow:0 18px 55px #0006}.room-head h1{font-size:clamp(1.8rem,5vw,3rem);letter-spacing:-.035em;margin:13px 0 8px}.room-head a{color:var(--room-lime);text-decoration:none;font-weight:800}.room-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(240px,1fr);gap:16px;margin-top:16px}.room-box{padding:clamp(15px,3vw,22px);border:1px solid #ffffff18;border-radius:19px;background:linear-gradient(145deg,#111b24,#0c131b);box-shadow:0 14px 38px #0003;min-width:0}.room-box h2{color:#f5fff6;font-size:1.15rem;margin-top:0}.room-box button{border-radius:11px;min-height:42px;font-weight:800}.room-box .button-primary{background:linear-gradient(110deg,#c5ff56,#8be52e);border-color:#b6ff39;color:#111a0b}.room-box .button-outline{border-color:#b6ff3955;color:#eaffd7}.room-layout .room-box:first-child{border-color:#b6ff3930}.room-layout aside.room-box{background:linear-gradient(145deg,#111c25,#101820)}.room-messages{height:360px;overflow:auto;display:flex;flex-direction:column;gap:9px;margin:12px 0}.room-msg{padding:11px 13px;border-radius:12px;background:linear-gradient(110deg,#16242b,#182335);border:1px solid #ffffff0b;overflow-wrap:anywhere}.room-msg small{display:block;color:#bdc7dc;font-size:.75rem;margin-bottom:3px}.room-form{display:flex;gap:8px}.room-form input,.room-box select{min-width:0;width:100%;padding:11px;border-radius:9px;background:#090e17;color:#fff;border:1px solid #38445b}.room-members{display:grid;gap:8px}.room-member{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:10px;background:linear-gradient(110deg,#16242b,#141d2c);border:1px solid #ffffff0c;border-radius:11px}.room-note{font-size:.82rem;color:#aebbd0;line-height:1.5}.room-lobby{margin-top:16px;padding:20px;border:1px solid #b6ff3955;border-radius:18px;background:radial-gradient(ellipse at 100% 0%,#b6ff3914,transparent 45%),linear-gradient(145deg,#111e23,#0c131b)}.room-seat-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:14px 0}.room-seat{min-height:68px;display:grid;place-items:center;text-align:center;padding:8px;border-radius:12px;border:1px dashed #46564e;background:#ffffff04;color:#aebbb3;font-size:.74rem;overflow-wrap:anywhere}.room-seat.filled{border-style:solid;border-color:#b6ff3955;background:#b6ff3910;color:#eaffd7}.room-seat.host{border-color:#ffce58;background:#ffce5810}.room-game-live{padding:14px;border-radius:12px;background:#b6ff3912;border:1px solid #b6ff3955;color:#dfffc2;margin-top:12px}@media(max-width:480px){.room-seat-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.room-seat{min-height:58px}}@media(max-width:720px){.room-layout{grid-template-columns:1fr}.room-messages{height:300px}.room-form{flex-wrap:wrap}.room-form button{width:100%}}
+
+/* FF ARENA QUICK GAME — matching in-room battle experience */
+.party-room{--room-lime:#ffd36a;--room-mint:#54cfff;--room-hot:#ff7048;--room-ink:#080d18;position:relative;isolation:isolate}
+.party-room:before{content:"";position:fixed;z-index:-1;inset:0;pointer-events:none;background:radial-gradient(ellipse at 8% 16%,#1b4a7830,transparent 36%),radial-gradient(ellipse at 94% 55%,#9b3a2520,transparent 34%)}
+.party-room .room-head{border-color:#ffb45b88;background:radial-gradient(ellipse at 10% 0%,#2874a64a,transparent 38%),radial-gradient(ellipse at 100% 100%,#e94f2e3b,transparent 42%),linear-gradient(128deg,#101b30,#111522 55%,#24151b);box-shadow:0 22px 65px #0008,0 0 35px #ff8a3820}
+.party-room .room-head h1{color:#fff4dc}.party-room .room-head>a{color:#78dfff}
+.party-room .party-chip{color:#ffe4a0;background:linear-gradient(110deg,#ffb34e1c,#54cfff12);border-color:#ffca6b66}
+.party-room .room-lobby{position:relative;overflow:hidden;border-color:#ffbd6570;background:radial-gradient(ellipse at 100% 0%,#ffb34e1b,transparent 42%),radial-gradient(ellipse at 0% 100%,#54cfff13,transparent 42%),linear-gradient(145deg,#142238,#0b1422 68%,#21171d);box-shadow:0 18px 48px #0005}
+.party-room .room-lobby:before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,#54cfff,#ffbd5a,#ff654b,transparent)}
+.party-room .room-seat{border-color:#425976;background:linear-gradient(145deg,#0d1828,#111d2c);color:#b9cce0}
+.party-room .room-seat.filled{border-color:#54cfff88;background:linear-gradient(145deg,#17304a,#142336);color:#eaf7ff;box-shadow:inset 0 0 18px #54cfff0c}
+.party-room .room-seat.host{border-color:#ffca6b;background:linear-gradient(145deg,#49341d,#211d23);color:#fff0c7}
+.party-room .room-box{border-color:#ffffff1e;background:linear-gradient(145deg,#142238,#0c1421 65%,#21191f);box-shadow:0 14px 38px #0005}
+.party-room .room-box h2{color:#fff0d0}
+.party-room .room-layout aside.room-box{background:linear-gradient(145deg,#17263b,#111a28)}
+.party-room .room-game-live{border-color:#ffca6b77;background:linear-gradient(110deg,#ffb34e20,#54cfff12);color:#ffe8b0}
+.party-room .room-note{color:#b7c9dd}
+.party-room .room-member{border-color:#ffffff17;background:linear-gradient(110deg,#17263b,#111a28)}
+.party-room .room-messages{scrollbar-color:#4f91b6 #0b1422}
+.party-room .room-msg{border-color:#54cfff20;background:linear-gradient(110deg,#172a40,#192238);color:#eef6ff}
+.party-room .room-msg small{color:#8fdfff}
+.party-room .room-form input,.party-room .room-box select,.party-room details select,.party-room details input{border-color:#49617b;background:#080f1b;color:#f7fbff}
+.party-room .room-form input:focus,.party-room .room-box select:focus,.party-room details input:focus,.party-room details select:focus{outline:0;border-color:#54cfff;box-shadow:0 0 0 3px #54cfff20}
+.party-room .button-primary{background:linear-gradient(110deg,#ffe18a,#ff9b49 58%,#ff654b)!important;border:1px solid #ffbd65!important;color:#1b1110!important;box-shadow:0 7px 22px #ff75452a}
+.party-room .button-primary:hover{filter:brightness(1.08);box-shadow:0 10px 28px #ff75454a}
+.party-room .button-outline{background:linear-gradient(110deg,#54cfff13,#ffffff08);border:1px solid #65cfff66!important;color:#e8f7ff!important}
+.party-room button:disabled{opacity:.48;filter:saturate(.55);cursor:not-allowed}
+.party-room #partyQuizGame{position:relative;overflow:hidden;border:1px solid #ffbd6570!important;background:radial-gradient(ellipse at 100% 0%,#ffb34e18,transparent 45%),radial-gradient(ellipse at 0% 100%,#54cfff12,transparent 40%),linear-gradient(145deg,#101e32,#0b1422 65%,#21171d);box-shadow:0 16px 44px #0006}
+.party-room #partyQuizGame:before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,#54cfff,#ffbd5a,#ff654b,transparent)}
+.party-room #partyQuizGame h2{color:#fff0d0}
+.party-room #quizTimer{display:inline-flex;align-items:center;padding:7px 12px;border:1px solid #ffca6b66;border-radius:999px;background:#ffb34e18;color:#ffe4a0!important;font-variant-numeric:tabular-nums}
+.party-room #quizQuestion{padding:17px 18px;border:1px solid #54cfff50;border-radius:15px;background:linear-gradient(115deg,#54cfff12,#ffffff05 55%,#ff9b4910);color:#f3f8ff;line-height:1.55;box-shadow:inset 0 1px #ffffff0b}
+.party-room #quizChoices{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px!important}
+.party-room #quizChoices button{min-height:54px;padding:13px 15px;border-radius:13px!important;text-align:left;white-space:normal;line-height:1.45;background:linear-gradient(120deg,#182c43,#111d2d)!important;border:1px solid #5abfe866!important;color:#eff9ff!important;transition:transform .18s,border-color .18s,background .18s}
+.party-room #quizChoices button:hover:not(:disabled){transform:translateY(-2px);border-color:#ffca6b!important;background:linear-gradient(120deg,#253b53,#35251f)!important}
+.party-room #quizChoices button:last-child{grid-column:1/-1;border-color:#ff9a7866!important;background:linear-gradient(110deg,#44252b,#241c27)!important;color:#ffd3c6!important}
+.party-room #quizDecision{padding:14px;border:1px solid #54cfff35;border-radius:14px;background:#0b1726a8}
+.party-room #quizDecision p{color:#c8d9e9;line-height:1.55}
+.party-room #quizDecision button{min-height:44px;padding:10px 16px;border-radius:11px!important}
+.party-room #quizResult{padding:12px 14px;border-radius:13px;border:1px solid #ffca6b40;background:#ffb34e0d;color:#ffe7b5;line-height:1.55}
+.party-room #quizLeaderboard{padding:14px;border:1px solid #ffffff18;border-radius:14px;background:#080f1c99}
+.party-room #quizLeaderboard h3{margin:0 0 10px;color:#8fdfff;font-size:1rem}
+.party-room #quizLeaderboard ol{margin:0;padding-left:24px;display:grid;gap:7px}
+.party-room #quizLeaderboard li{padding:8px 10px;border:1px solid #ffffff12;border-radius:9px;background:#ffffff06;color:#e8f1fa;overflow-wrap:anywhere}
+.party-room #quizRestart{margin-top:12px}
+.party-room #partyVoice{border-color:#54cfff55!important;background:radial-gradient(ellipse at 100% 0%,#54cfff18,transparent 45%),linear-gradient(145deg,#142238,#0c1421)!important}
+.party-room #partyVoice button{box-shadow:0 6px 22px #0005;transition:transform .18s,filter .18s}
+.party-room #partyVoice button:hover:not(:disabled){transform:translateY(-2px);filter:brightness(1.12)}
+.party-room a:focus-visible,.party-room button:focus-visible,.party-room input:focus-visible,.party-room select:focus-visible{outline:2px solid #54cfff;outline-offset:3px}
+@media(max-width:620px){.party-room #quizChoices{grid-template-columns:1fr}.party-room #quizChoices button:last-child{grid-column:auto}.party-room #quizQuestion{padding:14px}.party-room .room-head{border-radius:18px}.party-room .room-layout{gap:12px}}
+@media(prefers-reduced-motion:no-preference){.party-room .room-head,.party-room .room-lobby,.party-room #partyQuizGame{animation:arena-room-enter .42s ease both}@keyframes arena-room-enter{from{opacity:.72;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}}
+
 </style>{% endblock %}
 {% block content %}
-<section class="party-room">
+<section class="party-room" data-room-theme="{{ room.theme }}">
   <header class="room-head"><a href="{% url 'chat:party' %}">← Party Rooms</a><span class="party-chip">{{ room.get_theme_display }}</span><h1>{{ room.title }}</h1><p>{{ room.description|default:"Welcome to the room!" }} · Host: {{ room.host.username }} · {{ members|length }}/12 seats</p>
     <p><span class="party-chip">{% if room.visibility == "private" %}🔒 PRIVATE ROOM{% else %}🌐 PUBLIC ROOM{% endif %}</span></p>
     {% if user.pk == room.host_id and joined %}<details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700">Room privacy settings</summary><form method="post" class="room-form" style="margin-top:10px;flex-wrap:wrap">{% csrf_token %}<input type="hidden" name="action" value="privacy"><select name="visibility" aria-label="Room privacy"><option value="public" {% if room.visibility == "public" %}selected{% endif %}>Public</option><option value="private" {% if room.visibility == "private" %}selected{% endif %}>Private</option></select><input name="passcode" minlength="4" maxlength="24" placeholder="Set private passcode (4+ chars)" autocomplete="new-password"><button class="button button-primary" type="submit">Save privacy</button></form><p class="room-note">Private room ka passcode kisi public chat mein share na karein.</p></details>{% endif %}
