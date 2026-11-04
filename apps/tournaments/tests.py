@@ -28,7 +28,7 @@ class ConfigurableWinnerPrizeModelTests(SimpleTestCase):
         from .models import Tournament
 
         self.assertEqual(Tournament._meta.get_field("winner_prize_currency").default, "diamonds")
-        self.assertEqual(Tournament._meta.get_field("winner_prize_amount").default, 50)
+        self.assertEqual(Tournament._meta.get_field("winner_prize_amount").default, 0)
 
 
 class KillRewardTests(SimpleTestCase):
