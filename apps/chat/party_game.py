@@ -354,6 +354,6 @@ def party_game_restart_draw(request, room_id):
         if room.game_phase != "completed" or room.winner_id:
             return JsonResponse({"error": "Restart sirf completed draw ke baad available hai."}, status=409)
         if not room.memberships.exists():
-            return JsonResponse({"error": "Restart ke liye kam se kam ek player room mein hona chahiye."}, status=409)
+            return JsonResponse({"error": "Room mein koi player nahi hai."}, status=409)
         begin_quiz(room)
     return JsonResponse({"ok": True})
