@@ -9,6 +9,30 @@ from .models import Registration, Tournament, TournamentLedgerEntry
 from .constants import PLAYER_CONFIRMATION_TIMEOUT_SECONDS
 
 
+
+def _record_currency_refund_transaction(registration, wallet, field_name, reference, reason):
+    """Mirror a tournament currency refund into the player's unified wallet ledger."""
+    from apps.social.models import PlayerShopWalletTransaction
+
+    currency = {
+        "diamonds": PlayerShopWalletTransaction.Currency.DIAMONDS,
+        "coins": PlayerShopWalletTransaction.Currency.COINS,
+        "fan_tokens": PlayerShopWalletTransaction.Currency.FAN_TOKENS,
+    }[field_name]
+    PlayerShopWalletTransaction.objects.create(
+        user=registration.player,
+        wallet=wallet,
+        currency=currency,
+        direction=PlayerShopWalletTransaction.Direction.CREDIT,
+        quantity=registration.currency_amount,
+        balance_after=getattr(wallet, field_name),
+        source="tournament_refund",
+        reference=reference,
+        idempotency_key=f"tournament-refund:{registration.pk}:{reason}",
+        description=f"Tournament {reason} refund · {registration.tournament.title}",
+    )
+
+
 @transaction.atomic
 def record_ready_no(registration_id, *, player=None, force=False):
     """Count one NO or expired confirmation window; refund exactly on the third."""
@@ -62,6 +86,9 @@ def mark_not_playing_and_refund(registration_id):
         field = {"diamonds": "diamonds", "coins": "coins", "fan_tokens": "fan_tokens"}[registration.payment_method]
         setattr(shop_wallet, field, getattr(shop_wallet, field) + registration.currency_amount)
         shop_wallet.save(update_fields=["diamonds", "coins", "fan_tokens", "updated_at"])
+        _record_currency_refund_transaction(
+            registration, shop_wallet, field, f"REG-CURRENCY-REFUND-{registration.pk}", "ready-timeout"
+        )
         registration.status = Registration.Status.NOT_PLAYING
         registration.room_details_sent = False
         registration.refund_processed = True
@@ -186,6 +213,9 @@ def cancel_tournament_and_refund(tournament_id):
             field = {"diamonds": "diamonds", "coins": "coins", "fan_tokens": "fan_tokens"}[registration.payment_method]
             setattr(shop_wallet, field, getattr(shop_wallet, field) + registration.currency_amount)
             shop_wallet.save(update_fields=["diamonds", "coins", "fan_tokens", "updated_at"])
+            _record_currency_refund_transaction(
+                registration, shop_wallet, field, f"TOURNEY-CURRENCY-REFUND-{registration.pk}", "cancelled"
+            )
             registration.status = Registration.Status.CANCELLED
             registration.refund_processed = True
             registration.refund_processed_at = timezone.now()
