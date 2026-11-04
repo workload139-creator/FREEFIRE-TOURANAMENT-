@@ -49,8 +49,8 @@
     {% empty %}<p class="empty">No tournament ledger entries.</p>{% endfor %}
   </section>
 
-  <section class="history-section"><h2>💎 Diamond / Coin / Fan Token Ledger</h2>
-    {% for entry in shop_wallet_transactions %}<article class="history-card"><header><strong>{{ entry.get_direction_display }} · {{ entry.quantity }} {{ entry.get_currency_display }}</strong><span>Balance after: {{ entry.balance_after }}</span></header><small>{{ entry.created_at|date:"d M Y, h:i A" }} · {{ entry.get_source_display|default:entry.source }}</small>{% if entry.reference %}<p>Ref: {{ entry.reference }}</p>{% endif %}{% if entry.description %}<p>{{ entry.description }}</p>{% endif %}</article>
+  <section class="history-section"><h2>🔔 Diamonds / Coins / Fan Token Credit & Debit Messages</h2>
+    {% for entry in shop_wallet_transactions %}<article class="history-card"><header><strong>{% if entry.direction == "credit" %}{% if entry.source == "tournament_prize" or entry.source == "kill_submission" %}🏆 Congratulations! Aapne {{ entry.quantity }} {{ entry.get_currency_display }} win kiye!{% elif entry.source == "tournament_refund" or entry.source == "withdrawal_refund" %}↩️ {{ entry.quantity }} {{ entry.get_currency_display }} refund hue.{% else %}🎉 {{ entry.quantity }} {{ entry.get_currency_display }} aapke wallet mein add hue.{% endif %}{% else %}ℹ️ {{ entry.quantity }} {{ entry.get_currency_display }} aapke wallet se deduct hue.{% endif %}</strong><span>Balance after: {{ entry.balance_after }} {{ entry.get_currency_display }}</span></header><small>{{ entry.created_at|date:"d M Y, h:i A" }} · {{ entry.source }}</small>{% if entry.reference %}<p>Ref: {{ entry.reference }}</p>{% endif %}{% if entry.description %}<p>{{ entry.description }}</p>{% endif %}</article>
     {% empty %}<p class="empty">No shop wallet transactions.</p>{% endfor %}
   </section>
 

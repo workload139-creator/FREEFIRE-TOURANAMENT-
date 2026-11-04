@@ -6,6 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.accounts.models import DepositRequest, Wallet
+from apps.social.models import PlayerShopWallet, PlayerShopWalletTransaction
 
 
 class ManualUPIDepositTests(TestCase):
@@ -51,3 +52,45 @@ class ManualUPIDepositTests(TestCase):
         self.assertEqual(deposit.status, DepositRequest.Status.PENDING)
         self.wallet.refresh_from_db()
         self.assertEqual(self.wallet.balance, Decimal("0.00"))
+
+
+
+class PlayerWalletNotificationTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(
+            username="wallet_notice_player",
+            email="wallet-notice@example.com",
+            phone_number="9876543211",
+            password="A-Strong-Testing-Password-123!",
+        )
+        self.wallet = PlayerShopWallet.objects.create(user=self.user)
+        self.wallet.diamonds = 20
+        self.wallet.coins = 90
+        self.wallet.save(update_fields=("diamonds", "coins", "updated_at"))
+        self.client.force_login(self.user)
+
+    def test_wallet_page_shows_win_and_deduction_messages(self):
+        PlayerShopWalletTransaction.objects.create(
+            user=self.user, wallet=self.wallet,
+            currency=PlayerShopWalletTransaction.Currency.DIAMONDS,
+            direction=PlayerShopWalletTransaction.Direction.CREDIT,
+            quantity=20, balance_after=20,
+            source="tournament_prize", reference="TEST-WIN-1",
+            idempotency_key="test-wallet-notice-win",
+            description="Tournament winner prize",
+        )
+        PlayerShopWalletTransaction.objects.create(
+            user=self.user, wallet=self.wallet,
+            currency=PlayerShopWalletTransaction.Currency.COINS,
+            direction=PlayerShopWalletTransaction.Direction.DEBIT,
+            quantity=10, balance_after=90,
+            source="tournament_entry", reference="TEST-ENTRY-1",
+            idempotency_key="test-wallet-notice-debit",
+            description="Tournament entry fee",
+        )
+        response = self.client.get(reverse("accounts:wallet"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Congratulations! Aapne 20 Diamonds win kiye!")
+        self.assertContains(response, "10 Coins aapke wallet se deduct hue.")
+        self.assertContains(response, "Available balance:")
