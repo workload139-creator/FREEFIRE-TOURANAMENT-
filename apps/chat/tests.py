@@ -230,3 +230,4 @@ class PartyQuizWinnerAndQuestionTests(TestCase):
         self.assertEqual(len(self.room.game_question_ids), 3)
         self.assertEqual(len(set(self.room.game_question_ids)), 3)
         self.assertTrue(set(self.room.game_question_ids).issubset(set(QUESTIONS)))
+        self.assertTrue(set(self.room.game_question_ids).isdisjoint({1, 2, 3}))
