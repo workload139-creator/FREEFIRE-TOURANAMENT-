@@ -124,10 +124,11 @@
   function render(data) {
     latestState = data;
     if (lobbyControls) lobbyControls.hidden = data.phase !== "lobby";
-    if (gameBadge) gameBadge.textContent = data.phase === "lobby" ? "🟡 WAITING TO START" : (data.phase === "completed" ? "🏁 GAME COMPLETE" : "🟢 GAME LIVE");
+    if (gameBadge) gameBadge.textContent = data.phase === "lobby" ? "🟡 WAITING TO START" : (data.phase === "draw" ? "🤝 DRAW — RESTARTING" : (data.phase === "completed" ? "🏁 GAME COMPLETE" : "🟢 GAME LIVE"));
     statusEl.textContent = data.phase === "question" ? "Round " + data.round + " / 3 — jawab 30 seconds ke andar dein." :
       data.phase === "decision" ? "Round " + data.round + " — speaking / skip decision phase." :
-      data.phase === "completed" ? (data.winner ? "Game complete! Winner: " + data.winner : "Draw! Sabhi players eliminate ho gaye.") :
+      data.phase === "draw" ? "Match draw! 5 seconds mein same players ke saath naya game automatic start hoga." :
+      data.phase === "completed" ? (data.winner ? "Game complete! Winner: " + data.winner : "Match draw.") :
       "12 players hone par game start hoga.";
     timerEl.textContent = data.seconds_left === null || data.seconds_left === undefined ? "" : "⏱️ " + data.seconds_left + " seconds";
     questionEl.replaceChildren();
@@ -189,9 +190,12 @@
       } else {
         decisionEl.appendChild(node("p", data.decision_player ? "Current speaker: " + data.decision_player + ". Aapki turn aane ka wait karein." : "Next phase load ho raha hai…"));
       }
+    } else if (data.phase === "draw") {
+      questionEl.textContent = "🤝 Match Draw — naya game automatic restart ho raha hai.";
+      resultEl.appendChild(node("p", "Sabhi players wrong answer / skip / timeout hue. Koi reward nahi diya gaya. 5 seconds baad same players ke saath Round 1 phir se shuru hoga."));
     } else if (data.phase === "completed") {
       questionEl.textContent = data.winner ? "🏆 Winner: " + data.winner : "🤝 Match Draw";
-      resultEl.appendChild(node("p", data.winner ? (data.winner_awarded ? "Winner ko 5 Fan Tokens ek baar award kiye gaye." : "Winner reward process ho raha hai.") : "Koi reward award nahi hua. Host 12 players ke saath draw game restart kar sakta hai."));
+      resultEl.appendChild(node("p", data.winner ? (data.winner_awarded ? "Winner ko 5 Fan Tokens ek baar award kiye gaye." : "Winner reward process ho raha hai.") : "Koi reward award nahi hua."));
     } else {
       questionEl.textContent = "Lobby mein 12 players ka wait hai.";
     }
