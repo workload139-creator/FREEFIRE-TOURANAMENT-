@@ -9,7 +9,13 @@
     {% for item in recent_wallet_messages %}
       <article class="wallet-transaction-message {% if item.direction == 'credit' %}is-credit{% else %}is-debit{% endif %}">
         {% if item.direction == "credit" %}
-          <strong>🎉 Congratulations! Aapko {{ item.quantity }} {{ item.get_currency_display }} mile!</strong>
+          {% if item.source == "tournament_prize" or item.source == "kill_submission" %}
+            <strong>🏆🎉 Congratulations! Aapne {{ item.quantity }} {{ item.get_currency_display }} win kiye!</strong>
+          {% elif item.source == "tournament_refund" or item.source == "withdrawal_refund" %}
+            <strong>↩️ Aapke wallet mein {{ item.quantity }} {{ item.get_currency_display }} refund hue.</strong>
+          {% else %}
+            <strong>🎉 Aapke wallet mein {{ item.quantity }} {{ item.get_currency_display }} add hue!</strong>
+          {% endif %}
         {% else %}
           <strong>ℹ️ {{ item.quantity }} {{ item.get_currency_display }} aapke wallet se deduct hue.</strong>
         {% endif %}
