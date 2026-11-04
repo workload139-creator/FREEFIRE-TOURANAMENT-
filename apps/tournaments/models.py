@@ -127,6 +127,16 @@ class Tournament(models.Model):
     # Admin-selected winner receives the admin-configured prize_pool into their internal wallet once.
     winner_uid = models.CharField(max_length=30, blank=True, default="")
     winner_team_uids = models.TextField(blank=True, default="", help_text="BR winning team ke registered Free Fire UIDs; har line ya comma mein ek UID. Har eligible player ko 10 Fan Tokens + 50 Coins.")
+    winner_prize_currency = models.CharField(
+        max_length=12,
+        choices=(("diamonds", "Diamonds"), ("coins", "Coins"), ("fan_tokens", "Fan Currency")),
+        default="diamonds",
+        help_text="Internal wallet prize currency. This is separate from any manual INR/UPI prize pool.",
+    )
+    winner_prize_amount = models.PositiveIntegerField(
+        default=0,
+        help_text="Per-player winner prize. Team formats receive this exact amount per verified team member.",
+    )
     winner_prize_paid = models.BooleanField(default=False)
     winner_prize_reference = models.CharField(max_length=100, blank=True, default="")
 

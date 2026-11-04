@@ -33,7 +33,7 @@ import qrcode
 
 def _credit_kill_submission_reward(submission, approved_kills, reward_override=None, source="Admin"):
     """Approve and credit the player's internal wallet once; verify persisted wallet + ledger before success."""
-    from apps.social.models import PlayerShopWallet
+    from apps.social.models import PlayerShopWallet, PlayerShopWalletTransaction
 
     registration = Registration.objects.select_for_update().get(pk=submission.registration_id)
     if KillSubmission.objects.filter(
@@ -115,6 +115,18 @@ def _credit_kill_submission_reward(submission, approved_kills, reward_override=N
             quantity=quantity,
             amount_inr=Decimal("0.00"),
             status=TournamentLedgerEntry.Status.COMPLETED,
+            description=f"{source}: {quantity} {label} for {approved_kills} verified kills",
+        )
+        PlayerShopWalletTransaction.objects.create(
+            user=submission.player,
+            wallet=wallet,
+            currency=currency,
+            direction=PlayerShopWalletTransaction.Direction.CREDIT,
+            quantity=quantity,
+            balance_after=expected[wallet_field],
+            source="kill_submission",
+            reference=f"{prefix}{currency}",
+            idempotency_key=f"kill-reward:{submission.pk}:{currency}",
             description=f"{source}: {quantity} {label} for {approved_kills} verified kills",
         )
 
