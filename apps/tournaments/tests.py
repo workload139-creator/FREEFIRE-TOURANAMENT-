@@ -16,6 +16,21 @@ from .kill_services import (
 )
 
 
+class ConfigurableWinnerPrizeModelTests(SimpleTestCase):
+    def test_winner_prize_currency_supports_all_wallet_currencies(self):
+        from .models import Tournament
+
+        field = Tournament._meta.get_field("winner_prize_currency")
+        values = {choice[0] for choice in field.choices}
+        self.assertEqual(values, {"diamonds", "coins", "fan_tokens"})
+
+    def test_winner_prize_defaults_are_backward_compatible(self):
+        from .models import Tournament
+
+        self.assertEqual(Tournament._meta.get_field("winner_prize_currency").default, "diamonds")
+        self.assertEqual(Tournament._meta.get_field("winner_prize_amount").default, 50)
+
+
 class KillRewardTests(SimpleTestCase):
 
     def test_zero_kills_reward_is_zero(self):
