@@ -37,7 +37,7 @@ def begin_quiz(room):
     """Start a new quiz run. Caller should hold a transaction and room row lock."""
     now = timezone.now()
     memberships = list(PartyRoomMembership.objects.select_for_update().filter(room=room).order_by("joined_at", "pk"))
-    if len(memberships) < 12:
+    if not memberships:
         return False
     for member in memberships:
         member.is_eliminated = False
