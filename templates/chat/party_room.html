@@ -27,7 +27,7 @@
         <form method="post" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0">{% csrf_token %}<input type="hidden" name="action" value="toggle_auto_start"><button class="button button-outline" type="submit">⏱️ Auto-start: {% if room.auto_start %}ON — turn OFF{% else %}OFF — turn ON{% endif %}</button></form>
       {% endif %}
       {% if is_admin or user.pk == room.host_id and joined %}
-        {% if is_admin or members|length >= 12 %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="start_game"><button class="button button-primary" type="submit">⚡ {% if is_admin %}Admin: Start Match Now{% else %}Start Game (12/12){% endif %}</button></form>{% else %}<button class="button button-primary" type="button" disabled title="12 players required">⚡ Start Game (12/12 required)</button>{% endif %}
+        {% if is_admin or members|length >= 12 %}<form method="post" onsubmit="{% if is_admin %}return confirm('Admin confirmation: Start FF Arena Quiz Battle now with {{ members|length }}/12 players?');{% else %}return confirm('12/12 players are ready. Start the match now?');{% endif %}">{% csrf_token %}<input type="hidden" name="action" value="start_game"><button class="button button-primary" type="submit">⚡ {% if is_admin %}Admin: Start Match Now{% else %}Start Game (12/12){% endif %}</button></form>{% else %}<button class="button button-primary" type="button" disabled title="12 players required">⚡ Start Game (12/12 required)</button>{% endif %}
       {% else %}<p class="room-note">Host Auto-start ON kar sakta hai; 12 players hote hi game start hoga.</p>{% endif %}
       </div>
     {% else %}
