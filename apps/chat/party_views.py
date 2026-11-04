@@ -116,8 +116,9 @@ def party_room(request, room_id):
                 messages.success(request, "Auto-start ON ho gaya: 12 players poore hote hi game start hoga." if room.auto_start else "Auto-start OFF ho gaya.")
             return redirect("chat:party_room", room_id=room.pk)
         if action == "start_game":
-            if request.user.pk != room.host_id or not membership:
-                messages.error(request, "Game sirf room host start kar sakta hai.")
+            is_admin = request.user.is_staff or request.user.is_superuser
+            if not is_admin and (request.user.pk != room.host_id or not membership):
+                messages.error(request, "Game sirf room host ya FF Arena admin start kar sakta hai.")
             elif room.game_status != "lobby":
                 messages.error(request, "Game pehle hi start ho chuka hai.")
             else:
@@ -126,13 +127,12 @@ def party_room(request, room_id):
                     player_count = locked_room.memberships.count()
                     if locked_room.game_status != "lobby":
                         messages.error(request, "Game pehle hi start ho chuka hai.")
-                    elif player_count < 12:
-                        messages.error(request, f"Game start karne ke liye poore 12 players chahiye. Abhi {player_count}/12 hain.")
+                    elif player_count < 1:
+                        messages.error(request, "Match start karne ke liye kam se kam 1 player room mein hona chahiye.")
+                    elif begin_quiz(locked_room):
+                        messages.success(request, f"Admin/Host ne match start kar diya! {player_count}/12 players ke saath Round 1 shuru.")
                     else:
-                        if begin_quiz(locked_room):
-                            messages.success(request, "12 players complete! Round 1 ka 30-second quiz question start ho gaya.")
-                        else:
-                            messages.error(request, "Game start karne ke liye poore 12 players chahiye.")
+                        messages.error(request, "Match start nahi ho paya. Room mein kam se kam 1 player hona chahiye.")
             return redirect("chat:party_room", room_id=room.pk)
         if not membership:
             messages.error(request, "Pehle room join karo.")
@@ -203,7 +203,7 @@ def party_room(request, room_id):
         PartyRoomMembership.objects.filter(room=room, user=request.user).update(last_seen_at=timezone.now())
         members = room.memberships.select_related("user").order_by("joined_at")
         room_messages = room.room_messages.select_related("sender").order_by("-pk")[:100]
-    return render(request, "chat/party_room.html", {"room": room, "members": members, "room_messages": list(reversed(room_messages)), "gifts": [{"code": code, "emoji": values[0], "name": values[1], "price": values[2]} for code, values in GIFTS.items()], "joined": bool(membership)})
+    return render(request, "chat/party_room.html", {"room": room, "members": members, "room_messages": list(reversed(room_messages)), "gifts": [{"code": code, "emoji": values[0], "name": values[1], "price": values[2]} for code, values in GIFTS.items()], "joined": bool(membership), "is_admin": request.user.is_staff or request.user.is_superuser})
 
 
 @login_required
