@@ -229,8 +229,19 @@ def _current_decision_member(room):
 def party_game_state(request, room_id):
     with transaction.atomic():
         room = get_object_or_404(PartyRoom.objects.select_for_update().select_related("host"), pk=room_id)
-        if not PartyRoomMembership.objects.filter(room=room, user=request.user).exists():
+        my_membership = PartyRoomMembership.objects.filter(room=room, user=request.user).first()
+        if not my_membership:
             return JsonResponse({"error": "Join this room first."}, status=403)
+        now = timezone.now()
+        if request.user.pk != room.host_id:
+            host_presence = PartyRoomMembership.objects.filter(
+                room=room, user_id=room.host_id
+            ).only("last_seen_at").first()
+            if not host_presence or host_presence.last_seen_at < now - timedelta(seconds=90):
+                room.is_open = False
+                room.save(update_fields=["is_open", "updated_at"])
+                return JsonResponse({"error": "Host offline hai. Yeh room close kar diya gaya hai."}, status=410)
+        PartyRoomMembership.objects.filter(pk=my_membership.pk).update(last_seen_at=now)
         _advance_if_due(room)
         room.refresh_from_db()
         members = list(

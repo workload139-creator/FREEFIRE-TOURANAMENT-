@@ -5,6 +5,7 @@ from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from datetime import timedelta
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.social.models import PlayerShopWallet
@@ -23,6 +24,17 @@ CURRENCIES = {"diamonds": "diamonds", "coins": "coins", "fan_tokens": "fan_token
 
 @login_required
 def party_home(request):
+    # A room belongs to its creator. If the creator stops sending heartbeat
+    # updates, close the room so abandoned rooms disappear from public listings.
+    stale_before = timezone.now() - timedelta(seconds=90)
+    for stale_room in PartyRoom.objects.filter(is_open=True).only("pk", "host_id"):
+        host_presence = PartyRoomMembership.objects.filter(
+            room_id=stale_room.pk, user_id=stale_room.host_id
+        ).only("last_seen_at").first()
+        if not host_presence or host_presence.last_seen_at < stale_before:
+            PartyRoom.objects.filter(pk=stale_room.pk, is_open=True).update(
+                is_open=False, updated_at=timezone.now()
+            )
     rooms = PartyRoom.objects.filter(is_open=True, visibility=PartyRoom.Visibility.PUBLIC).select_related("host").annotate(people=Count("memberships")).order_by("-people", "-updated_at")
     tournaments = CommunityTournament.objects.filter(status=CommunityTournament.Status.OPEN).select_related("host").annotate(people=Count("entries")).order_by("starts_at")
     return render(request, "chat/party.html", {"rooms": rooms, "tournaments": tournaments, "themes": PartyRoom._meta.get_field("theme").choices, "modes": CommunityTournament._meta.get_field("game_mode").choices})
@@ -216,6 +228,7 @@ def party_poll(request, room_id):
         after = max(0, int(request.GET.get("after", "0")))
     except (ValueError, TypeError):
         after = 0
+    PartyRoomMembership.objects.filter(room=room, user=request.user).update(last_seen_at=timezone.now())
     items = PartyRoomMessage.objects.filter(room=room, pk__gt=after).select_related("sender").order_by("pk")[:100]
     return JsonResponse({"messages": [{"id": item.pk, "sender": item.sender.username, "body": item.body, "time": timezone.localtime(item.created_at).strftime("%H:%M"), "mine": item.sender_id == request.user.pk} for item in items]})
 
