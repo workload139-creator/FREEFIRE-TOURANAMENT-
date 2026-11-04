@@ -25,6 +25,8 @@
       <p class="room-note">{% if is_admin %}Admin control: aap 12 players se kam hone par bhi match kabhi bhi start kar sakte hain. Abhi {{ members|length }}/12 players hain.{% else %}Game 12/12 players poore hone par hi start hoga. Abhi {{ members|length }}/12 players hain.{% endif %}</p>
       {% if user.pk == room.host_id and joined %}
         <form method="post" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0">{% csrf_token %}<input type="hidden" name="action" value="toggle_auto_start"><button class="button button-outline" type="submit">⏱️ Auto-start: {% if room.auto_start %}ON — turn OFF{% else %}OFF — turn ON{% endif %}</button></form>
+      {% endif %}
+      {% if is_admin or user.pk == room.host_id and joined %}
         {% if is_admin or members|length >= 12 %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="start_game"><button class="button button-primary" type="submit">⚡ {% if is_admin %}Admin: Start Match Now{% else %}Start Game (12/12){% endif %}</button></form>{% else %}<button class="button button-primary" type="button" disabled title="12 players required">⚡ Start Game (12/12 required)</button>{% endif %}
       {% else %}<p class="room-note">Host Auto-start ON kar sakta hai; 12 players hote hi game start hoga.</p>{% endif %}
       </div>
