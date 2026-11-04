@@ -24,8 +24,14 @@ CURRENCIES = {"diamonds": "diamonds", "coins": "coins", "fan_tokens": "fan_token
 
 @login_required
 def party_home(request):
-    # A room belongs to its creator. If the creator stops sending heartbeat
-    # updates, close the room so abandoned rooms disappear from public listings.
+    # Visiting the public room list is also an active host presence signal.
+    # This prevents a host's room from being closed just because they navigated
+    # out of the room page to browse or share the public room list.
+    PartyRoomMembership.objects.filter(
+        room__is_open=True, room__host=request.user, user=request.user
+    ).update(last_seen_at=timezone.now())
+
+    # Close only rooms whose host has genuinely stopped sending presence updates.
     stale_before = timezone.now() - timedelta(seconds=90)
     for stale_room in PartyRoom.objects.filter(is_open=True).only("pk", "host_id"):
         host_presence = PartyRoomMembership.objects.filter(
