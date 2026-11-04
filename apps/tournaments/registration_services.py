@@ -215,6 +215,8 @@ def create_next_tournament_round(completed_tournament_id):
         is_diwali_offer=completed.is_diwali_offer,
         is_free_fan_tournament=completed.is_free_fan_tournament,
         winner_coins_prize=completed.winner_coins_prize,
+        winner_prize_currency=completed.winner_prize_currency,
+        winner_prize_amount=completed.winner_prize_amount,
         auto_start_at_capacity=completed.auto_start_at_capacity,
         auto_reopen=completed.auto_reopen,
         series_root=root,
