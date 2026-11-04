@@ -135,7 +135,7 @@
     choicesEl.replaceChildren();
     decisionEl.replaceChildren();
     resultEl.replaceChildren();
-    restartButton.hidden = !(isHost && data.phase === "completed" && !data.winner && data.leaderboard.length >= 12);
+    restartButton.hidden = !(isHost && data.phase === "completed" && !data.winner && data.leaderboard.length > 0);
     if (data.is_eliminated) {
       resultEl.appendChild(node("p", "👀 Aap Spectator hain. Elimination: " + (data.elimination_reason || "eliminated") + (data.eliminated_round ? " (Round " + data.eliminated_round + ")" : "")));
     }
