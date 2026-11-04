@@ -136,3 +136,50 @@ class PartyRoomCreateJoinTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "poore 12 players room mein hone par hi game start hoga.")
         self.assertNotContains(response, "kam se kam 2 players hon")
+
+
+class PartyQuizAutoDrawRestartTests(TestCase):
+    def setUp(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from .party_models import PartyRoom, PartyRoomMembership
+
+        self.host = User.objects.create_user(username="quiz_host", password="test-password-12345")
+        self.player = User.objects.create_user(username="quiz_player", password="test-password-12345")
+        self.room = PartyRoom.objects.create(
+            host=self.host, title="Auto Draw Quiz", game_status="live",
+            game_phase="question", current_round=1,
+            phase_deadline=timezone.now() + timedelta(seconds=30),
+        )
+        self.host_member = PartyRoomMembership.objects.create(room=self.room, user=self.host)
+        self.player_member = PartyRoomMembership.objects.create(room=self.room, user=self.player)
+
+    def test_all_wrong_answers_draw_then_auto_restart_with_current_roster(self):
+        from datetime import timedelta
+        from django.utils import timezone
+
+        answer_url = reverse("chat:party_game_answer", args=[self.room.pk])
+        self.client.force_login(self.host)
+        self.assertEqual(self.client.post(answer_url, {"answer": "B"}).status_code, 200)
+        self.client.force_login(self.player)
+        self.assertEqual(self.client.post(answer_url, {"answer": "B"}).status_code, 200)
+
+        self.room.refresh_from_db()
+        self.assertEqual(self.room.game_phase, "draw")
+        self.assertEqual(self.room.game_status, "live")
+        self.assertIsNone(self.room.winner_id)
+        self.assertFalse(self.room.game_winner_awarded)
+
+        self.room.phase_deadline = timezone.now() - timedelta(seconds=1)
+        self.room.save(update_fields=["phase_deadline"])
+        self.client.force_login(self.host)
+        state = self.client.get(reverse("chat:party_game_state", args=[self.room.pk]))
+        self.assertEqual(state.status_code, 200)
+        self.assertEqual(state.json()["phase"], "question")
+        self.assertEqual(state.json()["round"], 1)
+        self.host_member.refresh_from_db()
+        self.player_member.refresh_from_db()
+        self.assertFalse(self.host_member.is_eliminated)
+        self.assertFalse(self.player_member.is_eliminated)
+        self.assertEqual(self.host_member.score, 0)
+        self.assertEqual(self.player_member.score, 0)

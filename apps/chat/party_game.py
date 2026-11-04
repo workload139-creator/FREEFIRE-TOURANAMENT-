@@ -80,8 +80,8 @@ def begin_quiz(room):
 
 
 def _finish_game(room):
-    """Finish once, award five non-cash Fan Tokens to one winner, or record a draw."""
-    if room.game_phase == "completed" and room.game_winner_awarded:
+    """Award a winner, or show a draw and automatically restart."""
+    if room.game_phase in ("draw", "completed"):
         return
     survivors = list(
         PartyRoomMembership.objects.select_for_update()
@@ -89,12 +89,12 @@ def _finish_game(room):
         .select_related("user")
         .order_by("-score", "joined_at", "pk")
     )
-    room.game_status = "completed"
-    room.game_phase = "completed"
-    room.phase_deadline = None
     room.decision_index = 0
     if survivors:
         winner_member = survivors[0]
+        room.game_status = "completed"
+        room.game_phase = "completed"
+        room.phase_deadline = None
         room.winner = winner_member.user
         wallet, _ = PlayerShopWallet.objects.get_or_create(user=winner_member.user)
         wallet = PlayerShopWallet.objects.select_for_update().get(pk=wallet.pk)
@@ -103,9 +103,12 @@ def _finish_game(room):
         room.game_winner_awarded = True
         message = f"🏆 QUIZ_WINNER|{winner_member.user.username}|5 Fan Tokens awarded once"
     else:
+        room.game_status = "live"
+        room.game_phase = "draw"
+        room.phase_deadline = timezone.now() + timedelta(seconds=5)
         room.winner = None
-        room.game_winner_awarded = True
-        message = "🤝 QUIZ_DRAW|Sabhi players eliminate ho gaye. Host draw game restart kar sakta hai."
+        room.game_winner_awarded = False
+        message = "🤝 QUIZ_DRAW|Sabhi players eliminate ho gaye. 5 seconds mein naya game automatic restart hoga."
     room.save(update_fields=[
         "game_status", "game_phase", "phase_deadline", "decision_index",
         "winner", "game_winner_awarded", "updated_at",
@@ -172,7 +175,9 @@ def _advance_decision(room):
 
 def _advance_if_due(room):
     now = timezone.now()
-    if room.game_phase == "question" and room.phase_deadline and now >= room.phase_deadline:
+    if room.game_phase == "draw" and room.phase_deadline and now >= room.phase_deadline:
+        begin_quiz(room)
+    elif room.game_phase == "question" and room.phase_deadline and now >= room.phase_deadline:
         active = list(
             PartyRoomMembership.objects.select_for_update()
             .filter(room=room, is_eliminated=False)
@@ -347,19 +352,8 @@ def party_game_restart_draw(request, room_id):
         if room.host_id != request.user.pk:
             return JsonResponse({"error": "Sirf host draw game restart kar sakta hai."}, status=403)
         if room.game_phase != "completed" or room.winner_id:
-            return JsonResponse({"error": "Restart sirf draw ke baad available hai."}, status=409)
-        if room.memberships.count() < 12:
-            return JsonResponse({"error": "Restart ke liye 12 players room mein hone chahiye."}, status=409)
-        room.game_status = "lobby"
-        room.game_phase = "lobby"
-        room.current_round = 0
-        room.phase_deadline = None
-        room.decision_index = 0
-        room.game_winner_awarded = False
-        room.winner = None
-        room.save(update_fields=[
-            "game_status", "game_phase", "current_round", "phase_deadline",
-            "decision_index", "game_winner_awarded", "winner", "updated_at",
-        ])
-        PartyRoomMessage.objects.create(room=room, sender=request.user, body="🔄 QUIZ_RESTARTED|Draw ke baad naya game lobby mein ready hai.")
+            return JsonResponse({"error": "Restart sirf completed draw ke baad available hai."}, status=409)
+        if not room.memberships.exists():
+            return JsonResponse({"error": "Room mein koi player nahi hai."}, status=409)
+        begin_quiz(room)
     return JsonResponse({"ok": True})
