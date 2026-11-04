@@ -81,6 +81,13 @@ class TournamentAdminForm(forms.ModelForm):
             self.fields["winner_uid"].help_text = (
                 "First-place player ki verified Free Fire UID. Team formats mein winner_team_uids mein har winning member ki UID alag line/comma se enter karein."
             )
+        if "winner_prize_amount" in self.fields:
+            self.fields["winner_prize_amount"].label = "Winner Prize — Amount per Player"
+        if "winner_prize_currency" in self.fields:
+            self.fields["winner_prize_currency"].label = "Winner Prize — Currency"
+            self.fields["winner_prize_currency"].help_text = (
+                "Choose Diamonds, Coins or Fan Currency. This exact amount is credited to each verified winning player."
+            )
 
     def clean(self):
         cleaned = super().clean()
@@ -336,7 +343,7 @@ def award_arena_currency_winner(modeladmin, request, queryset):
     for selected in queryset:
         with transaction.atomic():
             tournament = Tournament.objects.select_for_update().get(pk=selected.pk)
-            if tournament.status != Tournament.Status.COMPLETED or tournament.is_free_fan_tournament:
+            if tournament.status != Tournament.Status.COMPLETED or tournament.is_free_fan_tournament or tournament.is_diwali_offer:
                 skipped += 1
                 continue
             amount = int(tournament.winner_prize_amount or 0)
