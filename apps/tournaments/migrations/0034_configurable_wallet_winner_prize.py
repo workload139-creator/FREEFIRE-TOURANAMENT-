@@ -25,7 +25,7 @@ class Migration(migrations.Migration):
             model_name="tournament",
             name="winner_prize_amount",
             field=models.PositiveIntegerField(
-                default=50,
+                default=0,
                 help_text="Per-player winner prize. Team formats receive this exact amount per verified team member.",
             ),
         ),
