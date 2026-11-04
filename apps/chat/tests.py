@@ -160,7 +160,7 @@ class PartyQuizAutoDrawRestartTests(TestCase):
 
         answer_url = reverse("chat:party_game_answer", args=[self.room.pk])
         self.client.force_login(self.host)
-        self.assertEqual(self.client.post(answer_url, {"answer": "B"}).status_code, 200)
+        self.assertEqual(self.client.post(answer_url, {"answer": "SKIP"}).status_code, 200)
         self.client.force_login(self.player)
         self.assertEqual(self.client.post(answer_url, {"answer": "B"}).status_code, 200)
 
@@ -183,3 +183,50 @@ class PartyQuizAutoDrawRestartTests(TestCase):
         self.assertFalse(self.player_member.is_eliminated)
         self.assertEqual(self.host_member.score, 0)
         self.assertEqual(self.player_member.score, 0)
+
+
+class PartyQuizWinnerAndQuestionTests(TestCase):
+    def setUp(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from .party_models import PartyRoom, PartyRoomMembership
+        self.host = User.objects.create_user(username="quiz_last_host", password="test-password-12345")
+        self.player = User.objects.create_user(username="quiz_last_player", password="test-password-12345")
+        self.room = PartyRoom.objects.create(
+            host=self.host, title="Last Player Wins", game_status="live",
+            game_phase="question", current_round=1,
+            phase_deadline=timezone.now() + timedelta(seconds=30),
+            game_question_ids=[1, 2, 3],
+        )
+        PartyRoomMembership.objects.create(room=self.room, user=self.host)
+        PartyRoomMembership.objects.create(room=self.room, user=self.player)
+
+    def test_last_survivor_wins_and_gets_five_fan_tokens_once(self):
+        from apps.social.models import PlayerShopWallet
+        from .party_game import QUESTIONS
+        answer_url = reverse("chat:party_game_answer", args=[self.room.pk])
+        self.client.force_login(self.host)
+        correct = QUESTIONS[1]["correct"]
+        self.assertEqual(self.client.post(answer_url, {"answer": correct}).status_code, 200)
+        self.client.force_login(self.player)
+        self.assertEqual(self.client.post(answer_url, {"answer": "SKIP"}).status_code, 200)
+        self.room.refresh_from_db()
+        self.assertEqual(self.room.game_phase, "completed")
+        self.assertEqual(self.room.winner_id, self.host.pk)
+        self.assertTrue(self.room.game_winner_awarded)
+        wallet = PlayerShopWallet.objects.get(user=self.host)
+        self.assertEqual(wallet.fan_tokens, 5)
+        self.client.get(reverse("chat:party_game_state", args=[self.room.pk]))
+        wallet.refresh_from_db()
+        self.assertEqual(wallet.fan_tokens, 5)
+
+    def test_each_new_game_selects_three_distinct_questions(self):
+        from django.db import transaction
+        from .party_game import begin_quiz, QUESTIONS
+        with transaction.atomic():
+            locked = type(self.room).objects.select_for_update().get(pk=self.room.pk)
+            self.assertTrue(begin_quiz(locked))
+        self.room.refresh_from_db()
+        self.assertEqual(len(self.room.game_question_ids), 3)
+        self.assertEqual(len(set(self.room.game_question_ids)), 3)
+        self.assertTrue(set(self.room.game_question_ids).issubset(set(QUESTIONS)))
