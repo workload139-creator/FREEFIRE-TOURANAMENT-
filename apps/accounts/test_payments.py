@@ -65,6 +65,9 @@ class PlayerWalletNotificationTests(TestCase):
             password="A-Strong-Testing-Password-123!",
         )
         self.wallet = PlayerShopWallet.objects.create(user=self.user)
+        self.wallet.diamonds = 20
+        self.wallet.coins = 90
+        self.wallet.save(update_fields=("diamonds", "coins", "updated_at"))
         self.client.force_login(self.user)
 
     def test_wallet_page_shows_win_and_deduction_messages(self):
@@ -90,4 +93,4 @@ class PlayerWalletNotificationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Congratulations! Aapne 20 Diamonds win kiye!")
         self.assertContains(response, "10 Coins aapke wallet se deduct hue.")
-        self.assertContains(response, "Balance after:")
+        self.assertContains(response, "Available balance:")
