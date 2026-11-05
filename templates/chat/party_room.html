@@ -177,7 +177,7 @@
     latestState = data;
     if (lobbyControls) lobbyControls.hidden = data.phase !== "lobby";
     if (gameBadge) gameBadge.textContent = data.phase === "lobby" ? "🟡 WAITING TO START" : (data.phase === "draw" ? "🤝 DRAW — RESTARTING" : (data.phase === "completed" ? "🏁 GAME COMPLETE" : "🟢 GAME LIVE"));
-    statusEl.textContent = data.phase === "question" ? "Round " + data.round + " / 3 — jawab 30 seconds ke andar dein." :
+    statusEl.textContent = data.phase === "question" ? "Round " + data.round + " / 3 — jawab 45 seconds ke andar dein." :
       data.phase === "decision" ? "Round " + data.round + " — speaking / skip decision phase." :
       data.phase === "draw" ? "Match draw! 5 seconds mein same players ke saath naya game automatic start hoga." :
       data.phase === "completed" ? (data.winner ? "Game complete! Winner: " + data.winner : "Match draw.") :
@@ -229,7 +229,7 @@
         resultEl.appendChild(node("p", "Correct answer: " + data.correct_answer + " — " + data.explanation));
       }
       if (data.is_my_decision && !data.is_eliminated) {
-        decisionEl.appendChild(node("p", "🎙️ Ab aapki turn hai. Group Voice mein 30 seconds tak bol sakte hain, ya Skip karein."));
+        decisionEl.appendChild(node("p", "🎙️ Ab aapki turn hai. Group Voice mein 15 seconds tak bol sakte hain, ya Skip karein."));
         const done = node("button", "✅ Done speaking", "button button-primary");
         done.type = "button";
         done.addEventListener("click", async () => { try { busy = true; await post(decisionUrl, {action:"done"}); await refresh(); } catch(e) { statusEl.textContent=e.message; } finally { busy=false; } });
@@ -264,7 +264,7 @@
     if (busy || refreshing) return;
     refreshing = true;
     try {
-      const response = await fetch(stateUrl, {credentials:"same-origin", headers:{"Accept":"application/json", "X-Requested-With":"XMLHttpRequest"}});
+      const response = await fetch(stateUrl, {credentials:"same-origin", headers:{"Accept":"application/json", "X-Requested-With":"XMLHttpRequest"}, cache:"no-store"});
       const data = await readJson(response);
       if (!response.ok) throw new Error(data.error || "Game state load nahi hua.");
       render(data);
@@ -293,7 +293,7 @@
           credentials: "same-origin",
           headers: {"X-Requested-With":"XMLHttpRequest"}
         });
-        if (!response.ok) throw new Error("Game start request fail hui. 12 players check karein.");
+        const data = await readJson(response);\n        if (!response.ok || !data.ok) throw new Error(data.error || "Game start request fail hui.");\n        statusEl.textContent = "Game live! Sabhi " + data.players + " players ko Round 1 ka same question bhej diya gaya hai.";
       } catch (error) { statusEl.textContent = error.message; }
       finally { busy = false; }
       await refresh();
