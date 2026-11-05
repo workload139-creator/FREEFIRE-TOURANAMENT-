@@ -244,7 +244,7 @@
       }
     } else if (data.phase === "draw") {
       questionEl.textContent = "🤝 Match Draw — naya game automatic restart ho raha hai.";
-      resultEl.appendChild(node("p", "Sabhi players wrong answer / skip / timeout hue. Koi reward nahi diya gaya. 5 seconds baad same players ke saath Round 1 phir se shuru hoga."));
+      resultEl.appendChild(node("p", "Sabhi players wrong answer / skip / timeout hue. Koi reward nahi diya gaya. 30 seconds baad same players ke saath Round 1 phir se shuru hoga."));
     } else if (data.phase === "completed") {
       questionEl.textContent = data.winner ? "🏆 Winner: " + data.winner : "🤝 Match Draw";
       if (isHost) resultEl.appendChild(node("p", "Match complete. Host ab Restart Game Now dabakar naya match shuru kar sakta hai."));
