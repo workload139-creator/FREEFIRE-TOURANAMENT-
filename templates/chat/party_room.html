@@ -213,6 +213,126 @@
  .party-room .room-lobby>.room-seat-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
  .party-room .room-head .party-chip{font-size:.68rem}
 }
+
+/* FF ARENA GREEN ELITE — unified competitive game-room theme */
+.party-room{
+ --room-lime:#a8ff45!important;--room-mint:#42f5a1!important;--room-hot:#d7ff78!important;
+ color:#effff4!important;
+ background:
+  radial-gradient(ellipse at 12% 8%,#1c9c5b18,transparent 35%),
+  radial-gradient(ellipse at 92% 42%,#a8ff4510,transparent 32%);
+}
+.party-room:before{
+ background:radial-gradient(ellipse at 12% 10%,#20a76522,transparent 38%),
+ radial-gradient(ellipse at 88% 78%,#9cff3512,transparent 35%)!important;
+}
+.party-room .room-head,
+.party-room .room-lobby,
+.party-room #partyQuizGame,
+.party-room .room-box,
+.party-room #partyVoice{
+ color:#edfff3!important;
+ border:1px solid #5be89555!important;
+ background:
+  radial-gradient(ellipse at 100% 0%,#69f59b18,transparent 42%),
+  linear-gradient(145deg,#102b20 0%,#0b1d17 58%,#10251b 100%)!important;
+ box-shadow:0 14px 38px #0008, inset 0 1px #d8ffe40b!important;
+}
+.party-room .room-head{border-color:#a8ff4577!important;box-shadow:0 18px 48px #0008,0 0 24px #6cff9b12!important}
+.party-room .room-head:after,
+.party-room .room-lobby:before,
+.party-room #partyQuizGame:before{
+ background:linear-gradient(90deg,transparent,#42f5a1,#b7ff55,#42f5a1,transparent)!important;
+}
+.party-room .room-head h1,.party-room .room-box h2,
+.party-room #partyQuizGame h2{color:#f2fff5!important;text-shadow:0 2px 18px #42f5a122}
+.party-room .room-head a{color:#a8ff45!important}
+.party-room .party-chip,.party-room #quizTimer{
+ color:#d8ffad!important;background:#8bff3818!important;border:1px solid #a8ff4570!important;
+}
+.party-room .room-note,.party-room .room-head p{color:#b7d8c3!important}
+.party-room .room-game-live{
+ color:#dffff0!important;border:1px solid #42f5a177!important;
+ background:linear-gradient(110deg,#42f5a120,#a8ff4510)!important;
+}
+.party-room .room-seat{
+ color:#9fc5ad!important;border:1px dashed #47745a!important;
+ background:linear-gradient(145deg,#0b1d16,#10271b)!important;
+}
+.party-room .room-seat.filled{
+ color:#eafff0!important;border:1px solid #42f5a1a8!important;
+ background:linear-gradient(145deg,#17452d,#102d20)!important;
+ box-shadow:inset 0 0 20px #42f5a111,0 0 12px #42f5a10c!important;
+}
+.party-room .room-seat.host{
+ border:1px solid #c7ff65!important;
+ background:linear-gradient(145deg,#354b1d,#1b321d)!important;color:#f3ffd6!important;
+}
+.party-room .room-member,.party-room .room-msg{
+ color:#eafff0!important;border:1px solid #4acb8340!important;
+ background:linear-gradient(110deg,#143624,#10271d)!important;
+}
+.party-room .room-msg small{color:#8cebb0!important}
+.party-room .room-messages{scrollbar-color:#42b978 #0b1d15!important}
+.party-room .room-form input,.party-room .room-box select,
+.party-room details select,.party-room details input{
+ color:#effff4!important;background:#081810!important;border:1px solid #397653!important;
+}
+.party-room .room-form input:focus,.party-room .room-box select:focus,
+.party-room details input:focus,.party-room details select:focus{
+ outline:0!important;border-color:#a8ff45!important;box-shadow:0 0 0 3px #a8ff4520!important;
+}
+.party-room .button-primary{
+ color:#092012!important;background:linear-gradient(110deg,#caff73,#75ef9b 58%,#42d88a)!important;
+ border:1px solid #baff69!important;box-shadow:0 7px 22px #42f5a12b!important;
+}
+.party-room .button-primary:hover{filter:brightness(1.08);box-shadow:0 10px 28px #42f5a14a!important}
+.party-room .button-outline{
+ color:#dfffea!important;background:linear-gradient(110deg,#42f5a116,#ffffff06)!important;
+ border:1px solid #55d88b88!important;
+}
+.party-room #quizQuestion{
+ color:#f0fff5!important;border:1px solid #42f5a166!important;
+ background:linear-gradient(115deg,#42f5a11c,#ffffff05 60%,#a8ff4510)!important;
+ box-shadow:inset 0 1px #ffffff0b,0 8px 24px #0003!important;
+}
+.party-room #quizChoices button{
+ color:#effff4!important;background:linear-gradient(120deg,#17442d,#10291e)!important;
+ border:1px solid #54d99077!important;box-shadow:0 5px 16px #0003!important;
+}
+.party-room #quizChoices button:hover:not(:disabled){
+ border-color:#c5ff70!important;background:linear-gradient(120deg,#225b3b,#183b27)!important;
+ box-shadow:0 8px 20px #42f5a122!important;
+}
+.party-room #quizChoices button:last-child{
+ color:#e4ffed!important;border-color:#77d99a88!important;
+ background:linear-gradient(110deg,#183b2a,#142b20)!important;
+}
+.party-room #quizDecision,.party-room #quizLeaderboard{
+ border:1px solid #4acb8344!important;background:#081a12bb!important;
+}
+.party-room #quizDecision p,.party-room #quizLeaderboard li{color:#dff5e7!important}
+.party-room #quizLeaderboard h3{color:#a8ff75!important}
+.party-room #quizLeaderboard li{border:1px solid #4acb8333!important;background:#143321!important}
+.party-room #quizResult{
+ color:#eaffd9!important;border:1px solid #a8ff4566!important;background:#8bff3814!important;
+}
+.party-room #partyVoice button{
+ color:#effff4!important;border-color:#55d88b88!important;
+ background:linear-gradient(145deg,#1a4b32,#10281d)!important;
+ box-shadow:0 6px 22px #0005!important;
+}
+.party-room #partyVoice button:hover:not(:disabled){filter:brightness(1.15);transform:translateY(-2px)}
+.party-room a:focus-visible,.party-room button:focus-visible,
+.party-room input:focus-visible,.party-room select:focus-visible{
+ outline:2px solid #baff69!important;outline-offset:3px;
+}
+.party-room button:disabled{opacity:.48;filter:saturate(.55)}
+@media(prefers-reduced-motion:no-preference){
+ .party-room .room-seat.filled,.party-room #quizChoices button{transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+ .party-room .room-seat.filled:hover{transform:translateY(-2px);box-shadow:0 8px 20px #42f5a122!important}
+}
+
 </style>{% endblock %}
 {% block content %}
 <section class="party-room" data-room-theme="{{ room.theme }}">
