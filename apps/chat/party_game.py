@@ -84,7 +84,7 @@ def begin_quiz(room):
     ])
     PartyRoomMessage.objects.create(
         room=room, sender=room.host,
-        body="🎮 GAME_STARTED|FF Arena Quiz Battle|Round 1 of 3|30 seconds to answer",
+        body="🎮 GAME_STARTED|FF Arena Quiz Battle|Round 1 of 3|45 seconds to answer",
     )
     return True
 
@@ -144,7 +144,7 @@ def _start_decision_phase(room):
     room.save(update_fields=["game_phase", "decision_index", "phase_deadline", "updated_at"])
     PartyRoomMessage.objects.create(
         room=room, sender=room.host,
-        body=f"🗣️ DECISION_PHASE|Round {room.current_round}|Har active player ko bolne ya Skip karne ke liye 30 seconds milenge.",
+        body=f"🗣️ DECISION_PHASE|Round {room.current_round}|Har active player ko bolne ya Skip karne ke liye 15 seconds milenge.",
     )
 
 
@@ -160,7 +160,7 @@ def _advance_decision(room):
     for index, member in enumerate(active):
         if not member.decision_done:
             room.decision_index = index
-            room.phase_deadline = timezone.now() + timedelta(seconds=30)
+            room.phase_deadline = timezone.now() + timedelta(seconds=15)
             room.save(update_fields=["decision_index", "phase_deadline", "updated_at"])
             return
     if room.current_round >= 3:
@@ -179,7 +179,7 @@ def _advance_decision(room):
     room.save(update_fields=["current_round", "game_phase", "phase_deadline", "decision_index", "updated_at"])
     PartyRoomMessage.objects.create(
         room=room, sender=room.host,
-        body=f"❓ ROUND_STARTED|Round {room.current_round} of 3|30 seconds to answer",
+        body=f"❓ ROUND_STARTED|Round {room.current_round} of 3|45 seconds to answer",
     )
 
 
@@ -222,7 +222,7 @@ def _advance_if_due(room):
             current.save(update_fields=["decision_done"])
             PartyRoomMessage.objects.create(
                 room=room, sender=room.host,
-                body=f"⏭️ DECISION_SKIPPED|{current.user.username}|30-second turn expired",
+                body=f"⏭️ DECISION_SKIPPED|{current.user.username}|15-second turn expired",
             )
         _advance_decision(room)
 
