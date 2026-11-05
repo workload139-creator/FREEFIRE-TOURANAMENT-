@@ -509,13 +509,62 @@
  }
 }
 
+
+/* FINAL FIX: unmistakable emerald-gold theme + separated room controls */
+.party-room{
+ color:#f3fff7!important;
+ background:radial-gradient(ellipse at 15% 0%,#21c87920,transparent 42%),radial-gradient(ellipse at 95% 65%,#b6ff3d12,transparent 38%)!important;
+}
+.party-room .room-head,.party-room .room-lobby,.party-room #partyQuizGame,
+.party-room .room-box,.party-room #partyVoice{
+ background:linear-gradient(145deg,#123d29 0%,#092419 58%,#15391f 100%)!important;
+ border:1px solid #55e99b99!important;
+ box-shadow:0 16px 42px #0009,0 0 24px #42e99b18!important;
+}
+.party-room .room-head{background:radial-gradient(ellipse at 90% 0%,#c8ff3d35,transparent 38%),linear-gradient(120deg,#17492e,#092719 65%,#1b3b20)!important;border-color:#c8ff3d!important}
+.party-room .room-lobby{background:radial-gradient(ellipse at 100% 0%,#a8ff4520,transparent 45%),linear-gradient(145deg,#123b28,#081d14)!important}
+.party-room #partyQuizGame{background:radial-gradient(ellipse at 100% 0%,#c8ff3d25,transparent 42%),linear-gradient(145deg,#16482f,#092116)!important;border-color:#c8ff3d!important}
+.party-room .room-box h2,.party-room #partyQuizGame h2{color:#efffd8!important}
+.party-room .room-head-tools{grid-area:tools!important;display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:12px!important;flex-wrap:wrap!important;width:100%!important;min-width:0}
+.party-room .room-head .room-privacy{flex:1 1 300px!important;min-width:0!important;margin:0!important;padding:9px 12px!important;border:1px solid #65d99566!important;border-radius:13px!important;background:#061a11a8!important}
+.party-room .room-head .room-privacy>summary{cursor:pointer!important;list-style:none!important;color:#dfffaa!important;font-weight:900!important;padding:3px 0!important}
+.party-room .room-head .room-privacy>summary::-webkit-details-marker{display:none}
+.party-room .room-head .room-privacy form{display:flex!important;gap:8px!important;flex-wrap:wrap!important;margin-top:10px!important}
+.party-room .room-head .room-privacy form>*{flex:1 1 145px!important;min-width:0!important}
+.party-room .room-head .room-close-form{display:flex!important;flex:0 0 auto!important;align-items:center!important;margin:0!important;padding:0!important}
+.party-room .room-head .room-close-button{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ min-height:44px!important;padding:10px 17px!important;border-radius:12px!important;
+ color:#fff!important;background:linear-gradient(120deg,#a92d39,#701d2b)!important;
+ border:1px solid #ff7882!important;box-shadow:0 6px 20px #c52f4533!important;
+ font-weight:950!important;white-space:nowrap!important;visibility:visible!important;opacity:1!important;
+}
+.party-room .room-head .room-close-button:hover{filter:brightness(1.16)!important;transform:translateY(-1px)}
+.party-room .room-seat.filled{background:linear-gradient(145deg,#1c6741,#103a27)!important;border:1px solid #4ff0a4!important;color:#f2fff6!important}
+.party-room .room-seat.host{background:linear-gradient(145deg,#596d20,#2b421b)!important;border:1px solid #d5ff58!important;color:#fffbdc!important}
+.party-room .room-msg,.party-room .room-member{background:linear-gradient(110deg,#16452e,#0d2a1d)!important;border-color:#4cce864f!important}
+.party-room #quizQuestion{background:linear-gradient(115deg,#1d5b3a,#123d2b)!important;border-color:#68efa7!important}
+.party-room #quizChoices button{background:linear-gradient(120deg,#20573a,#123b29)!important;border-color:#68d99a!important}
+.party-room #quizChoices button:hover:not(:disabled){background:linear-gradient(120deg,#327b4c,#1b5033)!important;border-color:#d2ff55!important}
+.party-room .button-primary{background:linear-gradient(110deg,#e0ff73,#9df45a 48%,#45e69a)!important;color:#10200d!important;border:1px solid #d4ff6b!important}
+.party-room .button-outline{background:#17432d!important;color:#edfff3!important;border:1px solid #62d995!important}
+@media(max-width:720px){
+ .party-room .room-head-tools{display:flex!important;flex-direction:column!important;align-items:stretch!important}
+ .party-room .room-head .room-privacy{flex:1 1 auto!important;width:100%!important}
+ .party-room .room-head .room-close-form{width:100%!important}
+ .party-room .room-head .room-close-button{width:100%!important}
+ .party-room .room-head .room-privacy form{display:grid!important;grid-template-columns:1fr!important}
+}
+
 </style>{% endblock %}
 {% block content %}
 <section class="party-room" data-room-theme="{{ room.theme }}">
   <header class="room-head"><a href="{% url 'chat:party' %}">← Party Rooms</a><span class="party-chip">{{ room.get_theme_display }}</span><h1>{{ room.title }}</h1><p>{{ room.description|default:"Welcome to the room!" }} · Host: {{ room.host.username }} · {{ members|length }}/12 seats</p>
     <p><span class="party-chip">{% if room.visibility == "private" %}🔒 PRIVATE ROOM{% else %}🌐 PUBLIC ROOM{% endif %}</span></p>
-    {% if user.pk == room.host_id and joined %}<details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700">Room privacy settings</summary><form method="post" class="room-form" style="margin-top:10px;flex-wrap:wrap">{% csrf_token %}<input type="hidden" name="action" value="privacy"><select name="visibility" aria-label="Room privacy"><option value="public" {% if room.visibility == "public" %}selected{% endif %}>Public</option><option value="private" {% if room.visibility == "private" %}selected{% endif %}>Private</option></select><input name="passcode" minlength="4" maxlength="24" placeholder="Set private passcode (4+ chars)" autocomplete="new-password"><button class="button button-primary" type="submit">Save privacy</button></form><p class="room-note">Private room ka passcode kisi public chat mein share na karein.</p></details>{% endif %}
-    {% if user.pk == room.host_id %}<form method="post" style="display:inline">{% csrf_token %}<input type="hidden" name="action" value="leave"><button class="button button-outline" type="submit">Close Room</button></form>{% elif joined %}<form method="post" style="display:inline">{% csrf_token %}<input type="hidden" name="action" value="leave"><button class="button button-outline" type="submit">Leave Room</button></form>{% endif %}
+    <div class="room-head-tools">
+      {% if user.pk == room.host_id and joined %}<details class="room-privacy"><summary>⚙️ Room privacy settings</summary><form method="post" class="room-form">{% csrf_token %}<input type="hidden" name="action" value="privacy"><select name="visibility" aria-label="Room privacy"><option value="public" {% if room.visibility == "public" %}selected{% endif %}>Public</option><option value="private" {% if room.visibility == "private" %}selected{% endif %}>Private</option></select><input name="passcode" minlength="4" maxlength="24" placeholder="Set private passcode (4+ chars)" autocomplete="new-password"><button class="button button-primary" type="submit">Save privacy</button></form><p class="room-note">Private room ka passcode kisi public chat mein share na karein.</p></details>{% endif %}
+      {% if user.pk == room.host_id %}<form method="post" class="room-close-form">{% csrf_token %}<input type="hidden" name="action" value="leave"><button class="button button-outline room-close-button" type="submit">✕ Close Room</button></form>{% elif joined %}<form method="post" class="room-close-form">{% csrf_token %}<input type="hidden" name="action" value="leave"><button class="button button-outline room-close-button" type="submit">↩ Leave Room</button></form>{% endif %}
+    </div>
   </header>
   {% if joined or is_admin %}
   <section class="room-lobby">
