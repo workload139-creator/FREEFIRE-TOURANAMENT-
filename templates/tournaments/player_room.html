@@ -235,14 +235,13 @@
         // network requests or dynamic imports, otherwise browsers can suppress
         // the permission prompt because transient user activation has expired.
         if (!isNativeLive()) {
-          const isAndroidPhone = /Android/i.test(navigator.userAgent);
-          if (isAndroidPhone) {
-            const hint = document.getElementById("mobileLiveAppHint");
-            if (hint) hint.hidden = false;
-            throw new Error("Mobile Chrome doosri app ka gameplay capture nahi kar sakta. FF Arena Android APK se Live AI start karein.");
-          }
           if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== "function") {
-            throw new Error("Laptop/desktop Chrome ya Edge par Live Sharing chalayein; Android ke liye FF Arena APK use karein.");
+            const hint = document.getElementById("mobileLiveAppHint");
+            if (hint) hint.hidden = true;
+            const isAndroid = /Android/i.test(navigator.userAgent);
+            throw new Error(isAndroid
+              ? "Is mobile browser mein screen sharing supported nahi hai. Free Fire gameplay share karne ke liye FF Arena Android app kholein."
+              : "Is browser mein screen sharing supported nahi hai. Updated Chrome ya Edge browser use karein.");
           }
           status.textContent = "Abhi browser ka Share screen/tab prompt khulega. Screen select karke Share dabayein…";
           displayStream = await navigator.mediaDevices.getDisplayMedia({video: {frameRate: 15}, audio: false});
