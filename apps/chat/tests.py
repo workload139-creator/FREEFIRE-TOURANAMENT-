@@ -289,6 +289,16 @@ class PartyQuizManualDrawRestartTests(TestCase):
         self.assertFalse(self.host_member.current_answer)
         self.assertFalse(self.player_member.current_answer)
 
+    def test_host_cannot_restart_while_match_is_live(self):
+        self.room.game_status = "live"
+        self.room.game_phase = "question"
+        self.room.save(update_fields=["game_status", "game_phase"])
+        self.client.force_login(self.host)
+        response = self.client.post(reverse("chat:party_game_restart_draw", args=[self.room.pk]))
+        self.assertEqual(response.status_code, 409)
+        self.room.refresh_from_db()
+        self.assertEqual(self.room.game_phase, "question")
+
     def test_non_host_cannot_restart_completed_game(self):
         self.client.force_login(self.player)
         response = self.client.post(reverse("chat:party_game_restart_draw", args=[self.room.pk]))
