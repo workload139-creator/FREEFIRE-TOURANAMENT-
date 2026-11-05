@@ -179,7 +179,7 @@
     if (gameBadge) gameBadge.textContent = data.phase === "lobby" ? "🟡 WAITING TO START" : (data.phase === "draw" ? "🤝 DRAW — RESTARTING" : (data.phase === "completed" ? "🏁 GAME COMPLETE" : "🟢 GAME LIVE"));
     statusEl.textContent = data.phase === "question" ? "Round " + data.round + " / 3 — jawab 45 seconds ke andar dein." :
       data.phase === "decision" ? "Round " + data.round + " — speaking / skip decision phase." :
-      data.phase === "draw" ? "Match draw! 30 seconds mein same players ke saath naya game automatic start hoga. Host chahe to Restart button dabakar turant shuru kar sakta hai." :
+      data.phase === "draw" ? "Match draw! 30 seconds mein same players ke saath naya game automatic start hoga. Host chahe to " :
       data.phase === "completed" ? (data.winner ? "Game complete! Winner: " + data.winner : "Match draw.") :
       "12 players hone par game start hoga.";
     timerEl.textContent = data.seconds_left === null || data.seconds_left === undefined ? "" : "⏱️ " + data.seconds_left + " seconds";
@@ -187,7 +187,7 @@
     choicesEl.replaceChildren();
     decisionEl.replaceChildren();
     resultEl.replaceChildren();
-    restartButton.hidden = !(isHost && (data.phase === "draw" || (data.phase === "completed" && !data.winner)) && data.leaderboard.length > 0);
+    restartButton.hidden = !(isHost && data.phase === "completed" && data.leaderboard.length > 0);
     if (data.is_eliminated) {
       resultEl.appendChild(node("p", "👀 Aap Spectator hain. Elimination: " + (data.elimination_reason || "eliminated") + (data.eliminated_round ? " (Round " + data.eliminated_round + ")" : "")));
     }
@@ -247,6 +247,7 @@
       resultEl.appendChild(node("p", "Sabhi players wrong answer / skip / timeout hue. Koi reward nahi diya gaya. 5 seconds baad same players ke saath Round 1 phir se shuru hoga."));
     } else if (data.phase === "completed") {
       questionEl.textContent = data.winner ? "🏆 Winner: " + data.winner : "🤝 Match Draw";
+      if (isHost) resultEl.appendChild(node("p", "Match complete. Host ab Restart Game Now dabakar naya match shuru kar sakta hai."));
       resultEl.appendChild(node("p", data.winner ? (data.winner_awarded ? "Winner ko 5 Fan Tokens ek baar award kiye gaye." : "Winner reward process ho raha hai.") : "Koi reward award nahi hua."));
     } else {
       questionEl.textContent = "Lobby mein 12 players ka wait hai.";
