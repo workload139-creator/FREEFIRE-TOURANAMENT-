@@ -184,6 +184,33 @@ class PartyQuizAutoDrawRestartTests(TestCase):
         self.assertEqual(self.host_member.score, 0)
         self.assertEqual(self.player_member.score, 0)
 
+    def test_ajax_start_sends_same_live_question_to_every_joined_player(self):
+        from .party_game import QUESTIONS
+        start_url = reverse("chat:party_room", args=[self.room.pk])
+        self.room.game_status = "lobby"
+        self.room.game_phase = "lobby"
+        self.room.save(update_fields=["game_status", "game_phase"])
+        self.client.force_login(self.host)
+        started = self.client.post(
+            start_url, {"action": "start_game"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(started.status_code, 200)
+        self.assertTrue(started.json()["ok"])
+        self.assertEqual(started.json()["players"], 2)
+        state_url = reverse("chat:party_game_state", args=[self.room.pk])
+        host_state = self.client.get(state_url).json()
+        self.client.force_login(self.player)
+        player_state = self.client.get(state_url).json()
+        self.assertEqual(host_state["phase"], "question")
+        self.assertEqual(player_state["phase"], "question")
+        self.assertEqual(host_state["question"], player_state["question"])
+        self.assertEqual(host_state["choices"], player_state["choices"])
+        self.assertTrue(host_state["question"])
+        self.assertTrue(player_state["question"])
+        self.assertGreaterEqual(host_state["seconds_left"], 40)
+        self.assertGreaterEqual(player_state["seconds_left"], 40)
+
 
 class PartyQuizWinnerAndQuestionTests(TestCase):
     def setUp(self):
