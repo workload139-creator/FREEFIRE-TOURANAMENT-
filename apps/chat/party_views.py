@@ -249,7 +249,7 @@ def party_poll(request, room_id):
     members = list(PartyRoomMembership.objects.filter(room=room).select_related("user").order_by("joined_at"))
     return JsonResponse({
         "messages": [{"id": item.pk, "sender": item.sender.username, "body": item.body, "time": timezone.localtime(item.created_at).strftime("%H:%M"), "mine": item.sender_id == request.user.pk} for item in items],
-        "members": [{"id": member.user_id, "username": member.user.username, "is_host": member.user_id == room.host_id} for member in members],
+        "members": [{"id": member.user_id, "username": member.user.username, "avatar_url": (member.user.profile_photo.url if member.user.profile_photo else ""), "is_host": member.user_id == room.host_id} for member in members],
         "member_count": len(members),
         "game_status": room.game_status,
     })
