@@ -84,7 +84,7 @@ def begin_quiz(room):
     ])
     PartyRoomMessage.objects.create(
         room=room, sender=room.host,
-        body="🎮 GAME_STARTED|FF Arena Quiz Battle|Round 1 of 3|30 seconds to answer",
+        body="🎮 GAME_STARTED|FF Arena Quiz Battle|Round 1 of 3|45 seconds to answer",
     )
     return True
 
@@ -115,10 +115,10 @@ def _finish_game(room):
     else:
         room.game_status = "live"
         room.game_phase = "draw"
-        room.phase_deadline = timezone.now() + timedelta(seconds=5)
+        room.phase_deadline = timezone.now() + timedelta(seconds=30)
         room.winner = None
         room.game_winner_awarded = False
-        message = "🤝 QUIZ_DRAW|Sabhi players eliminate ho gaye. 5 seconds mein naya game automatic restart hoga."
+        message = "🤝 QUIZ_DRAW|Sabhi players eliminate ho gaye. 30 seconds mein naya game automatic restart hoga."
     room.save(update_fields=[
         "game_status", "game_phase", "phase_deadline", "decision_index",
         "winner", "game_winner_awarded", "updated_at",
@@ -144,7 +144,7 @@ def _start_decision_phase(room):
     room.save(update_fields=["game_phase", "decision_index", "phase_deadline", "updated_at"])
     PartyRoomMessage.objects.create(
         room=room, sender=room.host,
-        body=f"🗣️ DECISION_PHASE|Round {room.current_round}|Har active player ko bolne ya Skip karne ke liye 30 seconds milenge.",
+        body=f"🗣️ DECISION_PHASE|Round {room.current_round}|Har active player ko bolne ya Skip karne ke liye 15 seconds milenge.",
     )
 
 
@@ -160,7 +160,7 @@ def _advance_decision(room):
     for index, member in enumerate(active):
         if not member.decision_done:
             room.decision_index = index
-            room.phase_deadline = timezone.now() + timedelta(seconds=30)
+            room.phase_deadline = timezone.now() + timedelta(seconds=15)
             room.save(update_fields=["decision_index", "phase_deadline", "updated_at"])
             return
     if room.current_round >= 3:
@@ -179,7 +179,7 @@ def _advance_decision(room):
     room.save(update_fields=["current_round", "game_phase", "phase_deadline", "decision_index", "updated_at"])
     PartyRoomMessage.objects.create(
         room=room, sender=room.host,
-        body=f"❓ ROUND_STARTED|Round {room.current_round} of 3|30 seconds to answer",
+        body=f"❓ ROUND_STARTED|Round {room.current_round} of 3|45 seconds to answer",
     )
 
 
@@ -222,7 +222,7 @@ def _advance_if_due(room):
             current.save(update_fields=["decision_done"])
             PartyRoomMessage.objects.create(
                 room=room, sender=room.host,
-                body=f"⏭️ DECISION_SKIPPED|{current.user.username}|30-second turn expired",
+                body=f"⏭️ DECISION_SKIPPED|{current.user.username}|15-second turn expired",
             )
         _advance_decision(room)
 
@@ -377,8 +377,8 @@ def party_game_restart_draw(request, room_id):
         room = get_object_or_404(PartyRoom.objects.select_for_update().select_related("host"), pk=room_id)
         if room.host_id != request.user.pk:
             return JsonResponse({"error": "Sirf host draw game restart kar sakta hai."}, status=403)
-        if room.game_phase != "completed" or room.winner_id:
-            return JsonResponse({"error": "Restart sirf completed draw ke baad available hai."}, status=409)
+        if room.game_phase not in ("draw", "completed") or room.winner_id:
+            return JsonResponse({"error": "Restart sirf draw match mein available hai."}, status=409)
         if not room.memberships.exists():
             return JsonResponse({"error": "Room mein koi player nahi hai."}, status=409)
         begin_quiz(room)

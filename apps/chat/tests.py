@@ -258,3 +258,40 @@ class PartyQuizWinnerAndQuestionTests(TestCase):
         self.assertEqual(len(set(self.room.game_question_ids)), 3)
         self.assertTrue(set(self.room.game_question_ids).issubset(set(QUESTIONS)))
         self.assertTrue(set(self.room.game_question_ids).isdisjoint({1, 2, 3}))
+
+
+class PartyQuizManualDrawRestartTests(TestCase):
+    def setUp(self):
+        from .party_models import PartyRoom, PartyRoomMembership
+        self.host = User.objects.create_user(username="draw_restart_host", password="test-password-12345")
+        self.player = User.objects.create_user(username="draw_restart_player", password="test-password-12345")
+        self.room = PartyRoom.objects.create(
+            host=self.host, title="Manual Draw Restart",
+            game_status="live", game_phase="draw", current_round=1,
+        )
+        self.host_member = PartyRoomMembership.objects.create(room=self.room, user=self.host, is_eliminated=True)
+        self.player_member = PartyRoomMembership.objects.create(room=self.room, user=self.player, is_eliminated=True)
+
+    def test_host_can_restart_during_draw_phase_immediately(self):
+        from .party_game import QUESTIONS
+        self.client.force_login(self.host)
+        response = self.client.post(reverse("chat:party_game_restart_draw", args=[self.room.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["ok"])
+        self.room.refresh_from_db()
+        self.assertEqual(self.room.game_phase, "question")
+        self.assertEqual(self.room.current_round, 1)
+        self.assertEqual(len(self.room.game_question_ids), 3)
+        self.host_member.refresh_from_db()
+        self.player_member.refresh_from_db()
+        self.assertFalse(self.host_member.is_eliminated)
+        self.assertFalse(self.player_member.is_eliminated)
+        self.assertFalse(self.host_member.current_answer)
+        self.assertFalse(self.player_member.current_answer)
+
+    def test_non_host_cannot_restart_draw_game(self):
+        self.client.force_login(self.player)
+        response = self.client.post(reverse("chat:party_game_restart_draw", args=[self.room.pk]))
+        self.assertEqual(response.status_code, 403)
+        self.room.refresh_from_db()
+        self.assertEqual(self.room.game_phase, "draw")

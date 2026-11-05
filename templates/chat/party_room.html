@@ -94,7 +94,7 @@
         <div id="quizDecision" style="margin:10px 0"></div>
         <div id="quizResult" style="margin:10px 0"></div>
         <div id="quizLeaderboard" style="margin-top:14px"></div>
-        <button id="quizRestart" class="button button-primary" type="button" hidden>🔄 Restart Draw Game</button>
+        <button id="quizRestart" class="button button-primary" type="button" hidden>🔄 Restart Game Now</button>
       </section>
   </section>
   {% endif %}
@@ -179,7 +179,7 @@
     if (gameBadge) gameBadge.textContent = data.phase === "lobby" ? "🟡 WAITING TO START" : (data.phase === "draw" ? "🤝 DRAW — RESTARTING" : (data.phase === "completed" ? "🏁 GAME COMPLETE" : "🟢 GAME LIVE"));
     statusEl.textContent = data.phase === "question" ? "Round " + data.round + " / 3 — jawab 45 seconds ke andar dein." :
       data.phase === "decision" ? "Round " + data.round + " — speaking / skip decision phase." :
-      data.phase === "draw" ? "Match draw! 5 seconds mein same players ke saath naya game automatic start hoga." :
+      data.phase === "draw" ? "Match draw! 30 seconds mein same players ke saath naya game automatic start hoga. Host chahe to Restart button dabakar turant shuru kar sakta hai." :
       data.phase === "completed" ? (data.winner ? "Game complete! Winner: " + data.winner : "Match draw.") :
       "12 players hone par game start hoga.";
     timerEl.textContent = data.seconds_left === null || data.seconds_left === undefined ? "" : "⏱️ " + data.seconds_left + " seconds";
@@ -187,7 +187,7 @@
     choicesEl.replaceChildren();
     decisionEl.replaceChildren();
     resultEl.replaceChildren();
-    restartButton.hidden = !(isHost && data.phase === "completed" && !data.winner && data.leaderboard.length > 0);
+    restartButton.hidden = !(isHost && (data.phase === "draw" || (data.phase === "completed" && !data.winner)) && data.leaderboard.length > 0);
     if (data.is_eliminated) {
       resultEl.appendChild(node("p", "👀 Aap Spectator hain. Elimination: " + (data.elimination_reason || "eliminated") + (data.eliminated_round ? " (Round " + data.eliminated_round + ")" : "")));
     }
