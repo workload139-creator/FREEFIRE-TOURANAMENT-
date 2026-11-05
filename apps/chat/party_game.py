@@ -376,9 +376,9 @@ def party_game_restart_draw(request, room_id):
     with transaction.atomic():
         room = get_object_or_404(PartyRoom.objects.select_for_update().select_related("host"), pk=room_id)
         if room.host_id != request.user.pk:
-            return JsonResponse({"error": "Sirf host draw game restart kar sakta hai."}, status=403)
-        if room.game_phase not in ("draw", "completed") or room.winner_id:
-            return JsonResponse({"error": "Restart sirf draw match mein available hai."}, status=409)
+            return JsonResponse({"error": "Sirf host completed match restart kar sakta hai."}, status=403)
+        if room.game_phase != "completed" or room.game_status != "completed":
+            return JsonResponse({"error": "Restart sirf match complete hone ke baad available hai."}, status=409)
         if not room.memberships.exists():
             return JsonResponse({"error": "Room mein koi player nahi hai."}, status=409)
         begin_quiz(room)
