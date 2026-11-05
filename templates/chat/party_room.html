@@ -556,6 +556,148 @@
  .party-room .room-head .room-privacy form{display:grid!important;grid-template-columns:1fr!important}
 }
 
+
+/* FF ARENA PURPLE NEON + GOLD THEME — replaces green room palette */
+.party-room{
+ --room-lime:#ffd84a!important;--room-mint:#b54cff!important;
+ color:#f7f3ff!important;
+ background:
+  radial-gradient(ellipse at 4% 20%,#244dff38,transparent 34%),
+  radial-gradient(ellipse at 96% 12%,#d52aff30,transparent 36%),
+  radial-gradient(ellipse at 50% 100%,#ff9d2420,transparent 44%),
+  linear-gradient(145deg,#090817,#100b25 55%,#080b1b)!important;
+}
+.party-room:before{
+ background:
+  radial-gradient(ellipse at 8% 16%,#344dff42,transparent 36%),
+  radial-gradient(ellipse at 94% 55%,#d52aff30,transparent 34%),
+  radial-gradient(ellipse at 50% 100%,#ffb52b18,transparent 50%)!important;
+}
+.party-room .room-head,.party-room .room-lobby,.party-room #partyQuizGame,
+.party-room .room-box,.party-room #partyVoice{
+ color:#f7f3ff!important;
+ border:1px solid #b84cff99!important;border-radius:18px!important;
+ background:
+  radial-gradient(ellipse at 90% 0%,#b42dff27,transparent 42%),
+  radial-gradient(ellipse at 0% 100%,#245bff20,transparent 48%),
+  linear-gradient(145deg,#17102c 0%,#090b1b 58%,#1b1030 100%)!important;
+ box-shadow:0 16px 44px #000b,0 0 24px #a72fff20,inset 0 1px #ffffff12!important;
+}
+.party-room .room-head{
+ border-color:#ffcf4c!important;
+ background:
+  radial-gradient(ellipse at 90% 0%,#e72dff38,transparent 36%),
+  radial-gradient(ellipse at 0% 100%,#285dff35,transparent 42%),
+  linear-gradient(115deg,#160d2d,#080b1c 58%,#25102b)!important;
+ box-shadow:0 18px 48px #000b,0 0 28px #bd35ff2b!important;
+}
+.party-room .room-head:after,.party-room .room-lobby:before,.party-room #partyQuizGame:before{
+ background:linear-gradient(90deg,transparent,#28c7ff,#a83dff,#ffcf4c,#ff54c8,transparent)!important;
+}
+.party-room .room-head h1,.party-room .room-box h2,.party-room #partyQuizGame h2{
+ color:#fff4ce!important;text-shadow:0 0 18px #b13cff55!important;
+}
+.party-room .room-head a{color:#65d9ff!important}
+.party-room .party-chip{
+ color:#ffe99b!important;background:linear-gradient(110deg,#ffcf4c22,#b13cff25)!important;
+ border:1px solid #ffcf4c99!important;border-radius:999px!important;
+}
+.party-room .room-note,.party-room .room-head p{color:#c9c4e4!important}
+.party-room .room-seat{
+ color:#bdb7dc!important;border:1px dashed #68558e!important;border-radius:12px!important;
+ background:linear-gradient(145deg,#100e22,#17132d)!important;
+}
+.party-room .room-seat.filled{
+ color:#fff!important;border:1px solid #43caff!important;
+ background:linear-gradient(145deg,#24366c,#21133d)!important;
+ box-shadow:inset 0 0 20px #4a8dff22,0 0 13px #348aff25!important;
+}
+.party-room .room-seat.host{
+ color:#fff2b8!important;border:1px solid #ffcf4c!important;
+ background:linear-gradient(145deg,#59401b,#271b32)!important;
+}
+.party-room .room-msg,.party-room .room-member{
+ color:#f7f2ff!important;border:1px solid #9f4de955!important;
+ background:linear-gradient(110deg,#21163c,#11142b)!important;border-radius:12px!important;
+}
+.party-room .room-msg small{color:#74dfff!important}
+.party-room .room-messages{scrollbar-color:#a64bff #0b0a1a!important}
+.party-room .room-form input,.party-room .room-box select,
+.party-room details select,.party-room details input{
+ color:#fff!important;background:#090a19!important;border:1px solid #7752a5!important;
+}
+.party-room .room-form input:focus,.party-room .room-box select:focus,
+.party-room details input:focus,.party-room details select:focus{
+ outline:0!important;border-color:#54d8ff!important;box-shadow:0 0 0 3px #54d8ff25!important;
+}
+.party-room .button-primary{
+ color:#171024!important;border:1px solid #ffe16a!important;
+ background:linear-gradient(110deg,#fff078,#ffc52f 52%,#ff8b35)!important;
+ box-shadow:0 7px 24px #ffbd353b!important;font-weight:950!important;
+}
+.party-room .button-outline{
+ color:#f4eaff!important;border:1px solid #b95cff!important;
+ background:linear-gradient(110deg,#9c35ff2c,#267bff20)!important;
+}
+.party-room #quizTimer{
+ color:#ffe68b!important;background:#ffca4c1b!important;border:1px solid #ffcf4caa!important;
+ border-radius:999px!important;
+}
+.party-room #quizQuestion{
+ color:#fff!important;border:1px solid #55cfff99!important;border-radius:15px!important;
+ background:linear-gradient(115deg,#243b7b,#29164c 58%,#451b52)!important;
+ box-shadow:inset 0 1px #ffffff15,0 8px 24px #0005!important;
+}
+.party-room #quizChoices button{
+ color:#f8f4ff!important;border:1px solid #a65bff!important;border-radius:13px!important;
+ background:linear-gradient(120deg,#29205a,#171b3c)!important;
+ box-shadow:0 6px 18px #0005!important;
+}
+.party-room #quizChoices button:hover:not(:disabled){
+ border-color:#ffda55!important;background:linear-gradient(120deg,#48317b,#263b70)!important;
+ box-shadow:0 8px 24px #9e42ff35!important;transform:translateY(-2px)!important;
+}
+.party-room #quizChoices button:last-child{
+ color:#ffe3e8!important;border-color:#ff6b9c!important;
+ background:linear-gradient(110deg,#54213e,#28152f)!important;
+}
+.party-room #quizDecision,.party-room #quizResult,.party-room #quizLeaderboard{
+ border:1px solid #a84cff66!important;border-radius:14px!important;
+ background:linear-gradient(145deg,#0c0c20eF,#211238cc)!important;
+}
+.party-room #quizLeaderboard h3{color:#ffdc58!important;font-weight:950!important}
+.party-room #quizLeaderboard li{
+ color:#f6efff!important;border:1px solid #7650a766!important;
+ background:linear-gradient(100deg,#29204b,#17162f)!important;border-radius:10px!important;
+}
+.party-room #quizResult{color:#fff0b8!important}
+.party-room #quizRestart{
+ color:#211500!important;background:linear-gradient(110deg,#fff078,#ffc52f 52%,#ff8b35)!important;
+ border:1px solid #ffe16a!important;box-shadow:0 0 24px #ffca3e44!important;
+}
+.party-room #partyVoice{
+ border-color:#a94cff!important;
+ background:radial-gradient(ellipse at 50% 0%,#a83dff25,transparent 60%),linear-gradient(145deg,#20113b,#0b1025)!important;
+}
+.party-room #partyVoice button{
+ color:#fff!important;border:1px solid #a65bff!important;
+ background:linear-gradient(145deg,#39205c,#17254d)!important;border-radius:13px!important;
+}
+.party-room #partyVoice button:hover:not(:disabled){filter:brightness(1.2);transform:translateY(-2px)}
+.party-room .room-head .room-privacy{background:#09091dcc!important;border-color:#a84cff99!important}
+.party-room .room-head .room-privacy>summary{color:#ffe48b!important}
+.party-room .room-head .room-close-button{
+ color:#fff!important;background:linear-gradient(120deg,#e6294c,#8e163d)!important;
+ border:1px solid #ff7a9b!important;box-shadow:0 6px 20px #e6294c44!important;
+}
+.party-room a:focus-visible,.party-room button:focus-visible,
+.party-room input:focus-visible,.party-room select:focus-visible{
+ outline:3px solid #ffd84a!important;outline-offset:3px!important;
+}
+@media(max-width:760px){
+ .party-room .room-head,.party-room .room-lobby,.party-room #partyQuizGame,.party-room .room-box{border-radius:15px!important}
+}
+
 </style>{% endblock %}
 {% block content %}
 <section class="party-room" data-room-theme="{{ room.theme }}">
