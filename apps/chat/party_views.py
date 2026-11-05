@@ -134,23 +134,33 @@ def party_room(request, room_id):
                 messages.success(request, "Auto-start ON ho gaya: 12 players poore hote hi game start hoga." if room.auto_start else "Auto-start OFF ho gaya.")
             return redirect("chat:party_room", room_id=room.pk)
         if action == "start_game":
+            is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
             is_admin = request.user.is_staff or request.user.is_superuser
+            error = ""
+            started = False
+            player_count = 0
             if not is_admin and (request.user.pk != room.host_id or not membership):
-                messages.error(request, "Game sirf room host ya FF Arena admin start kar sakta hai.")
-            elif room.game_status != "lobby":
-                messages.error(request, "Game pehle hi start ho chuka hai.")
+                error = "Game sirf room host ya FF Arena admin start kar sakta hai."
             else:
                 with transaction.atomic():
                     locked_room = PartyRoom.objects.select_for_update().get(pk=room.pk)
                     player_count = locked_room.memberships.count()
                     if locked_room.game_status != "lobby":
-                        messages.error(request, "Game pehle hi start ho chuka hai.")
+                        error = "Game pehle hi start ho chuka hai."
                     elif player_count < 1:
-                        messages.error(request, "Match start karne ke liye kam se kam 1 player room mein hona chahiye.")
-                    elif begin_quiz(locked_room):
-                        messages.success(request, f"Admin/Host ne match start kar diya! {player_count}/12 players ke saath Round 1 shuru.")
+                        error = "Match start karne ke liye kam se kam 1 player room mein hona chahiye."
                     else:
-                        messages.error(request, "Match start nahi ho paya. Room mein kam se kam 1 player hona chahiye.")
+                        started = begin_quiz(locked_room)
+                        if not started:
+                            error = "Match start nahi ho paya. Room mein kam se kam 1 player hona chahiye."
+            if is_ajax:
+                if error:
+                    return JsonResponse({"ok": False, "error": error}, status=409)
+                return JsonResponse({"ok": started, "phase": "question", "round": 1, "players": player_count})
+            if error:
+                messages.error(request, error)
+            else:
+                messages.success(request, f"Admin/Host ne match start kar diya! {player_count}/12 players ke saath Round 1 shuru.")
             return redirect("chat:party_room", room_id=room.pk)
         if not membership:
             messages.error(request, "Pehle room join karo.")
