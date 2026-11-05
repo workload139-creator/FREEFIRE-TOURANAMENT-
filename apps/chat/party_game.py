@@ -115,10 +115,10 @@ def _finish_game(room):
     else:
         room.game_status = "live"
         room.game_phase = "draw"
-        room.phase_deadline = timezone.now() + timedelta(seconds=5)
+        room.phase_deadline = timezone.now() + timedelta(seconds=30)
         room.winner = None
         room.game_winner_awarded = False
-        message = "🤝 QUIZ_DRAW|Sabhi players eliminate ho gaye. 5 seconds mein naya game automatic restart hoga."
+        message = "🤝 QUIZ_DRAW|Sabhi players eliminate ho gaye. 30 seconds mein naya game automatic restart hoga."
     room.save(update_fields=[
         "game_status", "game_phase", "phase_deadline", "decision_index",
         "winner", "game_winner_awarded", "updated_at",
@@ -377,8 +377,8 @@ def party_game_restart_draw(request, room_id):
         room = get_object_or_404(PartyRoom.objects.select_for_update().select_related("host"), pk=room_id)
         if room.host_id != request.user.pk:
             return JsonResponse({"error": "Sirf host draw game restart kar sakta hai."}, status=403)
-        if room.game_phase != "completed" or room.winner_id:
-            return JsonResponse({"error": "Restart sirf completed draw ke baad available hai."}, status=409)
+        if room.game_phase not in ("draw", "completed") or room.winner_id:
+            return JsonResponse({"error": "Restart sirf draw match mein available hai."}, status=409)
         if not room.memberships.exists():
             return JsonResponse({"error": "Room mein koi player nahi hai."}, status=409)
         begin_quiz(room)
