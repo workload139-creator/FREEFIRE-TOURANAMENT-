@@ -54,6 +54,36 @@
 @media(max-width:620px){.party-room #quizChoices{grid-template-columns:1fr}.party-room #quizChoices button:last-child{grid-column:auto}.party-room #quizQuestion{padding:14px}.party-room .room-head{border-radius:18px}.party-room .room-layout{gap:12px}}
 @media(prefers-reduced-motion:no-preference){.party-room .room-head,.party-room .room-lobby,.party-room #partyQuizGame{animation:arena-room-enter .42s ease both}@keyframes arena-room-enter{from{opacity:.72;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}}
 
+
+/* Compact, game-like party room layout */
+.party-room{max-width:none;width:100%;min-height:calc(100dvh - 70px);margin:0 auto;padding:12px clamp(10px,2vw,24px) 20px;display:flex;flex-direction:column;gap:12px}
+.party-room .room-head{padding:14px 18px;border-radius:16px;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:4px 14px}
+.party-room .room-head>a{grid-column:1;grid-row:1}.party-room .room-head .party-chip{grid-column:2;grid-row:1;justify-self:end}
+.party-room .room-head h1{grid-column:1/-1;font-size:clamp(1.25rem,2.7vw,2rem);margin:4px 0 0}
+.party-room .room-head p{grid-column:1/-1;margin:2px 0;font-size:.82rem;color:#b9cce0}
+.party-room .room-head details,.party-room .room-head form{grid-column:1/-1}
+.party-room .room-lobby{margin:0;padding:clamp(12px,1.8vw,20px);border-radius:16px}
+.party-room .room-seat-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;margin:10px 0}
+.party-room .room-seat{min-height:54px;padding:5px;font-size:.72rem}
+.party-room .room-layout{grid-template-columns:minmax(0,1.65fr) minmax(250px,.8fr);gap:12px;margin:0;align-items:start}
+.party-room .room-layout>.room-box{padding:14px}
+.party-room .room-layout aside.room-box{position:sticky;top:10px}
+.party-room .room-messages{height:clamp(180px,28dvh,310px);margin:8px 0}
+.party-room #partyQuizGame{padding:14px;margin-top:10px!important}
+.party-room #partyQuizGame h2{margin-bottom:6px}
+.party-room #quizTimer{margin:4px 0;font-size:1rem!important}
+.party-room #quizQuestion{margin:8px 0;padding:12px;font-size:.98rem!important}
+.party-room #quizChoices{gap:7px!important;margin:7px 0!important}
+.party-room #quizChoices button{min-height:42px;padding:9px 12px}
+.party-room #quizDecision,.party-room #quizResult,.party-room #quizLeaderboard{padding:10px;margin-top:8px}
+.party-room #quizRestart{margin-top:8px;min-height:44px}
+.party-room #partyVoice{margin-top:10px!important;padding:12px}
+.party-room .room-member{padding:8px;font-size:.86rem}
+.party-room .room-member form{display:flex;flex-wrap:wrap;gap:5px;justify-content:flex-end}
+.party-room .room-member select{max-width:115px;padding:7px;font-size:.75rem}
+@media(min-width:1000px){.party-room .room-lobby{display:grid;grid-template-columns:minmax(220px,.8fr) minmax(0,2fr);gap:10px 18px;align-items:start}.party-room .room-lobby>div:first-child{grid-column:1}.party-room .room-lobby>.room-seat-grid{grid-column:1;grid-row:2}.party-room #partyLobbyControls{grid-column:1;grid-row:3}.party-room #partyQuizGame{grid-column:2;grid-row:1/span 3;margin-top:0!important}.party-room .room-layout{grid-template-columns:minmax(0,1.5fr) minmax(260px,.75fr)}}
+@media(max-width:720px){.party-room{padding:8px 8px 16px;gap:9px}.party-room .room-head{padding:12px;border-radius:14px}.party-room .room-layout{grid-template-columns:1fr}.party-room .room-layout aside.room-box{position:static}.party-room .room-seat-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.party-room .room-seat{min-height:48px}.party-room .room-messages{height:220px}.party-room #partyVoice button{width:48px!important;height:48px!important}}
+@media(max-width:390px){.party-room .room-seat-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.party-room .room-head h1{font-size:1.2rem}}
 </style>{% endblock %}
 {% block content %}
 <section class="party-room" data-room-theme="{{ room.theme }}">
@@ -68,7 +98,7 @@
       <div><span class="party-chip">🎮 FF ARENA QUIZ BATTLE</span><h2 style="margin:12px 0 5px">Squad Lobby</h2><p class="room-note" style="margin:0">Host samet 12 seats · {{ members|length }} player(s) joined</p></div>
       {% if room.game_status == "lobby" %}<span id="partyGameBadge" class="party-chip">🟡 WAITING TO START</span>{% else %}<span id="partyGameBadge" class="party-chip">🟢 GAME LIVE</span>{% endif %}
     </div>
-    <div class="room-seat-grid">
+    <div class="room-seat-grid" id="partySeatGrid">
       {% for member in members %}<div class="room-seat filled {% if member.user_id == room.host_id %}host{% endif %}"><strong>{% if member.user_id == room.host_id %}👑 {% endif %}{{ member.user.username }}</strong><span>{% if member.user_id == room.host_id %}HOST{% else %}PLAYER{% endif %}</span></div>{% endfor %}
       {% for seat in "123456789012" %}{% if forloop.counter > members|length and forloop.counter <= 12 %}<div class="room-seat"><span>＋</span><span>Seat {{ forloop.counter }}</span></div>{% endif %}{% endfor %}
     </div>
@@ -118,7 +148,7 @@
       <div id="partyVoiceAudio" hidden></div>
     </section>
     </section>
-    <aside class="room-box"><h2>👥 Members</h2><div class="room-members">{% for member in members %}<div class="room-member"><span>{{ member.user.username }}{% if member.user_id == room.host_id %} 👑{% endif %}</span>{% if member.user_id != user.pk %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="gift"><input type="hidden" name="recipient_id" value="{{ member.user_id }}"><select name="gift_code" aria-label="Gift">{% for gift in gifts %}<option value="{{ gift.code }}">{{ gift.emoji }} {{ gift.name }} ({{ gift.price }})</option>{% endfor %}</select><select name="currency" aria-label="Currency"><option value="diamonds">Diamonds</option><option value="coins">Coins</option><option value="fan_tokens">Fan Tokens</option></select><button class="button button-outline" type="submit">🎁</button></form>{% endif %}</div>{% empty %}<p>No members yet.</p>{% endfor %}</div><p class="room-note">Gifts transfer non-cash in-app currency. Diamonds, coins and Fan Tokens are not INR cash balances.</p></aside>
+    <aside class="room-box"><h2>👥 Members</h2><div class="room-members" id="partyMembersLive">{% for member in members %}<div class="room-member"><span>{{ member.user.username }}{% if member.user_id == room.host_id %} 👑{% endif %}</span>{% if member.user_id != user.pk %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="gift"><input type="hidden" name="recipient_id" value="{{ member.user_id }}"><select name="gift_code" aria-label="Gift">{% for gift in gifts %}<option value="{{ gift.code }}">{{ gift.emoji }} {{ gift.name }} ({{ gift.price }})</option>{% endfor %}</select><select name="currency" aria-label="Currency"><option value="diamonds">Diamonds</option><option value="coins">Coins</option><option value="fan_tokens">Fan Tokens</option></select><button class="button button-outline" type="submit">🎁</button></form>{% endif %}</div>{% empty %}<p>No members yet.</p>{% endfor %}</div><p class="room-note">Gifts transfer non-cash in-app currency. Diamonds, coins and Fan Tokens are not INR cash balances.</p></aside>
   </div>
   {% endif %}
 </section>
@@ -395,6 +425,20 @@ import { Room, RoomEvent, Track } from "https://cdn.jsdelivr.net/npm/livekit-cli
 </script>
 
 <script>
-(function(){const box=document.getElementById("partyMessages");if(!box)return;let last=Number(box.dataset.lastId)||0;const poll=async()=>{try{const r=await fetch(box.dataset.pollUrl+"?after="+last,{headers:{"X-Requested-With":"XMLHttpRequest"}});if(!r.ok)return;const data=await r.json();for(const m of data.messages||[]){if(box.querySelector('[data-message-id="'+m.id+'"]'))continue;const article=document.createElement("article");article.className="room-msg";article.dataset.messageId=m.id;const small=document.createElement("small");small.textContent=m.sender+" · "+m.time;article.appendChild(small);article.appendChild(document.createTextNode(m.body));box.appendChild(article);last=Math.max(last,m.id)}if((data.messages||[]).length)box.scrollTop=box.scrollHeight;}catch(e){}};last=Math.max(last,...Array.from(box.querySelectorAll("[data-message-id]")).map(x=>Number(x.dataset.messageId)||0));box.scrollTop=box.scrollHeight;setInterval(poll,3500);})();
+(function(){
+ const box=document.getElementById("partyMessages");if(!box)return;
+ const seatGrid=document.getElementById("partySeatGrid"),membersBox=document.getElementById("partyMembersLive");
+ let last=Number(box.dataset.lastId)||0,previousMembers="";
+ function updateMembers(data){
+  const members=data.members||[],signature=JSON.stringify(members.map(m=>[m.id,m.username,m.is_host]));
+  if(signature===previousMembers)return;previousMembers=signature;
+  if(seatGrid){seatGrid.replaceChildren();members.forEach(m=>{const seat=document.createElement("div");seat.className="room-seat filled"+(m.is_host?" host":"");const name=document.createElement("strong");name.textContent=(m.is_host?"👑 ":"")+m.username;const role=document.createElement("span");role.textContent=m.is_host?"HOST":"PLAYER";seat.append(name,role);seatGrid.appendChild(seat);});for(let i=members.length+1;i<=12;i++){const seat=document.createElement("div");seat.className="room-seat";const plus=document.createElement("span");plus.textContent="＋";const label=document.createElement("span");label.textContent="Seat "+i;seat.append(plus,label);seatGrid.appendChild(seat);}}
+  if(membersBox){membersBox.replaceChildren();members.forEach(m=>{const row=document.createElement("div");row.className="room-member";const label=document.createElement("span");label.textContent=m.username+(m.is_host?" 👑":"");row.appendChild(label);membersBox.appendChild(row);});}
+  document.querySelectorAll(".room-lobby .room-note").forEach(el=>{if(el.textContent.includes("seats")||el.textContent.includes("player(s) joined"))el.textContent="Host samet 12 seats · "+members.length+" player(s) joined";});
+  const subtitle=document.querySelector(".room-head p");if(subtitle){const parts=subtitle.textContent.split("·");subtitle.textContent=parts.slice(0,2).join("·").trim()+" · "+members.length+"/12 seats";}
+ }
+ const poll=async()=>{try{const r=await fetch(box.dataset.pollUrl+"?after="+last,{headers:{"X-Requested-With":"XMLHttpRequest"},credentials:"same-origin",cache:"no-store"});if(!r.ok)return;const data=await r.json();for(const m of data.messages||[]){if(box.querySelector('[data-message-id="'+m.id+'"]'))continue;const article=document.createElement("article");article.className="room-msg";article.dataset.messageId=m.id;const small=document.createElement("small");small.textContent=m.sender+" · "+m.time;article.appendChild(small);article.appendChild(document.createTextNode(m.body));box.appendChild(article);last=Math.max(last,m.id)}if((data.messages||[]).length)box.scrollTop=box.scrollHeight;updateMembers(data);}catch(e){}};
+ last=Math.max(last,...Array.from(box.querySelectorAll("[data-message-id]")).map(x=>Number(x.dataset.messageId)||0));box.scrollTop=box.scrollHeight;poll();setInterval(poll,1800);
+})();
 </script>
 {% endblock %}
