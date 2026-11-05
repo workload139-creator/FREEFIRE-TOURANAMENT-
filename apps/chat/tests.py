@@ -267,12 +267,12 @@ class PartyQuizManualDrawRestartTests(TestCase):
         self.player = User.objects.create_user(username="draw_restart_player", password="test-password-12345")
         self.room = PartyRoom.objects.create(
             host=self.host, title="Manual Draw Restart",
-            game_status="live", game_phase="draw", current_round=1,
+            game_status="completed", game_phase="completed", current_round=1,
         )
         self.host_member = PartyRoomMembership.objects.create(room=self.room, user=self.host, is_eliminated=True)
         self.player_member = PartyRoomMembership.objects.create(room=self.room, user=self.player, is_eliminated=True)
 
-    def test_host_can_restart_during_draw_phase_immediately(self):
+    def test_host_can_restart_after_completed_match_with_winner_or_draw(self):
         from .party_game import QUESTIONS
         self.client.force_login(self.host)
         response = self.client.post(reverse("chat:party_game_restart_draw", args=[self.room.pk]))
@@ -289,7 +289,7 @@ class PartyQuizManualDrawRestartTests(TestCase):
         self.assertFalse(self.host_member.current_answer)
         self.assertFalse(self.player_member.current_answer)
 
-    def test_non_host_cannot_restart_draw_game(self):
+    def test_non_host_cannot_restart_completed_game(self):
         self.client.force_login(self.player)
         response = self.client.post(reverse("chat:party_game_restart_draw", args=[self.room.pk]))
         self.assertEqual(response.status_code, 403)
