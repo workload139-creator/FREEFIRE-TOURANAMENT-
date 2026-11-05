@@ -74,7 +74,7 @@ def begin_quiz(room):
     room.game_phase = "question"
     room.current_round = 1
     room.game_question_ids = question_ids
-    room.phase_deadline = now + timedelta(seconds=30)
+    room.phase_deadline = now + timedelta(seconds=45)
     room.decision_index = 0
     room.winner = None
     room.game_winner_awarded = False
@@ -140,7 +140,7 @@ def _start_decision_phase(room):
         member.save(update_fields=["decision_done"])
     room.game_phase = "decision"
     room.decision_index = 0
-    room.phase_deadline = timezone.now() + timedelta(seconds=30)
+    room.phase_deadline = timezone.now() + timedelta(seconds=15)
     room.save(update_fields=["game_phase", "decision_index", "phase_deadline", "updated_at"])
     PartyRoomMessage.objects.create(
         room=room, sender=room.host,
@@ -169,7 +169,7 @@ def _advance_decision(room):
     now = timezone.now()
     room.current_round += 1
     room.game_phase = "question"
-    room.phase_deadline = now + timedelta(seconds=30)
+    room.phase_deadline = now + timedelta(seconds=45)
     room.decision_index = 0
     for member in active:
         member.current_answer = ""
