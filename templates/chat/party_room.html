@@ -84,6 +84,38 @@
 @media(min-width:1000px){.party-room .room-lobby{display:grid;grid-template-columns:minmax(220px,.8fr) minmax(0,2fr);gap:10px 18px;align-items:start}.party-room .room-lobby>div:first-child{grid-column:1}.party-room .room-lobby>.room-seat-grid{grid-column:1;grid-row:2}.party-room #partyLobbyControls{grid-column:1;grid-row:3}.party-room #partyQuizGame{grid-column:2;grid-row:1/span 3;margin-top:0!important}.party-room .room-layout{grid-template-columns:minmax(0,1.5fr) minmax(260px,.75fr)}}
 @media(max-width:720px){.party-room{padding:8px 8px 16px;gap:9px}.party-room .room-head{padding:12px;border-radius:14px}.party-room .room-layout{grid-template-columns:1fr}.party-room .room-layout aside.room-box{position:static}.party-room .room-seat-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.party-room .room-seat{min-height:48px}.party-room .room-messages{height:220px}.party-room #partyVoice button{width:48px!important;height:48px!important}}
 @media(max-width:390px){.party-room .room-seat-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.party-room .room-head h1{font-size:1.2rem}}
+
+/* Final room composition: app-like game stage */
+.party-room{max-width:1440px;min-height:calc(100dvh - 76px);margin:0 auto;padding:8px clamp(8px,1.4vw,20px) 14px;gap:10px}
+.party-room .room-head{padding:10px 16px;border-radius:14px;gap:3px 12px}
+.party-room .room-head h1{font-size:clamp(1.15rem,2vw,1.65rem);margin:2px 0}
+.party-room .room-head p{font-size:.76rem}
+.party-room .room-lobby{padding:12px;display:grid;grid-template-columns:minmax(210px,.72fr) minmax(0,1.6fr);gap:8px 14px}
+.party-room .room-lobby>div:first-child{grid-column:1;grid-row:1}
+.party-room .room-lobby>.room-seat-grid{grid-column:1;grid-row:2}
+.party-room .room-lobby #partyLobbyControls{grid-column:1;grid-row:3}
+.party-room .room-lobby #partySessionBanner{grid-column:1;grid-row:3}
+.party-room .room-lobby #partyQuizGame{grid-column:2;grid-row:1/span 3;margin:0!important;align-self:stretch}
+.party-room .room-seat-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:8px 0}
+.party-room .room-seat{min-height:45px;font-size:.68rem;padding:4px}
+.party-room .room-layout{grid-template-columns:minmax(0,1.5fr) minmax(230px,.7fr);gap:10px;margin:0}
+.party-room .room-layout>.room-box{padding:12px}
+.party-room .room-messages{height:clamp(130px,19dvh,230px);margin:7px 0}
+.party-room #partyVoice{margin-top:10px!important}
+.party-room .room-members{gap:6px}
+.party-room .room-member{padding:7px}
+@media(max-width:760px){
+ .party-room{padding:6px 7px 12px;gap:8px}
+ .party-room .room-lobby{display:flex;flex-direction:column;gap:8px;padding:10px}
+ .party-room .room-lobby #partyQuizGame{width:100%;margin:0!important}
+ .party-room .room-seat-grid{grid-template-columns:repeat(4,minmax(0,1fr));width:100%}
+ .party-room .room-layout{display:flex;flex-direction:column;gap:8px}
+ .party-room .room-layout>.room-box{width:100%}
+ .party-room .room-messages{height:170px}
+ .party-room .room-layout aside.room-box{position:static}
+ .party-room #partyVoice button{width:48px!important;height:48px!important}
+}
+@media(max-width:390px){.party-room .room-seat-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 </style>{% endblock %}
 {% block content %}
 <section class="party-room" data-room-theme="{{ room.theme }}">
@@ -113,7 +145,7 @@
       {% else %}<p class="room-note">Host Auto-start ON kar sakta hai; 12 players hote hi game start hoga.</p>{% endif %}
       </div>
     {% else %}
-      <div class="room-game-live"><strong>⚡ Party session started — Round {{ room.current_round }} of 3</strong><p class="room-note" style="margin:6px 0 0">Squad lobby live hai. Voice aur room chat use karo.</p></div>
+      <div class="room-game-live" id="partySessionBanner"><strong>⚡ Party session started — Round {{ room.current_round }} of 3</strong><p class="room-note" style="margin:6px 0 0">Squad lobby live hai. Voice aur room chat use karo.</p></div>
     {% endif %}
       <section id="partyQuizGame" class="room-box" style="margin-top:14px;border-color:#b6ff3955" data-state-url="{% url 'chat:party_game_state' room.pk %}" data-answer-url="{% url 'chat:party_game_answer' room.pk %}" data-decision-url="{% url 'chat:party_game_decision' room.pk %}" data-restart-url="{% url 'chat:party_game_restart_draw' room.pk %}" data-host="{% if user.pk == room.host_id %}1{% else %}0{% endif %}">
         <h2>🧠 FF Arena Quiz — Live Game</h2>
@@ -132,7 +164,7 @@
   <section class="room-box" style="margin-top:16px"><h2>Join this room</h2>{% if not room.is_open %}<p class="room-note">Room band hai.</p>{% else %}<form method="post" class="room-form">{% csrf_token %}<input type="hidden" name="action" value="join">{% if room.visibility == "private" %}<input name="passcode" placeholder="Private passcode" required>{% endif %}<button class="button button-primary" type="submit">Join</button></form>{% endif %}</section>
   {% else %}
   <div class="room-layout">
-    <section class="room-box"><h2>💬 Live Room Chat</h2><div class="room-messages" id="partyMessages" data-poll-url="{% url 'chat:party_poll' room.pk %}" data-last-id="{{ room_messages|last|default_if_none:'' }}">{% for item in room_messages %}<article class="room-msg" data-message-id="{{ item.pk }}"><small>{{ item.sender.username }} · {{ item.created_at|date:"H:i" }}</small>{{ item.body }}</article>{% empty %}<p class="room-note">Pehla message bhejo!</p>{% endfor %}</div><form method="post" class="room-form">{% csrf_token %}<input type="hidden" name="action" value="message"><input name="body" maxlength="1000" placeholder="Room mein message likho..." required><button class="button button-primary" type="submit">Send</button></form>
+    <section class="room-box"><h2>💬 Live Room Chat</h2><div class="room-messages" id="partyMessages" data-poll-url="{% url 'chat:party_poll' room.pk %}" data-last-id="{{ room_messages|last|default_if_none:'' }}">{% for item in room_messages %}<article class="room-msg" data-message-id="{{ item.pk }}"><small>{{ item.sender.username }} · {{ item.created_at|date:"H:i" }}</small>{{ item.body }}</article>{% empty %}<p class="room-note">Pehla message bhejo!</p>{% endfor %}</div><form method="post" class="room-form">{% csrf_token %}<input type="hidden" name="action" value="message"><input name="body" maxlength="1000" placeholder="Room mein message likho..." required><button class="button button-primary" type="submit">Send</button></form></section>
     <section class="room-box" id="partyVoice" style="margin-top:16px;border-color:#b6ff3955;background:radial-gradient(ellipse at 100% 0%,#b6ff3912,transparent 45%),linear-gradient(145deg,#111e23,#0c131b)" data-token-url="{% url 'chat:party_voice_token' room.pk %}">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
         <div><h2 style="margin:0">🎙️ Voice Room</h2><p class="room-note" id="partyVoiceState" style="margin:6px 0 0"><span id="partyVoiceDot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#87918d;margin-right:7px"></span><span id="partyVoiceLabel">Not connected</span></p></div>
@@ -146,7 +178,6 @@
       </div>
       <p class="room-note" id="partyVoiceStatus" role="status" aria-live="polite" style="text-align:center;min-height:18px;margin:8px 0 0"></p>
       <div id="partyVoiceAudio" hidden></div>
-    </section>
     </section>
     <aside class="room-box"><h2>👥 Members</h2><div class="room-members" id="partyMembersLive" data-current-user="{{ user.pk }}">{% for member in members %}<div class="room-member"><span>{{ member.user.username }}{% if member.user_id == room.host_id %} 👑{% endif %}</span>{% if member.user_id != user.pk %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="gift"><input type="hidden" name="recipient_id" value="{{ member.user_id }}"><select name="gift_code" aria-label="Gift">{% for gift in gifts %}<option value="{{ gift.code }}">{{ gift.emoji }} {{ gift.name }} ({{ gift.price }})</option>{% endfor %}</select><select name="currency" aria-label="Currency"><option value="diamonds">Diamonds</option><option value="coins">Coins</option><option value="fan_tokens">Fan Tokens</option></select><button class="button button-outline" type="submit">🎁</button></form>{% endif %}</div>{% empty %}<p>No members yet.</p>{% endfor %}</div><p class="room-note">Gifts transfer non-cash in-app currency. Diamonds, coins and Fan Tokens are not INR cash balances.</p></aside>
   </div>
@@ -174,6 +205,7 @@
   const restartButton = document.getElementById("quizRestart");
   const lobbyControls = document.getElementById("partyLobbyControls");
   const gameBadge = document.getElementById("partyGameBadge");
+  const sessionBanner = document.getElementById("partySessionBanner");
   let busy = false;
   let refreshing = false;
   let latestState = null;
@@ -207,6 +239,13 @@
     latestState = data;
     if (lobbyControls) lobbyControls.hidden = data.phase !== "lobby";
     if (gameBadge) gameBadge.textContent = data.phase === "lobby" ? "🟡 WAITING TO START" : (data.phase === "draw" ? "🤝 DRAW — RESTARTING" : (data.phase === "completed" ? "🏁 GAME COMPLETE" : "🟢 GAME LIVE"));
+    if (sessionBanner) {
+      sessionBanner.hidden = data.phase === "completed" || data.phase === "lobby";
+      const heading = sessionBanner.querySelector("strong");
+      const note = sessionBanner.querySelector("p");
+      if (heading) heading.textContent = data.phase === "draw" ? "🤝 MATCH DRAW — RESTARTING" : "⚡ PARTY SESSION LIVE — ROUND " + (data.round || 1) + " OF 3";
+      if (note) note.textContent = data.phase === "draw" ? "Same players ke saath 30 seconds mein naya match shuru hoga." : "Voice aur room chat use karo.";
+    }
     statusEl.textContent = data.phase === "question" ? "Round " + data.round + " / 3 — jawab 45 seconds ke andar dein." :
       data.phase === "decision" ? "Round " + data.round + " — speaking / skip decision phase." :
       data.phase === "draw" ? "Match draw! 30 seconds mein same players ke saath naya game automatic start hoga. Host chahe to " :
