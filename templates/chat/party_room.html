@@ -712,6 +712,13 @@
 .party-room .party-avatar-small{width:36px;height:36px;flex-basis:36px;font-size:14px;border-width:1.5px}
 @media(max-width:760px){.party-room .room-seat.filled{min-height:100px!important}.party-room .party-avatar{width:42px;height:42px;flex-basis:42px}}
 
+
+/* Gift picker: show gifts as separate readable rows, not a cramped dropdown */
+.party-room .room-member form{grid-template-columns:minmax(0,1fr) minmax(105px,.65fr) 44px!important}
+.party-room .room-member select[name="gift_code"]{grid-column:1/-1!important;width:100%!important;max-width:none!important;min-height:126px!important;line-height:1.5!important;padding:7px!important;white-space:normal!important}
+.party-room .room-member select[name="currency"]{grid-column:1/3!important;width:100%!important;max-width:none!important}
+.party-room .room-member form button{grid-column:3!important;grid-row:2!important;min-height:40px!important}
+@media(max-width:760px){.party-room .room-member form{grid-template-columns:minmax(0,1fr) minmax(100px,.7fr) 44px!important}.party-room .room-member select[name="gift_code"]{min-height:116px!important}}
 </style>{% endblock %}
 {% block content %}
 <section class="party-room" data-room-theme="{{ room.theme }}">
@@ -777,7 +784,7 @@
       <p class="room-note" id="partyVoiceStatus" role="status" aria-live="polite" style="text-align:center;min-height:18px;margin:8px 0 0"></p>
       <div id="partyVoiceAudio" hidden></div>
     </section>
-    <aside class="room-box"><h2>👥 Members</h2><div class="room-members" id="partyMembersLive" data-current-user="{{ user.pk }}">{% for member in members %}<div class="room-member"><span class="party-member-identity"><span class="party-avatar party-avatar-small">{% if member.user.profile_photo %}<img src="{{ member.user.profile_photo.url }}" alt="{{ member.user.username }} DP" loading="lazy">{% else %}<span>{{ member.user.username|first|upper }}</span>{% endif %}</span><strong>{{ member.user.username }}{% if member.user_id == room.host_id %} 👑{% endif %}</strong></span>{% if member.user_id != user.pk %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="gift"><input type="hidden" name="recipient_id" value="{{ member.user_id }}"><select name="gift_code" aria-label="Gift">{% for gift in gifts %}<option value="{{ gift.code }}">{{ gift.emoji }} {{ gift.name }} ({{ gift.price }})</option>{% endfor %}</select><select name="currency" aria-label="Currency"><option value="diamonds">Diamonds</option><option value="coins">Coins</option><option value="fan_tokens">Fan Tokens</option></select><button class="button button-outline" type="submit">🎁</button></form>{% endif %}</div>{% empty %}<p>No members yet.</p>{% endfor %}</div><p class="room-note">Gifts transfer non-cash in-app currency. Diamonds, coins and Fan Tokens are not INR cash balances.</p></aside>
+    <aside class="room-box"><h2>👥 Members</h2><div class="room-members" id="partyMembersLive" data-current-user="{{ user.pk }}">{% for member in members %}<div class="room-member"><span class="party-member-identity"><span class="party-avatar party-avatar-small">{% if member.user.profile_photo %}<img src="{{ member.user.profile_photo.url }}" alt="{{ member.user.username }} DP" loading="lazy">{% else %}<span>{{ member.user.username|first|upper }}</span>{% endif %}</span><strong>{{ member.user.username }}{% if member.user_id == room.host_id %} 👑{% endif %}</strong></span>{% if member.user_id != user.pk %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="gift"><input type="hidden" name="recipient_id" value="{{ member.user_id }}"><select name="gift_code" aria-label="Gift — har gift alag line mein" size="5">{% for gift in gifts %}<option value="{{ gift.code }}">{{ gift.emoji }} {{ gift.name }} ({{ gift.price }})</option>{% endfor %}</select><select name="currency" aria-label="Currency"><option value="diamonds">Diamonds</option><option value="coins">Coins</option><option value="fan_tokens">Fan Tokens</option></select><button class="button button-outline" type="submit">🎁</button></form>{% endif %}</div>{% empty %}<p>No members yet.</p>{% endfor %}</div><p class="room-note">Gifts transfer non-cash in-app currency. Diamonds, coins and Fan Tokens are not INR cash balances.</p></aside>
   </div>
   {% endif %}
 </section>
