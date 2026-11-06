@@ -119,6 +119,35 @@ GIFTS = {
     "golden_wings": ("🪽", "Golden Wings", 750),
     "mythic_crown": ("👑", "Mythic Crown", 1000),
 }
+# Expand the curated starter gifts into a 1,000-item catalog with unique names/codes.
+from itertools import product as _gift_product
+
+_GIFT_STYLES = [
+    "Neon", "Golden", "Royal", "Diamond", "Galaxy", "Crystal", "Flame", "Ocean",
+    "Cosmic", "Legendary", "Mythic", "Shadow", "Turbo", "Electric", "Lunar",
+    "Solar", "Frozen", "Mystic", "Epic", "Ultra", "Premium", "Glorious",
+    "Champion", "Cyber", "Rainbow", "Starlight", "Velvet", "Radiant",
+    "Thunder", "Inferno", "Celestial", "Emerald", "Ruby", "Sapphire", "Platinum",
+]
+_GIFT_ITEMS = [
+    ("Rose", "🌹"), ("Heart", "💖"), ("Crown", "👑"), ("Trophy", "🏆"),
+    ("Dragon", "🐉"), ("Phoenix", "🐦‍🔥"), ("Tiger", "🐅"), ("Eagle", "🦅"),
+    ("Panda", "🐼"), ("Unicorn", "🦄"), ("Butterfly", "🦋"), ("Star", "⭐"),
+    ("Moon", "🌙"), ("Sun", "☀️"), ("Rainbow", "🌈"), ("Gem", "💎"),
+    ("Rocket", "🚀"), ("Supercar", "🏎️"), ("Private Jet", "✈️"), ("Castle", "🏰"),
+    ("Diamond Ring", "💍"), ("Golden Mic", "🎤"), ("Gamepad", "🎮"), ("Shield", "🛡️"),
+    ("Sword", "⚔️"), ("Fireworks", "🎆"),
+]
+_GIFT_PRICE_TIERS = (5, 10, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200, 250, 300, 500, 750, 1000)
+for _gift_index, (_style, (_item, _emoji)) in enumerate(_gift_product(_GIFT_STYLES, _GIFT_ITEMS)):
+    if len(GIFTS) >= 1000:
+        break
+    _gift_code = f"arena_{_gift_index + 1:03d}_{_style.lower()}_{_item.lower().replace(' ', '_')}"
+    GIFTS.setdefault(
+        _gift_code,
+        (_emoji, f"{_style} {_item}", _GIFT_PRICE_TIERS[(_gift_index // 55) % len(_GIFT_PRICE_TIERS)]),
+    )
+
 CURRENCIES = {"diamonds": "diamonds", "coins": "coins", "fan_tokens": "fan_tokens"}
 
 
