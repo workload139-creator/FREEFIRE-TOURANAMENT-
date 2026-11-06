@@ -138,7 +138,7 @@ _GIFT_ITEMS = [
     ("Diamond Ring", "💍"), ("Golden Mic", "🎤"), ("Gamepad", "🎮"), ("Shield", "🛡️"),
     ("Sword", "⚔️"), ("Fireworks", "🎆"),
 ]
-_GIFT_PRICE_TIERS = (5, 10, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200, 250, 300, 500, 750, 1000)
+_GIFT_PRICE_TIERS = (5, 10, 15, 20, 25, 30, 40, 50, 75, 100, 125, 150, 175, 199)
 for _gift_index, (_style, (_item, _emoji)) in enumerate(_gift_product(_GIFT_STYLES, _GIFT_ITEMS)):
     if len(GIFTS) >= 1000:
         break
@@ -147,6 +147,9 @@ for _gift_index, (_style, (_item, _emoji)) in enumerate(_gift_product(_GIFT_STYL
         _gift_code,
         (_emoji, f"{_style} {_item}", _GIFT_PRICE_TIERS[(_gift_index // 55) % len(_GIFT_PRICE_TIERS)]),
     )
+
+# Keep every gift affordable: no gift may cost 200 or more.
+GIFTS = {code: (emoji, label, min(price, 199)) for code, (emoji, label, price) in GIFTS.items()}
 
 CURRENCIES = {"diamonds": "diamonds", "coins": "coins", "fan_tokens": "fan_tokens"}
 
