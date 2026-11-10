@@ -18,10 +18,10 @@ def rewards_for_tournament(tournament, kills):
         quantity = kills // 2
         return [("fan_tokens", quantity, "Fan Tokens")] if quantity else []
     if tournament.mode == "BR":
-        rewards = [("diamonds", kills * 5, "Diamonds")]
-        if tournament.br_format in ("duo", "squad"):
-            rewards.append(("coins", kills * 2, "Coins"))
-        return [item for item in rewards if item[1] > 0]
+        # All paid BR formats (Solo, Duo, Squad) reward Diamonds only.
+        # Coins are intentionally not issued for BR kill rewards.
+        quantity = kills * 5
+        return [("diamonds", quantity, "Diamonds")] if quantity > 0 else []
     return [("coins", kills * 2, "Coins")]
 
 
