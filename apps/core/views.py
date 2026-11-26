@@ -222,6 +222,7 @@ def about(request):
 
 @login_required(login_url="/admin/login/")
 @login_required(login_url="/admin/login/")
+@login_required(login_url="/admin/login/")
 def database_manager(request):
     """Read-only database health panel restricted to the site superuser."""
     from django.http import HttpResponseForbidden
