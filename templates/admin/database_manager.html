@@ -1,5 +1,4 @@
 {% extends "admin/base_site.html" %}
-{% load humanize %}
 {% block title %}Database Manager | FF Arena Admin{% endblock %}
 {% block content %}
 <div id="content-main" class="ff-db-manager">
@@ -12,11 +11,11 @@
 <div class="ff-db-card"><small>Database name</small><strong>{{ database_name }}</strong></div>
 <div class="ff-db-card"><small>Database engine</small><strong>{{ database_engine }}</strong></div>
 <div class="ff-db-card"><small>Database size</small><strong>{{ database_size }}</strong></div>
-<div class="ff-db-card"><small>Tables</small><strong>{{ table_count|intcomma }}</strong></div>
-<div class="ff-db-card"><small>Applied migrations</small><strong>{{ migration_count|intcomma }}</strong></div>
+<div class="ff-db-card"><small>Tables</small><strong>{{ table_count }}</strong></div>
+<div class="ff-db-card"><small>Applied migrations</small><strong>{{ migration_count }}</strong></div>
 </div>
 <div class="ff-db-table-wrap"><h2>Database tables</h2><table class="ff-db-table"><thead><tr><th>Table name</th><th>Estimated rows</th></tr></thead><tbody>
-{% for table in tables %}<tr><td>{{ table.name }}</td><td>{% if table.estimated_rows != None %}{{ table.estimated_rows|intcomma }}{% else %}—{% endif %}</td></tr>{% empty %}<tr><td colspan="2">Table information is unavailable. Check database connection and application logs.</td></tr>{% endfor %}
+{% for table in tables %}<tr><td>{{ table.name }}</td><td>{% if table.estimated_rows != None %}{{ table.estimated_rows }}{% else %}—{% endif %}</td></tr>{% empty %}<tr><td colspan="2">Table information is unavailable. Check database connection and application logs.</td></tr>{% endfor %}
 </tbody></table></div>
 <p class="ff-db-note"><strong>Safety:</strong> This page is read-only. It does not provide raw SQL execution, password or connection-string display, or controls to edit/delete player, tournament or wallet data. Create and verify a backup before any database migration or import.</p>
 <p class="quiet">Last checked: {{ checked_at|date:"d M Y, H:i:s" }}</p>
