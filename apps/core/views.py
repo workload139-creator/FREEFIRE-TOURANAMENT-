@@ -217,3 +217,48 @@ def about(request):
                 "Support: workload139@gmail.com. Include your username and relevant event or transaction reference. Never send your password, OTP, UPI PIN or API secret."
             ])
         ])
+
+
+def database_manager(request):
+    """Read-only database health panel restricted to the site superuser."""
+    from django.http import HttpResponseForbidden
+    from django.db.migrations.recorder import MigrationRecorder
+
+    if not request.user.is_authenticated or not request.user.is_superuser:
+        return HttpResponseForbidden("Superuser access required.")
+
+    context = {
+        "database_name": str(connection.settings_dict.get("NAME") or "Configured database"),
+        "database_engine": connection.settings_dict.get("ENGINE", "unknown").rsplit(".", 1)[-1],
+        "database_vendor": connection.vendor,
+        "database_status": "Connected",
+        "database_size": "Not available",
+        "migration_count": 0,
+        "tables": [],
+        "table_count": 0,
+        "checked_at": timezone.localtime(),
+    }
+    try:
+        connection.ensure_connection()
+        context["table_count"] = len(connection.introspection.table_names())
+        context["migration_count"] = len(MigrationRecorder(connection).applied_migrations())
+        if connection.vendor == "postgresql":
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT pg_size_pretty(pg_database_size(current_database()))")
+                context["database_size"] = cursor.fetchone()[0]
+                cursor.execute(
+                    "SELECT relname, n_live_tup FROM pg_stat_user_tables ORDER BY relname"
+                )
+                context["tables"] = [
+                    {"name": row[0], "estimated_rows": row[1]}
+                    for row in cursor.fetchall()
+                ]
+        else:
+            context["tables"] = [
+                {"name": name, "estimated_rows": None}
+                for name in connection.introspection.table_names()
+            ]
+    except DatabaseError:
+        context["database_status"] = "Connection error"
+        context["tables"] = []
+    return render(request, "admin/database_manager.html", context)
