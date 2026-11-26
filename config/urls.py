@@ -10,7 +10,7 @@ from apps.core.views import health_check, terms, privacy_policy, refund_policy, 
 
 from apps.accounts.auth_views import login_view
 from apps.accounts.view import logout_view
-from apps.core.views import home
+from apps.core.views import home, database_manager
 from apps.core.assistant import assistant_view
 
 
@@ -67,6 +67,7 @@ urlpatterns = [
     path("refund-policy/", refund_policy, name="refund_policy"),
     path("fair-play/", fair_play, name="fair_play"),
     path("about/", about, name="about"),
+    path("admin/database-manager/", database_manager, name="database_manager"),
     path("admin/", admin.site.urls),
     path("accounts/", include("apps.accounts.urls")),
     path("login/", login_view, name="login"),
