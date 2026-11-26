@@ -1,49 +1,23 @@
-{% extends "base.html" %}
-{% block title %}FF Arena Database Manager{% endblock %}
+{% extends "admin/base_site.html" %}
+{% block title %}Database Manager | FF Arena Admin{% endblock %}
 {% block content %}
-<section class="db-manager">
-  <style>
-    .db-manager{max-width:1100px;margin:28px auto;padding:20px;color:#eef5ff}
-    .db-manager h1{font-size:clamp(25px,4vw,36px);margin:0 0 8px}
-    .db-sub{color:#a9b9cc;margin:0 0 22px}
-    .db-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
-    .db-card{background:#101b2a;border:1px solid #55ffc044;border-radius:14px;padding:16px}
-    .db-card small{display:block;color:#9fb0c4;margin-bottom:7px}
-    .db-card strong{font-size:20px;overflow-wrap:anywhere}
-    .db-table-wrap{margin-top:20px;background:#0d1724;border:1px solid #ffffff20;border-radius:14px;overflow:auto}
-    .db-table-wrap h2{font-size:19px;padding:16px;margin:0;border-bottom:1px solid #ffffff20}
-    .db-table{width:100%;border-collapse:collapse;min-width:420px}
-    .db-table th,.db-table td{text-align:left;padding:11px 16px;border-bottom:1px solid #ffffff12}
-    .db-table th{color:#9fb0c4;font-size:12px;text-transform:uppercase}
-    .db-note{margin-top:18px;padding:14px;border-left:3px solid #55ffc0;background:#10251f;color:#c9e9dc;border-radius:8px}
-    .db-actions{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
-    .db-actions a{color:#07120f;background:#55ffc0;padding:10px 14px;border-radius:9px;text-decoration:none;font-weight:700}
-  </style>
-  <h1>FF Arena Database Manager</h1>
-  <p class="db-sub">Read-only system overview · Superuser access only</p>
-  <div class="db-actions"><a href="/admin/">Open Django Admin</a></div>
-  <div class="db-grid">
-    <div class="db-card"><small>Connection</small><strong>{{ database_status }}</strong></div>
-    <div class="db-card"><small>Database name</small><strong>{{ database_name }}</strong></div>
-    <div class="db-card"><small>Database engine</small><strong>{{ database_engine }}</strong></div>
-    <div class="db-card"><small>Database size</small><strong>{{ database_size }}</strong></div>
-    <div class="db-card"><small>Application tables</small><strong>{{ table_count }}</strong></div>
-    <div class="db-card"><small>Applied migrations</small><strong>{{ migration_count }}</strong></div>
-  </div>
-  <div class="db-table-wrap">
-    <h2>Database tables</h2>
-    <table class="db-table">
-      <thead><tr><th>Table name</th><th>Estimated rows</th></tr></thead>
-      <tbody>
-      {% for table in tables %}
-        <tr><td>{{ table.name }}</td><td>{% if table.estimated_rows != None %}{{ table.estimated_rows }}{% else %}—{% endif %}</td></tr>
-      {% empty %}
-        <tr><td colspan="2">Table information is not available. Check the database connection.</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  <p class="db-note">Safety: this panel is read-only. It does not expose passwords, connection strings, raw SQL execution, player credentials or wallet-edit controls. Database backups and the Neon data import must be completed separately and verified before the old database is retired.</p>
-  <p class="db-sub">Checked: {{ checked_at|date:"d M Y, H:i:s" }}</p>
-</section>
+<div id="content-main" class="ff-db-manager">
+<style>
+.ff-db-manager{color:var(--body-fg);max-width:1200px}.ff-db-hero{background:linear-gradient(120deg,#111b2b,#173b39);color:#fff;border:1px solid #2c7467;border-radius:14px;padding:22px;margin:8px 0 18px}.ff-db-hero h1{color:#fff;margin:0 0 6px;font-size:26px}.ff-db-hero p{margin:0;color:#c8e7df}.ff-db-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}.ff-db-actions a{display:inline-block;background:#087f68;color:#fff!important;padding:9px 13px;border-radius:7px;text-decoration:none;font-weight:700}.ff-db-actions a.secondary{background:#34445b}.ff-db-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin:16px 0}.ff-db-card{background:var(--darkened-bg);border:1px solid var(--border-color);border-radius:10px;padding:15px;min-width:0}.ff-db-card small{display:block;color:var(--body-quiet-color);margin-bottom:7px}.ff-db-card strong{font-size:19px;overflow-wrap:anywhere}.ff-db-table-wrap{background:var(--darkened-bg);border:1px solid var(--border-color);border-radius:10px;overflow:auto;margin-top:18px}.ff-db-table-wrap h2{padding:13px 16px;margin:0;border-bottom:1px solid var(--border-color);font-size:16px}.ff-db-table{width:100%;border-collapse:collapse;min-width:420px}.ff-db-table th,.ff-db-table td{text-align:left;padding:10px 15px;border-bottom:1px solid var(--border-color)}.ff-db-table th{color:var(--body-quiet-color);font-size:12px;text-transform:uppercase}.ff-db-note{padding:13px 15px;border-left:4px solid #087f68;background:var(--darkened-bg);margin:16px 0;border-radius:5px}@media(max-width:600px){.ff-db-hero{padding:16px}.ff-db-card strong{font-size:16px}}
+</style>
+<div class="ff-db-hero"><h1>🗄️ FF Arena Database Manager</h1><p>Live database health, storage and table overview · Superuser only · Read-only</p><div class="ff-db-actions"><a href="{% url 'admin:index' %}">← Admin Dashboard</a><a class="secondary" href="{% url 'database_manager' %}">Refresh Status</a></div></div>
+<div class="ff-db-grid">
+<div class="ff-db-card"><small>Connection status</small><strong>{{ database_status }}</strong></div>
+<div class="ff-db-card"><small>Database name</small><strong>{{ database_name }}</strong></div>
+<div class="ff-db-card"><small>Database engine</small><strong>{{ database_engine }}</strong></div>
+<div class="ff-db-card"><small>Database size</small><strong>{{ database_size }}</strong></div>
+<div class="ff-db-card"><small>Tables</small><strong>{{ table_count }}</strong></div>
+<div class="ff-db-card"><small>Applied migrations</small><strong>{{ migration_count }}</strong></div>
+</div>
+<div class="ff-db-table-wrap"><h2>Database tables</h2><table class="ff-db-table"><thead><tr><th>Table name</th><th>Estimated rows</th></tr></thead><tbody>
+{% for table in tables %}<tr><td>{{ table.name }}</td><td>{% if table.estimated_rows != None %}{{ table.estimated_rows }}{% else %}—{% endif %}</td></tr>{% empty %}<tr><td colspan="2">Table information is unavailable. Check database connection and application logs.</td></tr>{% endfor %}
+</tbody></table></div>
+<p class="ff-db-note"><strong>Safety:</strong> This page is read-only. It does not provide raw SQL execution, password or connection-string display, or controls to edit/delete player, tournament or wallet data. Create and verify a backup before any database migration or import.</p>
+<p class="quiet">Last checked: {{ checked_at|date:"d M Y, H:i:s" }}</p>
+</div>
 {% endblock %}

@@ -1,4 +1,5 @@
 from django.db import DatabaseError, connection
+from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.utils import timezone
 from django.http import JsonResponse
@@ -219,6 +220,9 @@ def about(request):
         ])
 
 
+@login_required(login_url="/admin/login/")
+@login_required(login_url="/admin/login/")
+@login_required(login_url="/admin/login/")
 def database_manager(request):
     """Read-only database health panel restricted to the site superuser."""
     from django.http import HttpResponseForbidden
