@@ -9,6 +9,8 @@
 .ig-card,.ig-form,.ig-orders{background:#111522;border:1px solid #ffffff1c;border-radius:17px;padding:18px}.ig-card b{display:block;margin:8px 0}.ig-card p{color:#aeb8ca;font-size:13px;line-height:1.5;margin:0}
 .ig-form{display:grid;gap:12px}.ig-form label{font-weight:700;font-size:13px}.ig-form input,.ig-form select,.ig-form textarea{width:100%;padding:12px;border-radius:10px;border:1px solid #414054;background:#090d17;color:#fff}.ig-form button{padding:13px;border:0;border-radius:10px;background:linear-gradient(100deg,#9333ea,#db2777,#f97316);color:white;font-weight:900;cursor:pointer}
 .ig-order{display:grid;grid-template-columns:1fr auto;gap:8px;padding:13px 0;border-bottom:1px solid #ffffff16}.ig-order:last-child{border:0}.ig-status{color:#f0abfc;font-size:12px;font-weight:800}
+
+.ig-sim{background:linear-gradient(145deg,#151326,#101827);border:1px solid #a855f755;border-radius:18px;padding:20px;margin:18px 0}.ig-sim-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.ig-sim label{display:grid;gap:7px;font-size:13px;font-weight:700}.ig-sim input,.ig-sim select{width:100%;padding:12px;border-radius:10px;border:1px solid #414054;background:#090d17;color:#fff}.ig-sim button{padding:13px 18px;border:0;border-radius:10px;background:linear-gradient(100deg,#9333ea,#db2777);color:#fff;font-weight:900;cursor:pointer}.ig-sim-result{margin-top:16px;padding:16px;border-radius:12px;background:#080d18;border:1px solid #ffffff20}.ig-sim-number{font-size:clamp(27px,5vw,38px);font-weight:900;color:#f0abfc}.ig-sim-history{font-size:13px;color:#c5bdd3;padding-left:20px}
 @media(max-width:600px){.ig-page{padding:0 11px;margin-top:15px}.ig-order{grid-template-columns:1fr}}
 </style>
 {% endblock %}
@@ -52,5 +54,62 @@
   {% empty %}<p class="ig-muted">Abhi koi order nahi hai. Apna pehla free promotion request submit karein.</p>{% endfor %}
 </section>
 </div>
+
+<section class="ig-sim" aria-labelledby="ig-sim-title">
+  <span class="ig-kicker">PRIVATE TEST TOOL · SIMULATION ONLY</span>
+  <h2 id="ig-sim-title" style="margin:8px 0">🧪 My Follower Growth Simulator</h2>
+  <p class="ig-muted">Yahan aap follower targets aur dashboard calculations test kar sakte hain. Ye sirf FF Arena par demo number banata hai—Instagram par koi account follow nahi hota aur asli follower count nahi badalta.</p>
+  <div class="ig-sim-grid">
+    <label>Instagram username (optional)
+      <input id="ig-sim-user" type="text" maxlength="30" placeholder="@yourusername" autocomplete="off">
+    </label>
+    <label>Current follower count (demo)
+      <input id="ig-sim-start" type="number" min="0" max="100000000" value="250" inputmode="numeric">
+    </label>
+    <label>Test growth target
+      <select id="ig-sim-target">
+        <option value="100">+100 followers</option>
+        <option value="500" selected>+500 followers</option>
+        <option value="1000">+1,000 followers</option>
+        <option value="5000">+5,000 followers</option>
+        <option value="10000">+10,000 followers</option>
+      </select>
+    </label>
+  </div>
+  <button id="ig-sim-run" type="button" style="margin-top:14px">Run Growth Simulation</button>
+  <div class="ig-sim-result" id="ig-sim-result" aria-live="polite">
+    <div class="ig-muted">Demo result yahan dikhega</div>
+    <div class="ig-sim-number" id="ig-sim-total">—</div>
+    <div class="ig-muted" id="ig-sim-detail">Simulation chalane ke liye button dabayein.</div>
+  </div>
+  <h3 style="margin:18px 0 6px">Recent test history</h3>
+  <ol class="ig-sim-history" id="ig-sim-history"><li>Abhi koi test nahi chala.</li></ol>
+</section>
+<script>
+(function(){
+  const run=document.getElementById('ig-sim-run');
+  if(!run) return;
+  const start=document.getElementById('ig-sim-start');
+  const target=document.getElementById('ig-sim-target');
+  const username=document.getElementById('ig-sim-user');
+  const total=document.getElementById('ig-sim-total');
+  const detail=document.getElementById('ig-sim-detail');
+  const history=document.getElementById('ig-sim-history');
+  const number=n=>Number(n).toLocaleString('en-IN');
+  const tests=[];
+  run.addEventListener('click',function(){
+    const before=Math.max(0,Math.min(100000000,Number(start.value)||0));
+    const gain=Number(target.value);
+    const after=before+gain;
+    const handle=username.value.trim().replace(/^@/,'').slice(0,30);
+    total.textContent=number(after);
+    detail.textContent='Demo: '+number(before)+' + '+number(gain)+' = '+number(after)+' followers'+(handle?' · @'+handle:'')+'. Instagram par koi real change nahi hua.';
+    tests.unshift((handle?'@'+handle+' · ':'')+'+'+number(gain)+' → '+number(after)+' demo followers');
+    history.innerHTML='';
+    tests.slice(0,5).forEach(function(item){const li=document.createElement('li');li.textContent=item;history.appendChild(li);});
+  });
+})();
+</script>
+
 </section>
 {% endblock %}
