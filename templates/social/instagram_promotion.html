@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Instagram Promotion | FF Arena{% endblock %}
+{% block extra_css %}
+<style>
+.ig-page{max-width:1050px;margin:26px auto 60px;padding:0 16px;color:#f7f5ff}
+.ig-hero{padding:clamp(24px,5vw,44px);border:1px solid #d946ef55;border-radius:24px;background:radial-gradient(ellipse at 90% 10%,#f9731622,transparent 34%),radial-gradient(ellipse at 5% 100%,#9333ea2c,transparent 42%),linear-gradient(130deg,#1b1028,#101421 65%,#211020);box-shadow:0 20px 60px #0007}
+.ig-kicker{color:#f0abfc;font-size:11px;font-weight:900;letter-spacing:2.5px}.ig-hero h1{font-size:clamp(28px,6vw,44px);margin:8px 0}.ig-hero p,.ig-muted{color:#c5bdd3;line-height:1.6}
+.ig-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:14px;margin:18px 0}
+.ig-card,.ig-form,.ig-orders{background:#111522;border:1px solid #ffffff1c;border-radius:17px;padding:18px}.ig-card b{display:block;margin:8px 0}.ig-card p{color:#aeb8ca;font-size:13px;line-height:1.5;margin:0}
+.ig-form{display:grid;gap:12px}.ig-form label{font-weight:700;font-size:13px}.ig-form input,.ig-form select,.ig-form textarea{width:100%;padding:12px;border-radius:10px;border:1px solid #414054;background:#090d17;color:#fff}.ig-form button{padding:13px;border:0;border-radius:10px;background:linear-gradient(100deg,#9333ea,#db2777,#f97316);color:white;font-weight:900;cursor:pointer}
+.ig-order{display:grid;grid-template-columns:1fr auto;gap:8px;padding:13px 0;border-bottom:1px solid #ffffff16}.ig-order:last-child{border:0}.ig-status{color:#f0abfc;font-size:12px;font-weight:800}
+@media(max-width:600px){.ig-page{padding:0 11px;margin-top:15px}.ig-order{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+{% block content %}
+<section class="ig-page">
+<header class="ig-hero">
+  <span class="ig-kicker">FF ARENA · CREATOR GROWTH</span>
+  <h1>📸 Instagram Promotion</h1>
+  <p>Apne Instagram profile aur content ko FF Arena community ke saamne promote karne ke liye free request bhejein. Hum organic discovery aur content sharing par focus karte hain — bots, fake accounts, password collection ya guaranteed follower counts nahi.</p>
+</header>
+<div class="ig-grid">
+  <article class="ig-card"><span>👤</span><b>Profile Discovery</b><p>Community ko apna public Instagram profile discover karne ka mauka dein.</p></article>
+  <article class="ig-card"><span>🎬</span><b>Reel / Content Reach</b><p>Public Reel ya content ko organic sharing ke liye submit karein.</p></article>
+  <article class="ig-card"><span>💬</span><b>Community Engagement</b><p>Apne content ke liye genuine community feedback aur engagement request karein.</p></article>
+</div>
+<div class="ig-grid" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));align-items:start">
+<section class="ig-form">
+  <h2 style="margin:0">Submit Free Order</h2>
+  <p class="ig-muted" style="margin:0">Cost: ₹0 · Admin approval required</p>
+  <form method="post" style="display:grid;gap:12px">{% csrf_token %}
+    <label>Instagram profile / Reel URL
+      <input type="url" name="instagram_url" required maxlength="300" placeholder="https://www.instagram.com/yourusername/">
+    </label>
+    <label>Promotion type
+      <select name="service" required>
+        <option value="">Choose service</option><option value="profile">Profile discovery</option><option value="reels">Reel / content reach</option><option value="engagement">Community engagement</option>
+      </select>
+    </label>
+    <label>What would you like to promote? (optional)
+      <textarea name="goal" rows="3" maxlength="250" placeholder="Tell us about your content"></textarea>
+    </label>
+    <button type="submit">Submit Free Promotion Request</button>
+  </form>
+  <p class="ig-muted" style="font-size:12px;margin:0">Instagram password, OTP ya recovery code kabhi mat dein. Followers, likes ya views ki fixed guarantee nahi hai.</p>
+</section>
+<section class="ig-orders">
+  <h2 style="margin:0 0 10px">My Promotion Orders</h2>
+  {% for order in promotion_orders %}
+    <div class="ig-order"><div><b>#{{ order.id }} · {{ order.get_service_display }}</b><div class="ig-muted" style="font-size:12px;overflow-wrap:anywhere">{{ order.instagram_url }}</div><small class="ig-muted">{{ order.created_at|date:"d M Y, h:i A" }}</small></div><span class="ig-status">{{ order.get_status_display }}</span></div>
+  {% empty %}<p class="ig-muted">Abhi koi order nahi hai. Apna pehla free promotion request submit karein.</p>{% endfor %}
+</section>
+</div>
+</section>
+{% endblock %}

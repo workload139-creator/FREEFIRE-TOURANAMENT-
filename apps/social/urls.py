@@ -9,6 +9,7 @@ urlpatterns = [
     path("feed/", views.community_feed, name="feed"),
     path("ff-tick/", views.ff_tick_view, name="ff_tick"),
     path("shop/", views.shop_view, name="shop"),
+    path("instagram-promotion/", views.instagram_promotion, name="instagram_promotion"),
     path("daily-spin/", views.daily_spin, name="daily_spin"),
     path("currency-withdrawal/", views.currency_withdrawal_view, name="currency_withdrawal"),
     path("follow/<int:user_id>/", views.toggle_follow, name="toggle_follow"),

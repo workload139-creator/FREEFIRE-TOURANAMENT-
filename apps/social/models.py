@@ -314,3 +314,32 @@ class PlayerShopWalletTransaction(models.Model):
     def __str__(self):
         return f"{self.user} · {self.direction} {self.quantity} {self.currency} · {self.source}"
 
+
+
+class InstagramPromotionOrder(models.Model):
+    """Free, manually reviewed request for genuine Instagram content promotion."""
+    class Service(models.TextChoices):
+        PROFILE = "profile", "Profile discovery"
+        REELS = "reels", "Reel/content reach"
+        ENGAGEMENT = "engagement", "Community engagement"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending review"
+        REVIEWING = "reviewing", "Reviewing"
+        COMPLETED = "completed", "Completed"
+        REJECTED = "rejected", "Rejected"
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="instagram_promotion_orders")
+    instagram_url = models.URLField(max_length=300)
+    service = models.CharField(max_length=16, choices=Service.choices)
+    goal = models.CharField(max_length=250, blank=True)
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDING, db_index=True)
+    admin_note = models.CharField(max_length=500, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return f"Instagram promotion #{self.pk} - {self.user} - {self.status}"
