@@ -615,8 +615,37 @@ def currency_withdrawal_view(request):
 
 @login_required
 def instagram_promotion(request):
+    import re
     from urllib.parse import urlparse
     from .models import InstagramPromotionOrder
+
+    if request.method == "POST":
+        raw_instagram = request.POST.get("instagram_url", "").strip()
+        service = request.POST.get("service", "").strip()
+        goal = request.POST.get("goal", "").strip()[:250]
+
+        # Accept a public Instagram username (@name or name) as well as a URL.
+        candidate = raw_instagram.lstrip("@").strip()
+        if "://" not in candidate and "/" not in candidate and re.fullmatch(r"[A-Za-z0-9._]{1,30}", candidate):
+            instagram_url = f"https://www.instagram.com/{candidate}/"
+        else:
+            instagram_url = raw_instagram
+        parsed = urlparse(instagram_url)
+        valid_host = (parsed.hostname or "").lower() in ("instagram.com", "www.instagram.com")
+        valid_path = bool(parsed.path.strip("/")) and not parsed.path.startswith("//")
+        if parsed.scheme not in ("http", "https") or not valid_host or not valid_path:
+            messages.error(request, "Instagram username (jaise @yourname) ya valid Instagram profile/Reel URL enter karein.")
+        elif service not in InstagramPromotionOrder.Service.values:
+            messages.error(request, "Promotion type select karein.")
+        else:
+            order = InstagramPromotionOrder.objects.create(
+                user=request.user, instagram_url=instagram_url,
+                service=service, goal=goal,
+            )
+            messages.success(request, f"Free promotion request #{order.pk} submit ho gayi. Admin review karega; follower count ki guarantee nahi hai.")
+            return redirect("social:instagram_promotion")
+    orders = InstagramPromotionOrder.objects.filter(user=request.user)[:20]
+    return render(request, "social/instagram_promotion.html", {"promotion_orders": orders})
 
     if request.method == "POST":
         instagram_url = request.POST.get("instagram_url", "").strip()
