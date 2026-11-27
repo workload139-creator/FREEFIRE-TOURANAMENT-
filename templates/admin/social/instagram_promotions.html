@@ -7,7 +7,7 @@
   <p>Yahan players ki Instagram profile promotion requests review karein. Sirf username/public URL dikhaya jata hai; Instagram password ya OTP collect nahi hota.</p>
   <p>
     <strong>Total: {{ total_orders }}</strong> &nbsp;·&nbsp;
-    {% for value,label in status_choices %}<a href="?status={{ value }}">{{ label }} ({{ counts|get_item:value|default:0 }})</a>{% if not forloop.last %} &nbsp;|&nbsp; {% endif %}{% endfor %}
+    {% for value,label in status_choices %}<a href="?status={{ value }}">{{ label }}</a>{% if not forloop.last %} &nbsp;|&nbsp; {% endif %}{% endfor %}
     &nbsp;|&nbsp; <a href="{% url 'instagram_promotion_admin' %}">All</a>
   </p>
   {% if messages %}{% for message in messages %}<div class="messagelist"><div class="{{ message.tags }}">{{ message }}</div></div>{% endfor %}{% endif %}
