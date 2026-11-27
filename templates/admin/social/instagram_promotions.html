@@ -1,0 +1,40 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+{% block title %}Instagram Promotion Requests | {{ site_title }}{% endblock %}
+{% block content %}
+<div id="content-main">
+  <h1>Instagram Promotion Requests</h1>
+  <p>Yahan players ki Instagram profile promotion requests review karein. Sirf username/public URL dikhaya jata hai; Instagram password ya OTP collect nahi hota.</p>
+  <p>
+    <strong>Total: {{ total_orders }}</strong> &nbsp;·&nbsp;
+    {% for value,label in status_choices %}<a href="?status={{ value }}">{{ label }} ({{ counts|get_item:value|default:0 }})</a>{% if not forloop.last %} &nbsp;|&nbsp; {% endif %}{% endfor %}
+    &nbsp;|&nbsp; <a href="{% url 'instagram_promotion_admin' %}">All</a>
+  </p>
+  {% if messages %}{% for message in messages %}<div class="messagelist"><div class="{{ message.tags }}">{{ message }}</div></div>{% endfor %}{% endif %}
+  <div class="module">
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr><th style="padding:10px;text-align:left">Request / Player</th><th style="padding:10px;text-align:left">Instagram</th><th style="padding:10px;text-align:left">Service / Goal</th><th style="padding:10px;text-align:left">Created</th><th style="padding:10px;text-align:left">Review</th></tr></thead>
+      <tbody>
+      {% for order in orders %}
+        <tr class="{% cycle 'row1' 'row2' %}">
+          <td style="padding:10px">#{{ order.id }}<br><strong>{{ order.user.username }}</strong><br><small>{{ order.user.email|default:"No email" }}</small></td>
+          <td style="padding:10px"><a href="{{ order.instagram_url }}" target="_blank" rel="noopener noreferrer">{{ order.instagram_url }}</a></td>
+          <td style="padding:10px">{{ order.get_service_display }}<br><small>{{ order.goal|default:"No goal provided" }}</small></td>
+          <td style="padding:10px">{{ order.created_at|date:"d M Y, h:i A" }}</td>
+          <td style="padding:10px;min-width:260px">
+            <form method="post" action="{% url 'instagram_promotion_admin_update' order.id %}">{% csrf_token %}
+              <label>Status <select name="status">{% for value,label in status_choices %}<option value="{{ value }}" {% if order.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+              <label style="display:block;margin-top:8px">Admin note<br><input style="width:100%" type="text" name="admin_note" maxlength="500" value="{{ order.admin_note }}"></label>
+              <button type="submit" class="button default" style="margin-top:8px">Save</button>
+            </form>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5" style="padding:20px">Is filter mein koi promotion request nahi hai.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p style="margin-top:18px"><a class="button" href="/admin/social/instagrampromotionorder/">Open standard Django admin list</a></p>
+</div>
+{% endblock %}
