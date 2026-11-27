@@ -13,6 +13,7 @@ from apps.accounts.view import logout_view
 from apps.core.views import home, database_manager
 from apps.core.assistant import assistant_view
 from apps.social.views import instagram_promotion
+from apps.social.admin_views import instagram_promotion_admin, update_instagram_promotion_admin
 
 
 # Evidence/payment files must not be exposed to unauthenticated visitors.
@@ -69,6 +70,8 @@ urlpatterns = [
     path("fair-play/", fair_play, name="fair_play"),
     path("about/", about, name="about"),
     path("admin/database-manager/", database_manager, name="database_manager"),
+    path("admin/instagram-promotions/", instagram_promotion_admin, name="instagram_promotion_admin"),
+    path("admin/instagram-promotions/<int:order_id>/update/", update_instagram_promotion_admin, name="instagram_promotion_admin_update"),
     path("admin/", admin.site.urls),
     path("accounts/", include("apps.accounts.urls")),
     path("login/", login_view, name="login"),
