@@ -12,6 +12,7 @@ from apps.accounts.auth_views import login_view
 from apps.accounts.view import logout_view
 from apps.core.views import home, database_manager
 from apps.core.assistant import assistant_view
+from apps.social.views import instagram_promotion
 
 
 # Evidence/payment files must not be exposed to unauthenticated visitors.
@@ -107,7 +108,7 @@ urlpatterns = [
     path("tournaments/", include("apps.tournaments.urls")),
     path("friends/", include("apps.social.urls")),
     # Backward-compatible direct URL for the Instagram Promotion page.
-    path("social/instagram-promotion/", include(("apps.social.urls", "social"), namespace="social_promotion_alias")),
+    path("social/instagram-promotion/", instagram_promotion, name="instagram_promotion_direct"),
     path("chat/", include("apps.chat.urls")),
     path("assistant/", assistant_view, name="assistant"),
     path("", home, name="home"),
