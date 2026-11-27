@@ -1,7 +1,7 @@
 from django.contrib import admin, messages
 from django.utils.html import format_html
 
-from .models import FriendRequest, UserBlock, UserReport, PhotoPost, FFTickSubscription, PlayerShopWallet, PlayerShopWalletTransaction, ShopPaymentRequest, CurrencyWithdrawalRequest, DailySpin, FanTokenAward
+from .models import FriendRequest, UserBlock, UserReport, PhotoPost, FFTickSubscription, PlayerShopWallet, PlayerShopWalletTransaction, ShopPaymentRequest, CurrencyWithdrawalRequest, DailySpin, FanTokenAward, InstagramPromotionOrder
 
 
 @admin.register(FriendRequest)
@@ -466,3 +466,13 @@ def _admin_get_urls_with_ai_assessment_and_activity():
 
 
 admin.site.get_urls = _admin_get_urls_with_ai_assessment_and_activity
+
+
+@admin.register(InstagramPromotionOrder)
+class InstagramPromotionOrderAdmin(admin.ModelAdmin):
+    list_display = ("id", "user", "instagram_url", "service", "status", "created_at")
+    list_filter = ("status", "service", "created_at")
+    search_fields = ("user__username", "user__email", "instagram_url", "goal")
+    list_editable = ("status",)
+    readonly_fields = ("user", "instagram_url", "service", "goal", "created_at", "updated_at")
+    fields = ("user", "instagram_url", "service", "goal", "status", "admin_note", "created_at", "updated_at")
