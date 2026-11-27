@@ -52,6 +52,27 @@
 </section>
 
 
+<!-- INSTAGRAM COMMUNITY GROWTH -->
+<section class="home-dashboard" style="margin-top:34px">
+  <div class="section-heading"><div><span class="section-label">CREATOR COMMUNITY</span><h2>Instagram <span>Growth</span></h2><p>FF Arena par featured public Instagram profiles discover karein. Pasand aaye to Instagram par jaakar khud follow karein.</p></div></div>
+  <div class="home-dashboard-grid">
+    {% for campaign in featured_instagram %}
+      <article class="home-dashboard-card community" style="min-height:150px">
+        <span>📸</span><strong>{{ campaign.user.username|escape }}</strong>
+        <small>{{ campaign.get_service_display }} · FF Arena featured profile</small>
+        <a href="{{ campaign.instagram_url }}" target="_blank" rel="noopener noreferrer" style="margin-top:auto;color:#66f5c2;font-weight:800">Open Instagram profile →</a>
+      </article>
+    {% empty %}
+      <article class="home-dashboard-card community" style="min-height:150px">
+        <span>🌱</span><strong>Apni ID promote karein</strong>
+        <small>Request bhejein. Admin review ke baad approved profiles yahan dikh sakti hain.</small>
+        <a href="{% url 'social:instagram_promotion' %}" style="margin-top:auto;color:#66f5c2;font-weight:800">Submit free request →</a>
+      </article>
+    {% endfor %}
+  </div>
+  <p style="color:#aebdd0;font-size:12px;margin-top:12px">Followers automatically add nahi hote. Follow karna har visitor ki apni choice hai. Instagram password/OTP kabhi share na karein.</p>
+</section>
+
 <!-- QUICK STATS -->
 <section class="stats">
     <div class="stat-card">
