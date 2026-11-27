@@ -106,6 +106,8 @@ urlpatterns = [
     ),
     path("tournaments/", include("apps.tournaments.urls")),
     path("friends/", include("apps.social.urls")),
+    # Backward-compatible direct URL for the Instagram Promotion page.
+    path("social/instagram-promotion/", include(("apps.social.urls", "social"), namespace="social_promotion_alias")),
     path("chat/", include("apps.chat.urls")),
     path("assistant/", assistant_view, name="assistant"),
     path("", home, name="home"),
