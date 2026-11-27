@@ -611,3 +611,28 @@ def currency_withdrawal_view(request):
         "shop_wallet": wallet,
         "withdrawal_requests": requests,
     })
+
+
+@login_required
+def instagram_promotion(request):
+    from urllib.parse import urlparse
+    from .models import InstagramPromotionOrder
+
+    if request.method == "POST":
+        instagram_url = request.POST.get("instagram_url", "").strip()
+        service = request.POST.get("service", "").strip()
+        goal = request.POST.get("goal", "").strip()[:250]
+        parsed = urlparse(instagram_url)
+        if parsed.scheme not in ("http", "https") or parsed.netloc.lower() not in ("instagram.com", "www.instagram.com") or not parsed.path.strip("/"):
+            messages.error(request, "Valid Instagram profile ya Reel URL enter karein.")
+        elif service not in InstagramPromotionOrder.Service.values:
+            messages.error(request, "Promotion type select karein.")
+        else:
+            order = InstagramPromotionOrder.objects.create(
+                user=request.user, instagram_url=instagram_url,
+                service=service, goal=goal,
+            )
+            messages.success(request, f"Free promotion request #{order.pk} submit ho gayi. Admin review karega; follower count ki guarantee nahi hai.")
+            return redirect("social:instagram_promotion")
+    orders = InstagramPromotionOrder.objects.filter(user=request.user)[:20]
+    return render(request, "social/instagram_promotion.html", {"promotion_orders": orders})
