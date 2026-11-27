@@ -645,7 +645,10 @@ def instagram_promotion(request):
             messages.success(request, f"Free promotion request #{order.pk} submit ho gayi. Admin review karega; follower count ki guarantee nahi hai.")
             return redirect("social:instagram_promotion")
     orders = InstagramPromotionOrder.objects.filter(user=request.user)[:20]
-    return render(request, "social/instagram_promotion.html", {"promotion_orders": orders})
+    return render(request, "social/instagram_promotion.html", {
+        "promotion_orders": orders,
+        "initial_instagram_username": request.GET.get("username", "").strip()[:30],
+    })
 
     if request.method == "POST":
         instagram_url = request.POST.get("instagram_url", "").strip()
