@@ -6,6 +6,7 @@ from django.http import JsonResponse
 from django.shortcuts import render
 
 from apps.tournaments.models import Tournament
+from apps.social.models import InstagramPromotionOrder
 
 
 def home(request):
@@ -20,7 +21,16 @@ def home(request):
     except DatabaseError:
         # Keep the public homepage available during a temporary database outage.
         tournaments = []
-    return render(request, "pages/home.html", {"featured_tournaments": tournaments})
+    try:
+        featured_instagram = InstagramPromotionOrder.objects.filter(
+            status__in=(InstagramPromotionOrder.Status.REVIEWING, InstagramPromotionOrder.Status.COMPLETED)
+        ).order_by("-updated_at")[:8]
+    except DatabaseError:
+        featured_instagram = []
+    return render(request, "pages/home.html", {
+        "featured_tournaments": tournaments,
+        "featured_instagram": featured_instagram,
+    })
 
 
 def health_check(request):
