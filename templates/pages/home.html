@@ -27,6 +27,13 @@
             aur leaderboard par apni jagah banao.
         </p>
 
+        <form method="get" action="{% url 'social:instagram_promotion' %}" class="home-instagram-entry" style="margin-top:18px;display:flex;gap:8px;flex-wrap:wrap;max-width:520px">
+            <label for="homeInstagramId" style="width:100%;font-weight:800;color:#f5f8ff">📸 Apni Instagram ID enter karein</label>
+            <input id="homeInstagramId" type="text" name="username" maxlength="30" placeholder="@yourusername" autocomplete="off" style="flex:1;min-width:180px;padding:12px;border-radius:10px;border:1px solid #55ffc066;background:#08111d;color:#fff">
+            <button type="submit" class="btn-primary">Continue →</button>
+            <small style="width:100%;color:#c5d2df">Sirf username/profile link — Instagram password ya OTP nahi.</small>
+        </form>
+
         <div class="hero-actions">
             <a href="{% url 'tournaments:list' %}" class="btn-primary">
                 Explore Tournaments →
