@@ -29,8 +29,8 @@
   <h2 style="margin:0">Submit Free Order</h2>
   <p class="ig-muted" style="margin:0">Cost: ₹0 · Admin approval required</p>
   <form method="post" style="display:grid;gap:12px">{% csrf_token %}
-    <label>Instagram profile / Reel URL
-      <input type="url" name="instagram_url" required maxlength="300" placeholder="https://www.instagram.com/yourusername/">
+    <label>Instagram username ya profile / Reel URL
+      <input type="text" name="instagram_url" required maxlength="300" placeholder="@yourusername ya instagram.com/yourusername/" autocomplete="off">
     </label>
     <label>Promotion type
       <select name="service" required>
